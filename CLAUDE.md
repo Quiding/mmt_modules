@@ -44,7 +44,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.2.1)
+### MMT_PawnCompare (v0.2.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -52,8 +52,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `## OptionalDeps: Pawn, MMT_ItemCompare` (load order). Needs Item Compare active
   (`MMT.ModuleActive("ItemCompare")`), warns in chat/page if it is off or Pawn is missing.
 - Integration without editing ItemCompare: `hooksecurefunc("CreateFrame")` catches the
-  `MMTCompareTip<n>` frames; `hooksecurefunc(tip, "Show")` adds the lines (NOT OnShow:
-  SetHyperlink shows the tip before the header has the member name). Member = parsed from `tip.header.text`,
+  `MMTCompareTip<n>` frames; lines are added ONCE when Item Compare sets the header text
+  (`hooksecurefunc(tip.header.text, "SetText")`), flag reset on `SetOwner` / OnTooltipCleared.
+  Not Show/OnShow: the game shows the tip several times while loading the item, before the
+  name is in the header (gave missing lines, then 3x duplicates). Simulation test:
+  scratch `test_pawn_tooltip.py` replays Item Compare's render order. Member = parsed from `tip.header.text`,
   equipped item = `tip:GetItem()`, hovered item = GameTooltip's item.
 - Scores: Pawn's `PawnGetItemData(link).Stats` if Pawn is loaded, else `GetItemStats` mapped to
   Pawn stat names (approximate). Value = sum(stat*weight), SpeedBaseline, unusable (-1000000),

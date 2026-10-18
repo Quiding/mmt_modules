@@ -3,10 +3,13 @@
 -- Item Compare shows one tooltip per team member (frames MMTCompareTip1..n)
 -- with the item that member has equipped, and a header with the member's
 -- name. We don't touch Item Compare's code: we hook those frames when they
--- are created and, after Item Compare's own tip:Show() call, add the hovered
--- item's Pawn score for that member's scales against the equipped item.
--- (Not OnShow: SetHyperlink already shows the tooltip, before Item Compare
--- has written the member's name into the header, so the first use missed it.)
+-- are created and add the hovered item's Pawn score for that member's scales
+-- (against the equipped item) when Item Compare writes the member's name into
+-- the header. That is the one moment per tooltip when its content is complete
+-- and the name is right. Show / OnShow don't work: the game shows the tooltip
+-- (several times) while the item is loaded, before the name is there.
+-- A flag per tooltip, cleared when Item Compare starts a new one (SetOwner),
+-- makes sure the lines are added only once.
 
 local _, mod = ...
 local MMT = MMT
@@ -97,9 +100,10 @@ local function AddLines(tip, key, hovered, equipped, offHand)
     end
 end
 
-local busy = false
-local function OnShow(tip)
-    if busy or not (M.enabled and M.db.showInCompare) then return end
+local done = {}   -- [tip] = true once the Pawn lines are in its current content
+
+local function AddPawn(tip)
+    if done[tip] or not (M.enabled and M.db.showInCompare) then return end
     local hovered = HoveredLink()
     if not hovered then return end
     local key = MemberOf(tip)
@@ -114,7 +118,7 @@ local function OnShow(tip)
         if ok and type(l) == "string" then equipped = l end
     end
 
-    busy = true
+    done[tip] = true
     -- a two-hander replaces both hands: on the main hand tip it is compared against
     -- main + off hand together, the off-hand tip only points there.
     -- Item Compare names the slot in the header.
@@ -130,15 +134,27 @@ local function OnShow(tip)
         local ok, err = pcall(AddLines, tip, key, hovered, equipped, offHand)
         if not ok then M:Debug("tooltip error: %s", tostring(err)) end
     end
-    tip:Show()   -- resize to the new lines (no second OnShow, it is already shown)
-    busy = false
+    -- Item Compare calls tip:Show() right after setting the header: that resizes it
 end
 
-local hooked = {}
+local hooked, headerHooked = {}, {}
+
+-- the header is made by Item Compare right after the tooltip frame
+local function HookHeader(tip)
+    local text = tip.header and tip.header.text
+    if text and not headerHooked[tip] then
+        headerHooked[tip] = true
+        hooksecurefunc(text, "SetText", function() AddPawn(tip) end)
+    end
+end
+
 local function Hook(frame)
     if frame and not hooked[frame] and frame.HookScript then
         hooked[frame] = true
-        hooksecurefunc(frame, "Show", OnShow)
+        -- Item Compare starts every tooltip with SetOwner: new content, header comes later
+        hooksecurefunc(frame, "SetOwner", function(tip) done[tip] = nil; HookHeader(tip) end)
+        pcall(frame.HookScript, frame, "OnTooltipCleared", function(tip) done[tip] = nil end)
+        HookHeader(frame)
         M:Debug("hooked %s", frame:GetName() or "?")
     end
 end
