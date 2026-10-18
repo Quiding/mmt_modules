@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Totems
 ## Notes: MMT module: totem bars for the team's shamans - timers, choose and cast totems, sequences, presets. Port of EMA Totems.
-## Version: 0.1.4
+## Version: 0.2.0
 ## Author: Quiding
 ## X-License: GPL-3.0
 ## Dependencies: MMT
@@ -21,4 +21,5 @@ Bars.lua
 Presets.lua
 PresetsDialog.lua
 Export.lua
+SettingsKit.lua
 Settings.lua

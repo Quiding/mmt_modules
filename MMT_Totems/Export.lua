@@ -9,7 +9,8 @@ local M = mod.M
 local LOOK = { "shown", "locked", "ungrouped", "vertical", "includeSelf", "onlyOnline", "order",
     "showNames", "fullNames", "onlyTimers", "showTimers", "timerColor", "iconSize", "spacing", "rowGap",
     "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe",
-    "showPresets", "showBarPresets", "showTeamPreset", "presetsOnHover", "presetSide" }
+    "showPresets", "showBarPresets", "showTeamPreset", "presetsOnHover", "presetSide",
+    "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
 local CHOICES = {
     order = { TEAM = true, NAME_ASC = true, NAME_DESC = true, ROLE = true },
     presetSide = { START = true, END = true },
@@ -18,6 +19,7 @@ local CHOICES = {
 local function GetLook()
     local t = {}
     for _, k in ipairs(LOOK) do t[k] = M.db[k] end
+    t.font = M.db.font or ""
     return t
 end
 
@@ -26,9 +28,12 @@ local function SetLook(data)
     local n = 0
     for _, k in ipairs(LOOK) do
         local v = data[k]
-        if v ~= nil and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
-            if k == "timerColor" then
-                v = { r = tonumber(v.r) or 1, g = tonumber(v.g) or 1, b = tonumber(v.b) or 1 }
+        if k == "font" then
+            -- nil in the profile = game font, so the type can't be checked against it
+            if type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
+        elseif v ~= nil and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
+            if type(v) == "table" and k:find("Color$") then
+                v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
             end
             M.db[k] = v
             n = n + 1

@@ -123,7 +123,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.1.4) – port of ema_totems
+### MMT_Totems (v0.2.0) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -136,7 +136,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `MTTK:<ids>` at login / on learning, stored in `M.store.known[key]`; no list yet -> show all.
   Chooser + preset editor filter by it, own casting skips unlearned chosen totems.
 - Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `teamPresets[name]`.
-- Shared files: `Compat.lua`, `Transfer.lua` (identical with Cooldowns / Buffs).
+- Shared files: `Compat.lua`, `Transfer.lua`, `SettingsKit.lua` (identical with Cooldowns / Buffs).
+- Settings tabs Bars / Look (`mod.LookTab` + inactiveAlpha, alpha) / Casting & presets; one status line.
+- Look like IconBars: `Skin`/`Media` copied into Bars.lua (BackdropTemplate container + bars).
+  Grouped: frame bg+border, `rowColor`/`rowAlpha` per bar, `bgTint` on textures; ungrouped: each bar gets bg+border
+  (content inset by the border). Font = `M.db.font` via `MMT.ApplyFont`. Export "look" has the same keys.
 - Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
   (secure frames throw in combat) and runs two clients passing messages.
 

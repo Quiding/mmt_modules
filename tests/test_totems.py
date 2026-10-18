@@ -307,3 +307,54 @@ print("A:", A.eval(r"""function(m)
   assert(own.slots.Earth:GetAttribute("*macrotext1") == "/cast Stoneskin Totem", "learned totem not cast")
   return "learned totems ok"
 end""")(amod))
+
+# look: background / border from LibSharedMedia, row backgrounds, font; export sanitizing
+print("A:", A.eval(r"""function(m)
+  local LSM = { Fetch = function(_, kind, name) return "media/" .. kind .. "/" .. name end }
+  LibStub = function(name, silent) if name == "LibSharedMedia-3.0" then return LSM end end
+  local Obj = getmetatable(m.container)
+  function Obj:SetBackdrop(b) self._backdrop = b end
+  function Obj:SetBackdropColor(r, g, b, a) self._bgc = { r, g, b, a } end
+  function Obj:SetBackdropBorderColor(r, g, b, a) self._edgec = { r, g, b, a } end
+  local c = m.M.db
+  c.ungrouped = false
+  c.bgTexture, c.bgColor, c.bgAlpha = "Marble", { r = 0.1, g = 0.2, b = 0.3 }, 0.5
+  c.borderTexture, c.borderColor, c.borderSize = "Tooltip", { r = 1, g = 0, b = 0 }, 16
+  c.rowColor, c.rowAlpha = { r = 0, g = 1, b = 0 }, 0.25
+  m.Refresh()
+  local f, bar = m.container, m.bars["Anna-Smith"]
+  assert(f._backdrop and f._backdrop.bgFile == "media/background/Marble", "frame background")
+  assert(f._backdrop.edgeFile == "media/border/Tooltip" and f._backdrop.edgeSize == 16, "frame border")
+  local function near(a, b) return math.abs(a - b) < 1e-9 end
+  assert(near(f._bgc[3], 0.3) and f._bgc[4] == 0.5 and f._edgec[1] == 1, "frame colours")
+  c.bgTint = 0.5   -- half way from the texture's own colours (white) to the colour
+  m.Refresh()
+  assert(math.abs(f._bgc[1] - 0.55) < 1e-9 and math.abs(bar._bgc[2] - 1) < 1e-9 and math.abs(bar._bgc[1] - 0.5) < 1e-9, "colour strength")
+  c.bgTint = 1
+  assert(bar._backdrop.edgeFile == nil and near(bar._bgc[2], 1) and bar._bgc[4] == 0.25, "row background")
+  -- ungrouped: each bar gets the frame look
+  c.ungrouped = true
+  m.Refresh()
+  assert(bar._backdrop.edgeFile == "media/border/Tooltip" and bar._bgc[4] == 0.5, "ungrouped bar look")
+  -- FLAT / NONE without the library
+  LibStub = nil
+  c.bgTexture, c.borderTexture = "FLAT", "NONE"
+  m.Refresh()
+  assert(bar._backdrop.bgFile == "Interface\\Buttons\\WHITE8X8" and bar._backdrop.edgeFile == nil, "flat look")
+  c.ungrouped = false
+  m.Refresh()
+  -- import: colours become plain numbers, font "" = game font
+  local opts
+  local open = MMTTransfer.Open
+  MMTTransfer.Open = function(o) opts = o end
+  m.OpenTransfer()
+  MMTTransfer.Open = open
+  local look
+  for _, s in ipairs(opts.sections) do if s.id == "look" then look = s end end
+  c.font = "Friz"
+  assert(look.get().font == "Friz", "font not exported")
+  assert(look.set({ font = "", bgColor = { r = "x", g = 0.5 }, borderSize = 20 }), "import failed")
+  assert(c.font == nil and c.bgColor.r == 0 and c.bgColor.g == 0.5 and c.bgColor.b == 0 and c.borderSize == 20, "import sanitizing")
+  assert(look.set({ font = "Friz", rowColor = "red" }) and c.font == "Friz" and type(c.rowColor) == "table", "bad colour taken over")
+  return "look ok"
+end""")(amod))

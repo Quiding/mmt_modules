@@ -5,6 +5,9 @@
 -- ungrouped (each bar moves on its own). Your slot buttons and the sequence
 -- button are secure action buttons (they cast), so the layout can only
 -- change out of combat; icons and timers update in combat too.
+-- Look: background / border (LibSharedMedia names, "FLAT" / "NONE") on the
+-- frame (grouped) or on each bar (ungrouped), a row background per bar
+-- (grouped), colour strength on textures (bgTint), the MMT font, timer colour - like MMT_Cooldowns' IconBars.lua.
 
 local _, mod = ...
 local MMT = MMT
@@ -16,7 +19,46 @@ local bars = {}          -- [teamKey] = bar
 mod.bars = bars
 local pendingLayout = false
 
-local container = CreateFrame("Frame", "MMTTotemsFrame", UIParent)
+local FLAT = "Interface\\Buttons\\WHITE8X8"
+local BACKDROP = BackdropTemplateMixin and "BackdropTemplate" or nil
+
+-- LibSharedMedia texture (other addons bring it), nil for FLAT / NONE / unknown
+local function Media(kind, name)
+    if not name or name == "" or name == "FLAT" or name == "NONE" then return nil end
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    return LSM and LSM:Fetch(kind, name, true) or nil
+end
+
+-- background (+ border) of a frame; returns the inner padding the border needs
+local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize, tint)
+    color = color or {}
+    local file = Media("background", bgTex)
+    -- a real texture: blend white (its own colours) towards the colour by tint
+    local r, g, b = color.r or 0, color.g or 0, color.b or 0
+    if file then
+        tint = math.max(0, math.min(1, tint or 1))
+        r, g, b = 1 + (r - 1) * tint, 1 + (g - 1) * tint, 1 + (b - 1) * tint
+    end
+    local edge = Media("border", edgeName)
+    if not f.SetBackdrop then
+        f.bg:SetColorTexture(color.r or 0, color.g or 0, color.b or 0, alpha or 0)
+        return 0
+    end
+    if f.bg then f.bg:Hide() end
+    local size = edge and (edgeSize or 12) or nil
+    local inset = edge and math.floor(size / 4 + 0.5) or 0
+    f:SetBackdrop({ bgFile = file or FLAT, edgeFile = edge, tile = false,
+        edgeSize = size, insets = { left = inset, right = inset, top = inset, bottom = inset } })
+    f:SetBackdropColor(r, g, b, alpha or 0)
+    if edge then
+        edgeColor = edgeColor or {}
+        f:SetBackdropBorderColor(edgeColor.r or 1, edgeColor.g or 1, edgeColor.b or 1, 1)
+    end
+    return inset
+end
+mod.Media = Media
+
+local container = CreateFrame("Frame", "MMTTotemsFrame", UIParent, BACKDROP)
 container:SetFrameStrata("MEDIUM")
 container:SetClampedToScreen(true)
 container:SetMovable(true)
@@ -26,7 +68,7 @@ container:Hide()
 mod.container = container
 
 local function Font(fs, size)
-    MMT.ApplyFont(fs, nil, size, "OUTLINE")
+    MMT.ApplyFont(fs, M.db and M.db.font, size, "OUTLINE")
 end
 
 local function FormatTime(t)
@@ -146,7 +188,7 @@ end
 
 local function NewBar(key)
     local own = MMT.IsSelf(key)
-    local bar = CreateFrame("Frame", nil, container)
+    local bar = CreateFrame("Frame", nil, container, BACKDROP)
     bar.key = key
     bar:SetClampedToScreen(true)
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
@@ -182,8 +224,8 @@ local function NewBar(key)
     return bar
 end
 
--- layout of one bar (out of combat): returns width, height
-local function LayoutBar(bar)
+-- layout of one bar (out of combat): returns width, height; pad = room for a border
+local function LayoutBar(bar, pad)
     local c = M.db
     local size, gap = c.iconSize, c.spacing
     local own = MMT.IsSelf(bar.key)
@@ -210,13 +252,13 @@ local function LayoutBar(bar)
         if item == seqBtn then seqBtn:SetParent(bar) end
         item:SetSize(size, size)
         item:ClearAllPoints()
-        if c.vertical then item:SetPoint("TOPLEFT", 0, -nameH - (i - 1) * (size + gap))
-        else item:SetPoint("TOPLEFT", (i - 1) * (size + gap), -nameH) end
+        if c.vertical then item:SetPoint("TOPLEFT", pad, -pad - nameH - (i - 1) * (size + gap))
+        else item:SetPoint("TOPLEFT", pad + (i - 1) * (size + gap), -pad - nameH) end
         item:Show()
     end
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
     bar.name:ClearAllPoints()
-    bar.name:SetPoint("TOPLEFT", 0, 0)
+    bar.name:SetPoint("TOPLEFT", pad, -pad)
     local n = #items
     local w, h
     if c.vertical then
@@ -226,6 +268,7 @@ local function LayoutBar(bar)
         w = math.max(n * size + (n - 1) * gap, c.showNames and (bar.name:GetStringWidth() + 2) or 0)
         h = nameH + size
     end
+    w, h = w + 2 * pad, h + 2 * pad
     bar:SetSize(w, h)
     return w, h
 end
@@ -249,11 +292,23 @@ function mod.Refresh()
     for key, bar in pairs(bars) do if not show[key] then bar:Hide() end end
     if seqBtn and not show[mod.OwnKey()] then seqBtn:SetParent(UIParent); seqBtn:Hide() end
 
-    local x, y, maxW, maxH = PAD, -PAD, 0, 0
+    -- grouped: background + border on the frame, a row background per bar;
+    -- ungrouped: each bar gets the background + border
+    local pad = PAD
+    if not c.ungrouped then
+        pad = PAD + Skin(container, c.bgTexture, c.bgColor, c.bgAlpha, c.borderTexture, c.borderColor, c.borderSize, c.bgTint)
+    end
+    local x, y, maxW, maxH = pad, -pad, 0, 0
     for _, key in ipairs(keys) do
         local bar = bars[key] or NewBar(key)
-        local w, h = LayoutBar(bar)
-        bar.bg:SetColorTexture(0, 0, 0, c.ungrouped and c.bgAlpha or 0)
+        local inset
+        if c.ungrouped then
+            inset = Skin(bar, c.bgTexture, c.bgColor, c.bgAlpha, c.borderTexture, c.borderColor, c.borderSize, c.bgTint)
+        else
+            inset = 0
+            Skin(bar, c.bgTexture, c.rowColor, c.rowAlpha, nil, nil, nil, c.bgTint)
+        end
+        local w, h = LayoutBar(bar, inset)
         bar.grip:SetShown(c.ungrouped and not c.locked)
         bar:ClearAllPoints()
         if c.ungrouped then
@@ -281,11 +336,10 @@ function mod.Refresh()
     if c.ungrouped or #keys == 0 then
         container:Hide()
     else
-        if c.vertical then container:SetSize(x - c.rowGap + PAD, maxH + 2 * PAD)
-        else container:SetSize(maxW + 2 * PAD, -y - c.rowGap + PAD) end
+        if c.vertical then container:SetSize(x - c.rowGap + pad, maxH + 2 * pad)
+        else container:SetSize(maxW + 2 * pad, -y - c.rowGap + pad) end
         container:SetScale(c.scale)
         container:SetAlpha(c.alpha)
-        container.bg:SetColorTexture(0, 0, 0, c.bgAlpha)
         container.grip:SetShown(not c.locked)
         local p = c.point
         if p ~= container.placed then

@@ -1,4 +1,6 @@
 -- MMT Totems: settings page (MODULES > Totems in /mmt) and debug report.
+-- Tabs: Bars (what is shown) / Look (SettingsKit.lua: sizes, text, background,
+-- border) / Casting & presets (sequence key and sequences, presets, sharing).
 
 local _, mod = ...
 local MMT = MMT
@@ -21,9 +23,14 @@ local function Check(col, text, key, tip)
 end
 
 M.Page = function(_, page)
-    local status
-    -- left: bars -------------------------------------------------------------
-    local L = UI.Column(page, 0, 0, COL_W)
+    local status = H.StatusLine(page)
+    status:SetPoint("BOTTOMLEFT", 0, 0)
+    status:SetWidth(H.PAGE_W)
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting & presets" } })
+
+    -- Bars ------------------------------------------------------------------
+    local p = panels.bars
+    local L = UI.Column(p, 0, 0, COL_W)
     L:Header("Totem bars")
     Check(L, "Show the totem bars", "shown")
     Check(L, "Lock position", "locked")
@@ -50,38 +57,35 @@ M.Page = function(_, page)
         M.db.fullNames = v == "FULL"
         mod.Refresh()
     end)
-    local gi, si = Opt("iconSize")
-    L:Slider("Icon size", 16, 64, 1, gi, si)
-    local gs, ss = Opt("scale")
-    L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
-    local gin, sin = Opt("inactiveAlpha")
-    L:Slider("No totem down: opacity", 0, 1, 0.05, gin, sin, "%.2f")
-    local gb, sb = Opt("bgAlpha")
-    L:Slider("Background", 0, 1, 0.05, gb, sb, "%.2f")
-    local go, so = Opt("alpha")
-    L:Slider("Overall opacity", 0.1, 1, 0.05, go, so, "%.2f")
-    local gsp, ssp = Opt("spacing")
-    L:Slider("Icon spacing", 0, 20, 1, gsp, ssp)
     Check(L, "Show timers", "showTimers")
-    local gt, stt = Opt("timerSize")
-    L:Slider("Timer size", 8, 32, 1, gt, stt)
-    L:Color("Timer colour", function() return M.db.timerColor end, function(c)
-        M.db.timerColor = { r = c.r, g = c.g, b = c.b }
-        mod.UpdateIcons()
-    end)
+    L:Space(6)
     local half = (COL_W - 8) / 2
-    local test = UI.Button(page, half, "Test (10 s)", function() mod.Test() end)
+    local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
     L:Add(test, 0)
-    local reset = UI.Button(page, half, "Reset position", function()
+    local reset = UI.Button(p, half, "Reset position", function()
         M.db.point = { "CENTER", "CENTER", 0, -150 }
         M.db.barPoints = {}
         mod.Refresh()
     end)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
 
-    -- right: casting, presets, sharing ----------------------------------------
-    local R = UI.Column(page, COL2_X, 0, COL_W)
-    R:Header("Casting")
+    local RB = UI.Column(p, COL2_X, 0, COL_W)
+    RB:Header("How the bars work")
+    RB:Note("One bar per shaman: the totem that is down with its time left, else the chosen one, else the last one used. Right-click a slot to choose a totem, left-click a slot on your own bar to cast it.")
+    RB:Note("Ungrouped: each bar moves on its own and gets the background and border itself. Size, colours and textures are on the Look tab.")
+
+    -- Look ------------------------------------------------------------------
+    local LL = mod.LookTab(panels.look, Opt, mod.Refresh)
+    LL:Header("Opacity")
+    local gin, sin = Opt("inactiveAlpha")
+    LL:Slider("No totem down: opacity", 0, 1, 0.05, gin, sin, "%.2f")
+    local go, so = Opt("alpha")
+    LL:Slider("Overall opacity", 0.1, 1, 0.05, go, so, "%.2f")
+
+    -- Casting & presets ---------------------------------------------------------
+    local cp = panels.casting
+    local C = UI.Column(cp, 0, 0, COL_W)
+    C:Header("Casting")
     -- key capture: click, then press the key
     local keyButton
     local capturing = false
@@ -94,7 +98,7 @@ M.Page = function(_, page)
         keyButton:EnableKeyboard(false)
         keyButton.label:SetText("Sequence key: " .. KeyText())
     end
-    keyButton = UI.Button(page, COL_W, "", function(self, button)
+    keyButton = UI.Button(cp, COL_W, "", function(self, button)
         if button == "RightButton" then
             local ok, err = mod.SetKey(nil)
             status.Show_(ok and "Sequence key removed." or err, not ok)
@@ -119,8 +123,8 @@ M.Page = function(_, page)
         StopCapture()
     end)
     UI.Tooltip(keyButton, "Totem sequence key", "Click, then press a key (Alt, Ctrl, Shift work). Right-click removes it. Also in Esc > Options > Keybindings > AddOns.")
-    R:Add(keyButton, UI.ROW + 2)
-    Check(R, "Spam-safe sequence", "spamSafe", "/castsequence reset=3 with an empty step at the end, so mashing the key doesn't restart the sequence.")
+    C:Add(keyButton, UI.ROW + 2)
+    Check(C, "Spam-safe sequence", "spamSafe", "/castsequence reset=3 with an empty step at the end, so mashing the key doesn't restart the sequence.")
 
     -- sequence per shaman
     local seqKey
@@ -132,18 +136,19 @@ M.Page = function(_, page)
         return t
     end
     local seqBox
-    R:Cycle("Sequence of", Shamans, function() return seqKey end, function(v)
+    C:Cycle("Sequence of", Shamans, function() return seqKey end, function(v)
         seqKey = v
         seqBox:SetText(mod.Sequence(v)); seqBox:UpdatePlaceholder()
     end)
-    seqBox = UI.EditBox(page, COL_W, "Fire, Air, Water, Earth  (Enter)", function(text, box)
+    seqBox = UI.EditBox(cp, COL_W, "Fire, Air, Water, Earth  (Enter)", function(text, box)
         if not seqKey then status.Show_("Choose a shaman first.", true) return end
         mod.SetSequence(seqKey, text)
         box:ClearFocus()
         status.Show_(("Sequence for %s: %s"):format(MMT.FirstName(seqKey), mod.Sequence(seqKey)))
     end)
-    R:Add(seqBox, UI.ROW + 4)
+    C:Add(seqBox, UI.ROW + 4)
 
+    local R = UI.Column(cp, COL2_X, 0, COL_W)
     R:Header("Presets")
     Check(R, "Use presets", "showPresets")
     Check(R, "P button on each bar", "showBarPresets")
@@ -155,26 +160,16 @@ M.Page = function(_, page)
     }, Opt("presetSide"))
     R:Button("Manage presets...", function() mod.OpenPresets() end)
 
-    R:Header("Text & spacing")
-    local gns, sns = Opt("nameSize")
-    R:Slider("Name size", 8, 20, 1, gns, sns)
-    local grg, srg = Opt("rowGap")
-    R:Slider("Bar spacing", 0, 30, 1, grg, srg)
-
     R:Header("Share")
     local half2 = (COL_W - 8) / 2
-    local send = UI.Button(page, half2, "Send to team", function()
+    local send = UI.Button(cp, half2, "Send to team", function()
         mod.SendAll()
         status.Show_("Chosen totems, sequences and presets sent.")
     end)
     UI.Tooltip(send, "Send to team", "Sends every shaman's chosen totems, sequences and all presets to the online team.")
     R:Add(send, 0)
-    local ie = UI.Button(page, half2, "Import / Export...", function() mod.OpenTransfer() end)
+    local ie = UI.Button(cp, half2, "Import / Export...", function() mod.OpenTransfer() end)
     ie:SetPoint("LEFT", send, "RIGHT", 8, 0)
-    R:Space(UI.ROW + 2)
-    status = H.StatusLine(page)
-    status:SetWidth(COL_W)
-    R:Add(status, 30)
 
     page.OnRefresh = function()
         if not capturing then keyButton.label:SetText("Sequence key: " .. KeyText()) end

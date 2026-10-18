@@ -32,6 +32,9 @@ local M = MMT.NewModule({
         showTimers = true, timerColor = { r = 1, g = 1, b = 1 },
         iconSize = 36, spacing = 4, rowGap = 4, scale = 1, alpha = 1, bgAlpha = 0.4,
         inactiveAlpha = 0.4, nameSize = 11, timerSize = 16,
+        bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,
+        borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,
+        rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0,   -- font = MMT font name (nil = game font)
         point = { "CENTER", "CENTER", 0, -150 },
         barPoints = {},            -- [teamKey] = point, ungrouped bars
         keybind = "", spamSafe = false,
