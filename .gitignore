@@ -3,6 +3,8 @@
 /*
 !/.gitignore
 !/README.md
+!/.gitattributes
+!/CLAUDE.md
 
 # --- our modules (add one line per new module) ---
 !/MMT_PawnCompare/
