@@ -56,7 +56,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (`hooksecurefunc(tip.header.text, "SetText")`), flag reset on `SetOwner` / OnTooltipCleared.
   Not Show/OnShow: the game shows the tip several times while loading the item, before the
   name is in the header (gave missing lines, then 3x duplicates). Simulation test:
-  scratch `test_pawn_tooltip.py` replays Item Compare's render order. Member = parsed from `tip.header.text`,
+  `tests/test_pawn_tooltip.py` replays Item Compare's render order. Member = parsed from `tip.header.text`,
   equipped item = `tip:GetItem()`, hovered item = GameTooltip's item.
 - Scores: Pawn's `PawnGetItemData(link).Stats` if Pawn is loaded, else `GetItemStats` mapped to
   Pawn stat names (approximate). Value = sum(stat*weight), SpeedBaseline, unusable (-1000000),
@@ -116,8 +116,24 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-## Syntax check (no Lua installed)
-`pip install --target <scratch>/py luaparser`, then `ast.parse()` every `*.lua` of our modules.
+### MMT_Totems (v0.1.0) – port of ema_totems
+- Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
+  secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
+  in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry.
+  Never re-apply bindings on UPDATE_BINDINGS (setting an override fires it: loop).
+- Totems: own `GetTotemInfo`; others `MTT:<slot>:<rem>/<dur>:<name>` / `MTT:<slot>:0` per change
+  (PLAYER_TOTEM_UPDATE), + group `UNIT_SPELLCAST_SUCCEEDED`. Chosen totems `MTTS:<el>:<id>:<key>`,
+  sequences `MTTQ:<key>=<text>`, "Send to team" `MTTP` (MMTTransfer string, chunked).
+- Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `teamPresets[name]`.
+- Shared files: `Compat.lua`, `Transfer.lua` (identical with Cooldowns / Buffs).
+- Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
+  (secure frames throw in combat) and runs two clients passing messages.
+
+## Tests (no Lua installed: Python + lupa's Lua 5.1, the same Lua as WoW)
+`tests/run_all.py` (from Interface/AddOns): syntax of every module file, shared files identical,
+and every `tests/test_*.py` (stubbed WoW API; Totems runs two clients passing messages).
+Setup: `pip install --target <scratch>/py lupa luaparser`, `PYTHONPATH=<scratch>/py`.
+Run it before every commit; add a test when fixing a bug.
 
 ## Testing
 The user tests in game. Errors are caught by BugSack/!BugGrabber; ask the user to paste them.
