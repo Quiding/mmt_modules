@@ -48,7 +48,20 @@ M.Page = function(_, page)
         mod.Apply()
     end)
     Check(L, "Show timers", "showTimers")
-    Check(L, "Glow when a buff is missing", "glowMissing")
+    L:Cycle("Missing buffs", {
+        { value = "PLAIN", text = "Faded" },
+        { value = "RED", text = "Red" },
+        { value = "GREY", text = "Grey" },
+        { value = "PLAIN+", text = "Faded + glow" },
+        { value = "RED+", text = "Red + glow" },
+        { value = "GREY+", text = "Grey + glow" },
+    }, function()
+        return (M.db.allMissingLook or "PLAIN") .. (M.db.glowMissing and "+" or "")
+    end, function(v)
+        M.db.allMissingLook = v:gsub("%+$", "")
+        M.db.glowMissing = v:find("+", 1, true) ~= nil
+        mod.Apply()
+    end)
     L:Header("Look")
     local gi, si = Opt("iconSize")
     L:Slider("Icon size", 16, 48, 1, gi, si)
@@ -163,11 +176,6 @@ M.Page = function(_, page)
         { value = "MEMBERS", text = "In each member's row" },
     }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
        function(v) M.db.allBar = (v == "ROW"); mod.Apply() end)
-    local gl, sl = Opt("allMissingLook")
-    R:Cycle("Someone misses it", {
-        { value = "RED", text = "Red" },
-        { value = "GREY", text = "Grey" },
-    }, gl, sl)
     local who
     local function WhoText()
         local n = 0

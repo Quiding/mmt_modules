@@ -1,7 +1,7 @@
 -- MMT Buffs: own window, or icons on the Cooldowns window's rows.
 --
 -- "All classes" row (M.db.allBar): one icon per buff of the ALL list for the
--- whole team (minus M.db.allExclude). Red or grey when anyone is missing it
+-- whole team (minus M.db.allExclude). Shown as missing when anyone lacks it
 -- (tooltip says who), otherwise the shortest time left of all members. The
 -- ALL buffs are then left out of the members' own rows. When the buffs are
 -- attached to the Cooldowns bars, the Buffs window still shows this row.
@@ -33,15 +33,27 @@ local function EntriesFor(key)
     return mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
 end
 
+-- look of a buff icon (missing: faded / red / grey, glow; active: opacity),
+-- carried on the icon so it also holds on the Cooldowns bars
+local RED = { 1, 0.25, 0.25 }
+local function Look(i)
+    local cfg = M.db
+    i.missingAlpha, i.glowMissing, i.activeAlpha = cfg.missingAlpha, cfg.glowMissing, cfg.activeAlpha
+    if i.state == "missing" then
+        if cfg.allMissingLook == "RED" then i.tint = RED
+        elseif cfg.allMissingLook == "GREY" then i.desaturate = true end
+    end
+    return i
+end
+
 -- icons of one member
 local function Icons(key)
     local icons = {}
     for _, e in ipairs(EntriesFor(key)) do
         local state, start, dur, count = mod.State(key, e)
         if state then
-            icons[#icons + 1] = { texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
-                count = count, spell = e.id, missingAlpha = M.db.missingAlpha, glowMissing = M.db.glowMissing,
-                activeAlpha = M.db.activeAlpha }
+            icons[#icons + 1] = Look({ texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
+                count = count, spell = e.id })
         end
     end
     return icons
@@ -58,8 +70,6 @@ function mod.AllMembers()
     end
     return list
 end
-
-local RED = { 1, 0.25, 0.25 }
 
 local function AllRow()
     local cfg = M.db
@@ -82,12 +92,6 @@ local function AllRow()
         local i = { texture = mod.EntryIcon(e), spell = e.id }
         if #missingBy > 0 or noData == #members then
             i.state = "missing"
-            i.glowMissing = cfg.glowMissing
-            if cfg.allMissingLook == "RED" then
-                i.tint, i.missingAlpha = RED, 1
-            else
-                i.desaturate, i.missingAlpha = true, cfg.missingAlpha
-            end
             i.count = #missingBy
             i.tip = #missingBy > 0 and ("Missing: " .. table.concat(missingBy, ", ")) or "Nobody in your group to check."
         else
@@ -95,7 +99,7 @@ local function AllRow()
             i.tip = "Everyone has it" .. (minLeft and ", shortest time left shown." or ".")
         end
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
-        icons[#icons + 1] = i
+        icons[#icons + 1] = Look(i)
     end
     return { label = "All", color = { 1, 0.82, 0 }, icons = icons }
 end

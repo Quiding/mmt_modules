@@ -7,8 +7,8 @@ local M = mod.M
 
 local LOOK = { "shown", "attach", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
     "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
-    "timerSize", "missingAlpha", "activeAlpha", "glowMissing" }
-local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { RED = true, GREY = true } }
+    "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "allMissingLook" }
+local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { PLAIN = true, RED = true, GREY = true } }
 
 local function GetKeys(keys)
     local t = {}
