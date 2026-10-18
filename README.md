@@ -12,6 +12,10 @@ addon and only lists our own module folders.
   have equipped. Needs MMT_ItemCompare switched on. Scales are synced between clients and stored,
   so offline members and clients without Pawn still work (stats are approximate without Pawn).
   `/mmtpc`, `/mmtpc send`, `/mmtpc request`.
+- **MMT_BugFixes** (0.1.0): runtime fixes for other MMT modules, each switchable on its settings
+  page, with a patch for the module's author in `MMT_BugFixes/patches/`:
+  - Item Compare's team tooltips no longer cover the game's "Equipped" comparison tooltips
+    (`patches/ItemCompare_overlap.patch`, apply with `git apply` in `Interface/AddOns`).
 
 ## Install
 Copy the `MMT_*` folders from this repo next to the `MMT` folder in

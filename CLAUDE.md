@@ -60,6 +60,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
+### MMT_BugFixes (v0.1.0)
+- Runtime fixes for OTHER modules (friend's), never editing their files. Each fix = one file +
+  a `M.db` toggle registered in `mod.fixes` (shown on the page and in the debug report) + an
+  upstream patch in `patches/` (made with `git diff --no-index` against a copy) for the friend.
+- `CompareOverlap.lua`: ItemCompare anchors MMTCompareTip1 at GameTooltip's side, under the
+  ShoppingTooltip1/2 ("Equipped"). We re-anchor tip 1 past their outer edge (or below them
+  if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
+  Remove the fix once the friend ships the patch.
+
 ## Testing
 The user tests in game. Errors are caught by BugSack/!BugGrabber; ask the user to paste them.
 `/mmt debug` + `/mmt debug dump` gives a report.
