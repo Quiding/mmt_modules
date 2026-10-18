@@ -23,7 +23,7 @@ local M = MMT.NewModule({
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,
         iconSize = 28, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
-        showNames = true, nameSize = 11, showTimers = true, timerSize = 13,
+        showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         readyAlpha = 0.35, cdAlpha = 1, glowActive = true,
         hideReady = false,          -- only show icons while they are on cooldown
         showBuffs = true,           -- while the spell's buff is up: glow with the buff's time left

@@ -24,14 +24,14 @@
 --          optional, count) | "missing"
 --
 -- cfg fields: shown, locked, clickThrough, vertical, iconSize, spacing, rowGap,
---   showNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha,
+--   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha,
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y }
 --
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 3
+local VERSION = 4
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -47,6 +47,12 @@ local function ClassColor(key)
     local c = m and m.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[m.class]
     if c then return c.r, c.g, c.b end
     return 1, 1, 1
+end
+
+-- "First" or "First Last" (WoW: Forever characters have two names)
+function lib.MemberName(key, full)
+    if full then return MMT.FullDisplay(key) end
+    return MMT.FirstName(key)
 end
 
 local function FormatTime(t)
@@ -262,7 +268,7 @@ function Window:Refresh()
     for i, r in ipairs(rows) do
         local row = self:Row(i)
         MMT.ApplyFont(row.name, nil, c.nameSize or 11, "OUTLINE")
-        row.name:SetText(r.label or MMT.FirstName(r.key))
+        row.name:SetText(r.label or lib.MemberName(r.key, c.fullNames))
         if r.color then row.name:SetTextColor(r.color[1], r.color[2], r.color[3])
         else row.name:SetTextColor(ClassColor(r.key)) end
         if c.showNames and not vertical then nameW = math.max(nameW, row.name:GetStringWidth() + 6) end

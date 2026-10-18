@@ -72,7 +72,7 @@ local function AllRow()
             if state == nil then
                 noData = noData + 1
             elseif state == "missing" then
-                missingBy[#missingBy + 1] = MMT.FirstName(key)
+                missingBy[#missingBy + 1] = MMTIconBars.MemberName(key, cfg.fullNames)
             elseif start and dur then
                 local left = start + dur - GetTime()
                 if not minLeft or left < minLeft then minStart, minDur, minLeft = start, dur, left end

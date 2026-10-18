@@ -23,7 +23,7 @@ local M = MMT.NewModule({
         includeSelf = true, onlyOnline = true,
         attach = "OFF",            -- OFF: own window | LEFT / RIGHT: on the Cooldowns rows
         iconSize = 28, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
-        showNames = true, nameSize = 11, showTimers = true, timerSize = 13,
+        showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         missingAlpha = 0.25, glowMissing = false,
         point = { "CENTER", "CENTER", -200, 0 },
         hidden = {},

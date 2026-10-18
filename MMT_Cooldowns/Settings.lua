@@ -29,7 +29,18 @@ M.Page = function(_, page)
     Check(L, "Members side by side", "vertical", "Off: one row per member. On: one column per member.")
     Check(L, "Include your own character", "includeSelf")
     Check(L, "Only online or grouped members", "onlyOnline")
-    Check(L, "Show names", "showNames")
+    L:Cycle("Names", {
+        { value = "OFF", text = "Off" },
+        { value = "FIRST", text = "First name" },
+        { value = "FULL", text = "First and last name" },
+    }, function()
+        if not M.db.showNames then return "OFF" end
+        return M.db.fullNames and "FULL" or "FIRST"
+    end, function(v)
+        M.db.showNames = v ~= "OFF"
+        M.db.fullNames = v == "FULL"
+        mod.window:Refresh()
+    end)
     Check(L, "Show timers", "showTimers")
     Check(L, "Glow while waiting for the buff", "glowActive", "Nature's Swiftness, Presence of Mind, ...: their cooldown starts when the buff is used.")
     Check(L, "Glow while the spell's buff is up", "showBuffs", "Berserking, Evasion, trinkets, ...: the icon glows with the buff's time left, then shows the cooldown.")
