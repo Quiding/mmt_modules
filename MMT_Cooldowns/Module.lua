@@ -25,7 +25,9 @@ local M = MMT.NewModule({
         iconSize = 28, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
         showNames = true, nameSize = 11, showTimers = true, timerSize = 13,
         readyAlpha = 0.35, cdAlpha = 1, glowActive = true,
-        itemsOnlyWhenSeen = true,   -- items of other members appear after their first use
+        hideReady = false,          -- only show icons while they are on cooldown
+        hideUnknown = false,        -- your own spells you haven't learned / items you don't carry
+        hideUnseenItems = false,    -- other members' items only after you saw them used
         point = { "CENTER", "CENTER", 200, 0 },
         hidden = {},                -- [teamKey] = true: no row for this member
         lists = mod.DEFAULT_LISTS,

@@ -134,13 +134,19 @@ M:On("UNIT_AURA", function(unit) if GroupUnit(unit) then CheckPending(unit) end 
 ---------------------------------------------------------------------------
 local lastOwn = {}   -- [entryKey] = last readable state (the game hides cooldowns at times)
 
+-- own spell not learned yet / item not carried: shown as ready unless hidden
+local function Unknown()
+    if M.db.hideUnknown then return nil end
+    return "ready"
+end
+
 local function OwnState(e)
     local start, dur, enabled
     if e.t == "s" then
         local name = mod.SpellName(e.id)
         if not name then return nil end
         start, dur, enabled = mod.SpellCooldown(name)
-        if start == nil then return nil end   -- not known by this character
+        if start == nil then return Unknown() end   -- not learned by this character
         if start == "secret" then
             local l = lastOwn[mod.EntryKey(e)]
             if l then return l[1], l[2], l[3] end
@@ -149,7 +155,7 @@ local function OwnState(e)
     else
         local count = (C_Item and C_Item.GetItemCount or GetItemCount)(e.id)
         local equipped = (C_Item and C_Item.IsEquippedItem or IsEquippedItem)(e.id)
-        if (count or 0) == 0 and not equipped then return nil end
+        if (count or 0) == 0 and not equipped then return Unknown() end
         local fn = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
         start, dur, enabled = fn(e.id)
     end
@@ -169,7 +175,7 @@ function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "cd", mod.testUntil - 10, 10 end
     if MMT.IsSelf(key) then return OwnState(e) end
     local ek = mod.EntryKey(e)
-    if e.t == "i" and M.db.itemsOnlyWhenSeen then
+    if e.t == "i" and M.db.hideUnseenItems then
         local seen = M.store.seen and M.store.seen[key]
         if not (seen and seen[ek]) then return nil end
     end

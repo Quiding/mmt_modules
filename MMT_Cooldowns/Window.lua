@@ -39,7 +39,7 @@ local function Rows()
         local icons = {}
         for _, e in ipairs(mod.EntriesFor(key)) do
             local state, start, dur = mod.State(key, e)
-            if state then
+            if state and not (M.db.hideReady and state == "ready") then
                 icons[#icons + 1] = {
                     texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                     spell = e.t == "s" and e.id or nil, item = e.t == "i" and e.id or nil,
@@ -50,6 +50,11 @@ local function Rows()
     end
     return rows
 end
+
+-- with "hide ready" an icon must go away when its cooldown ends
+C_Timer.NewTicker(1, function()
+    if M.enabled and M.db and M.db.hideReady and M.db.shown then mod.Refresh() end
+end)
 
 mod.window = MMTIconBars.NewWindow({
     name = "MMTCooldowns",
