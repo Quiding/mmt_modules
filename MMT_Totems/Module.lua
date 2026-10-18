@@ -8,6 +8,7 @@
 --   * individual and team presets (P / TP buttons on the bars).
 --
 --   Data.lua      totems, elements, durations
+--   Known.lua     which totems each shaman has learned (MTTK, once per login / when learning)
 --   Tracker.lua   active totems: your own from the game; other shamans from
 --                 one message per totem change (MTT), and group members' casts
 --   Sync.lua      chosen totems / sequences (MTTS, MTTQ) and "Send to team" (MTTP)

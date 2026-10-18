@@ -384,8 +384,11 @@ end
 
 function mod.OpenTotemMenu(owner, key, element)
     local items = { { value = 0, text = "None" } }
-    for _, id in ipairs(mod.ElementTotems(element)) do
-        items[#items + 1] = { value = id, text = IconText(mod.TotemIcon(id), mod.TotemName(id)) }
+    local current = mod.Selected(key, element)
+    for _, id in ipairs(mod.ElementTotems(element, key, current)) do
+        local text = mod.TotemName(id)
+        if not mod.KnowsTotem(key, id) then text = text .. " |cff888888(not learned)|r" end
+        items[#items + 1] = { value = id, text = IconText(mod.TotemIcon(id), text) }
     end
     UI.OpenList(owner, items, mod.Selected(key, element) or 0, function(id)
         mod.SetSelected(key, element, id)

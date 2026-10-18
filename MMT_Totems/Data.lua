@@ -61,11 +61,13 @@ function mod.TotemName(id) return id and id ~= 0 and (mod.SpellInfo(id)) or nil 
 
 function mod.TotemIcon(id) return id and id ~= 0 and mod.SpellIcon(id) or nil end
 
--- totems of an element that exist in this game version: { id, ... }
-function mod.ElementTotems(element)
+-- totems of an element that exist in this game version: { id, ... }; with a
+-- key only those that member has learned (Known.lua), plus keep (the current
+-- choice) even if not learned
+function mod.ElementTotems(element, key, keep)
     local out = {}
     for _, id in ipairs(mod.TOTEMS[element] or {}) do
-        if mod.SpellInfo(id) then out[#out + 1] = id end
+        if mod.SpellInfo(id) and (not key or id == keep or mod.KnowsTotem(key, id)) then out[#out + 1] = id end
     end
     return out
 end

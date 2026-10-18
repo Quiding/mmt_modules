@@ -153,7 +153,14 @@ local function Build()
     for i, el in ipairs(mod.ELEMENTS) do
         local dd = UI.Dropdown(f, half, el, function()
             local t = { { value = 0, text = "None" } }
-            for _, id in ipairs(mod.ElementTotems(el)) do t[#t + 1] = { value = id, text = mod.TotemName(id) } end
+            local who = (st.mode == "TEAM") and st.member or st.key
+            local e = Entry()
+            local current = e and e.totems and e.totems[el]
+            for _, id in ipairs(mod.ElementTotems(el, who, current)) do
+                local text = mod.TotemName(id)
+                if who and not mod.KnowsTotem(who, id) then text = text .. " |cff888888(not learned)|r" end
+                t[#t + 1] = { value = id, text = text }
+            end
             return t
         end, function()
             local e = Entry()

@@ -83,6 +83,10 @@ C_Spell = {
   end,
   GetSpellTexture = function(x) if type(x) == "number" then return SPELLS[x] and x end end,
 }
+-- learned spells of this character (all totems used by the earlier steps; not Stoneskin 8071)
+KNOWN = { [3599] = true, [8190] = true, [5394] = true, [5675] = true, [8512] = true, [8835] = true, [8075] = true, [16190] = true }
+function IsPlayerSpell(id) return KNOWN[id] == true end
+WHISPERS = {}
 TOTEMS_UP = {}   -- [slot] = { name, start, dur }
 function GetTotemInfo(slot)
   local t = TOTEMS_UP[slot]
@@ -109,6 +113,7 @@ function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
 function MMT.Resolve(k) return MMT.db.team[k] and k end
 function MMT.SplitUnit() return nil end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = msg end
+function MMT.SendAddon(msg, channel, target) WHISPERS[#WHISPERS + 1] = { msg = msg, to = target } end
 function MMT.Print() end
 function MMT.RefreshConfig() end
 function MMT.ApplyFont(fs) fs._font = true end
@@ -123,6 +128,7 @@ function MMT.NewModule(def)
   function M:Listen(ev, fn) LISTEN[ev] = LISTEN[ev] or {}; table.insert(LISTEN[ev], fn) end
   function M:Debug() end
   M.db = copy(def.defaults)
+  M.store = {}
   return M
 end
 function FIRE(ev, ...) for _, fn in ipairs(EVENTS[ev] or {}) do fn(...) end end
@@ -261,3 +267,42 @@ print("B:", B.eval(r'''function(m)
   for _, s in ipairs(captured.sections) do assert(s.set("junk") == false, "junk accepted: " .. s.id) end
   return "sync all + import/export ok"
 end''')(bmod))
+
+print("A:", A.eval(r"""function(m)
+  local captured
+  MMT.UI.OpenList = function(owner, items) captured = items end
+  local function Menu(key, el)
+    captured = nil
+    m.OpenTotemMenu(UIParent, key, el)
+    local t = {}
+    for _, it in ipairs(captured) do t[#t + 1] = tostring(it.value) .. (it.text:find("not learned") and "!" or "") end
+    return table.concat(t, ",")
+  end
+  -- own: only learned totems
+  m.SetSelected("Anna-Smith", "Earth", 0)
+  assert(Menu("Anna-Smith", "Earth") == "0,8075", "own earth menu: " .. Menu("Anna-Smith", "Earth"))
+  -- another shaman without a list yet: everything
+  assert(Menu("Bob-Stone", "Earth") == "0,8075,8071", "no list yet: " .. Menu("Bob-Stone", "Earth"))
+  -- Bob's client tells us what Bob knows: Stoneskin, not Strength of Earth
+  WHISPERS = {}
+  DELIVER("Bob-Stone", "MTTK:8071,3599")
+  assert(Menu("Bob-Stone", "Earth") == "0,8071", "bob earth menu: " .. Menu("Bob-Stone", "Earth"))
+  assert(#WHISPERS == 1 and WHISPERS[1].msg:find("^MTTK:") and WHISPERS[1].to == "Bob-Stone", "no reply with our list")
+  DELIVER("Bob-Stone", "MTTK:8071,3599")
+  assert(#WHISPERS == 1, "replied twice")
+  -- a chosen totem stays in the menu, marked
+  m.SetSelected("Bob-Stone", "Earth", 8075)
+  assert(Menu("Bob-Stone", "Earth") == "0,8075!,8071", "kept choice: " .. Menu("Bob-Stone", "Earth"))
+  -- own casting skips a chosen totem that isn't learned
+  m.SetSelected("Anna-Smith", "Earth", 8071)
+  local own = m.bars["Anna-Smith"]
+  assert(own.slots.Earth:GetAttribute("*macrotext1") == nil, "casts an unlearned totem")
+  m.SetSequence("Anna-Smith", "Earth, Fire")
+  local seq = MMTTotemsSequenceButton:GetAttribute("macrotext")
+  assert(not seq:find("Stoneskin"), "sequence has an unlearned totem: " .. seq)
+  -- learning it makes it castable
+  KNOWN[8071] = true
+  m.UpdateSecure()
+  assert(own.slots.Earth:GetAttribute("*macrotext1") == "/cast Stoneskin Totem", "learned totem not cast")
+  return "learned totems ok"
+end"""))

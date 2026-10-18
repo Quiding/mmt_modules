@@ -39,7 +39,8 @@ local pending = false
 
 -- name of the totem a slot casts for a member
 function mod.CastTotem(key, element)
-    local name = mod.TotemName(mod.Selected(key, element))
+    local id = mod.Selected(key, element)
+    local name = id and mod.KnowsTotem(key, id) and mod.TotemName(id)   -- not learned yet: skip
     if name then return name end
     name = mod.ActiveTotem(key, element)
     if name and name ~= "Test" then return name end
