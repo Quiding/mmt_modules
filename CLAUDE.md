@@ -78,7 +78,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
 
-### MMT_Cooldowns (v0.5.2) / MMT_Buffs (v0.4.5) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.5.3) / MMT_Buffs (v0.4.6) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -101,6 +101,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Lists in `M.db.lists[key]`, key = class token | "ALL" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,
   `ValidListKey`). Cooldowns entry `{t="s"|"i", id, cd}`, Buffs `{id}`. Sync escapes list keys.
+- Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
+  font is set errors ("Font not set"). The test stub enforces this.
 - Settings pages are ~564 px high: check both columns still fit when adding widgets.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
@@ -116,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.1.1) – port of ema_totems
+### MMT_Totems (v0.1.2) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry

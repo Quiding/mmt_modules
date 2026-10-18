@@ -26,9 +26,15 @@ function Obj:IsVisible() return self._shown end
 function Obj:SetParent(p) if self._secure and IN_COMBAT then error("ADDON_ACTION_BLOCKED: SetParent in combat") end self._parent = p end
 function Obj:GetParent() return self._parent end
 function Obj:CreateTexture() return New() end
-function Obj:CreateFontString() local f = New(); f._text = ""; return f end
+-- like the game: a FontString needs a font (template or SetFont) before SetText
+function Obj:CreateFontString(name, layer, template) local f = New(); f._text = ""; f._font = template ~= nil; f._fs = true; return f end
+function Obj:SetFont() self._font = true; return true end
+function Obj:SetFontObject() self._font = true end
 function Obj:CreateAnimationGroup() local g = New(); function g:CreateAnimation() return New() end return g end
-function Obj:SetText(t) self._text = t end
+function Obj:SetText(t)
+  if self._fs and not self._font then error("FontString:SetText(): Font not set") end
+  self._text = t
+end
 function Obj:GetText() return self._text end
 function Obj:GetStringWidth() return 50 end
 function Obj:GetFrameLevel() return 1 end
@@ -105,7 +111,7 @@ function MMT.SplitUnit() return nil end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = msg end
 function MMT.Print() end
 function MMT.RefreshConfig() end
-function MMT.ApplyFont() end
+function MMT.ApplyFont(fs) fs._font = true end
 function MMT.Repr(s) return s end
 MMT.UI = setmetatable({}, { __index = function() return function() return CreateFrame("Frame") end end })
 function UnitClass() return "Shaman", "SHAMAN" end

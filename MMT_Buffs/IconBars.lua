@@ -32,7 +32,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 5
+local VERSION = 6
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -88,9 +88,9 @@ local function NewIcon(parent)
     local over = CreateFrame("Frame", nil, b)
     over:SetAllPoints()
     over:SetFrameLevel(b.cd:GetFrameLevel() + 2)
-    b.timer = over:CreateFontString(nil, "OVERLAY")
+    b.timer = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.timer:SetPoint("CENTER", 0, 0)
-    b.count = over:CreateFontString(nil, "OVERLAY")
+    b.count = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.count:SetPoint("BOTTOMRIGHT", -1, 1)
     b:SetScript("OnEnter", function(self)
         local i = self.data
@@ -219,7 +219,7 @@ function Window:Row(i)
     local row = self.rows[i]
     if row then return row end
     row = CreateFrame("Frame", nil, self.frame)
-    row.name = row:CreateFontString(nil, "OVERLAY")
+    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.icons = {}
