@@ -4,8 +4,7 @@
 -- Port of EMA Buffs to MMT.
 --
 --   Lists.lua     tracked lists (per class + ALL)
---   Tracker.lua   group members' auras from their unit (exact timers), other
---                 members from the combat log (gained / faded, no timer).
+--   Tracker.lua   group members' auras from their unit (exact timers).
 --                 Nothing is sent between the clients for this.
 --   Window.lua    own window, or icons attached to the Cooldowns window
 --                 (MMTIconBars extras, IconBars.lua shared with MMT_Cooldowns)

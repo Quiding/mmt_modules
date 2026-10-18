@@ -1,16 +1,15 @@
 -- MMT Buffs: who has which tracked buff.
 --
 -- Members in your group (and you): read from their unit with UnitBuff, so
--- timers and stacks are exact. Members outside the group: the combat log's
--- SPELL_AURA_APPLIED / _REFRESH / _REMOVED, which says that they have it
--- but not for how long. Nothing is sent between the clients for this.
+-- timers and stacks are exact. Members outside the group can't be seen
+-- (this client doesn't let addons read the combat log), so their row stays
+-- empty. Nothing is sent between the clients for this.
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
 mod.auras = {}   -- [teamKey] = { [buffName] = { start, dur, count } }, from units
-mod.logged = {}  -- [teamKey] = { [buffName] = true }, from the combat log
 local fromUnit = {} -- [teamKey] = true while the member is read from a unit
 
 local index = {} -- [buffName] = true
@@ -38,7 +37,7 @@ local function ScanUnit(unit)
     local t = {}
     for i = 1, 40 do
         local name, _, count, _, duration, expiration = UnitBuff(unit, i)
-        if not name then break end
+        if not name or MMT.IsSecret(name) then break end
         if index[name] then
             local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
             t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }
@@ -76,36 +75,12 @@ end)
 M:On("GROUP_ROSTER_UPDATE", function() mod.ScanGroup() mod.Refresh() end)
 M:On("PLAYER_ENTERING_WORLD", function() mod.ScanGroup() mod.Refresh() end)
 
----------------------------------------------------------------------------
--- Combat log (members outside the group)
----------------------------------------------------------------------------
-local byGUID = {}
-local function KeyOf(guid, name)
-    local k = byGUID[guid]
-    if k ~= nil then return k or nil end
-    k = MMT.Resolve(MMT.NameFromGUID(guid, name)) or MMT.Resolve(name) or false
-    byGUID[guid] = k
-    return k or nil
-end
-M:Listen("TEAM_CHANGED", function() wipe(byGUID) mod.Refresh() end)
-
-local PLAYER = COMBATLOG_OBJECT_TYPE_PLAYER or 0x400
-
-M:On("COMBAT_LOG_EVENT_UNFILTERED", function()
-    local _, event, _, _, _, _, _, guid, name, flags, _, _, spellName, _, auraType = CombatLogGetCurrentEventInfo()
-    if event ~= "SPELL_AURA_APPLIED" and event ~= "SPELL_AURA_REFRESH" and event ~= "SPELL_AURA_REMOVED" then return end
-    if not index[spellName] or auraType ~= "BUFF" or not flags or bit.band(flags, PLAYER) == 0 then return end
-    local key = KeyOf(guid, name)
-    if not key or fromUnit[key] then return end   -- grouped members come from their unit
-    mod.logged[key] = mod.logged[key] or {}
-    mod.logged[key][spellName] = (event ~= "SPELL_AURA_REMOVED") or nil
-    mod.Refresh()
-end)
+M:Listen("TEAM_CHANGED", function() mod.ScanGroup() mod.Refresh() end)
 
 ---------------------------------------------------------------------------
 -- State of one tracked buff on one member
 ---------------------------------------------------------------------------
--- returns "buff", start, duration, count  or  "missing"  or nil (no data about this member)
+-- returns "buff", start, duration, count  or  "missing"  or nil (member not in the group)
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
     local name = mod.BuffName(e)
@@ -115,9 +90,7 @@ function mod.State(key, e)
         if a then return "buff", a.start, a.dur, a.count end
         return "missing"
     end
-    local l = mod.logged[key]
-    if l and l[name] then return "buff" end
-    return "missing"
+    return nil
 end
 
 function mod.Test()

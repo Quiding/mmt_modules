@@ -1,10 +1,12 @@
 -- MMT Cooldowns: who used what.
 --
--- Team members: SPELL_CAST_SUCCESS in the combat log starts the entry's
+-- This client (WoW: Forever runs on the modern client) does not let addons
+-- register COMBAT_LOG_EVENT_UNFILTERED, so team members are followed through
+-- their party/raid unit instead: UNIT_SPELLCAST_SUCCEEDED starts the entry's
 -- cooldown with the duration from the list. Spells like Nature's Swiftness
--- start when their buff fades (SPELL_AURA_REMOVED); until then they glow.
--- The combat log only reaches as far as the game shows it (roughly the same
--- zone and range), and nothing is sent between the clients for this.
+-- start when their buff is gone from the caster (UNIT_AURA); until then they
+-- glow. Only members in your group can be seen this way, and nothing is sent
+-- between the clients for this.
 --
 -- Your own character: the game's cooldown API, exact and with talents.
 
@@ -13,7 +15,7 @@ local MMT = MMT
 local M = mod.M
 
 local GCD = 1.6
-local PENDING_MAX = 120   -- a buff that never faded in our log: start the cooldown anyway
+local PENDING_MAX = 120   -- a buff we never saw fade: start the cooldown anyway
 
 mod.cds = {}              -- [teamKey][entryKey] = { start, dur } or { pending = GetTime(), dur }
 
@@ -44,19 +46,14 @@ M:On("GET_ITEM_INFO_RECEIVED", function()
 end)
 
 ---------------------------------------------------------------------------
--- Combat log names -> team keys (cached per GUID)
+-- Group units -> team keys
 ---------------------------------------------------------------------------
-local byGUID = {}
-
-local function KeyOf(guid, name)
-    local k = byGUID[guid]
-    if k ~= nil then return k or nil end
-    k = MMT.Resolve(MMT.NameFromGUID(guid, name)) or MMT.Resolve(name) or false
-    byGUID[guid] = k
-    return k or nil
+local function UnitKey(unit)
+    local _, _, key = MMT.SplitUnit(unit)
+    return key and MMT.Resolve(key) or nil
 end
 
-M:Listen("TEAM_CHANGED", function() wipe(byGUID) mod.Refresh() end)
+M:Listen("TEAM_CHANGED", function() mod.Refresh() end)
 
 local function EntryForMember(key, name)
     local list = index[name]
@@ -71,42 +68,64 @@ local function EntryForMember(key, name)
     end
 end
 
-local PLAYER = COMBATLOG_OBJECT_TYPE_PLAYER or 0x400
+local function GroupUnit(unit)
+    return unit and (unit:find("^party%d") or unit:find("^raid%d")) and true or false
+end
 
-M:On("COMBAT_LOG_EVENT_UNFILTERED", function()
-    local _, event, _, guid, name, flags, _, destGUID, _, _, _, _, spellName = CombatLogGetCurrentEventInfo()
-    if event ~= "SPELL_CAST_SUCCESS" and event ~= "SPELL_AURA_REMOVED" then return end
-    if not index[spellName] or not flags or bit.band(flags, PLAYER) == 0 then return end
-    local key = KeyOf(guid, name)
+-- a group member cast something
+M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
+    if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
+    local spellName = GetSpellInfo(spellID)
+    if not spellName or MMT.IsSecret(spellName) or not index[spellName] then return end
+    local key = UnitKey(unit)
     if not key or MMT.IsSelf(key) then return end
     local e = EntryForMember(key, spellName)
     if not e then return end
     local ek = mod.EntryKey(e)
     mod.cds[key] = mod.cds[key] or {}
-    local cur = mod.cds[key][ek]
-
-    if event == "SPELL_AURA_REMOVED" then
-        -- buff of an "after buff" spell faded on its caster: the cooldown starts now
-        if cur and cur.pending and destGUID == guid then
-            mod.cds[key][ek] = { start = GetTime(), dur = e.cd or 0 }
-            mod.Refresh()
-        end
-        return
-    end
-
     if e.t == "i" then
         M.store.seen = M.store.seen or {}
         M.store.seen[key] = M.store.seen[key] or {}
         M.store.seen[key][ek] = true
     end
     if mod.IsAfterBuff(spellName) then
-        mod.cds[key][ek] = { pending = GetTime(), dur = e.cd or 0 }
+        mod.cds[key][ek] = { pending = GetTime(), dur = e.cd or 0, buff = spellName }
     else
         mod.cds[key][ek] = { start = GetTime(), dur = e.cd or 0 }
     end
     M:Debug("%s used %s", MMT.Repr(key), spellName)
     mod.Refresh()
 end)
+
+-- "after buff" spells: the cooldown starts when the buff is gone from the
+-- caster (or after 3 s if the buff never showed up)
+local function HasBuff(unit, name)
+    for i = 1, 40 do
+        local n = UnitBuff(unit, i)
+        if not n or MMT.IsSecret(n) then return false end
+        if n == name then return true end
+    end
+    return false
+end
+
+local function CheckPending(unit)
+    local key = UnitKey(unit)
+    local cds = key and mod.cds[key]
+    if not cds then return end
+    local now = GetTime()
+    for ek, c in pairs(cds) do
+        if c.pending and c.buff then
+            if HasBuff(unit, c.buff) then
+                c.seen = true
+            elseif c.seen or now - c.pending > 3 then
+                cds[ek] = { start = now, dur = c.dur }
+                mod.Refresh()
+            end
+        end
+    end
+end
+
+M:On("UNIT_AURA", function(unit) if GroupUnit(unit) then CheckPending(unit) end end)
 
 ---------------------------------------------------------------------------
 -- State of one entry for one member: state, start, duration

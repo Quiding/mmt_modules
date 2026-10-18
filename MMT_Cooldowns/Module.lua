@@ -3,9 +3,9 @@
 -- (spells, trinkets, potions). Port of EMA Cooldowns to MMT.
 --
 --   Spells.lua    tracked lists (per class + ALL) and spell/item lookups
---   Tracker.lua   who used what: the combat log for team members, the game's
---                 own cooldown API for your own character. Nothing is sent
---                 over the addon channel for this.
+--   Tracker.lua   who used what: group members' casts (UNIT_SPELLCAST_SUCCEEDED),
+--                 the game's own cooldown API for your own character. Nothing
+--                 is sent over the addon channel for this.
 --   Window.lua    rows for MMTIconBars (IconBars.lua, shared with MMT_Buffs)
 --   Sync.lua      "Send lists to team" (the only addon messages, tag MCDL)
 --   Settings.lua  settings page and debug report
@@ -16,7 +16,7 @@ local MMT = MMT
 local M = MMT.NewModule({
     name = "Cooldowns",
     title = "Cooldowns",
-    description = "Team cooldown bars: every member's important spells and items, from the combat log.",
+    description = "Team cooldown bars: every member's important spells and items.",
     defaults = {
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,

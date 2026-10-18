@@ -18,13 +18,13 @@ addon and only lists our own module folders.
   page, with a patch for the module's author in `MMT_BugFixes/patches/`:
   - Item Compare's team tooltips no longer cover the game's "Equipped" comparison tooltips
     (`patches/ItemCompare_overlap.patch`, apply with `git apply` in `Interface/AddOns`).
-- **MMT_Cooldowns** (0.1.0): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
-  One row per member with their important spells, trinkets and potions; a cooldown starts when
-  the combat log shows the cast (your own character uses the game's exact cooldowns). Per-class
+- **MMT_Cooldowns** (0.1.1): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
+  One row per member with their important spells, trinkets and potions; a group member's cooldown
+  starts when their cast is seen (your own character uses the game's exact cooldowns). Per-class
   lists, editable on the settings page, can be sent to the team. `/mmtcd`, `/mmtcd test`.
-- **MMT_Buffs** (0.1.0): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which members
-  have or miss the buffs tracked for their class: grouped members exact from their unit, others
-  from the combat log. Own window or attached to the Cooldowns bars. `/mmtbf`, `/mmtbf test`.
+- **MMT_Buffs** (0.1.1): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
+  members have or miss the buffs tracked for their class, with exact timers. Own window or
+  attached to the Cooldowns bars. `/mmtbf`, `/mmtbf test`.
 
 ## Install
 Copy the `MMT_*` folders from this repo next to the `MMT` folder in

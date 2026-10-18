@@ -168,9 +168,4 @@ M.Report = function(_, add)
         for name in pairs(t) do names[#names + 1] = name end
         add(("buffs %s (unit): %s"):format(MMT.Repr(key), table.concat(names, ", ")))
     end
-    for key, t in pairs(mod.logged) do
-        local names = {}
-        for name in pairs(t) do names[#names + 1] = name end
-        if #names > 0 then add(("buffs %s (log): %s"):format(MMT.Repr(key), table.concat(names, ", "))) end
-    end
 end

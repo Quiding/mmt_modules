@@ -2,9 +2,8 @@
 --
 -- An entry is { t = "s" (spell) | "i" (item), id = number, cd = seconds }.
 -- Lists are per class (class token) plus ALL for every class, stored in the
--- profile (M.db.lists). Matching in the combat log is by spell NAME, so any
--- rank works (Classic's combat log has no spell IDs); items match by the name
--- of their use spell (GetItemSpell).
+-- profile (M.db.lists). Casts are matched by spell NAME, so any rank works;
+-- items match by the name of their use spell (GetItemSpell).
 
 local _, mod = ...
 
@@ -40,7 +39,7 @@ function mod.ItemName(id)
     return fn and (fn(id)) or nil
 end
 
--- name of the spell an entry casts (what the combat log shows), nil if not cached yet
+-- name of the spell an entry casts, nil if not cached yet
 function mod.CastName(e)
     if e.t == "s" then return mod.SpellName(e.id) end
     local fn = (C_Item and C_Item.GetItemSpell) or GetItemSpell
