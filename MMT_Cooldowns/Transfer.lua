@@ -12,7 +12,7 @@
 --                      set = fn(data) -> ok, err }, ... },
 --   }
 
-local VERSION = 1
+local VERSION = 2
 if MMTTransfer and (MMTTransfer.version or 0) >= VERSION then return end
 
 local lib = MMTTransfer or {}
@@ -171,7 +171,9 @@ local function Build()
     local f = CreateFrame("Frame", "MMTTransferDialog", UIParent)
     f:SetSize(440, 400)
     f:SetPoint("CENTER")
-    f:SetFrameStrata("DIALOG")
+    -- above MMT's settings window (DIALOG, or FULLSCREEN_DIALOG when it is pinned on top)
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    f:SetToplevel(true)
     f:SetClampedToScreen(true)
     f:SetMovable(true)
     f:EnableMouse(true)
@@ -264,7 +266,7 @@ function lib.Open(def)
     f.selected = {}
     f.title:SetText(def.title .. ": Import / Export")
     for _, c in ipairs(f.checks) do c:Hide() end
-    local y = -50
+    local y = -54
     for i, s in ipairs(def.sections) do
         f.selected[s.id] = true
         local c = f.checks[i]
@@ -275,17 +277,20 @@ function lib.Open(def)
         c.id = s.id
         c.label:SetText(s.label)
         c:ClearAllPoints()
-        c:SetPoint("TOPLEFT", 12 + ((i - 1) % 2) * 210, y - math.floor((i - 1) / 2) * 20)
+        c:SetPoint("TOPLEFT", 12 + ((i - 1) % 2) * 210, y - math.floor((i - 1) / 2) * 22)
         c.Refresh()
         c:Show()
     end
     local rows = math.ceil(#def.sections / 2)
     f.area:ClearAllPoints()
-    f.area:SetPoint("TOPLEFT", 12, y - rows * 20 - 8)
+    f.area:SetPoint("TOPLEFT", 12, y - rows * 22 - 8)
     f.area:SetPoint("BOTTOMRIGHT", -12, 58)
     f.area.edit:SetWidth(416 - 12)
     f.area.edit:SetText("")
     f.Status("Export: tick the parts and press Export. Import: paste a string and press Import.")
+    -- same size as MMT's settings window
+    f:SetScale((MMT.ConfigScale and MMT.ConfigScale()) or 1)
+    f:SetFrameLevel(100)
     f:Show()
     f:Raise()
 end
