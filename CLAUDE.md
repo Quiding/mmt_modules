@@ -123,7 +123,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.3.0) – port of ema_totems
+### MMT_Totems (v0.3.1) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -135,6 +135,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Learned totems: own via IsPlayerSpell / IsSpellKnown (all missing -> show all); others send
   `MTTK:<ids>` at login / on learning, stored in `M.store.known[key]`; no list yet -> show all.
   Chooser + preset editor filter by it, own casting skips unlearned chosen totems.
+- Looks like the IconBars rows: name LEFT of the icons in one shared name column (grouped;
+  own width ungrouped), above them when vertical; same timer text (tenths under 10 s).
 - Slots: `mod.SlotShown(key, element)` (Known.lua): `hiddenElements`, `hideNoItem` (totem items
   5175-5178, own via GetItemCount on BAG_UPDATE_DELAYED; others from `MTTK:<ids>;<letters EFWA>`,
   `M.store.items[key]`, no ";" = older client = unknown), `hideUnlearned`. Sequence skips no-item elements.

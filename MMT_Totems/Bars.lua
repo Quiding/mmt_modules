@@ -71,9 +71,12 @@ local function Font(fs, size)
     MMT.ApplyFont(fs, M.db and M.db.font, size, "OUTLINE")
 end
 
+-- same timer text as the Buffs / Cooldowns bars
 local function FormatTime(t)
+    if t >= 3600 then return ("%dh"):format(math.floor(t / 3600 + 0.5)) end
     if t >= 60 then return ("%dm"):format(math.floor(t / 60 + 0.5)) end
-    return tostring(math.floor(t + 0.5))
+    if t >= 10 then return tostring(math.floor(t + 0.5)) end
+    return ("%.1f"):format(t)
 end
 
 ---------------------------------------------------------------------------
@@ -224,8 +227,21 @@ local function NewBar(key)
     return bar
 end
 
--- layout of one bar (out of combat): returns width, height; pad = room for a border
-local function LayoutBar(bar, pad)
+-- the name of a bar (font, text, colour); returns its width (0 when names are off)
+local function SetName(bar)
+    local c = M.db
+    Font(bar.name, c.nameSize)
+    bar.name:SetText(c.fullNames and MMT.FullDisplay(bar.key) or MMT.FirstName(bar.key))
+    local cc = RAID_CLASS_COLORS and RAID_CLASS_COLORS.SHAMAN
+    if cc then bar.name:SetTextColor(cc.r, cc.g, cc.b) end
+    bar.name:SetShown(c.showNames)
+    return c.showNames and bar.name:GetStringWidth() or 0
+end
+
+-- layout of one bar (out of combat): returns width, height; pad = room for a border.
+-- Like the Buffs / Cooldowns bars: the name left of the icons in a column
+-- nameW wide (so the icons of all bars line up), or above them when vertical.
+local function LayoutBar(bar, pad, nameW)
     local c = M.db
     local size, gap = c.iconSize, c.spacing
     local own = MMT.IsSelf(bar.key)
@@ -244,32 +260,30 @@ local function LayoutBar(bar, pad)
     bar.preset:SetAlpha((hasPreset and not c.presetsOnHover) and 1 or 0)
     Font(bar.preset.text, math.floor(size * 0.55))
 
-    Font(bar.name, c.nameSize)
-    bar.name:SetText(c.fullNames and MMT.FullDisplay(bar.key) or MMT.FirstName(bar.key))
-    local cc = RAID_CLASS_COLORS and RAID_CLASS_COLORS.SHAMAN
-    if cc then bar.name:SetTextColor(cc.r, cc.g, cc.b) end
-    bar.name:SetShown(c.showNames)
-    local nameH = c.showNames and (c.nameSize + 3) or 0
+    local textW = SetName(bar)
+    local nameH = (c.vertical and c.showNames) and (c.nameSize + 3) or 0
+    local left = (not c.vertical) and (nameW or 0) or 0
 
     for i, item in ipairs(items) do
         if item == seqBtn then seqBtn:SetParent(bar) end
         item:SetSize(size, size)
         item:ClearAllPoints()
         if c.vertical then item:SetPoint("TOPLEFT", pad, -pad - nameH - (i - 1) * (size + gap))
-        else item:SetPoint("TOPLEFT", pad + (i - 1) * (size + gap), -pad - nameH) end
+        else item:SetPoint("TOPLEFT", pad + left + (i - 1) * (size + gap), -pad) end
         item:Show()
     end
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
     bar.name:ClearAllPoints()
-    bar.name:SetPoint("TOPLEFT", pad, -pad)
+    if c.vertical then bar.name:SetPoint("TOPLEFT", pad, -pad)
+    else bar.name:SetPoint("LEFT", bar, "TOPLEFT", pad, -pad - size / 2) end
     local n = #items
     local w, h
     if c.vertical then
-        w = math.max(size, c.showNames and (bar.name:GetStringWidth() + 2) or 0)
+        w = math.max(size, c.showNames and (textW + 2) or 0)
         h = nameH + n * size + (n - 1) * gap
     else
-        w = math.max(n * size + (n - 1) * gap, c.showNames and (bar.name:GetStringWidth() + 2) or 0)
-        h = nameH + size
+        w = left + n * size + (n - 1) * gap
+        h = size
     end
     w, h = w + 2 * pad, h + 2 * pad
     bar:SetSize(w, h)
@@ -301,6 +315,10 @@ function mod.Refresh()
     if not c.ungrouped then
         pad = PAD + Skin(container, c.bgTexture, c.bgColor, c.bgAlpha, c.borderTexture, c.borderColor, c.borderSize, c.bgTint)
     end
+    local nameW = 0
+    if c.showNames and not c.vertical and not c.ungrouped then
+        for _, key in ipairs(keys) do nameW = math.max(nameW, SetName(bars[key] or NewBar(key)) + 6) end
+    end
     local x, y, maxW, maxH = pad, -pad, 0, 0
     for _, key in ipairs(keys) do
         local bar = bars[key] or NewBar(key)
@@ -311,7 +329,8 @@ function mod.Refresh()
             inset = 0
             Skin(bar, c.bgTexture, c.rowColor, c.rowAlpha, nil, nil, nil, c.bgTint)
         end
-        local w, h = LayoutBar(bar, inset)
+        local w, h = LayoutBar(bar, inset,
+            c.ungrouped and (c.showNames and not c.vertical) and (SetName(bar) + 6) or nameW)
         bar.grip:SetShown(c.ungrouped and not c.locked)
         bar:ClearAllPoints()
         if c.ungrouped then

@@ -43,7 +43,8 @@ function Obj:IsMouseOver() return false end
 function Obj:SetScript(ev, fn) self["_" .. ev] = fn end
 function Obj:HookScript(ev, fn) self["_" .. ev] = fn end
 function Obj:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
-function Obj:SetPoint() if self._secure and IN_COMBAT then error("ADDON_ACTION_BLOCKED: SetPoint in combat") end end
+function Obj:SetPoint(...) if self._secure and IN_COMBAT then error("ADDON_ACTION_BLOCKED: SetPoint in combat") end self._pt = { ... } end
+function Obj:SetSize(w, h) self._w, self._h = w, h end
 
 function CreateFrame(kind, name, parent, template)
   local o = New(name)
@@ -415,4 +416,30 @@ print("A:", A.eval(r"""function(m)
   m.M.db.hiddenElements.Fire = nil
   m.M.db.hideNoItem, m.M.db.hideUnlearned = true, true
   return "totem slots ok"
+end""")(amod))
+
+print("A:", A.eval(r"""function(m)
+  local c = m.M.db
+  c.showNames, c.vertical, c.ungrouped = true, false, false
+  c.showPresets = false
+  m.Refresh()
+  local a, b = m.bars["Anna-Smith"], m.bars["Bob-Stone"]
+  -- name column: 50 (stub text width) + 6; first icon right after it, the same on both bars
+  local ax, bx = a.slots.Fire._pt[2], b.slots.Fire._pt[2]
+  assert(ax == 56 and bx == 56, "icons not lined up after the name: " .. tostring(ax) .. " / " .. tostring(bx))
+  assert(a.slots.Fire._pt[3] == 0, "icon not on the name's line")
+  assert(a.name._pt[1] == "LEFT", "name not left of the icons")
+  assert(a._h == c.iconSize, "row height " .. tostring(a._h) .. " instead of the icon size")
+  -- vertical: the name above the icons
+  c.vertical = true
+  m.Refresh()
+  assert(a.name._pt[1] == "TOPLEFT" and a.slots.Fire._pt[3] == -(c.nameSize + 3), "vertical: name not above")
+  c.vertical = false
+  -- names off: icons start at the left edge
+  c.showNames = false
+  m.Refresh()
+  assert(a.slots.Fire._pt[2] == 0, "names off: icons not at the edge")
+  c.showNames = true
+  m.Refresh()
+  return "look like Buffs / Cooldowns ok"
 end""")(amod))
