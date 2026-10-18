@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Pawn Compare
 ## Notes: MMT module: adds Pawn scores for every team member to the Item Compare tooltips. Needs Item Compare.
-## Version: 0.2.0
+## Version: 0.2.1
 ## Author: Quiding
 ## X-License: GPL-3.0
 ## Dependencies: MMT

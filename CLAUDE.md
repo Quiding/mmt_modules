@@ -44,7 +44,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.2.0)
+### MMT_PawnCompare (v0.2.1)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -52,7 +52,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `## OptionalDeps: Pawn, MMT_ItemCompare` (load order). Needs Item Compare active
   (`MMT.ModuleActive("ItemCompare")`), warns in chat/page if it is off or Pawn is missing.
 - Integration without editing ItemCompare: `hooksecurefunc("CreateFrame")` catches the
-  `MMTCompareTip<n>` frames, `OnShow` adds the lines. Member = parsed from `tip.header.text`,
+  `MMTCompareTip<n>` frames; `hooksecurefunc(tip, "Show")` adds the lines (NOT OnShow:
+  SetHyperlink shows the tip before the header has the member name). Member = parsed from `tip.header.text`,
   equipped item = `tip:GetItem()`, hovered item = GameTooltip's item.
 - Scores: Pawn's `PawnGetItemData(link).Stats` if Pawn is loaded, else `GetItemStats` mapped to
   Pawn stat names (approximate). Value = sum(stat*weight), SpeedBaseline, unusable (-1000000),
@@ -65,14 +66,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_BugFixes (v0.1.0)
+### MMT_BugFixes (v0.1.1)
 - Runtime fixes for OTHER modules (friend's), never editing their files. Each fix = one file +
   a `M.db` toggle registered in `mod.fixes` (shown on the page and in the debug report) + an
   upstream patch in `patches/` (made with `git diff --no-index` against a copy) for the friend.
 - `CompareOverlap.lua`: ItemCompare anchors MMTCompareTip1 at GameTooltip's side, under the
   ShoppingTooltip1/2 ("Equipped"). We re-anchor tip 1 past their outer edge (or below them
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
-  Remove the fix once the friend ships the patch.
+  The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
 
 ### MMT_Cooldowns (v0.5.2) / MMT_Buffs (v0.4.5) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:

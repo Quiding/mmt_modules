@@ -17,11 +17,22 @@ local M = mod.M
 local PREFIX = "MMTCompareTip"
 local GAP, HEADER = 6, 20   -- Item Compare's spacing and room for its name header
 
+-- Item Compare 1.0.2 has this fix itself (patch merged upstream): then we do nothing
+local function Version(addon)
+    local v = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)(addon, "Version") or "0"
+    local a, b, c = v:match("^(%d+)%.?(%d*)%.?(%d*)")
+    return (tonumber(a) or 0) * 10000 + (tonumber(b) or 0) * 100 + (tonumber(c) or 0)
+end
+local UPSTREAM = Version("MMT_ItemCompare") >= 10002
+
 mod.fixes[#mod.fixes + 1] = {
     key = "compareOverlap",
     title = "Item Compare: don't cover the \"Equipped\" tooltips",
-    note = "Moves Item Compare's team tooltips next to (or below) the game's comparison tooltips instead of on top of them.",
-    report = function() return "moved=" .. tostring(mod.overlapMoves or 0) end,
+    note = UPSTREAM and "Not needed any more: your Item Compare has this fix itself, so this does nothing."
+        or "Moves Item Compare's team tooltips next to (or below) the game's comparison tooltips instead of on top of them.",
+    report = function()
+        return UPSTREAM and "not needed (Item Compare has it)" or ("moved=" .. tostring(mod.overlapMoves or 0))
+    end,
 }
 
 local function Shops()
@@ -44,7 +55,7 @@ local function Tips()
 end
 
 local function Fix()
-    if not (M.enabled and M.db.compareOverlap) then return end
+    if UPSTREAM or not (M.enabled and M.db.compareOverlap) then return end
     local gt = GameTooltip
     local t1 = _G[PREFIX .. "1"]
     if not (t1 and t1:IsShown() and gt and gt:IsShown() and gt:GetLeft()) then return end

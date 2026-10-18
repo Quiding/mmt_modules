@@ -3,8 +3,10 @@
 -- Item Compare shows one tooltip per team member (frames MMTCompareTip1..n)
 -- with the item that member has equipped, and a header with the member's
 -- name. We don't touch Item Compare's code: we hook those frames when they
--- are created and, every time one is shown, add the hovered item's Pawn
--- score for that member's scales compared against the equipped item.
+-- are created and, after Item Compare's own tip:Show() call, add the hovered
+-- item's Pawn score for that member's scales against the equipped item.
+-- (Not OnShow: SetHyperlink already shows the tooltip, before Item Compare
+-- has written the member's name into the header, so the first use missed it.)
 
 local _, mod = ...
 local MMT = MMT
@@ -136,7 +138,7 @@ local hooked = {}
 local function Hook(frame)
     if frame and not hooked[frame] and frame.HookScript then
         hooked[frame] = true
-        frame:HookScript("OnShow", OnShow)
+        hooksecurefunc(frame, "Show", OnShow)
         M:Debug("hooked %s", frame:GetName() or "?")
     end
 end
