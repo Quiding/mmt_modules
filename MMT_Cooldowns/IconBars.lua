@@ -28,13 +28,14 @@
 --   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y },
 --   font (MMT font name), timerColor {r,g,b}, bgTexture / borderTexture (LibSharedMedia
---   names, "FLAT" / "NONE"), bgColor, borderColor {r,g,b}, borderSize, rowColor, rowAlpha
+--   names, "FLAT" / "NONE"), bgColor, borderColor {r,g,b}, borderSize, rowColor, rowAlpha,
+--   bgTint (0..1: how strongly bgColor / rowColor colour a texture; Flat always takes the colour)
 --
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 7
+local VERSION = 8
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -69,8 +70,15 @@ local function Media(kind, name)
 end
 
 -- background (+ border) of a frame; returns the inner padding the border needs
-local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize)
+local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize, tint)
     color = color or {}
+    local file = Media("background", bgTex)
+    -- a real texture: blend white (its own colours) towards the colour by tint
+    local r, g, b = color.r or 0, color.g or 0, color.b or 0
+    if file then
+        tint = math.max(0, math.min(1, tint or 1))
+        r, g, b = 1 + (r - 1) * tint, 1 + (g - 1) * tint, 1 + (b - 1) * tint
+    end
     local edge = Media("border", edgeName)
     if not f.SetBackdrop then
         f.bg:SetColorTexture(color.r or 0, color.g or 0, color.b or 0, alpha or 0)
@@ -79,9 +87,9 @@ local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize)
     if f.bg then f.bg:Hide() end
     local size = edge and (edgeSize or 12) or nil
     local inset = edge and math.floor(size / 4 + 0.5) or 0
-    f:SetBackdrop({ bgFile = Media("background", bgTex) or FLAT, edgeFile = edge, tile = false,
+    f:SetBackdrop({ bgFile = file or FLAT, edgeFile = edge, tile = false,
         edgeSize = size, insets = { left = inset, right = inset, top = inset, bottom = inset } })
-    f:SetBackdropColor(color.r or 0, color.g or 0, color.b or 0, alpha or 0)
+    f:SetBackdropColor(r, g, b, alpha or 0)
     if edge then
         edgeColor = edgeColor or {}
         f:SetBackdropBorderColor(edgeColor.r or 1, edgeColor.g or 1, edgeColor.b or 1, 1)
@@ -301,7 +309,7 @@ function Window:Refresh()
     local rowGap, vertical = c.rowGap or 4, c.vertical
     local nameH = c.showNames and ((c.nameSize or 11) + 3) or 0
     -- frame background / border first: the border decides the padding
-    local PAD = 4 + Skin(f, c.bgTexture, c.bgColor, c.bgAlpha or 0.4, c.borderTexture, c.borderColor, c.borderSize)
+    local PAD = 4 + Skin(f, c.bgTexture, c.bgColor, c.bgAlpha or 0.4, c.borderTexture, c.borderColor, c.borderSize, c.bgTint)
 
     -- name column width (horizontal layout: names left of the icons)
     local nameW = 0
@@ -309,7 +317,7 @@ function Window:Refresh()
     for i, r in ipairs(rows) do
         local row = self:Row(i)
         MMT.ApplyFont(row.name, c.font, c.nameSize or 11, "OUTLINE")
-        Skin(row, c.bgTexture, c.rowColor, c.rowAlpha or 0)
+        Skin(row, c.bgTexture, c.rowColor, c.rowAlpha or 0, nil, nil, nil, c.bgTint)
         row.name:SetText(r.label or lib.MemberName(r.key, c.fullNames))
         if r.color then row.name:SetTextColor(r.color[1], r.color[2], r.color[3])
         else row.name:SetTextColor(ClassColor(r.key)) end

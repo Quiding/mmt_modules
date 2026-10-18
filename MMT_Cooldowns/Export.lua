@@ -5,7 +5,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local LOOK = { "bgTexture", "bgColor", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
+local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
     "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
     "hideUnseenItems", "showBuffs" }
