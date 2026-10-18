@@ -39,11 +39,19 @@ local function Rows()
         local icons = {}
         for _, e in ipairs(mod.EntriesFor(key)) do
             local state, start, dur = mod.State(key, e)
-            if state and not (M.db.hideReady and state == "ready") then
-                icons[#icons + 1] = {
+            local bStart, bDur
+            if state and M.db.showBuffs then bStart, bDur = mod.ActiveBuff(key, e) end
+            if state and (bStart or not (M.db.hideReady and state == "ready")) then
+                local icon = {
                     texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                     spell = e.t == "s" and e.id or nil, item = e.t == "i" and e.id or nil,
                 }
+                if bStart then
+                    -- buff up: glow with its time left, then the cooldown
+                    icon.after = { state = state, start = start, duration = dur }
+                    icon.state, icon.start, icon.duration, icon.glow = "buff", bStart, bDur, true
+                end
+                icons[#icons + 1] = icon
             end
         end
         rows[#rows + 1] = { key = key, icons = icons }

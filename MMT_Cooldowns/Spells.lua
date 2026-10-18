@@ -106,7 +106,8 @@ function mod.ParseEntry(text)
     local _, _, spellID = mod.SpellInfo(text)
     if spellID then return "s", spellID end
     local fn = (C_Item and C_Item.GetItemInfo) or GetItemInfo
-    local _, link = fn and fn(text)
+    local link
+    if fn then link = select(2, fn(text)) end
     id = link and link:match("item:(%d+)")
     if id then return "i", tonumber(id) end
     return nil

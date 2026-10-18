@@ -2,6 +2,7 @@
 -- outside your group see it too. One short message per use, nothing
 -- periodic:
 --   MCDU:<entryKey>:<remaining>/<duration>   cooldown started (e.g. MCDU:s871:1799.8/1800)
+--     ...:b<remaining>/<duration>           + the buff it gave you, if any (e.g. :b14.7/15)
 --   MCDU:<entryKey>:a                        "after buff" spell used, cooldown starts later
 -- Only state CHANGES of your own tracked entries are sent (ready -> cooldown,
 -- ready -> active, active -> cooldown), found on the game's cooldown events.
@@ -29,6 +30,10 @@ local function Check()
                     msg = ("MCDU:%s:a"):format(ek)
                 else
                     msg = ("MCDU:%s:%.1f/%.1f"):format(ek, start + dur - GetTime(), dur)
+                    local name = mod.CastName(e)
+                    local bStart, bDur
+                    if name then bStart, bDur = mod.UnitBuffTime("player", name) end
+                    if bStart then msg = msg .. (":b%.1f/%.1f"):format(bStart + bDur - GetTime(), bDur) end
                 end
                 MMT.SendToTeam(msg, true)
                 M:Debug("sent %s", msg)
@@ -73,10 +78,14 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if data == "a" then
         mod.cds[key][ek] = { pending = GetTime(), dur = e.cd or 0, buff = mod.CastName(e) }
     else
-        local rem, dur = data:match("^([%d%.]+)/([%d%.]+)$")
+        local rem, dur, buff = data:match("^([%d%.]+)/([%d%.]+)(.*)$")
         rem, dur = tonumber(rem), tonumber(dur)
         if not rem or not dur or dur <= 0 then return end
-        mod.cds[key][ek] = { start = GetTime() - (dur - rem), dur = dur }
+        local c = { start = GetTime() - (dur - rem), dur = dur }
+        local bRem, bDur = (buff or ""):match("^:b([%d%.]+)/([%d%.]+)$")
+        bRem, bDur = tonumber(bRem), tonumber(bDur)
+        if bRem and bDur and bDur > 0 then c.buffStart, c.buffDur = GetTime() - (bDur - bRem), bDur end
+        mod.cds[key][ek] = c
     end
     M:Debug("%s: %s %s", MMT.Repr(key), ek, data)
     mod.Refresh()

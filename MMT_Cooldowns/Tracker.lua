@@ -127,7 +127,52 @@ local function CheckPending(unit)
     end
 end
 
-M:On("UNIT_AURA", function(unit) if GroupUnit(unit) then CheckPending(unit) end end)
+M:On("UNIT_AURA", function(unit)
+    if GroupUnit(unit) then CheckPending(unit) end
+    -- buffs of tracked spells (Berserking, Evasion, ...) come and go
+    if M.db.showBuffs and (unit == "player" or GroupUnit(unit)) then mod.Refresh() end
+end)
+
+---------------------------------------------------------------------------
+-- The buff a tracked spell or item put on its user (same name as the cast)
+---------------------------------------------------------------------------
+local unitOf = {}   -- [teamKey] = group unit
+
+local function MapUnits()
+    wipe(unitOf)
+    if IsInRaid() then
+        for i = 1, 40 do local u = "raid" .. i; local k = UnitExists(u) and UnitKey(u); if k then unitOf[k] = u end end
+    else
+        for i = 1, 4 do local u = "party" .. i; local k = UnitExists(u) and UnitKey(u); if k then unitOf[k] = u end end
+    end
+end
+M:On("GROUP_ROSTER_UPDATE", MapUnits)
+M:On("PLAYER_ENTERING_WORLD", MapUnits)
+M:Listen("TEAM_CHANGED", MapUnits)
+
+-- start, duration of a timed buff called name on unit, or nil
+local function UnitBuffTime(unit, name)
+    for i = 1, 40 do
+        local n, _, _, dur, expiration = mod.Buff(unit, i)
+        if not n or n == "secret" then return nil end
+        if n == name then
+            if dur and dur > 0 and expiration then return expiration - dur, dur end
+            return nil
+        end
+    end
+end
+mod.UnitBuffTime = UnitBuffTime
+
+-- start, duration of the buff entry e gave member key right now, or nil
+function mod.ActiveBuff(key, e)
+    local name = mod.CastName(e)
+    if not name then return nil end
+    local unit = MMT.IsSelf(key) and "player" or unitOf[key]
+    if unit and UnitExists(unit) then return UnitBuffTime(unit, name) end
+    -- outside the group: the time their client sent with the use message
+    local c = mod.cds[key] and mod.cds[key][mod.EntryKey(e)]
+    if c and c.buffStart and c.buffStart + c.buffDur > GetTime() then return c.buffStart, c.buffDur end
+end
 
 ---------------------------------------------------------------------------
 -- State of one entry for one member: state, start, duration

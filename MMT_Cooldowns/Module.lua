@@ -26,6 +26,7 @@ local M = MMT.NewModule({
         showNames = true, nameSize = 11, showTimers = true, timerSize = 13,
         readyAlpha = 0.35, cdAlpha = 1, glowActive = true,
         hideReady = false,          -- only show icons while they are on cooldown
+        showBuffs = true,           -- while the spell's buff is up: glow with the buff's time left
         hideUnknown = false,        -- your own spells you haven't learned / items you don't carry
         hideUnseenItems = false,    -- other members' items only after you saw them used
         point = { "CENTER", "CENTER", 200, 0 },

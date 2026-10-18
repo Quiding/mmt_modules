@@ -16,7 +16,10 @@
 --
 -- icon = { texture, state, start, duration, count, spell, item, tip,
 --          missingAlpha, glowMissing (override the window's cfg for "missing"),
---          tint = { r, g, b }, desaturate = true }
+--          tint = { r, g, b }, desaturate = true,
+--          glow = true (glow regardless of state),
+--          after = { state, start, duration } (state to switch to when a "buff" runs out,
+--                  e.g. a spell's buff, then its cooldown) }
 --   state: "ready" | "cd" (start/duration) | "active" (glow) | "buff" (start/duration
 --          optional, count) | "missing"
 --
@@ -28,7 +31,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 2
+local VERSION = 3
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -109,6 +112,13 @@ end
 local function Paint(b, c)
     local i = b.data
     local state, rem = i.state, Remaining(i)
+    if state == "buff" and i.after and not rem then
+        -- the buff ran out: show what comes after it (the cooldown)
+        local a = i.after
+        i.state, i.start, i.duration, i.glow, i.after = a.state, a.start, a.duration, nil, nil
+        if i.state == "cd" and Remaining(i) then b.cd:SetCooldown(i.start, i.duration); b.cd:Show() else b.cd:Hide() end
+        return Paint(b, c)
+    end
     if state == "cd" and not rem then state = "ready" end
     local alpha, glow = 1, false
     if state == "ready" then alpha = c.readyAlpha or 1
@@ -118,6 +128,7 @@ local function Paint(b, c)
         alpha = i.missingAlpha or c.missingAlpha or 0.3
         if i.glowMissing ~= nil then glow = i.glowMissing else glow = c.glowMissing end
     elseif state == "active" then glow = c.glowActive end
+    if i.glow then glow = true end
     b:SetAlpha(alpha)
     if glow then
         if not b.glow:IsShown() then b.glow:Show(); b.pulse:Play() end
