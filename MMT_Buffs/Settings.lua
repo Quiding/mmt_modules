@@ -152,9 +152,12 @@ M.Page = function(_, page)
     R:Add(def, UI.ROW + 2)
 
     -- All classes row ----------------------------------------------------
-    R:Header("All classes row")
-    local gb2, sb2 = Opt("allBar")
-    R:Check("Show the All classes row", gb2, sb2, "One row for the \"All classes\" buffs of the whole team; they leave the members' own rows.")
+    R:Header("All classes buffs")
+    R:Cycle("Show them", {
+        { value = "ROW", text = "In one All row" },
+        { value = "MEMBERS", text = "In each member's row" },
+    }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
+       function(v) M.db.allBar = (v == "ROW"); mod.Apply() end)
     local gl, sl = Opt("allMissingLook")
     R:Cycle("Someone misses it", {
         { value = "RED", text = "Red" },
