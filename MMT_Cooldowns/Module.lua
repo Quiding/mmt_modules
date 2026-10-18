@@ -7,7 +7,9 @@
 --                 the game's own cooldown API for your own character. Nothing
 --                 is sent over the addon channel for this.
 --   Window.lua    rows for MMTIconBars (IconBars.lua, shared with MMT_Buffs)
---   Sync.lua      "Send lists to team" (the only addon messages, tag MCDL)
+--   Share.lua     one message (MCDU) when YOUR character uses a tracked cooldown,
+--                 so members outside the group are tracked too
+--   Sync.lua      "Send lists to team" (MCDL)
 --   Settings.lua  settings page and debug report
 
 local _, mod = ...

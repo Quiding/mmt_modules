@@ -74,7 +74,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   Remove the fix once the friend ships the patch.
 
-### MMT_Cooldowns / MMT_Buffs (v0.1.1) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.2.0) / MMT_Buffs (v0.1.1) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -82,7 +82,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `UNIT_SPELLCAST_SUCCEEDED` on party/raid units (spell ID -> name) + duration from the list;
   "after buff" spells (NS, EM, PoM, Inner Focus) start when the buff is gone (`UNIT_AURA` +
   `UnitBuff`); own character via `GetSpellCooldown`/`GetItemCooldown`. Buffs: `UnitBuff` on
-  group units (exact). Members outside the group can't be tracked.
+  group units (exact). Buffs of members outside the group can't be tracked.
+- Exception agreed with the user: Cooldowns `Share.lua` sends ONE message per use of a tracked
+  cooldown (`MCDU:<s|i><id>:<rem>/<dur>` or `:a` for after-buff spells), from own state changes
+  on SPELL/BAG_UPDATE_COOLDOWN. Never periodic.
   Comm is only "Send lists to team" (`MCDL` / `MBFL`, chunked).
 - Lists in `M.db.lists[CLASS|ALL]`; Cooldowns entry `{t="s"|"i", id, cd}`, Buffs `{id}`.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).

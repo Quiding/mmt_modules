@@ -150,6 +150,8 @@ local function OwnState(e)
 end
 
 -- returns state ("ready" | "cd" | "active") or nil when the entry isn't shown for this member
+mod.OwnState = OwnState
+
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "cd", mod.testUntil - 10, 10 end
     if MMT.IsSelf(key) then return OwnState(e) end
