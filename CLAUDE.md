@@ -74,10 +74,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   Remove the fix once the friend ships the patch.
 
-### MMT_Cooldowns (v0.2.0) / MMT_Buffs (v0.1.1) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.2.1) / MMT_Buffs (v0.1.2) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
+- **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
+  Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
+  `mod.ItemSpell`; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled).
+  Same file in MMT_Cooldowns and MMT_Buffs, keep identical.
 - **No addon messages for live data** (user's decision: would flood comms). Cooldowns:
   `UNIT_SPELLCAST_SUCCEEDED` on party/raid units (spell ID -> name) + duration from the list;
   "after buff" spells (NS, EM, PoM, Inner Focus) start when the buff is gone (`UNIT_AURA` +

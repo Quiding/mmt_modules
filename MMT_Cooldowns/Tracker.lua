@@ -75,7 +75,7 @@ end
 -- a group member cast something
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
-    local spellName = GetSpellInfo(spellID)
+    local spellName = mod.SpellInfo(spellID)
     if not spellName or MMT.IsSecret(spellName) or not index[spellName] then return end
     local key = UnitKey(unit)
     if not key or MMT.IsSelf(key) then return end
@@ -101,8 +101,9 @@ end)
 -- caster (or after 3 s if the buff never showed up)
 local function HasBuff(unit, name)
     for i = 1, 40 do
-        local n = UnitBuff(unit, i)
-        if not n or MMT.IsSecret(n) then return false end
+        local n = mod.Buff(unit, i)
+        if not n then return false end
+        if n == "secret" then return nil end   -- can't tell right now
         if n == name then return true end
     end
     return false
@@ -115,9 +116,10 @@ local function CheckPending(unit)
     local now = GetTime()
     for ek, c in pairs(cds) do
         if c.pending and c.buff then
-            if HasBuff(unit, c.buff) then
+            local has = HasBuff(unit, c.buff)
+            if has then
                 c.seen = true
-            elseif c.seen or now - c.pending > 3 then
+            elseif has == false and (c.seen or now - c.pending > 3) then
                 cds[ek] = { start = now, dur = c.dur }
                 mod.Refresh()
             end
@@ -130,13 +132,20 @@ M:On("UNIT_AURA", function(unit) if GroupUnit(unit) then CheckPending(unit) end 
 ---------------------------------------------------------------------------
 -- State of one entry for one member: state, start, duration
 ---------------------------------------------------------------------------
+local lastOwn = {}   -- [entryKey] = last readable state (the game hides cooldowns at times)
+
 local function OwnState(e)
     local start, dur, enabled
     if e.t == "s" then
         local name = mod.SpellName(e.id)
         if not name then return nil end
-        start, dur, enabled = GetSpellCooldown(name)
+        start, dur, enabled = mod.SpellCooldown(name)
         if start == nil then return nil end   -- not known by this character
+        if start == "secret" then
+            local l = lastOwn[mod.EntryKey(e)]
+            if l then return l[1], l[2], l[3] end
+            return "ready"
+        end
     else
         local count = (C_Item and C_Item.GetItemCount or GetItemCount)(e.id)
         local equipped = (C_Item and C_Item.IsEquippedItem or IsEquippedItem)(e.id)
@@ -144,9 +153,13 @@ local function OwnState(e)
         local fn = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
         start, dur, enabled = fn(e.id)
     end
-    if enabled == 0 or enabled == false then return "active" end
-    if start and start > 0 and dur and dur > GCD then return "cd", start, dur end
-    return "ready"
+    local state
+    if enabled == 0 or enabled == false then state = "active"
+    elseif start and start > 0 and dur and dur > GCD then state = "cd"
+    else state = "ready" end
+    lastOwn[mod.EntryKey(e)] = { state, start, dur }
+    if state == "cd" then return state, start, dur end
+    return state
 end
 
 -- returns state ("ready" | "cd" | "active") or nil when the entry isn't shown for this member

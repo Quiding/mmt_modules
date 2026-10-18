@@ -1,6 +1,6 @@
 -- MMT Buffs: who has which tracked buff.
 --
--- Members in your group (and you): read from their unit with UnitBuff, so
+-- Members in your group (and you): read from their unit (mod.Buff), so
 -- timers and stacks are exact. Members outside the group can't be seen
 -- (this client doesn't let addons read the combat log), so their row stays
 -- empty. Nothing is sent between the clients for this.
@@ -36,8 +36,9 @@ local function ScanUnit(unit)
     if not key then return end
     local t = {}
     for i = 1, 40 do
-        local name, _, count, _, duration, expiration = UnitBuff(unit, i)
-        if not name or MMT.IsSecret(name) then break end
+        local name, _, count, duration, expiration = mod.Buff(unit, i)
+        if name == "secret" then return end   -- hidden right now: keep what we had
+        if not name then break end
         if index[name] then
             local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
             t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }

@@ -16,12 +16,12 @@ mod.DEFAULT_LISTS = {
     ALL = { B(1243), B(1126) },   -- Power Word: Fortitude, Mark of the Wild
 }
 
-function mod.BuffName(e) return (GetSpellInfo(e.id)) end
+function mod.BuffName(e) return (mod.SpellInfo(e.id)) end
 
 function mod.EntryName(e) return mod.BuffName(e) or ("Spell " .. e.id) end
 
 function mod.EntryIcon(e)
-    return (GetSpellTexture and GetSpellTexture(e.id)) or select(3, GetSpellInfo(e.id)) or 134400
+    return mod.SpellIcon(e.id) or 134400
 end
 
 -- name, ID or spell link -> spell ID (or nil)
@@ -29,7 +29,7 @@ function mod.ParseEntry(text)
     text = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if text == "" then return nil end
     local id = tonumber(text:match("|Hspell:(%d+)") or text:match("^spell:(%d+)") or text)
-    if id then return GetSpellInfo(id) and id or nil end
-    local _, _, _, _, _, _, spellID = GetSpellInfo(text)
+    if id then return mod.SpellInfo(id) and id or nil end
+    local _, _, spellID = mod.SpellInfo(text)
     return spellID
 end

@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Buffs
 ## Notes: MMT module: which team members have (or miss) the buffs you track. Port of EMA Buffs.
-## Version: 0.1.1
+## Version: 0.1.2
 ## Author: Quiding
 ## X-License: GPL-3.0
 ## Dependencies: MMT
@@ -11,6 +11,7 @@
 ## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
 
 IconBars.lua
+Compat.lua
 Lists.lua
 Module.lua
 Tracker.lua

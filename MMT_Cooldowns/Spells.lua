@@ -30,7 +30,7 @@ local AFTER_BUFF_IDS = { 16188, 17116, 16166, 12043, 14751 }
 function mod.EntryKey(e) return e.t .. e.id end
 
 function mod.SpellName(id)
-    local name = GetSpellInfo(id)
+    local name = mod.SpellInfo(id)
     return name
 end
 
@@ -42,8 +42,7 @@ end
 -- name of the spell an entry casts, nil if not cached yet
 function mod.CastName(e)
     if e.t == "s" then return mod.SpellName(e.id) end
-    local fn = (C_Item and C_Item.GetItemSpell) or GetItemSpell
-    return fn and (fn(e.id)) or nil
+    return (mod.ItemSpell(e.id))
 end
 
 function mod.EntryName(e)
@@ -53,7 +52,7 @@ end
 
 function mod.EntryIcon(e)
     if e.t == "s" then
-        return (GetSpellTexture and GetSpellTexture(e.id)) or select(3, GetSpellInfo(e.id)) or 134400
+        return mod.SpellIcon(e.id) or 134400
     end
     local fn = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
     local icon = fn and fn(e.id)
@@ -80,8 +79,7 @@ end
 function mod.BaseCooldown(t, id)
     local spellID = id
     if t == "i" then
-        local fn = (C_Item and C_Item.GetItemSpell) or GetItemSpell
-        local _, sid = fn and fn(id)
+        local _, sid = mod.ItemSpell(id)
         spellID = sid
     end
     if spellID and GetSpellBaseCooldown then
@@ -100,12 +98,12 @@ function mod.ParseEntry(text)
     if id then return "i", tonumber(id) end
     local n = tonumber(text)
     if n then
-        if GetSpellInfo(n) then return "s", n end
+        if mod.SpellInfo(n) then return "s", n end
         local inst = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
         if inst and inst(n) then return "i", n end
         return nil
     end
-    local _, _, _, _, _, _, spellID = GetSpellInfo(text)
+    local _, _, spellID = mod.SpellInfo(text)
     if spellID then return "s", spellID end
     local fn = (C_Item and C_Item.GetItemInfo) or GetItemInfo
     local _, link = fn and fn(text)
