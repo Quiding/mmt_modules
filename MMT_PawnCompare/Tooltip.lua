@@ -48,16 +48,6 @@ local function Fmt(v)
     return ("%.1f"):format(v)
 end
 
--- off-hand item of a member: own from the game, others from Item Compare's stored
--- equipment (read only: MMTDB.moduleData.ItemCompare.equipment[key].items[17] = item string)
-local function OffHandOf(key)
-    if MMT.IsSelf(key) then return GetInventoryItemLink("player", 17) end
-    local data = MMTDB and MMTDB.moduleData and MMTDB.moduleData.ItemCompare
-    local rec = data and data.equipment and data.equipment[key]
-    local s = rec and rec.items and rec.items[17]
-    return s and ("item:" .. s) or nil
-end
-
 -- offHand: the member's off-hand item when a two-hander is compared on the main hand
 local function AddLines(tip, key, hovered, equipped, offHand)
     local rec = mod.ScalesOf(key)
@@ -133,7 +123,7 @@ local function OnShow(tip)
         tip:AddLine(" ")
         tip:AddLine("Pawn: two-hander, compared on the main hand", 0.6, 0.6, 0.6)
     else
-        local offHand = twoHander and OffHandOf(key) or nil
+        local offHand = twoHander and mod.EquippedLink(key, 17) or nil
         if offHand and offHand == equipped then offHand = nil end
         local ok, err = pcall(AddLines, tip, key, hovered, equipped, offHand)
         if not ok then M:Debug("tooltip error: %s", tostring(err)) end

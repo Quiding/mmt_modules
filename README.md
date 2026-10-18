@@ -7,10 +7,12 @@ This repository lives directly in `Interface/AddOns`. The `.gitignore` ignores e
 addon and only lists our own module folders.
 
 ## Modules
-- **MMT_PawnCompare** (0.1.2): adds Pawn scores to the Item Compare tooltips. Each member's
+- **MMT_PawnCompare** (0.2.0): adds Pawn scores to the Item Compare tooltips. Each member's
   hovered-item score is calculated with *their* Pawn scales and compared against the item they
   have equipped. Needs MMT_ItemCompare switched on. Scales are synced between clients and stored,
   so offline members and clients without Pawn still work (stats are approximate without Pawn).
+  The normal item tooltip can also list every team member's gain from the hovered item,
+  replacing Pawn's own lines (setting: Replace / Add below / Off).
   `/mmtpc`, `/mmtpc send`, `/mmtpc request`.
 - **MMT_BugFixes** (0.1.0): runtime fixes for other MMT modules, each switchable on its settings
   page, with a patch for the module's author in `MMT_BugFixes/patches/`:

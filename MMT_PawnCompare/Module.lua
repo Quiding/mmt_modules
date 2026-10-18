@@ -1,7 +1,8 @@
 -- MMT module: Pawn Compare.
 -- Adds Pawn scores to the Item Compare tooltips: for every team member, the
 -- hovered item is scored with THEIR Pawn scales and compared against the
--- item they have equipped in that slot.
+-- item they have equipped in that slot. Optionally the normal item tooltip
+-- lists the whole team's gains too, in place of Pawn's own lines.
 --
 --   Scales.lua   reads this character's Pawn scales, syncs them with the team
 --                and keeps every member's scales in M.store (account-wide), so
@@ -9,6 +10,7 @@
 --   Score.lua    item stats (Pawn if loaded, else the game's item stats) and
 --                the scale value calculation.
 --   Tooltip.lua  adds the lines to Item Compare's tooltips.
+--   ItemTooltip.lua  team list in the normal item tooltip (GameTooltip).
 --   Settings.lua settings page and debug report.
 --
 -- Uses only the documented MMT module API. Message tags start with PCMP_.
@@ -25,6 +27,7 @@ local M = MMT.NewModule({
         showInCompare = true,
         allScales = true,     -- every visible scale of the member, or only the first
         showPercent = true,
+        teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF
     },
 })
 mod.M = M

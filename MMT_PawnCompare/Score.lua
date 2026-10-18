@@ -11,6 +11,7 @@
 -- normalization factor. Sockets are ignored.
 
 local _, mod = ...
+local MMT = MMT
 
 local UNUSABLE = -1000000  -- PawnIgnoreStatValue
 
@@ -80,4 +81,23 @@ function mod.Value(stats, scale)
         if sum > 0 then total = scale.norm * total / sum end
     end
     return total, false
+end
+
+---------------------------------------------------------------------------
+-- What a member wears
+---------------------------------------------------------------------------
+-- own items from the game, other members' from Item Compare's stored equipment
+-- (read only: MMTDB.moduleData.ItemCompare.equipment[key] = { items = {[slot] = itemString} })
+function mod.HasEquipment(key)
+    if MMT.IsSelf(key) then return true end
+    local data = MMTDB and MMTDB.moduleData and MMTDB.moduleData.ItemCompare
+    return data and data.equipment and data.equipment[key] and true or false
+end
+
+function mod.EquippedLink(key, slot)
+    if MMT.IsSelf(key) then return GetInventoryItemLink("player", slot) end
+    local data = MMTDB and MMTDB.moduleData and MMTDB.moduleData.ItemCompare
+    local rec = data and data.equipment and data.equipment[key]
+    local s = rec and rec.items and rec.items[slot]
+    return s and ("item:" .. s) or nil
 end

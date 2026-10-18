@@ -37,6 +37,12 @@ M.Page = function(_, page)
     L:Check("Show every scale of the member", ga, sa, "Off: only their first visible Pawn scale.")
     local gp, sp = Opt("showPercent")
     L:Check("Show the change in percent", gp, sp)
+    local gt, st = Opt("teamTooltip")
+    L:Cycle("Team in the item tooltip", {
+        { value = "REPLACE", text = "Replace Pawn's lines" },
+        { value = "ADD", text = "Add below Pawn's lines" },
+        { value = "OFF", text = "Off" },
+    }, gt, st)
     local gg, sg = Opt("greetOnLogin")
     L:Check("Message in chat on login", gg, sg)
     L:Space(4)

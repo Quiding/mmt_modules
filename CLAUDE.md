@@ -44,10 +44,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.1.2)
+### MMT_PawnCompare (v0.2.0)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
-  (adds lines to Item Compare's tips), `Settings.lua` (page + debug report).
+  (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
+  `Settings.lua` (page + debug report).
 - `## OptionalDeps: Pawn, MMT_ItemCompare` (load order). Needs Item Compare active
   (`MMT.ModuleActive("ItemCompare")`), warns in chat/page if it is off or Pawn is missing.
 - Integration without editing ItemCompare: `hooksecurefunc("CreateFrame")` catches the
@@ -57,6 +58,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Pawn stat names (approximate). Value = sum(stat*weight), SpeedBaseline, unusable (-1000000),
   normalization like Pawn. Sockets ignored. A hovered 2H is compared vs MH + OH on the main-hand tip; the OH comes
   from Item Compare's stored equipment (`MMTDB.moduleData.ItemCompare.equipment[key].items[17]`, read only).
+- ItemTooltip: hooks the same GameTooltip Set* methods as Pawn, installed at PLAYER_LOGIN after
+  Pawn's, so our lines follow Pawn's. `teamTooltip` = REPLACE wraps the global
+  `PawnAddValuesToTooltip` to skip GameTooltip (only for equippable items while own scales exist).
+  Rings/trinkets: vs the weaker slot; 1H: MH, or OH if a weapon is there; 2H: MH + OH.
 - Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
