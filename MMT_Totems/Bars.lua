@@ -263,23 +263,26 @@ local function LayoutBar(bar, pad, nameW)
     local textW = SetName(bar)
     local nameH = (c.vertical and c.showNames) and (c.nameSize + 3) or 0
     local left = (not c.vertical) and (nameW or 0) or 0
+    -- vertical: a column as wide as the name, icons and name centred in it
+    local colW = math.max(size, c.showNames and (textW + 2) or 0)
+    local colX = c.vertical and math.floor((colW - size) / 2 + 0.5) or 0
 
     for i, item in ipairs(items) do
         if item == seqBtn then seqBtn:SetParent(bar) end
         item:SetSize(size, size)
         item:ClearAllPoints()
-        if c.vertical then item:SetPoint("TOPLEFT", pad, -pad - nameH - (i - 1) * (size + gap))
+        if c.vertical then item:SetPoint("TOPLEFT", pad + colX, -pad - nameH - (i - 1) * (size + gap))
         else item:SetPoint("TOPLEFT", pad + left + (i - 1) * (size + gap), -pad) end
         item:Show()
     end
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
     bar.name:ClearAllPoints()
-    if c.vertical then bar.name:SetPoint("TOPLEFT", pad, -pad)
+    if c.vertical then bar.name:SetPoint("TOP", bar, "TOPLEFT", pad + colW / 2, -pad)
     else bar.name:SetPoint("LEFT", bar, "TOPLEFT", pad, -pad - size / 2) end
     local n = #items
     local w, h
     if c.vertical then
-        w = math.max(size, c.showNames and (textW + 2) or 0)
+        w = colW
         h = nameH + n * size + (n - 1) * gap
     else
         w = left + n * size + (n - 1) * gap

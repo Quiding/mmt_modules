@@ -35,7 +35,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 8
+local VERSION = 9
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -328,13 +328,16 @@ function Window:Refresh()
     for i, r in ipairs(rows) do
         local row = self:Row(i)
         local icons = r.key and WithExtras(def.name, r.key, r.icons or {}) or (r.icons or {})
+        -- vertical: a column as wide as the name, icons centred in it
+        local colW = vertical and math.max(size, c.showNames and (row.name:GetStringWidth() + 2) or 0) or 0
+        local colX = vertical and math.floor((colW - size) / 2 + 0.5) or 0
         for j, data in ipairs(icons) do
             local b = row.icons[j] or NewIcon(row)
             row.icons[j] = b
             Setup(b, data, r.key, c)
             b:ClearAllPoints()
             if vertical then
-                b:SetPoint("TOPLEFT", 0, -nameH - (j - 1) * (size + gap))
+                b:SetPoint("TOPLEFT", colX, -nameH - (j - 1) * (size + gap))
             else
                 b:SetPoint("TOPLEFT", nameW + (j - 1) * (size + gap), 0)
             end
@@ -344,9 +347,9 @@ function Window:Refresh()
         local w, h
         row.name:ClearAllPoints()
         if vertical then
-            w = math.max(size, c.showNames and (row.name:GetStringWidth() + 2) or 0)
+            w = colW
             h = nameH + n * size + (n - 1) * gap
-            row.name:SetPoint("TOPLEFT", 0, 0)
+            row.name:SetPoint("TOP", 0, 0)
         else
             w = nameW + n * size + (n - 1) * gap
             h = size

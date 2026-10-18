@@ -433,7 +433,12 @@ print("A:", A.eval(r"""function(m)
   -- vertical: the name above the icons
   c.vertical = true
   m.Refresh()
-  assert(a.name._pt[1] == "TOPLEFT" and a.slots.Fire._pt[3] == -(c.nameSize + 3), "vertical: name not above")
+  assert(a.name._pt[1] == "TOP" and a.slots.Fire._pt[3] == -(c.nameSize + 3), "vertical: name not above")
+  -- name (50) wider than an icon: icons centred in the column, no gap on one side
+  local size = c.iconSize
+  local colW = math.max(size, 52)
+  assert(a._w == colW, "column width " .. tostring(a._w))
+  assert(a.slots.Fire._pt[2] == math.floor((colW - size) / 2 + 0.5), "icons not centred: x=" .. tostring(a.slots.Fire._pt[2]))
   c.vertical = false
   -- names off: icons start at the left edge
   c.showNames = false
