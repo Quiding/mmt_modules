@@ -24,7 +24,7 @@ local M = MMT.NewModule({
         attach = "OFF",            -- OFF: own window | LEFT / RIGHT: on the Cooldowns rows
         iconSize = 28, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
         showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
-        missingAlpha = 0.25, glowMissing = false,
+        missingAlpha = 0.25, activeAlpha = 1, glowMissing = false,
         point = { "CENTER", "CENTER", -200, 0 },
         hidden = {},
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows

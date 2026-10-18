@@ -40,7 +40,8 @@ local function Icons(key)
         local state, start, dur, count = mod.State(key, e)
         if state then
             icons[#icons + 1] = { texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
-                count = count, spell = e.id, missingAlpha = M.db.missingAlpha, glowMissing = M.db.glowMissing }
+                count = count, spell = e.id, missingAlpha = M.db.missingAlpha, glowMissing = M.db.glowMissing,
+                activeAlpha = M.db.activeAlpha }
         end
     end
     return icons

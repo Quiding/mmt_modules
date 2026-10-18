@@ -15,7 +15,8 @@
 --   w:SetShown(on)
 --
 -- icon = { texture, state, start, duration, count, spell, item, tip,
---          missingAlpha, glowMissing (override the window's cfg for "missing"),
+--          missingAlpha, glowMissing, activeAlpha (override the window's cfg for
+--          "missing" / "buff"),
 --          tint = { r, g, b }, desaturate = true,
 --          glow = true (glow regardless of state),
 --          after = { state, start, duration } (state to switch to when a "buff" runs out,
@@ -24,14 +25,14 @@
 --          optional, count) | "missing"
 --
 -- cfg fields: shown, locked, clickThrough, vertical, iconSize, spacing, rowGap,
---   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha,
+--   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y }
 --
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 4
+local VERSION = 5
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -133,6 +134,7 @@ local function Paint(b, c)
         -- extras from another module bring their own look for "missing"
         alpha = i.missingAlpha or c.missingAlpha or 0.3
         if i.glowMissing ~= nil then glow = i.glowMissing else glow = c.glowMissing end
+    elseif state == "buff" then alpha = i.activeAlpha or c.activeAlpha or 1
     elseif state == "active" then glow = c.glowActive end
     if i.glow then glow = true end
     b:SetAlpha(alpha)

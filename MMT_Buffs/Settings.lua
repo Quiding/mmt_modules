@@ -55,6 +55,8 @@ M.Page = function(_, page)
     local gs, ss = Opt("scale")
     L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
     local gm, sm = Opt("missingAlpha")
+    local gac, sac = Opt("activeAlpha")
+    L:Slider("Active opacity", 0, 1, 0.05, gac, sac, "%.2f")
     L:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
     local gb, sb = Opt("bgAlpha")
     L:Slider("Background", 0, 1, 0.05, gb, sb, "%.2f")
@@ -63,14 +65,6 @@ M.Page = function(_, page)
     L:Slider("Timer size", 8, 28, 1, gts, sts)
     local gns, sns = Opt("nameSize")
     L:Slider("Name size", 8, 20, 1, gns, sns)
-    local half = (COL_W - 8) / 2
-    local test = UI.Button(page, half, "Test (10 s)", function() mod.Test() end)
-    L:Add(test, 0)
-    local reset = UI.Button(page, half, "Reset position", function()
-        M.db.point = { "CENTER", "CENTER", -200, 0 }
-        mod.Apply()
-    end)
-    reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
 
     -- right: tracked lists ---------------------------------------------
     local R = UI.Column(page, COL2_X, 0, COL_W)
@@ -94,7 +88,7 @@ M.Page = function(_, page)
         Changed()
     end
 
-    list = H.List(page, COL_W, 9, 22, function(parent, i)
+    list = H.List(page, COL_W, 7, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -126,7 +120,7 @@ M.Page = function(_, page)
         row.icon:SetTexture(mod.EntryIcon(e))
         row.name:SetText(mod.EntryName(e))
     end)
-    R:Add(list, 9 * 22 + 6)
+    R:Add(list, 7 * 22 + 6)
 
     local box
     local function Add()
@@ -195,6 +189,14 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
     R:Add(who, UI.ROW + 2)
 
+    local half = (COL_W - 8) / 2
+    local test = UI.Button(page, half, "Test (10 s)", function() mod.Test() end)
+    R:Add(test, UI.ROW + 2)
+    local reset = UI.Button(page, half, "Reset position", function()
+        M.db.point = { "CENTER", "CENTER", -200, 0 }
+        mod.Apply()
+    end)
+    reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
     status = H.StatusLine(page)
     status:SetWidth(COL_W)
     R:Add(status, 30)
