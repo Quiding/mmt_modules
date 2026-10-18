@@ -280,6 +280,7 @@ print("A:", A.eval(r"""function(m)
   end
   -- own: only learned totems
   m.SetSelected("Anna-Smith", "Earth", 0)
+  m.SetSelected("Bob-Stone", "Earth", 0)   -- the team preset step chose one for Bob
   assert(Menu("Anna-Smith", "Earth") == "0,8075", "own earth menu: " .. Menu("Anna-Smith", "Earth"))
   -- another shaman without a list yet: everything
   assert(Menu("Bob-Stone", "Earth") == "0,8075,8071", "no list yet: " .. Menu("Bob-Stone", "Earth"))
@@ -305,4 +306,4 @@ print("A:", A.eval(r"""function(m)
   m.UpdateSecure()
   assert(own.slots.Earth:GetAttribute("*macrotext1") == "/cast Stoneskin Totem", "learned totem not cast")
   return "learned totems ok"
-end"""))
+end""")(amod))

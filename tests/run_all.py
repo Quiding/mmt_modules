@@ -31,8 +31,10 @@ here = os.path.dirname(os.path.abspath(__file__))
 for t in sorted(glob.glob(os.path.join(here, "test_*.py"))):
     r = subprocess.run([sys.executable, t, root], capture_output=True, text=True)
     out = (r.stdout + r.stderr).strip().splitlines()
-    print(("PASS " if r.returncode == 0 else "FAIL ") + os.path.basename(t))
-    if r.returncode != 0:
+    # a check that was defined but never called prints "<Lua function ...>": that's a failure too
+    ok = r.returncode == 0 and not any("<Lua function" in l for l in out)
+    print(("PASS " if ok else "FAIL ") + os.path.basename(t))
+    if not ok:
         bad += 1
         print("\n".join(out[-6:]))
 sys.exit(1 if bad else 0)
