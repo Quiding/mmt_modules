@@ -71,7 +71,7 @@ M.Page = function(_, page)
 
     local RB = UI.Column(p, COL2_X, 0, COL_W)
     RB:Header("How the bars work")
-    RB:Note("One bar per shaman: the totem that is down with its time left, else the chosen one, else the last one used. Right-click a slot to choose a totem, left-click a slot on your own bar to cast it.")
+    RB:Note("One bar per shaman: the totem that is down with its time left, else the chosen one, else the last one used. Right-click a slot to choose a totem, left-click a slot on your own bar to cast it. Right-click the background for these settings.")
     RB:Note("Ungrouped: each bar moves on its own and gets the background and border itself. Size, colours and textures are on the Look tab.")
     RB:Header("Totem slots")
     Check(RB, "Hide without the totem item", "hideNoItem", "Hide an element when that shaman doesn't carry its totem (Earth / Fire / Water / Air Totem) in the bags.")

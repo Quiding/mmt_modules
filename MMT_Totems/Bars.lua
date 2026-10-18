@@ -105,6 +105,32 @@ local function Grip(parent, target, onStop)
 end
 
 container.grip = Grip(container, container, function(p) M.db.point = p end)
+
+-- the background / border: right-click opens the Totems settings, left-drag moves
+-- (like the Buffs / Cooldowns windows); the slot buttons keep their own clicks
+local function Background(frame, which)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    local moving
+    frame:SetScript("OnDragStart", function()
+        if M.db.locked or InCombatLockdown() then return end
+        moving = which() or container
+        moving:StartMoving()
+    end)
+    frame:SetScript("OnDragStop", function()
+        if not moving then return end
+        moving:StopMovingOrSizing()
+        local point, _, relPoint, x, y = moving:GetPoint()
+        local p = { point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5) }
+        if moving == container then M.db.point = p; container.placed = p
+        else M.db.barPoints[moving.key] = p end
+        moving = nil
+    end)
+    frame:SetScript("OnMouseUp", function(_, button)
+        if button == "RightButton" then MMT.ToggleConfig(M.name) end
+    end)
+end
+Background(container, function() return container end)
 container.grip:SetPoint("TOPRIGHT", container, "TOPLEFT", 0, 0)
 container.grip:SetPoint("BOTTOMRIGHT", container, "BOTTOMLEFT", 0, 0)
 
@@ -200,6 +226,8 @@ local function NewBar(key)
     bar.name:SetJustifyH("LEFT")
     bar.name:SetWordWrap(false)
     bar.grip = Grip(bar, bar, function(p) M.db.barPoints[key] = p end)
+    -- ungrouped: the bar moves itself, grouped: the whole frame
+    Background(bar, function() return M.db.ungrouped and bar or container end)
     bar.grip:SetPoint("TOPRIGHT", bar, "TOPLEFT", 0, 0)
     bar.grip:SetPoint("BOTTOMRIGHT", bar, "BOTTOMLEFT", 0, 0)
     bar.preset = TextButton(bar, "P", 1, 1, 1)

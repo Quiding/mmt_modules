@@ -119,6 +119,8 @@ function MMT.SplitUnit() return nil end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = msg end
 function MMT.SendAddon(msg, channel, target) WHISPERS[#WHISPERS + 1] = { msg = msg, to = target } end
 function MMT.Print() end
+OPENED = {}
+function MMT.ToggleConfig(k) OPENED[#OPENED + 1] = k end
 function MMT.RefreshConfig() end
 function MMT.ApplyFont(fs) fs._font = true end
 function MMT.Repr(s) return s end
@@ -447,4 +449,37 @@ print("A:", A.eval(r"""function(m)
   c.showNames = true
   m.Refresh()
   return "look like Buffs / Cooldowns ok"
+end""")(amod))
+
+print("A:", A.eval(r"""function(m)
+  local c = m.M.db
+  c.ungrouped, c.locked = false, false
+  m.Refresh()
+  OPENED = {}
+  -- right-click the frame background and a bar background: the Totems settings open
+  MMTTotemsFrame._OnMouseUp(MMTTotemsFrame, "RightButton")
+  local bar = m.bars["Bob-Stone"]
+  bar._OnMouseUp(bar, "RightButton")
+  assert(#OPENED == 2 and OPENED[1] == "Totems" and OPENED[2] == "Totems", "settings not opened: " .. #OPENED)
+  MMTTotemsFrame._OnMouseUp(MMTTotemsFrame, "LeftButton")
+  assert(#OPENED == 2, "left click opened the settings")
+  -- dragging a bar while grouped moves (and saves) the whole frame
+  bar._OnDragStart(bar)
+  bar._OnDragStop(bar)
+  assert(c.point[1] == "CENTER" and c.barPoints["Bob-Stone"] == nil, "grouped drag saved a bar position")
+  c.ungrouped = true
+  m.Refresh()
+  bar._OnDragStart(bar)
+  bar._OnDragStop(bar)
+  assert(c.barPoints["Bob-Stone"], "ungrouped drag did not save the bar")
+  -- locked: no moving
+  c.locked = true
+  c.barPoints["Bob-Stone"] = nil
+  bar._OnDragStart(bar)
+  bar._OnDragStop(bar)
+  assert(c.barPoints["Bob-Stone"] == nil, "moved while locked")
+  c.locked, c.ungrouped = false, false
+  c.barPoints = {}
+  m.Refresh()
+  return "right-click settings + drag ok"
 end""")(amod))
