@@ -74,7 +74,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   Remove the fix once the friend ships the patch.
 
-### MMT_Cooldowns (v0.5.2) / MMT_Buffs (v0.4.4) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.5.2) / MMT_Buffs (v0.4.5) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.

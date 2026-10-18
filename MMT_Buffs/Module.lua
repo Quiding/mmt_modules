@@ -28,7 +28,7 @@ local M = MMT.NewModule({
         point = { "CENTER", "CENTER", -200, 0 },
         hidden = {},
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows
-        allMissingLook = "RED",    -- missing buffs: PLAIN (faded) | RED | GREY (with missingAlpha)
+        allMissingLook = "RED",    -- missing buffs: PLAIN (normal icon) | RED | GREY, all at missingAlpha
         allExclude = {},           -- [teamKey] = true: not counted in the All classes row
         lists = mod.DEFAULT_LISTS,
     },

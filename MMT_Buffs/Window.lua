@@ -33,7 +33,7 @@ local function EntriesFor(key)
     return mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
 end
 
--- look of a buff icon (missing: faded / red / grey, glow; active: opacity),
+-- look of a buff icon (missing: normal / red / grey, glow; active: opacity),
 -- carried on the icon so it also holds on the Cooldowns bars
 local RED = { 1, 0.25, 0.25 }
 local function Look(i)

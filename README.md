@@ -26,10 +26,10 @@ addon and only lists our own module folders.
   is up (Berserking, Evasion, trinkets, ...) its icon glows with the buff's time left. Per-class
   lists, editable on the settings page, can be sent to the team. Import / export as a text
   string (choose: lists, look, position). `/mmtcd`, `/mmtcd test`, `/mmtcd export`.
-- **MMT_Buffs** (0.4.4): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
+- **MMT_Buffs** (0.4.5): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
   members have or miss the buffs tracked for their class (any rank, group versions like Prayer
   of Fortitude count too), with exact timers. Own window or
-  attached to the Cooldowns bars. Missing buffs show faded, red or grey (optionally glowing). An
+  attached to the Cooldowns bars. Missing buffs show as the normal icon, red or grey (optionally glowing), at their own opacity. An
   "All classes" row sums up the team-wide buffs: missing when anyone lacks one, otherwise the shortest time left; members can be left out of it.
   Import / export as a text string. `/mmtbf`, `/mmtbf test`, `/mmtbf export`.
 

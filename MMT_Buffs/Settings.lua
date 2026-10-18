@@ -49,10 +49,10 @@ M.Page = function(_, page)
     end)
     Check(L, "Show timers", "showTimers")
     L:Cycle("Missing buffs", {
-        { value = "PLAIN", text = "Faded" },
+        { value = "PLAIN", text = "Normal icon" },
         { value = "RED", text = "Red" },
         { value = "GREY", text = "Grey" },
-        { value = "PLAIN+", text = "Faded + glow" },
+        { value = "PLAIN+", text = "Normal icon + glow" },
         { value = "RED+", text = "Red + glow" },
         { value = "GREY+", text = "Grey + glow" },
     }, function()
