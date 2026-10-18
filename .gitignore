@@ -1,0 +1,8 @@
+# This repo lives directly in Interface/AddOns.
+# Ignore everything, then list only our own modules below.
+/*
+!/.gitignore
+!/README.md
+
+# --- our modules (add one line per new module) ---
+!/MMT_PawnCompare/

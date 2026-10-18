@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: MMT - Pawn Compare
+## Notes: MMT module: compare items for every team member using Pawn scales. (Early test version.)
+## Version: 0.0.1
+## Author: Quiding
+## X-License: GPL-3.0
+## Dependencies: MMT
+## OptionalDeps: Pawn
+## X-MMT-Module: 1
+## X-MMT-Title: Pawn Compare
+## IconTexture: Interface\Icons\INV_Misc_Spyglass_03
+
+Module.lua
