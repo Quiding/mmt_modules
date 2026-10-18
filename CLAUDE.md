@@ -101,6 +101,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Lists in `M.db.lists[key]`, key = class token | "ALL" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,
   `ValidListKey`). Cooldowns entry `{t="s"|"i", id, cd}`, Buffs `{id}`. Sync escapes list keys.
+- Only register events that exist on this client (e.g. NO `LEARNED_SPELL_IN_TAB`, NO
+  `COMBAT_LOG_EVENT_UNFILTERED`); `RegisterEvent` errors on unknown ones. Check another installed
+  addon (EllesmereUI) uses an event before relying on it.
 - Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
   font is set errors ("Font not set"). The test stub enforces this.
 - Settings pages are ~564 px high: check both columns still fit when adding widgets.
@@ -118,7 +121,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.1.3) – port of ema_totems
+### MMT_Totems (v0.1.4) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry

@@ -67,8 +67,7 @@ local function Queue()
     end)
 end
 
-M:On("SPELLS_CHANGED", Queue)
-M:On("LEARNED_SPELL_IN_TAB", Queue)
+M:On("SPELLS_CHANGED", Queue)   -- also fires when a spell is learned (LEARNED_SPELL_IN_TAB doesn't exist here)
 M:On("PLAYER_ENTERING_WORLD", function() lastSent = nil; Queue() end)
 
 local answered = {}
