@@ -9,3 +9,5 @@
 # --- our modules (add one line per new module) ---
 !/MMT_PawnCompare/
 !/MMT_BugFixes/
+!/MMT_Cooldowns/
+!/MMT_Buffs/
