@@ -31,6 +31,9 @@ local M = MMT.NewModule({
         showNames = true, fullNames = false, onlyTimers = false,
         showTimers = true, timerColor = { r = 1, g = 1, b = 1 },
         iconSize = 36, spacing = 4, rowGap = 4, scale = 1, alpha = 1, bgAlpha = 0.4,
+        hideNoItem = true,         -- hide an element whose totem item the shaman doesn't carry
+        hideUnlearned = true,      -- hide an element with no totem learned yet
+        hiddenElements = {},       -- [element] = true: always hidden
         inactiveAlpha = 0.4, nameSize = 11, timerSize = 16,
         bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,
         borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,

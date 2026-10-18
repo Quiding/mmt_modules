@@ -51,7 +51,8 @@ end
 function mod.SequenceMacro(key)
     local names = {}
     for _, element in ipairs(mod.ParseSequence(mod.Sequence(key))) do
-        local n = mod.CastTotem(key, element)
+        -- no totem item in the bags: the totem can't be dropped, it would stall the sequence
+        local n = mod.HasTotemItem(key, element) and mod.CastTotem(key, element)
         if n then names[#names + 1] = n end
     end
     if #names == 0 then return nil end

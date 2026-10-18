@@ -33,11 +33,12 @@ addon and only lists our own module folders.
   attached to the Cooldowns bars. Missing buffs show as the normal icon, red or grey (optionally glowing), at their own opacity. An
   "All classes" row sums up the team-wide buffs: missing when anyone lacks one, otherwise the shortest time left; members can be left out of it.
   Import / export as a text string. `/mmtbf`, `/mmtbf test`, `/mmtbf export`.
-- **MMT_Totems** (0.2.0): port of [EMA Totems](https://github.com/Quiding/ema_totems). A bar per
+- **MMT_Totems** (0.3.0): port of [EMA Totems](https://github.com/Quiding/ema_totems). A bar per
   shaman (Fire, Air, Water, Earth): active totem with timer, else the chosen / last one.
   Right-click a slot to choose a totem (only those that shaman has learned, for any shaman), left-click your own to cast it, a
   sequence button + key (`/castsequence`, spam-safe option), individual and team presets (P / TP),
-  grouped or ungrouped bars. Tabbed settings (Bars / Look / Casting & presets); background and
+  grouped or ungrouped bars. Slots hide when the shaman has no totem item for that element or no totem
+  of it learned yet (switchable, plus "always hide" per element). Tabbed settings (Bars / Look / Casting & presets); background and
   border textures and colours (LibSharedMedia, colour strength), a background per bar, font, timer colour.
   Each client sends one short message per totem change.
   `/mmtt`, `/mmtt test`, `/mmtt presets`, `/mmtt export`.

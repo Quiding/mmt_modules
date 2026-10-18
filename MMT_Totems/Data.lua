@@ -9,6 +9,8 @@ mod.ELEMENTS = { "Fire", "Air", "Water", "Earth" }
 -- GetTotemInfo() slot of each element
 mod.TOTEM_SLOT = { Fire = 1, Earth = 2, Water = 3, Air = 4 }
 mod.SLOT_ELEMENT = { "Fire", "Earth", "Water", "Air" }
+-- the item each element needs in the bags (Classic)
+mod.TOTEM_ITEM = { Earth = 5175, Fire = 5176, Water = 5177, Air = 5178 }
 
 mod.TOTEMS = {
     Fire  = { 3599, 8190, 1535, 8227, 8181, 30706, 2894 },

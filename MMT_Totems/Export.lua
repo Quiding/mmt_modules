@@ -10,7 +10,7 @@ local LOOK = { "shown", "locked", "ungrouped", "vertical", "includeSelf", "onlyO
     "showNames", "fullNames", "onlyTimers", "showTimers", "timerColor", "iconSize", "spacing", "rowGap",
     "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe",
     "showPresets", "showBarPresets", "showTeamPreset", "presetsOnHover", "presetSide",
-    "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
+    "hideNoItem", "hideUnlearned", "hiddenElements", "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
 local CHOICES = {
     order = { TEAM = true, NAME_ASC = true, NAME_DESC = true, ROLE = true },
     presetSide = { START = true, END = true },
@@ -32,6 +32,11 @@ local function SetLook(data)
             -- nil in the profile = game font, so the type can't be checked against it
             if type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
         elseif v ~= nil and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
+            if k == "hiddenElements" then
+                local clean = {}
+                for _, el in ipairs(mod.ELEMENTS) do if v[el] == true then clean[el] = true end end
+                v = clean
+            end
             if type(v) == "table" and k:find("Color$") then
                 v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
             end

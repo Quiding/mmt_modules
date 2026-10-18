@@ -234,7 +234,10 @@ local function LayoutBar(bar, pad)
     local hasPreset = c.showPresets and c.showBarPresets
     local items = {}
     if hasPreset and c.presetSide == "START" then items[#items + 1] = bar.preset end
-    for _, element in ipairs(mod.ELEMENTS) do items[#items + 1] = bar.slots[element] end
+    for _, element in ipairs(mod.ELEMENTS) do
+        local s = bar.slots[element]
+        if mod.SlotShown(bar.key, element) then items[#items + 1] = s else s:Hide() end
+    end
     if hasSeq then items[#items + 1] = seqBtn end
     if hasPreset and c.presetSide ~= "START" then items[#items + 1] = bar.preset end
     bar.preset:SetShown(hasPreset)

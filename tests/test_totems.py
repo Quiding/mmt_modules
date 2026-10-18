@@ -87,6 +87,9 @@ C_Spell = {
 KNOWN = { [3599] = true, [8190] = true, [5394] = true, [5675] = true, [8512] = true, [8835] = true, [8075] = true, [16190] = true }
 function IsPlayerSpell(id) return KNOWN[id] == true end
 WHISPERS = {}
+-- totem items in the bags (Earth 5175, Fire 5176, Water 5177, Air 5178)
+ITEMS = { [5175] = 1, [5176] = 1, [5177] = 1, [5178] = 1 }
+C_Item = { GetItemCount = function(id) return ITEMS[id] or 0 end }
 TOTEMS_UP = {}   -- [slot] = { name, start, dur }
 function GetTotemInfo(slot)
   local t = TOTEMS_UP[slot]
@@ -357,4 +360,59 @@ print("A:", A.eval(r"""function(m)
   assert(c.font == nil and c.bgColor.r == 0 and c.bgColor.g == 0.5 and c.bgColor.b == 0 and c.borderSize == 20, "import sanitizing")
   assert(look.set({ font = "Friz", rowColor = "red" }) and c.font == "Friz" and type(c.rowColor) == "table", "bad colour taken over")
   return "look ok"
+end""")(amod))
+
+print("A:", A.eval(r"""function(m)
+  local own = m.bars["Anna-Smith"]
+  local function Shown(bar) local t = {} for _, el in ipairs(m.ELEMENTS) do if bar.slots[el]:IsShown() then t[#t + 1] = el end end return table.concat(t, ",") end
+  m.Refresh()
+  assert(Shown(own) == "Fire,Air,Water,Earth", "own start: " .. Shown(own))
+  -- no Air Totem in the bags: Air goes, the team hears it once, the sequence skips Air
+  m.SetSelected("Anna-Smith", "Air", 8512)
+  m.SetSequence("Anna-Smith", "Air, Fire")
+  SENT = {}
+  ITEMS[5178] = nil
+  FIRE("BAG_UPDATE_DELAYED")
+  assert(Shown(own) == "Fire,Water,Earth", "air not hidden: " .. Shown(own))
+  local k = 0
+  for _, msg in ipairs(SENT) do if msg:find("^MTTK:") then k = k + 1; local items = msg:match(";(%a*)$") or "?"
+    assert(not items:find("A") and items:find("E") and items:find("F") and items:find("W"), "items part: " .. msg) end end
+  assert(k == 1, "MTTK sent " .. k .. " times")
+  local seq = MMTTotemsSequenceButton:GetAttribute("macrotext") or ""
+  assert(not seq:find("Windfury"), "sequence casts a totem without its item: " .. seq)
+  FIRE("BAG_UPDATE_DELAYED")
+  k = 0
+  for _, msg in ipairs(SENT) do if msg:find("^MTTK:") then k = k + 1 end end
+  assert(k == 1, "resent without a change")
+  -- in combat nothing moves; after combat the slot comes back
+  IN_COMBAT = true
+  ITEMS[5178] = 1
+  FIRE("BAG_UPDATE_DELAYED")
+  assert(Shown(own) == "Fire,Water,Earth", "layout changed in combat")
+  IN_COMBAT = false
+  FIRE("PLAYER_REGEN_ENABLED")
+  assert(Shown(own) == "Fire,Air,Water,Earth", "air not back after combat: " .. Shown(own))
+  -- another shaman: items from the message (Bob knows Searing + Strength of Earth, carries Earth + Fire)
+  local bob = m.bars["Bob-Stone"]
+  DELIVER("Bob-Stone", "MTTK:3599,8075;EF")
+  assert(Shown(bob) == "Fire,Earth", "bob with items: " .. Shown(bob))
+  -- an older client (no items part): only unlearned elements hide
+  DELIVER("Bob-Stone", "MTTK:3599,8075")
+  assert(Shown(bob) == "Fire,Earth", "bob old format: " .. Shown(bob))
+  DELIVER("Bob-Stone", "MTTK:3599,8075,5394,8512")
+  assert(Shown(bob) == "Fire,Air,Water,Earth", "bob old format, all learned: " .. Shown(bob))
+  -- switches
+  m.M.db.hideUnlearned = false
+  DELIVER("Bob-Stone", "MTTK:3599;F")
+  m.Refresh()
+  assert(Shown(bob) == "Fire", "only the item rule: " .. Shown(bob))
+  m.M.db.hideNoItem = false
+  m.Refresh()
+  assert(Shown(bob) == "Fire,Air,Water,Earth", "both rules off: " .. Shown(bob))
+  m.M.db.hiddenElements.Fire = true
+  m.Refresh()
+  assert(Shown(bob) == "Air,Water,Earth" and Shown(own) == "Air,Water,Earth", "always hide Fire")
+  m.M.db.hiddenElements.Fire = nil
+  m.M.db.hideNoItem, m.M.db.hideUnlearned = true, true
+  return "totem slots ok"
 end""")(amod))
