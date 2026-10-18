@@ -44,13 +44,20 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.0.1 – skeleton)
-- Files: `MMT_PawnCompare.toc`, `Module.lua`. `## OptionalDeps: Pawn` (Pawn is installed).
-- Has: settings page, chat line on login (toggle `greetOnLogin`), `/mmtpc` status,
-  `/mmtpc hello` team test (tags `PCMP_HI` / `PCMP_OK`), debug report line.
-- Message tag prefix for this module: `PCMP_`.
-- Next: real feature – compare a hovered item for every team member using Pawn scales.
-  Look at `MMT_ItemCompare` (friend's) for how team gear data is shared, and at Pawn's API.
+### MMT_PawnCompare (v0.1.0)
+- Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
+  `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
+  (adds lines to Item Compare's tips), `Settings.lua` (page + debug report).
+- `## OptionalDeps: Pawn, MMT_ItemCompare` (load order). Needs Item Compare active
+  (`MMT.ModuleActive("ItemCompare")`), warns in chat/page if it is off or Pawn is missing.
+- Integration without editing ItemCompare: `hooksecurefunc("CreateFrame")` catches the
+  `MMTCompareTip<n>` frames, `OnShow` adds the lines. Member = parsed from `tip.header.text`,
+  equipped item = `tip:GetItem()`, hovered item = GameTooltip's item.
+- Scores: Pawn's `PawnGetItemData(link).Stats` if Pawn is loaded, else `GetItemStats` mapped to
+  Pawn stat names (approximate). Value = sum(stat*weight), SpeedBaseline, unusable (-1000000),
+  normalization like Pawn. Sockets ignored. 2H vs off-hand only shows a note.
+- Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
+- Ideas: 2H vs MH+OH sum, ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
 ## Testing
 The user tests in game. Errors are caught by BugSack/!BugGrabber; ask the user to paste them.

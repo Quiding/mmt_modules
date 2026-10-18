@@ -1,102 +1,103 @@
--- MMT module: Pawn Compare (skeleton / test version).
+-- MMT module: Pawn Compare.
+-- Adds Pawn scores to the Item Compare tooltips: for every team member, the
+-- hovered item is scored with THEIR Pawn scales and compared against the
+-- item they have equipped in that slot.
 --
--- Uses only the documented MMT module API (see /mmt help > Writing modules
--- and Team communication), so core updates shouldn't break it.
+--   Scales.lua   reads this character's Pawn scales, syncs them with the team
+--                and keeps every member's scales in M.store (account-wide), so
+--                offline members and clients without Pawn can still compare.
+--   Score.lua    item stats (Pawn if loaded, else the game's item stats) and
+--                the scale value calculation.
+--   Tooltip.lua  adds the lines to Item Compare's tooltips.
+--   Settings.lua settings page and debug report.
 --
--- Test it:
---   1. /mmt  -> MODULES -> Pawn Compare should be listed with a settings page.
---   2. Press "Say hello to team" (or /mmtpc hello): every team client running
---      this module answers, and the answers are printed in chat.
---   3. /mmt debug dump contains a "Pawn Compare" section.
+-- Uses only the documented MMT module API. Message tags start with PCMP_.
 
 local _, mod = ...
 local MMT = MMT
 
--- message tags: unique prefix so we never clash with core/other modules
-local TAG_HELLO = "PCMP_HI"
-local TAG_REPLY = "PCMP_OK"
-
 local M = MMT.NewModule({
     name = "PawnCompare",
     title = "Pawn Compare",
-    description = "Compare items for every team member using Pawn scales (early test version).",
+    description = "Adds Pawn scores for every team member to the Item Compare tooltips. Needs Item Compare.",
     defaults = {
         greetOnLogin = true,
+        showInCompare = true,
+        allScales = true,     -- every visible scale of the member, or only the first
+        showPercent = true,
     },
 })
 mod.M = M
 
-local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_PawnCompare", "Version") or "?"
+mod.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_PawnCompare", "Version") or "?"
 
-local function PawnLoaded()
+function mod.PawnInstalled()
     local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
     return isLoaded and isLoaded("Pawn") and true or false
+end
+
+function mod.PawnReady()
+    return mod.PawnInstalled() and PawnIsReady and PawnIsReady() and true or false
+end
+
+function mod.ItemCompareActive()
+    return MMT.ModuleActive and MMT.ModuleActive("ItemCompare") or false
+end
+
+-- one line telling what is missing, or nil if everything is there
+function mod.Problems()
+    local p = {}
+    if not mod.ItemCompareActive() then p[#p + 1] = "Item Compare is not switched on (/mmt > MODULES), Pawn Compare needs it" end
+    if not mod.PawnInstalled() then p[#p + 1] = "Pawn is not installed on this character, using stored scales and approximate stats" end
+    return #p > 0 and table.concat(p, ". ") .. "." or nil
 end
 
 ---------------------------------------------------------------------------
 -- Lifecycle
 ---------------------------------------------------------------------------
+local ticker
+
 M.OnEnable = function()
-    if M.db.greetOnLogin then  -- always read M.db fresh (it changes with the profile)
-        MMT.Print("Pawn Compare %s loaded. Pawn %s.", VERSION, PawnLoaded() and "found" or "not found")
-    end
+    -- Pawn and the other modules need a moment after login
+    C_Timer.After(3, function()
+        if not M.enabled then return end
+        mod.UpdateOwn(true)
+        local problems = mod.Problems()
+        if problems then
+            MMT.Print("Pawn Compare: %s", problems)
+        elseif M.db.greetOnLogin then
+            MMT.Print("Pawn Compare %s ready, %d of your Pawn scales shared with the team.", mod.VERSION, mod.OwnScaleCount())
+        end
+    end)
+    -- Pawn has no event for edited scales, so check for changes now and then
+    if ticker then ticker:Cancel() end
+    ticker = C_Timer.NewTicker(20, function() if M.enabled then mod.UpdateOwn(true) end end)
     M:Debug("enabled")
 end
 
 M.OnDisable = function()
+    if ticker then ticker:Cancel() ticker = nil end
     M:Debug("disabled")
 end
 
 ---------------------------------------------------------------------------
--- Team test: hello / reply over the core's team communication
+-- Slash command
 ---------------------------------------------------------------------------
-function mod.SayHello()
-    MMT.SendToTeam(TAG_HELLO .. ":" .. VERSION, true)
-    MMT.Print("Pawn Compare: hello sent to the team, waiting for answers...")
-end
-
-M:Listen("TEAM_MESSAGE", function(key, sender, text)
-    local v = text:match("^" .. TAG_HELLO .. ":(.*)$")
-    if v then
-        MMT.SendAddon(TAG_REPLY .. ":" .. VERSION .. ":" .. (PawnLoaded() and "1" or "0"), "WHISPER", sender)
-        return
-    end
-    local rv, pawn = text:match("^" .. TAG_REPLY .. ":([^:]*):(%d)$")
-    if rv then
-        MMT.Print("Pawn Compare: %s answered (module %s, Pawn %s).",
-            MMT.FullDisplay(key), rv, pawn == "1" and "found" or "not found")
-    end
-end)
-
 SLASH_MMTPAWNCOMPARE1 = "/mmtpc"
 SlashCmdList.MMTPAWNCOMPARE = function(msg)
     msg = (msg or ""):lower()
     if not M.enabled then MMT.Print("Pawn Compare is switched off (/mmt modules).") return end
-    if msg == "hello" then
-        mod.SayHello()
+    if msg == "send" then
+        mod.UpdateOwn(false)
+        mod.SendScales()
+        MMT.Print("Pawn Compare: your scales were sent to the team.")
+    elseif msg == "request" then
+        mod.RequestAll()
+        MMT.Print("Pawn Compare: asked the online team for their scales.")
     else
-        MMT.Print("Pawn Compare %s - Pawn %s. /mmtpc hello = test team communication.",
-            VERSION, PawnLoaded() and "found" or "not found")
+        MMT.Print("Pawn Compare %s - Pawn %s, Item Compare %s. Stored scales for %d characters.",
+            mod.VERSION, mod.PawnInstalled() and "found" or "NOT installed",
+            mod.ItemCompareActive() and "on" or "OFF", mod.StoredCount())
+        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs.")
     end
-end
-
----------------------------------------------------------------------------
--- Settings page (MODULES > Pawn Compare in /mmt)
----------------------------------------------------------------------------
-M.Page = function(_, page)
-    local col = MMT.UI.Column(page, 0, 0, MMT.ConfigHelpers.COL_W)
-    col:Header("Pawn Compare")
-    col:Note("Early test version. Pawn: " .. (PawnLoaded() and "found." or "not found."))
-    col:Check("Message in chat on login",
-        function() return M.db.greetOnLogin end,
-        function(v) M.db.greetOnLogin = v end)
-    col:Button("Say hello to team", function() mod.SayHello() end)
-end
-
----------------------------------------------------------------------------
--- Debug report (/mmt debug dump)
----------------------------------------------------------------------------
-M.Report = function(_, add)
-    add(("Pawn Compare %s: enabled=%s pawn=%s greetOnLogin=%s"):format(
-        VERSION, tostring(M.enabled), tostring(PawnLoaded()), tostring(M.db.greetOnLogin)))
 end
