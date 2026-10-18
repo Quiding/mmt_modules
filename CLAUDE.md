@@ -116,10 +116,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.1.0) – port of ema_totems
+### MMT_Totems (v0.1.1) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
-  in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry.
+  in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
+  under its OWN header MMTTOTEMS (header "MMT" belongs to Item Compare; declaring it twice warns).
   Never re-apply bindings on UPDATE_BINDINGS (setting an override fires it: loop).
 - Totems: own `GetTotemInfo`; others `MTT:<slot>:<rem>/<dur>:<name>` / `MTT:<slot>:0` per change
   (PLAYER_TOTEM_UPDATE), + group `UNIT_SPELLCAST_SUCCEEDED`. Chosen totems `MTTS:<el>:<id>:<key>`,

@@ -11,7 +11,8 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-BINDING_HEADER_MMT = BINDING_HEADER_MMT or "MMT - Manage My Team"
+-- own binding group: "MMT" is Item Compare's, declaring it twice gives a LUA_WARNING
+BINDING_HEADER_MMTTOTEMS = "MMT - Totems"
 _G["BINDING_NAME_CLICK MMTTotemsSequenceButton:LeftButton"] = "Totem sequence (MMT Totems)"
 
 local seq = CreateFrame("Button", "MMTTotemsSequenceButton", UIParent, "SecureActionButtonTemplate")
