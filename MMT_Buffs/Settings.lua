@@ -67,7 +67,7 @@ M.Page = function(_, page)
     local R = UI.Column(page, COL2_X, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
     R:Header("Tracked buffs")
-    R:Note("Per class: the buffs a member of that class should have.")
+    R:Note("Per class: the buffs a member of that class should have. Any rank, and the group version (Prayer of Fortitude, Greater Blessings, ...) counts too.")
     local choices = {}
     for _, c in ipairs(mod.CLASSES) do
         local name = CLASS_NAMES[c] or (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[c]) or c
@@ -150,6 +150,7 @@ M.Page = function(_, page)
         mod.SendLists()
         status.Show_("Lists sent to the online team.")
     end)
+    R:Button("Import / Export...", function() mod.OpenTransfer() end)
     local def = H.ConfirmButton(page, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
         status.Show_("Lists reset.")

@@ -74,7 +74,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   Remove the fix once the friend ships the patch.
 
-### MMT_Cooldowns (v0.3.1) / MMT_Buffs (v0.2.1) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.4.0) / MMT_Buffs (v0.3.0) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -98,9 +98,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`cmp MMT_Cooldowns/IconBars.lua MMT_Buffs/IconBars.lua`);
   bump VERSION on change (now 3: row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+- Buffs: group buffs count as the single one (`GROUP` in Lists.lua: Prayer of Fortitude ->
+  Fortitude, Gift of the Wild, Arcane Brilliance, Prayers, Greater Blessings); `mod.Canonical(name)`
+  on every scanned buff and in `BuffName`; `EntryName` keeps the entry's own name.
 - Buffs "All classes" row (`allBar`, `allMissingLook`, `allExclude`): ALL-list buffs aggregated
   over the team, removed from member rows; stays in the Buffs window even when attached.
-- Combat-log names -> team keys: `MMT.Resolve(MMT.NameFromGUID(guid, name))`, cached per GUID.
+- Import/export: `Transfer.lua` = shared lib `MMTTransfer` (identical in both, newest VERSION
+  wins): own serializer + base64 + checksum, `PREFIX:sum:data` (MMTCD1 / MMTBF1), never
+  loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
+  Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
 ## Syntax check (no Lua installed)
 `pip install --target <scratch>/py luaparser`, then `ast.parse()` every `*.lua` of our modules.

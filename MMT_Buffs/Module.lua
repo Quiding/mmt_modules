@@ -64,10 +64,12 @@ SlashCmdList.MMTBUFFS = function(msg)
     elseif msg == "show" or msg == "hide" or msg == "" then
         M.db.shown = (msg == "show") or (msg == "" and not M.db.shown)
         mod.Apply()
+    elseif msg == "export" or msg == "import" then
+        mod.OpenTransfer()
     elseif msg == "lock" then
         M.db.locked = not M.db.locked
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test. Settings: /mmt > MODULES > Buffs.")
+        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf export. Settings: /mmt > MODULES > Buffs.")
     end
 end

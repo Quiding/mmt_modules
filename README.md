@@ -18,17 +18,19 @@ addon and only lists our own module folders.
   page, with a patch for the module's author in `MMT_BugFixes/patches/`:
   - Item Compare's team tooltips no longer cover the game's "Equipped" comparison tooltips
     (`patches/ItemCompare_overlap.patch`, apply with `git apply` in `Interface/AddOns`).
-- **MMT_Cooldowns** (0.3.1): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
+- **MMT_Cooldowns** (0.4.0): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
   One row per member with their important spells, trinkets and potions. Every client sends one
   short message when its character uses a tracked cooldown (exact remaining time), so members
   outside the group are tracked too; group members are also seen directly. While a spell's buff
   is up (Berserking, Evasion, trinkets, ...) its icon glows with the buff's time left. Per-class
-  lists, editable on the settings page, can be sent to the team. `/mmtcd`, `/mmtcd test`.
-- **MMT_Buffs** (0.2.1): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
-  members have or miss the buffs tracked for their class, with exact timers. Own window or
+  lists, editable on the settings page, can be sent to the team. Import / export as a text
+  string (choose: lists, look, position). `/mmtcd`, `/mmtcd test`, `/mmtcd export`.
+- **MMT_Buffs** (0.3.0): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
+  members have or miss the buffs tracked for their class (any rank, group versions like Prayer
+  of Fortitude count too), with exact timers. Own window or
   attached to the Cooldowns bars. An "All classes" row sums up the team-wide buffs: red (or grey)
   when anyone misses one, otherwise the shortest time left; members can be left out of it.
-  `/mmtbf`, `/mmtbf test`.
+  Import / export as a text string. `/mmtbf`, `/mmtbf test`, `/mmtbf export`.
 
 ## Install
 Copy the `MMT_*` folders from this repo next to the `MMT` folder in

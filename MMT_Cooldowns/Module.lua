@@ -62,10 +62,12 @@ SlashCmdList.MMTCOOLDOWNS = function(msg)
     elseif msg == "show" or msg == "hide" or msg == "" then
         M.db.shown = (msg == "show") or (msg == "" and not M.db.shown)
         mod.window:Refresh()
+    elseif msg == "export" or msg == "import" then
+        mod.OpenTransfer()
     elseif msg == "lock" then
         M.db.locked = not M.db.locked
         MMT.Print("Cooldowns window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtcd = show/hide, /mmtcd lock, /mmtcd test. Settings: /mmt > MODULES > Cooldowns.")
+        MMT.Print("/mmtcd = show/hide, /mmtcd lock, /mmtcd test, /mmtcd export. Settings: /mmt > MODULES > Cooldowns.")
     end
 end

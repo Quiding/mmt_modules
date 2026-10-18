@@ -1,0 +1,99 @@
+-- MMT Buffs: what can be exported / imported (Transfer.lua does the string
+-- and the dialog). Every value is checked before it is taken over.
+
+local _, mod = ...
+local MMT = MMT
+local M = mod.M
+
+local LOOK = { "shown", "attach", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
+    "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "nameSize", "showTimers",
+    "timerSize", "missingAlpha", "glowMissing" }
+local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { RED = true, GREY = true } }
+
+local CLASS = {}
+for _, c in ipairs(mod.CLASSES) do CLASS[c] = true end
+
+local function GetKeys(keys)
+    local t = {}
+    for _, k in ipairs(keys) do t[k] = M.db[k] end
+    return t
+end
+
+-- takes over values whose type (and, for choices, value) matches
+local function SetKeys(keys, data)
+    if type(data) ~= "table" then return false, "unreadable" end
+    local n = 0
+    for _, k in ipairs(keys) do
+        local v = data[k]
+        if v ~= nil and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
+            M.db[k] = v; n = n + 1
+        end
+    end
+    return n > 0, n == 0 and "no known settings" or nil
+end
+
+-- replaces the lists of the classes in the string, keeps the others
+local function SetLists(data)
+    if type(data) ~= "table" then return false, "unreadable" end
+    local n = 0
+    for class, list in pairs(data) do
+        if CLASS[class] and type(list) == "table" then
+            local clean = {}
+            for _, e in ipairs(list) do
+                if type(e) == "table" and type(e.id) == "number" then clean[#clean + 1] = { id = e.id } end
+            end
+            M.db.lists[class] = clean
+            n = n + 1
+        end
+    end
+    return n > 0, n == 0 and "no class lists" or nil
+end
+
+local ALLROW = { "allBar", "allMissingLook" }
+
+local function GetAllRow()
+    local t = GetKeys(ALLROW)
+    t.exclude = MMT.CopyTable(M.db.allExclude)
+    return t
+end
+
+local function SetAllRow(data)
+    if type(data) ~= "table" then return false, "unreadable" end
+    local ok = SetKeys(ALLROW, data)
+    if type(data.exclude) == "table" then
+        local ex = {}
+        for key, v in pairs(data.exclude) do
+            if type(key) == "string" and v == true then ex[key] = true end
+        end
+        M.db.allExclude = ex
+        ok = true
+    end
+    return ok, not ok and "no known settings" or nil
+end
+
+local function SetPosition(p)
+    if type(p) ~= "table" or type(p[1]) ~= "string" or type(p[2]) ~= "string"
+        or type(p[3]) ~= "number" or type(p[4]) ~= "number" then return false, "unreadable" end
+    M.db.point = { p[1], p[2], p[3], p[4] }
+    return true
+end
+
+function mod.OpenTransfer()
+    MMTTransfer.Open({
+        title = "Buffs",
+        prefix = "MMTBF1",
+        sections = {
+            { id = "lists", label = "Tracked buffs", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },
+            { id = "look", label = "Window & look", get = function() return GetKeys(LOOK) end,
+              set = function(d) return SetKeys(LOOK, d) end },
+            { id = "allrow", label = "All classes row", get = GetAllRow, set = SetAllRow },
+            { id = "position", label = "Position", get = function() return MMT.CopyTable(M.db.point) end,
+              set = SetPosition },
+        },
+        after = function()
+            mod.BuildIndex()
+            mod.ScanGroup()
+            mod.Apply()
+        end,
+    })
+end

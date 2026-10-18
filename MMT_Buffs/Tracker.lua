@@ -39,6 +39,7 @@ local function ScanUnit(unit)
         local name, _, count, duration, expiration = mod.Buff(unit, i)
         if name == "secret" then return end   -- hidden right now: keep what we had
         if not name then break end
+        name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
         if index[name] then
             local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
             t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }
