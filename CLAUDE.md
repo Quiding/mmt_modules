@@ -74,7 +74,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   Remove the fix once the friend ships the patch.
 
-### MMT_Cooldowns (v0.2.2) / MMT_Buffs (v0.1.2) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.2.2) / MMT_Buffs (v0.2.0) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -94,7 +94,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Lists in `M.db.lists[CLASS|ALL]`; Cooldowns entry `{t="s"|"i", id, cd}`, Buffs `{id}`.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`cmp MMT_Cooldowns/IconBars.lua MMT_Buffs/IconBars.lua`);
-  bump VERSION on change. Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 2: row `label`/`color`, icon `tint`/`desaturate`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+- Buffs "All classes" row (`allBar`, `allMissingLook`, `allExclude`): ALL-list buffs aggregated
+  over the team, removed from member rows; stays in the Buffs window even when attached.
 - Combat-log names -> team keys: `MMT.Resolve(MMT.NameFromGUID(guid, name))`, cached per GUID.
 
 ## Syntax check (no Lua installed)

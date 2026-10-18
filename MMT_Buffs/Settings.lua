@@ -151,11 +151,45 @@ M.Page = function(_, page)
         Changed()
     end)
     R:Add(def, UI.ROW + 2)
+
+    -- All classes row ----------------------------------------------------
+    R:Header("All classes row")
+    local gb2, sb2 = Opt("allBar")
+    R:Check("Show the All classes row", gb2, sb2, "One row for the \"All classes\" buffs of the whole team; they leave the members' own rows.")
+    local gl, sl = Opt("allMissingLook")
+    R:Cycle("Someone misses it", {
+        { value = "RED", text = "Red" },
+        { value = "GREY", text = "Grey" },
+    }, gl, sl)
+    local who
+    local function WhoText()
+        local n = 0
+        for _ in pairs(M.db.allExclude) do n = n + 1 end
+        return n == 0 and "Members: everyone" or ("Members: %d left out"):format(n)
+    end
+    who = UI.Button(page, COL_W, WhoText(), function(self)
+        local items = {}
+        for _, key in ipairs(MMT.SortedMembers()) do
+            local out = M.db.allExclude[key]
+            items[#items + 1] = { value = key, text = (out and "|cff888888[  ] " or "|cff55ff55[x] ") .. MMT.FullDisplay(key) .. "|r" }
+        end
+        UI.OpenList(self, items, nil, function(key)
+            M.db.allExclude[key] = (not M.db.allExclude[key]) or nil
+            who.label:SetText(WhoText())
+            mod.Apply()
+        end)
+    end)
+    UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
+    R:Add(who, UI.ROW + 2)
+
     status = H.StatusLine(page)
     status:SetWidth(COL_W)
     R:Add(status, 30)
 
-    page.OnRefresh = function() list:Render(M.db.lists[class] or {}) end
+    page.OnRefresh = function()
+        list:Render(M.db.lists[class] or {})
+        who.label:SetText(WhoText())
+    end
 end
 
 M.Report = function(_, add)

@@ -7,6 +7,7 @@
 --       name   = "MMTCooldowns",           -- global frame name, also the id for extras
 --       cfg    = function() return M.db end, -- layout settings, read fresh every time
 --       rows   = function() return rows end, -- { { key, icons = { icon, ... } }, ... }
+--                                            -- a row may have label (+ color {r,g,b}) instead of a key
 --       config = function() ... end,         -- right-click (open settings)
 --       active = function() return M.enabled end, -- optional: hidden while false
 --   }
@@ -14,7 +15,8 @@
 --   w:SetShown(on)
 --
 -- icon = { texture, state, start, duration, count, spell, item, tip,
---          missingAlpha, glowMissing (override the window's cfg for "missing") }
+--          missingAlpha, glowMissing (override the window's cfg for "missing"),
+--          tint = { r, g, b }, desaturate = true }
 --   state: "ready" | "cd" (start/duration) | "active" (glow) | "buff" (start/duration
 --          optional, count) | "missing"
 --
@@ -26,7 +28,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 1
+local VERSION = 2
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -133,6 +135,9 @@ end
 local function Setup(b, i, key, c)
     b.data, b.key = i, key
     b.tex:SetTexture(i.texture or 134400)
+    local t = i.tint
+    b.tex:SetVertexColor(t and t[1] or 1, t and t[2] or 1, t and t[3] or 1)
+    if b.tex.SetDesaturated then b.tex:SetDesaturated(i.desaturate and true or false) end
     local size = c.iconSize or 28
     b:SetSize(size, size)
     b.glow:SetSize(size * 1.8, size * 1.8)
@@ -246,15 +251,16 @@ function Window:Refresh()
     for i, r in ipairs(rows) do
         local row = self:Row(i)
         MMT.ApplyFont(row.name, nil, c.nameSize or 11, "OUTLINE")
-        row.name:SetText(MMT.FirstName(r.key))
-        row.name:SetTextColor(ClassColor(r.key))
+        row.name:SetText(r.label or MMT.FirstName(r.key))
+        if r.color then row.name:SetTextColor(r.color[1], r.color[2], r.color[3])
+        else row.name:SetTextColor(ClassColor(r.key)) end
         if c.showNames and not vertical then nameW = math.max(nameW, row.name:GetStringWidth() + 6) end
     end
 
     local x, y, maxW, maxH = PAD, -PAD, 0, 0
     for i, r in ipairs(rows) do
         local row = self:Row(i)
-        local icons = WithExtras(def.name, r.key, r.icons or {})
+        local icons = r.key and WithExtras(def.name, r.key, r.icons or {}) or (r.icons or {})
         for j, data in ipairs(icons) do
             local b = row.icons[j] or NewIcon(row)
             row.icons[j] = b

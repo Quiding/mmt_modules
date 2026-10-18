@@ -1,4 +1,10 @@
 -- MMT Buffs: own window, or icons on the Cooldowns window's rows.
+--
+-- "All classes" row (M.db.allBar): one icon per buff of the ALL list for the
+-- whole team (minus M.db.allExclude). Red or grey when anyone is missing it
+-- (tooltip says who), otherwise the shortest time left of all members. The
+-- ALL buffs are then left out of the members' own rows. When the buffs are
+-- attached to the Cooldowns bars, the Buffs window still shows this row.
 
 local _, mod = ...
 local MMT = MMT
@@ -27,7 +33,7 @@ local function EntriesFor(key)
     local class = m and m.class
     if MMT.IsSelf(key) then class = select(2, UnitClass("player")) end
     local out = {}
-    for _, c in ipairs({ class, "ALL" }) do
+    for _, c in ipairs({ class, (not M.db.allBar) and "ALL" or nil }) do
         for _, e in ipairs((c and M.db.lists[c]) or {}) do out[#out + 1] = e end
     end
     return out
@@ -46,12 +52,68 @@ local function Icons(key)
     return icons
 end
 
+---------------------------------------------------------------------------
+-- All classes row
+---------------------------------------------------------------------------
+-- members counted in the All classes row
+function mod.AllMembers()
+    local list = {}
+    for _, key in ipairs(mod.Members()) do
+        if not M.db.allExclude[key] then list[#list + 1] = key end
+    end
+    return list
+end
+
+local RED = { 1, 0.25, 0.25 }
+
+local function AllRow()
+    local cfg = M.db
+    local icons = {}
+    local members = mod.AllMembers()
+    for _, e in ipairs(cfg.lists.ALL or {}) do
+        local missingBy, noData = {}, 0
+        local minStart, minDur, minLeft
+        for _, key in ipairs(members) do
+            local state, start, dur = mod.State(key, e)
+            if state == nil then
+                noData = noData + 1
+            elseif state == "missing" then
+                missingBy[#missingBy + 1] = MMT.FirstName(key)
+            elseif start and dur then
+                local left = start + dur - GetTime()
+                if not minLeft or left < minLeft then minStart, minDur, minLeft = start, dur, left end
+            end
+        end
+        local i = { texture = mod.EntryIcon(e), spell = e.id }
+        if #missingBy > 0 or noData == #members then
+            i.state = "missing"
+            i.glowMissing = cfg.glowMissing
+            if cfg.allMissingLook == "RED" then
+                i.tint, i.missingAlpha = RED, 1
+            else
+                i.desaturate, i.missingAlpha = true, cfg.missingAlpha
+            end
+            i.count = #missingBy
+            i.tip = #missingBy > 0 and ("Missing: " .. table.concat(missingBy, ", ")) or "Nobody in your group to check."
+        else
+            i.state, i.start, i.duration = "buff", minStart, minDur
+            i.tip = "Everyone has it" .. (minLeft and ", shortest time left shown." or ".")
+        end
+        if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
+        icons[#icons + 1] = i
+    end
+    return { label = "All", color = { 1, 0.82, 0 }, icons = icons }
+end
+
 mod.window = MMTIconBars.NewWindow({
     name = "MMTBuffs",
     cfg = function() return M.db end,
     rows = function()
         local rows = {}
-        for _, key in ipairs(mod.Members()) do rows[#rows + 1] = { key = key, icons = Icons(key) } end
+        if M.db.allBar and #(M.db.lists.ALL or {}) > 0 then rows[1] = AllRow() end
+        if not mod.Attached() then
+            for _, key in ipairs(mod.Members()) do rows[#rows + 1] = { key = key, icons = Icons(key) } end
+        end
         return rows
     end,
     config = function() MMT.ToggleConfig(M.name) end,
@@ -76,7 +138,7 @@ end
 -- apply the attach setting and redraw
 function mod.Apply()
     if mod.Attached() then
-        mod.window:Hide()
+        mod.window:Refresh()   -- only the All classes row, if on
         MMTIconBars.SetExtra(CD_WINDOW, "buffs", function(key)
             if not (M.enabled and M.db.shown) then return nil end
             return Icons(key)
@@ -91,5 +153,6 @@ end
 M:Listen("REFRESH", function() mod.Apply() end)
 
 function mod.Redraw()
-    if mod.Attached() then MMTIconBars.Refresh(CD_WINDOW) else mod.window:Refresh() end
+    if mod.Attached() then MMTIconBars.Refresh(CD_WINDOW) end
+    mod.window:Refresh()
 end
