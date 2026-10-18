@@ -1,4 +1,6 @@
 -- MMT Cooldowns: settings page (MODULES > Cooldowns in /mmt) and debug report.
+-- Tabs: Bars (what is shown) / Look (sizes, text, background, border) /
+-- Spells & items (the tracked lists and sharing).
 
 local _, mod = ...
 local MMT = MMT
@@ -7,9 +9,11 @@ local UI = MMT.UI
 local H = MMT.ConfigHelpers
 local COL_W, COL2_X = H.COL_W, H.COL2_X
 
+local function Apply() mod.window:Refresh() end
+
 local function Opt(key)
     return function() return M.db[key] end,
-           function(v) M.db[key] = v; mod.window:Refresh() end
+           function(v) M.db[key] = v; Apply() end
 end
 
 -- checkbox for a setting (Opt can't be followed by more arguments)
@@ -19,9 +23,14 @@ local function Check(col, text, key, tip)
 end
 
 M.Page = function(_, page)
-    local status
-    -- left: window ------------------------------------------------------
-    local L = UI.Column(page, 0, 0, COL_W)
+    local status = H.StatusLine(page)
+    status:SetPoint("BOTTOMLEFT", 0, 0)
+    status:SetWidth(H.PAGE_W)
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" } })
+
+    -- Bars ------------------------------------------------------------------
+    local p = panels.bars
+    local L = UI.Column(p, 0, 0, COL_W)
     L:Header("Window")
     Check(L, "Show the window", "shown")
     Check(L, "Lock position", "locked")
@@ -39,45 +48,47 @@ M.Page = function(_, page)
     end, function(v)
         M.db.showNames = v ~= "OFF"
         M.db.fullNames = v == "FULL"
-        mod.window:Refresh()
+        Apply()
     end)
     Check(L, "Show timers", "showTimers")
-    Check(L, "Glow while waiting for the buff", "glowActive", "Nature's Swiftness, Presence of Mind, ...: their cooldown starts when the buff is used.")
-    Check(L, "Glow while the spell's buff is up", "showBuffs", "Berserking, Evasion, trinkets, ...: the icon glows with the buff's time left, then shows the cooldown.")
-    Check(L, "Hide cooldowns that are ready", "hideReady", "Icons only appear while on cooldown.")
-    Check(L, "Hide what you don't have", "hideUnknown", "Your own spells you haven't learned yet and items you don't carry.")
-    Check(L, "Others' items only after first use", "hideUnseenItems", "Trinkets and potions of other members show up once you have seen them used.")
-    L:Header("Look")
-    local gi, si = Opt("iconSize")
-    L:Slider("Icon size", 16, 48, 1, gi, si)
-    local gs, ss = Opt("scale")
-    L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
-    local gr, sr = Opt("readyAlpha")
-    L:Slider("Ready opacity", 0, 1, 0.05, gr, sr, "%.2f")
-    local gc, sc = Opt("cdAlpha")
-    L:Slider("On cooldown opacity", 0, 1, 0.05, gc, sc, "%.2f")
-    local gb, sb = Opt("bgAlpha")
-    L:Slider("Background", 0, 1, 0.05, gb, sb, "%.2f")
+    L:Space(6)
     local half = (COL_W - 8) / 2
-    local test = UI.Button(page, half, "Test (10 s)", function() mod.Test() end)
+    local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
     L:Add(test, 0)
-    local reset = UI.Button(page, half, "Reset position", function()
+    local reset = UI.Button(p, half, "Reset position", function()
         M.db.point = { "CENTER", "CENTER", 200, 0 }
-        mod.window:Refresh()
+        Apply()
     end)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
 
-    -- right: tracked lists ---------------------------------------------
-    local R = UI.Column(page, COL2_X, 0, COL_W)
+    local R = UI.Column(p, COL2_X, 0, COL_W)
+    R:Header("Icons")
+    Check(R, "Glow while waiting for the buff", "glowActive", "Nature's Swiftness, Presence of Mind, ...: their cooldown starts when the buff is used.")
+    Check(R, "Glow while the spell's buff is up", "showBuffs", "Berserking, Evasion, trinkets, ...: the icon glows with the buff's time left, then shows the cooldown.")
+    Check(R, "Hide cooldowns that are ready", "hideReady", "Icons only appear while on cooldown.")
+    Check(R, "Hide what you don't have", "hideUnknown", "Your own spells you haven't learned yet and items you don't carry.")
+    Check(R, "Others' items only after first use", "hideUnseenItems", "Trinkets and potions of other members show up once you have seen them used.")
+    R:Note("Each client sends one short message when its character uses a tracked cooldown (needs Cooldowns on that client too). Group members are also seen directly.")
+
+    -- Look ------------------------------------------------------------------
+    local LL = mod.LookTab(panels.look, Opt, Apply)
+    LL:Header("Opacity")
+    local gr, sr = Opt("readyAlpha")
+    LL:Slider("Ready", 0, 1, 0.05, gr, sr, "%.2f")
+    local gc, sc = Opt("cdAlpha")
+    LL:Slider("On cooldown", 0, 1, 0.05, gc, sc, "%.2f")
+
+    -- Spells & items ----------------------------------------------------------
+    local lp = panels.lists
+    local LS = UI.Column(lp, 0, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
-    R:Header("Tracked spells & items")
-    R:Note("Lists per class, MMT role or character: a member tracks all lists that fit.")
+    LS:Header("Tracked spells & items")
     local list
-    R:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
     local function Changed()
         mod.BuildIndex()
-        mod.window:Refresh()
+        Apply()
         list:Render(M.db.lists[class] or {})
     end
     local function Move(index, delta)
@@ -88,7 +99,7 @@ M.Page = function(_, page)
         Changed()
     end
 
-    list = H.List(page, COL_W, 7, 22, function(parent, i)
+    list = H.List(lp, COL_W, 14, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -124,7 +135,7 @@ M.Page = function(_, page)
         row.name:SetText(mod.EntryName(e))
         row.cd:SetText((e.cd or 0) .. "s")
     end)
-    R:Add(list, 7 * 22 + 6)
+    LS:Add(list, 14 * 22 + 6)
 
     -- add: name / ID / shift-click a spell or item, and the cooldown in seconds
     local box, secs
@@ -145,8 +156,8 @@ M.Page = function(_, page)
         local cd = t and mod.BaseCooldown(t, id)
         if cd and secs:GetText() == "" then secs:SetText(tostring(cd)); secs:UpdatePlaceholder() end
     end
-    box = UI.EditBox(page, COL_W - 112, "Name, ID or shift-click", function() Add() end)
-    secs = UI.EditBox(page, 50, "sec", function() Add() end)
+    box = UI.EditBox(lp, COL_W - 112, "Name, ID or shift-click", function() Add() end)
+    secs = UI.EditBox(lp, 50, "sec", function() Add() end)
     UI.AcceptItemLinks(box, Prefill)
     -- spell links (shift-click in the spellbook) go into the box too
     local function OnLink(link)
@@ -156,32 +167,26 @@ M.Page = function(_, page)
     end
     if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnLink) end
     box:HookScript("OnEditFocusLost", Prefill)
-    R:Add(box, 0)
+    LS:Add(box, 0)
     secs:SetPoint("LEFT", box, "RIGHT", 4, 0)
-    local add = UI.Button(page, 54, "Add", Add)
+    local add = UI.Button(lp, 54, "Add", Add)
     add:SetPoint("LEFT", secs, "RIGHT", 4, 0)
-    R:Space(UI.ROW + 4)
-    R:Note("Each client sends one short message when its character uses a tracked cooldown (needs Cooldowns on that client too). Group members are also seen directly.")
-    R:Button("Send lists to team", function()
+
+    local RS = UI.Column(lp, COL2_X, 0, COL_W)
+    RS:Header("How lists work")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them.")
+    RS:Header("Share")
+    RS:Button("Send lists to team", function()
         mod.SendLists()
         status.Show_("Lists sent to the online team.")
     end)
-    R:Button("Import / Export...", function() mod.OpenTransfer() end)
-    local def = H.ConfirmButton(page, COL_W, "Reset all lists to defaults", function()
+    RS:Button("Import / Export...", function() mod.OpenTransfer() end)
+    local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
         status.Show_("Lists reset.")
         Changed()
     end)
-    R:Add(def, UI.ROW + 2)
-    R:Space(2)
-    R:Header("Text")
-    local gts, sts = Opt("timerSize")
-    R:Slider("Timer size", 8, 28, 1, gts, sts)
-    local gns, sns = Opt("nameSize")
-    R:Slider("Name size", 8, 20, 1, gns, sns)
-    status = H.StatusLine(page)
-    status:SetWidth(COL_W)
-    R:Add(status, 30)
+    RS:Add(def, UI.ROW + 2)
 
     page.OnRefresh = function() list:Render(M.db.lists[class] or {}) end
 end

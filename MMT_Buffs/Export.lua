@@ -5,7 +5,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local LOOK = { "shown", "attach", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
+local LOOK = { "bgTexture", "bgColor", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "attach", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
     "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "allMissingLook" }
 local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { PLAIN = true, RED = true, GREY = true } }
@@ -22,7 +22,11 @@ local function SetKeys(keys, data)
     local n = 0
     for _, k in ipairs(keys) do
         local v = data[k]
-        if v ~= nil and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
+        if v ~= nil and k == "font" and type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
+        if type(v) == "table" and k:find("Color$") then
+            v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
+        end
+        if v ~= nil and k ~= "font" and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
             M.db[k] = v; n = n + 1
         end
     end

@@ -26,13 +26,15 @@
 --
 -- cfg fields: shown, locked, clickThrough, vertical, iconSize, spacing, rowGap,
 --   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
---   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y }
+--   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y },
+--   font (MMT font name), timerColor {r,g,b}, bgTexture / borderTexture (LibSharedMedia
+--   names, "FLAT" / "NONE"), bgColor, borderColor {r,g,b}, borderSize, rowColor, rowAlpha
 --
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 6
+local VERSION = 7
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -55,6 +57,38 @@ function lib.MemberName(key, full)
     if full then return MMT.FullDisplay(key) end
     return MMT.FirstName(key)
 end
+
+local FLAT = "Interface\\Buttons\\WHITE8X8"
+local BACKDROP = BackdropTemplateMixin and "BackdropTemplate" or nil
+
+-- LibSharedMedia texture (other addons bring it), nil for FLAT / NONE / unknown
+local function Media(kind, name)
+    if not name or name == "" or name == "FLAT" or name == "NONE" then return nil end
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    return LSM and LSM:Fetch(kind, name, true) or nil
+end
+
+-- background (+ border) of a frame; returns the inner padding the border needs
+local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize)
+    color = color or {}
+    local edge = Media("border", edgeName)
+    if not f.SetBackdrop then
+        f.bg:SetColorTexture(color.r or 0, color.g or 0, color.b or 0, alpha or 0)
+        return 0
+    end
+    if f.bg then f.bg:Hide() end
+    local size = edge and (edgeSize or 12) or nil
+    local inset = edge and math.floor(size / 4 + 0.5) or 0
+    f:SetBackdrop({ bgFile = Media("background", bgTex) or FLAT, edgeFile = edge, tile = false,
+        edgeSize = size, insets = { left = inset, right = inset, top = inset, bottom = inset } })
+    f:SetBackdropColor(color.r or 0, color.g or 0, color.b or 0, alpha or 0)
+    if edge then
+        edgeColor = edgeColor or {}
+        f:SetBackdropBorderColor(edgeColor.r or 1, edgeColor.g or 1, edgeColor.b or 1, 1)
+    end
+    return inset
+end
+lib.Media = Media
 
 local function FormatTime(t)
     if t >= 3600 then return ("%dh"):format(math.floor(t / 3600 + 0.5)) end
@@ -145,6 +179,8 @@ local function Paint(b, c)
     end
     if c.showTimers and rem and (state == "cd" or state == "buff") then
         b.timer:SetText(FormatTime(rem))
+        local tc = c.timerColor
+        if tc then b.timer:SetTextColor(tc.r or 1, tc.g or 1, tc.b or 1) end
         b.timer:Show()
     else
         b.timer:Hide()
@@ -161,8 +197,8 @@ local function Setup(b, i, key, c)
     b:SetSize(size, size)
     b.glow:SetSize(size * 1.8, size * 1.8)
     b.glow:SetVertexColor(i.state == "missing" and 1 or 0.3, i.state == "missing" and 0.2 or 0.9, i.state == "missing" and 0.2 or 1)
-    MMT.ApplyFont(b.timer, nil, c.timerSize or 13, "OUTLINE")
-    MMT.ApplyFont(b.count, nil, math.max(8, math.floor((c.timerSize or 13) * 0.8)), "OUTLINE")
+    MMT.ApplyFont(b.timer, c.font, c.timerSize or 13, "OUTLINE")
+    MMT.ApplyFont(b.count, c.font, math.max(8, math.floor((c.timerSize or 13) * 0.8)), "OUTLINE")
     b.count:SetText((i.count and i.count > 1) and i.count or "")
     if (i.state == "cd" or i.state == "buff") and Remaining(i) then
         b.cd:SetCooldown(i.start, i.duration)
@@ -183,7 +219,7 @@ Window.__index = Window
 
 function lib.NewWindow(def)
     local w = setmetatable({ def = def, rows = {} }, Window)
-    local f = CreateFrame("Frame", def.name, UIParent)
+    local f = CreateFrame("Frame", def.name, UIParent, BACKDROP)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
     f:SetMovable(true)
@@ -218,7 +254,9 @@ end
 function Window:Row(i)
     local row = self.rows[i]
     if row then return row end
-    row = CreateFrame("Frame", nil, self.frame)
+    row = CreateFrame("Frame", nil, self.frame, BACKDROP)
+    row.bg = row:CreateTexture(nil, "BACKGROUND")
+    row.bg:SetAllPoints()
     row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
@@ -262,14 +300,16 @@ function Window:Refresh()
     local size, gap = c.iconSize or 28, c.spacing or 2
     local rowGap, vertical = c.rowGap or 4, c.vertical
     local nameH = c.showNames and ((c.nameSize or 11) + 3) or 0
-    local PAD = 4
+    -- frame background / border first: the border decides the padding
+    local PAD = 4 + Skin(f, c.bgTexture, c.bgColor, c.bgAlpha or 0.4, c.borderTexture, c.borderColor, c.borderSize)
 
     -- name column width (horizontal layout: names left of the icons)
     local nameW = 0
     local used = 0
     for i, r in ipairs(rows) do
         local row = self:Row(i)
-        MMT.ApplyFont(row.name, nil, c.nameSize or 11, "OUTLINE")
+        MMT.ApplyFont(row.name, c.font, c.nameSize or 11, "OUTLINE")
+        Skin(row, c.bgTexture, c.rowColor, c.rowAlpha or 0)
         row.name:SetText(r.label or lib.MemberName(r.key, c.fullNames))
         if r.color then row.name:SetTextColor(r.color[1], r.color[2], r.color[3])
         else row.name:SetTextColor(ClassColor(r.key)) end
@@ -325,7 +365,6 @@ function Window:Refresh()
     if vertical then f:SetSize(x - rowGap + PAD, maxH + 2 * PAD)
     else f:SetSize(maxW + 2 * PAD, -y - rowGap + PAD) end
     f:SetScale(c.scale or 1)
-    f.bg:SetColorTexture(0, 0, 0, c.bgAlpha or 0.4)
     f:EnableMouse(not c.clickThrough)
     -- position only when it changed (profile switch, reset), never while dragging
     local p = c.point

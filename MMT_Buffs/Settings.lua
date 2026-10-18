@@ -1,4 +1,6 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
+-- Tabs: Bars (what is shown) / Look (sizes, text, background, border,
+-- missing buffs) / Buffs (the tracked lists, the All classes row, sharing).
 
 local _, mod = ...
 local MMT = MMT
@@ -7,9 +9,11 @@ local UI = MMT.UI
 local H = MMT.ConfigHelpers
 local COL_W, COL2_X = H.COL_W, H.COL2_X
 
+local function Apply() mod.Apply() end
+
 local function Opt(key)
     return function() return M.db[key] end,
-           function(v) M.db[key] = v; mod.Apply() end
+           function(v) M.db[key] = v; Apply() end
 end
 
 -- checkbox for a setting (Opt can't be followed by more arguments)
@@ -19,9 +23,14 @@ local function Check(col, text, key, tip)
 end
 
 M.Page = function(_, page)
-    local status
-    -- left: window ------------------------------------------------------
-    local L = UI.Column(page, 0, 0, COL_W)
+    local status = H.StatusLine(page)
+    status:SetPoint("BOTTOMLEFT", 0, 0)
+    status:SetWidth(H.PAGE_W)
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" } })
+
+    -- Bars ------------------------------------------------------------------
+    local p = panels.bars
+    local L = UI.Column(p, 0, 0, COL_W)
     L:Header("Window")
     Check(L, "Show the buffs", "shown")
     local ga, sa = Opt("attach")
@@ -45,10 +54,52 @@ M.Page = function(_, page)
     end, function(v)
         M.db.showNames = v ~= "OFF"
         M.db.fullNames = v == "FULL"
-        mod.Apply()
+        Apply()
     end)
     Check(L, "Show timers", "showTimers")
-    L:Cycle("Missing buffs", {
+    L:Space(6)
+    local half = (COL_W - 8) / 2
+    local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
+    L:Add(test, 0)
+    local reset = UI.Button(p, half, "Reset position", function()
+        M.db.point = { "CENTER", "CENTER", -200, 0 }
+        Apply()
+    end)
+    reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
+
+    local R = UI.Column(p, COL2_X, 0, COL_W)
+    R:Header("All classes buffs")
+    R:Cycle("Show them", {
+        { value = "ROW", text = "In one All row" },
+        { value = "MEMBERS", text = "In each member's row" },
+    }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
+       function(v) M.db.allBar = (v == "ROW"); Apply() end)
+    local who
+    local function WhoText()
+        local n = 0
+        for _ in pairs(M.db.allExclude) do n = n + 1 end
+        return n == 0 and "All row members: everyone" or ("All row members: %d left out"):format(n)
+    end
+    who = UI.Button(p, COL_W, WhoText(), function(self)
+        local items = {}
+        for _, key in ipairs(MMT.SortedMembers()) do
+            local out = M.db.allExclude[key]
+            items[#items + 1] = { value = key, text = (out and "|cff888888[  ] " or "|cff55ff55[x] ") .. MMT.FullDisplay(key) .. "|r" }
+        end
+        UI.OpenList(self, items, nil, function(key)
+            M.db.allExclude[key] = (not M.db.allExclude[key]) or nil
+            who.label:SetText(WhoText())
+            Apply()
+        end)
+    end)
+    UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
+    R:Add(who, UI.ROW + 2)
+    R:Note("The All row turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
+
+    -- Look ------------------------------------------------------------------
+    local LL = mod.LookTab(panels.look, Opt, Apply)
+    LL:Header("Buffs")
+    LL:Cycle("Missing buffs", {
         { value = "PLAIN", text = "Normal icon" },
         { value = "RED", text = "Red" },
         { value = "GREY", text = "Grey" },
@@ -60,37 +111,25 @@ M.Page = function(_, page)
     end, function(v)
         M.db.allMissingLook = v:gsub("%+$", "")
         M.db.glowMissing = v:find("+", 1, true) ~= nil
-        mod.Apply()
+        Apply()
     end)
-    L:Header("Look")
-    local gi, si = Opt("iconSize")
-    L:Slider("Icon size", 16, 48, 1, gi, si)
-    local gs, ss = Opt("scale")
-    L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
-    local gm, sm = Opt("missingAlpha")
     local gac, sac = Opt("activeAlpha")
-    L:Slider("Active opacity", 0, 1, 0.05, gac, sac, "%.2f")
-    L:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
-    local gb, sb = Opt("bgAlpha")
-    L:Slider("Background", 0, 1, 0.05, gb, sb, "%.2f")
-    L:Header("Text")
-    local gts, sts = Opt("timerSize")
-    L:Slider("Timer size", 8, 28, 1, gts, sts)
-    local gns, sns = Opt("nameSize")
-    L:Slider("Name size", 8, 20, 1, gns, sns)
+    LL:Slider("Active opacity", 0, 1, 0.05, gac, sac, "%.2f")
+    local gm, sm = Opt("missingAlpha")
+    LL:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
 
-    -- right: tracked lists ---------------------------------------------
-    local R = UI.Column(page, COL2_X, 0, COL_W)
+    -- Buffs (lists) -------------------------------------------------------------
+    local lp = panels.lists
+    local LS = UI.Column(lp, 0, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
-    R:Header("Tracked buffs")
-    R:Note("Lists per class, MMT role or character: a member tracks all lists that fit. Any rank and the group version (Prayer of Fortitude, ...) count.")
+    LS:Header("Tracked buffs")
     local list
-    R:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
     local function Changed()
         mod.BuildIndex()
         mod.ScanGroup()
-        mod.Apply()
+        Apply()
         list:Render(M.db.lists[class] or {})
     end
     local function Move(index, delta)
@@ -101,7 +140,7 @@ M.Page = function(_, page)
         Changed()
     end
 
-    list = H.List(page, COL_W, 7, 22, function(parent, i)
+    list = H.List(lp, COL_W, 14, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -133,7 +172,7 @@ M.Page = function(_, page)
         row.icon:SetTexture(mod.EntryIcon(e))
         row.name:SetText(mod.EntryName(e))
     end)
-    R:Add(list, 7 * 22 + 6)
+    LS:Add(list, 14 * 22 + 6)
 
     local box
     local function Add()
@@ -146,68 +185,32 @@ M.Page = function(_, page)
         status.Show_(("Added %s."):format(mod.EntryName({ id = id })))
         Changed()
     end
-    box = UI.EditBox(page, COL_W - 58, "Buff name, ID or shift-click", function() Add() end)
+    box = UI.EditBox(lp, COL_W - 58, "Buff name, ID or shift-click", function() Add() end)
     local function OnLink(link)
         if type(link) == "string" and link:find("|Hspell:", 1, true) and box:IsVisible() and box:HasFocus() then
             box:SetText(link); box:UpdatePlaceholder()
         end
     end
     if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnLink) end
-    R:Add(box, 0)
-    local add = UI.Button(page, 54, "Add", Add)
+    LS:Add(box, 0)
+    local add = UI.Button(lp, 54, "Add", Add)
     add:SetPoint("LEFT", box, "RIGHT", 4, 0)
-    R:Space(UI.ROW + 4)
-    R:Button("Send lists to team", function()
+
+    local RS = UI.Column(lp, COL2_X, 0, COL_W)
+    RS:Header("How lists work")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
+    RS:Header("Share")
+    RS:Button("Send lists to team", function()
         mod.SendLists()
         status.Show_("Lists sent to the online team.")
     end)
-    R:Button("Import / Export...", function() mod.OpenTransfer() end)
-    local def = H.ConfirmButton(page, COL_W, "Reset all lists to defaults", function()
+    RS:Button("Import / Export...", function() mod.OpenTransfer() end)
+    local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
         status.Show_("Lists reset.")
         Changed()
     end)
-    R:Add(def, UI.ROW + 2)
-
-    -- All classes row ----------------------------------------------------
-    R:Header("All classes buffs")
-    R:Cycle("Show them", {
-        { value = "ROW", text = "In one All row" },
-        { value = "MEMBERS", text = "In each member's row" },
-    }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
-       function(v) M.db.allBar = (v == "ROW"); mod.Apply() end)
-    local who
-    local function WhoText()
-        local n = 0
-        for _ in pairs(M.db.allExclude) do n = n + 1 end
-        return n == 0 and "Members: everyone" or ("Members: %d left out"):format(n)
-    end
-    who = UI.Button(page, COL_W, WhoText(), function(self)
-        local items = {}
-        for _, key in ipairs(MMT.SortedMembers()) do
-            local out = M.db.allExclude[key]
-            items[#items + 1] = { value = key, text = (out and "|cff888888[  ] " or "|cff55ff55[x] ") .. MMT.FullDisplay(key) .. "|r" }
-        end
-        UI.OpenList(self, items, nil, function(key)
-            M.db.allExclude[key] = (not M.db.allExclude[key]) or nil
-            who.label:SetText(WhoText())
-            mod.Apply()
-        end)
-    end)
-    UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
-    R:Add(who, UI.ROW + 2)
-
-    local half = (COL_W - 8) / 2
-    local test = UI.Button(page, half, "Test (10 s)", function() mod.Test() end)
-    R:Add(test, UI.ROW + 2)
-    local reset = UI.Button(page, half, "Reset position", function()
-        M.db.point = { "CENTER", "CENTER", -200, 0 }
-        mod.Apply()
-    end)
-    reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
-    status = H.StatusLine(page)
-    status:SetWidth(COL_W)
-    R:Add(status, 30)
+    RS:Add(def, UI.ROW + 2)
 
     page.OnRefresh = function()
         list:Render(M.db.lists[class] or {})

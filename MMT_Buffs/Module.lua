@@ -23,6 +23,9 @@ local M = MMT.NewModule({
         includeSelf = true, onlyOnline = true,
         attach = "OFF",            -- OFF: own window | LEFT / RIGHT: on the Cooldowns rows
         iconSize = 28, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
+        bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 },
+        borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,
+        rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0, timerColor = { r = 1, g = 1, b = 1 },
         showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         missingAlpha = 0.25, activeAlpha = 1, glowMissing = false,
         point = { "CENTER", "CENTER", -200, 0 },

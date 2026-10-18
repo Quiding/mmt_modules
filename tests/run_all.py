@@ -20,7 +20,7 @@ for d in ours:
             print("SYNTAX", f, str(e)[:200])
 print("syntax: %d failure(s)" % bad)
 
-shared = [("IconBars", ["MMT_Cooldowns", "MMT_Buffs"]), ("ListKeys", ["MMT_Cooldowns", "MMT_Buffs"]),
+shared = [("IconBars", ["MMT_Cooldowns", "MMT_Buffs"]), ("ListKeys", ["MMT_Cooldowns", "MMT_Buffs"]), ("SettingsKit", ["MMT_Cooldowns", "MMT_Buffs"]),
           ("Compat", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"]), ("Transfer", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"])]
 for name, dirs in shared:
     texts = {open(os.path.join(root, d, name + ".lua"), encoding="utf-8").read() for d in dirs}
