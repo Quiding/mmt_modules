@@ -65,26 +65,27 @@ local function AddLines(tip, key, hovered, equipped)
     local oldStats = equipped and mod.ItemStats(equipped)
     if equipped and not oldStats then tip:AddLine("Pawn: loading item...", 0.6, 0.6, 0.6) return end
 
+    -- score of the HOVERED item with this member's scales, against the item shown in this tip
     tip:AddLine(" ")
-    tip:AddLine(("Pawn for %s%s:"):format(name, exact and "" or " (approx., no Pawn here)"), 0.6, 0.6, 0.6)
+    tip:AddLine(("Pawn: hovered item for %s%s"):format(name, exact and "" or " (approx., no Pawn here)"), 0.6, 0.6, 0.6)
+    tip:AddLine(oldStats and "  equipped -> hovered" or "  nothing equipped -> hovered", 0.5, 0.5, 0.5)
     local cfg = M.db
     for i, scale in ipairs(rec.scales) do
         if i > 1 and not cfg.allScales then break end
         local new, unusable = mod.Value(newStats, scale)
         local label = "  " .. scale.name .. ": "
         if unusable then
-            tip:AddLine(label .. "can't use", 1, 0.35, 0.35)
+            tip:AddLine(label .. "can't use the hovered item", 1, 0.35, 0.35)
         elseif not oldStats then
-            tip:AddLine(label .. Fmt(new) .. "  (slot empty)", 0.3, 1, 0.3)
+            tip:AddLine(label .. Fmt(new) .. "  upgrade", 0.3, 1, 0.3)
         else
             local old = mod.Value(oldStats, scale)
             local d = new - old
-            local text = ("%s%s  (%s%s"):format(label, Fmt(new), d >= 0 and "+" or "", Fmt(d))
+            local text = ("%s%s -> %s  (%s%s"):format(label, Fmt(old), Fmt(new), d >= 0 and "+" or "", Fmt(d))
             if cfg.showPercent and old > 0 then text = text .. (", %+d%%"):format(math.floor(d / old * 100 + 0.5)) end
-            text = text .. ")"
-            if d > 0.05 then tip:AddLine(text, 0.3, 1, 0.3)
-            elseif d < -0.05 then tip:AddLine(text, 1, 0.35, 0.35)
-            else tip:AddLine(text, 0.8, 0.8, 0.8) end
+            if d > 0.05 then tip:AddLine(text .. ") upgrade", 0.3, 1, 0.3)
+            elseif d < -0.05 then tip:AddLine(text .. ") downgrade", 1, 0.35, 0.35)
+            else tip:AddLine(text .. ") same", 0.8, 0.8, 0.8) end
         end
     end
 end
@@ -107,8 +108,12 @@ local function OnShow(tip)
     end
 
     busy = true
-    if equipped and EquipLoc(hovered) == "INVTYPE_2HWEAPON" and OFFHAND_ONLY[EquipLoc(equipped) or ""] then
-        tip:AddLine("Pawn: two-hander, see the main hand", 0.6, 0.6, 0.6)
+    -- a two-hander is compared on the main hand; Item Compare names the slot in the header
+    local header = tip.header and tip.header.text and tip.header.text:GetText() or ""
+    local offHandTip = header:find("Off Hand", 1, true) or (equipped and OFFHAND_ONLY[EquipLoc(equipped) or ""])
+    if EquipLoc(hovered) == "INVTYPE_2HWEAPON" and offHandTip then
+        tip:AddLine(" ")
+        tip:AddLine("Pawn: two-hander, compared on the main hand", 0.6, 0.6, 0.6)
     else
         local ok, err = pcall(AddLines, tip, key, hovered, equipped)
         if not ok then M:Debug("tooltip error: %s", tostring(err)) end

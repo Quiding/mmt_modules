@@ -7,7 +7,7 @@ This repository lives directly in `Interface/AddOns`. The `.gitignore` ignores e
 addon and only lists our own module folders.
 
 ## Modules
-- **MMT_PawnCompare** (0.1.0): adds Pawn scores to the Item Compare tooltips. Each member's
+- **MMT_PawnCompare** (0.1.1): adds Pawn scores to the Item Compare tooltips. Each member's
   hovered-item score is calculated with *their* Pawn scales and compared against the item they
   have equipped. Needs MMT_ItemCompare switched on. Scales are synced between clients and stored,
   so offline members and clients without Pawn still work (stats are approximate without Pawn).
