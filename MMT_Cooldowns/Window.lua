@@ -21,16 +21,9 @@ function mod.Members()
     return list
 end
 
--- the entries tracked for a member: their class list, then ALL
+-- the entries tracked for a member: class, ALL, their roles, the character
 function mod.EntriesFor(key)
-    local m = MMT.db.team[key]
-    local class = m and m.class
-    if MMT.IsSelf(key) then class = select(2, UnitClass("player")) end
-    local out = {}
-    for _, c in ipairs({ class, "ALL" }) do
-        for _, e in ipairs((c and M.db.lists[c]) or {}) do out[#out + 1] = e end
-    end
-    return out
+    return mod.CollectEntries(key, true, mod.EntryKey)
 end
 
 local function Rows()

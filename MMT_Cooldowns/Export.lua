@@ -10,9 +10,6 @@ local LOOK = { "shown", "locked", "clickThrough", "vertical", "includeSelf", "on
     "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
     "hideUnseenItems", "showBuffs" }
 
-local CLASS = {}
-for _, c in ipairs(mod.CLASSES) do CLASS[c] = true end
-
 local function GetKeys(keys)
     local t = {}
     for _, k in ipairs(keys) do t[k] = M.db[k] end
@@ -30,12 +27,12 @@ local function SetKeys(keys, data)
     return n > 0, n == 0 and "no known settings" or nil
 end
 
--- replaces the lists of the classes in the string, keeps the others
+-- replaces the lists (class, role, character) in the string, keeps the others
 local function SetLists(data)
     if type(data) ~= "table" then return false, "unreadable" end
     local n = 0
     for class, list in pairs(data) do
-        if CLASS[class] and type(list) == "table" then
+        if mod.ValidListKey(class) and type(list) == "table" then
             local clean = {}
             for _, e in ipairs(list) do
                 if type(e) == "table" and (e.t == "s" or e.t == "i") and type(e.id) == "number"

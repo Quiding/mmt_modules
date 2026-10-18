@@ -7,8 +7,6 @@ local UI = MMT.UI
 local H = MMT.ConfigHelpers
 local COL_W, COL2_X = H.COL_W, H.COL2_X
 
-local CLASS_NAMES = { ALL = "All classes (trinkets, potions)" }
-
 local function Opt(key)
     return function() return M.db[key] end,
            function(v) M.db[key] = v; mod.window:Refresh() end
@@ -62,13 +60,9 @@ M.Page = function(_, page)
     local R = UI.Column(page, COL2_X, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
     R:Header("Tracked spells & items")
-    local choices = {}
-    for _, c in ipairs(mod.CLASSES) do
-        local name = CLASS_NAMES[c] or (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[c]) or c
-        choices[#choices + 1] = { value = c, text = name }
-    end
+    R:Note("Lists per class, MMT role or character: a member tracks all lists that fit.")
     local list
-    R:Cycle("Class", choices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    R:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
     local function Changed()
         mod.BuildIndex()
@@ -83,7 +77,7 @@ M.Page = function(_, page)
         Changed()
     end
 
-    list = H.List(page, COL_W, 9, 22, function(parent, i)
+    list = H.List(page, COL_W, 7, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -119,7 +113,7 @@ M.Page = function(_, page)
         row.name:SetText(mod.EntryName(e))
         row.cd:SetText((e.cd or 0) .. "s")
     end)
-    R:Add(list, 9 * 22 + 6)
+    R:Add(list, 7 * 22 + 6)
 
     -- add: name / ID / shift-click a spell or item, and the cooldown in seconds
     local box, secs

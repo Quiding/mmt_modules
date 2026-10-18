@@ -7,8 +7,6 @@ local UI = MMT.UI
 local H = MMT.ConfigHelpers
 local COL_W, COL2_X = H.COL_W, H.COL2_X
 
-local CLASS_NAMES = { ALL = "All classes" }
-
 local function Opt(key)
     return function() return M.db[key] end,
            function(v) M.db[key] = v; mod.Apply() end
@@ -67,14 +65,9 @@ M.Page = function(_, page)
     local R = UI.Column(page, COL2_X, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
     R:Header("Tracked buffs")
-    R:Note("Per class: the buffs a member of that class should have. Any rank, and the group version (Prayer of Fortitude, Greater Blessings, ...) counts too.")
-    local choices = {}
-    for _, c in ipairs(mod.CLASSES) do
-        local name = CLASS_NAMES[c] or (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[c]) or c
-        choices[#choices + 1] = { value = c, text = name }
-    end
+    R:Note("Lists per class, MMT role or character: a member tracks all lists that fit. Any rank and the group version (Prayer of Fortitude, ...) count.")
     local list
-    R:Cycle("Class", choices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    R:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
     local function Changed()
         mod.BuildIndex()

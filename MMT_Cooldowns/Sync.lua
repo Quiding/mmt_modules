@@ -10,24 +10,26 @@ local CHUNK = 200
 
 local function Encode(lists)
     local parts = {}
-    for _, class in ipairs(mod.CLASSES) do
+    for class in pairs(lists) do
         local items = {}
         for _, e in ipairs(lists[class] or {}) do
             items[#items + 1] = ("%s%d/%s"):format(e.t, e.id, tostring(e.cd or 0))
         end
-        parts[#parts + 1] = class .. "=" .. table.concat(items, ",")
+        local k = class:gsub("[^%w:]", function(c) return ("%%%02X"):format(c:byte()) end)
+        parts[#parts + 1] = k .. "=" .. table.concat(items, ",")
     end
     return table.concat(parts, "|")
 end
 
 local function Decode(data)
     local lists = {}
-    for class, items in data:gmatch("(%u+)=([^|]*)") do
+    for k, items in data:gmatch("([^=|]+)=([^|]*)") do
+        local class = k:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)
         local list = {}
         for t, id, cd in items:gmatch("([si])(%d+)/([%d%.]+)") do
             list[#list + 1] = { t = t, id = tonumber(id), cd = tonumber(cd) }
         end
-        lists[class] = list
+        if mod.ValidListKey(class) then lists[class] = list end
     end
     return lists
 end

@@ -28,15 +28,9 @@ function mod.Members()
     return list
 end
 
+-- class, ALL (unless the All classes row has them), their roles, the character
 local function EntriesFor(key)
-    local m = MMT.db.team[key]
-    local class = m and m.class
-    if MMT.IsSelf(key) then class = select(2, UnitClass("player")) end
-    local out = {}
-    for _, c in ipairs({ class, (not M.db.allBar) and "ALL" or nil }) do
-        for _, e in ipairs((c and M.db.lists[c]) or {}) do out[#out + 1] = e end
-    end
-    return out
+    return mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
 end
 
 -- icons of one member

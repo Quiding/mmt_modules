@@ -56,15 +56,9 @@ end
 M:Listen("TEAM_CHANGED", function() mod.Refresh() end)
 
 local function EntryForMember(key, name)
-    local list = index[name]
-    if not list then return nil end
-    local m = MMT.db.team[key]
-    local class = m and m.class
-    for _, e in ipairs(list) do
-        for _, c in ipairs({ class, "ALL" }) do
-            local l = c and M.db.lists[c]
-            if l then for _, x in ipairs(l) do if x == e then return e end end end
-        end
+    if not index[name] then return nil end
+    for _, e in ipairs(mod.EntriesFor(key)) do
+        if mod.CastName(e) == name then return e end
     end
 end
 
