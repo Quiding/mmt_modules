@@ -48,7 +48,18 @@ local function Fmt(v)
     return ("%.1f"):format(v)
 end
 
-local function AddLines(tip, key, hovered, equipped)
+-- off-hand item of a member: own from the game, others from Item Compare's stored
+-- equipment (read only: MMTDB.moduleData.ItemCompare.equipment[key].items[17] = item string)
+local function OffHandOf(key)
+    if MMT.IsSelf(key) then return GetInventoryItemLink("player", 17) end
+    local data = MMTDB and MMTDB.moduleData and MMTDB.moduleData.ItemCompare
+    local rec = data and data.equipment and data.equipment[key]
+    local s = rec and rec.items and rec.items[17]
+    return s and ("item:" .. s) or nil
+end
+
+-- offHand: the member's off-hand item when a two-hander is compared on the main hand
+local function AddLines(tip, key, hovered, equipped, offHand)
     local rec = mod.ScalesOf(key)
     local name = MMT.FirstName(key)
     if not rec or #rec.scales == 0 then
@@ -64,11 +75,15 @@ local function AddLines(tip, key, hovered, equipped)
     if not newStats then tip:AddLine("Pawn: loading item...", 0.6, 0.6, 0.6) return end
     local oldStats = equipped and mod.ItemStats(equipped)
     if equipped and not oldStats then tip:AddLine("Pawn: loading item...", 0.6, 0.6, 0.6) return end
+    local offStats = offHand and mod.ItemStats(offHand)
+    if offHand and not offStats then tip:AddLine("Pawn: loading item...", 0.6, 0.6, 0.6) return end
+    local hasOld = oldStats or offStats
 
     -- score of the HOVERED item with this member's scales, against the item shown in this tip
     tip:AddLine(" ")
     tip:AddLine(("Pawn: hovered item for %s%s"):format(name, exact and "" or " (approx., no Pawn here)"), 0.6, 0.6, 0.6)
-    tip:AddLine(oldStats and "  equipped -> hovered" or "  nothing equipped -> hovered", 0.5, 0.5, 0.5)
+    local what = offStats and "  main + off hand -> hovered" or "  equipped -> hovered"
+    tip:AddLine(hasOld and what or "  nothing equipped -> hovered", 0.5, 0.5, 0.5)
     local cfg = M.db
     for i, scale in ipairs(rec.scales) do
         if i > 1 and not cfg.allScales then break end
@@ -76,10 +91,10 @@ local function AddLines(tip, key, hovered, equipped)
         local label = "  " .. scale.name .. ": "
         if unusable then
             tip:AddLine(label .. "can't use the hovered item", 1, 0.35, 0.35)
-        elseif not oldStats then
+        elseif not hasOld then
             tip:AddLine(label .. Fmt(new) .. "  upgrade", 0.3, 1, 0.3)
         else
-            local old = mod.Value(oldStats, scale)
+            local old = (oldStats and mod.Value(oldStats, scale) or 0) + (offStats and mod.Value(offStats, scale) or 0)
             local d = new - old
             local text = ("%s%s -> %s  (%s%s"):format(label, Fmt(old), Fmt(new), d >= 0 and "+" or "", Fmt(d))
             if cfg.showPercent and old > 0 then text = text .. (", %+d%%"):format(math.floor(d / old * 100 + 0.5)) end
@@ -108,14 +123,19 @@ local function OnShow(tip)
     end
 
     busy = true
-    -- a two-hander is compared on the main hand; Item Compare names the slot in the header
+    -- a two-hander replaces both hands: on the main hand tip it is compared against
+    -- main + off hand together, the off-hand tip only points there.
+    -- Item Compare names the slot in the header.
     local header = tip.header and tip.header.text and tip.header.text:GetText() or ""
     local offHandTip = header:find("Off Hand", 1, true) or (equipped and OFFHAND_ONLY[EquipLoc(equipped) or ""])
-    if EquipLoc(hovered) == "INVTYPE_2HWEAPON" and offHandTip then
+    local twoHander = EquipLoc(hovered) == "INVTYPE_2HWEAPON"
+    if twoHander and offHandTip then
         tip:AddLine(" ")
         tip:AddLine("Pawn: two-hander, compared on the main hand", 0.6, 0.6, 0.6)
     else
-        local ok, err = pcall(AddLines, tip, key, hovered, equipped)
+        local offHand = twoHander and OffHandOf(key) or nil
+        if offHand and offHand == equipped then offHand = nil end
+        local ok, err = pcall(AddLines, tip, key, hovered, equipped, offHand)
         if not ok then M:Debug("tooltip error: %s", tostring(err)) end
     end
     tip:Show()   -- resize to the new lines (no second OnShow, it is already shown)
