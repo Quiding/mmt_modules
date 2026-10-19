@@ -172,6 +172,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
   (secure frames throw in combat) and runs two clients passing messages.
 
+### MMT_Whispers (v0.1.0) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
+- Files: `Module.lua` (defaults, `/mmtw`), `Forward.lua` (alts: CHAT_MSG_WHISPER / _INFORM / BN_WHISPER / BN_WHISPER_INFORM,
+  `mod.Receivers()` from `to` = LEADER | CHAR:<key> | ROLE:<role>, pass-on of the receiver's whispers,
+  `mod.recentSenders`), `Display.lua` (receiver: MWF assembly, `mod.Show`, `mod.SetReply`), `Settings.lua`.
+- Comm: `MWF:<id>:<part>:<total>:<kind>:<flags>:<name>:<text>` (kinds W I B b N, flag G = GM) by WHISPER to
+  online receivers only. Secret texts/names stay on the alt. Skipped whispers (`<...>`, ignore words) aren't
+  remembered as reply targets. `sync = true`, `syncExclude = { "chatFrame" }`.
+- Reply target: `ChatFrameUtil.SetLastTellTarget` (fallback `ChatEdit_SetLastTellTarget`), pcall; sending:
+  `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
+- Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
+
 ## Tests (no Lua installed: Python + lupa's Lua 5.1, the same Lua as WoW)
 `tests/run_all.py` (from Interface/AddOns): syntax of every module file, shared files identical,
 and every `tests/test_*.py` (stubbed WoW API; Totems runs two clients passing messages).

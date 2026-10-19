@@ -49,6 +49,15 @@ addon and only lists our own module folders.
   border textures and colours (LibSharedMedia, colour strength), a background per bar, font, timer colour.
   Each client sends one short message per totem change.
   `/mmtt`, `/mmtt test`, `/mmtt presets`, `/mmtt export`.
+- **MMT_Whispers** (0.1.0): inspired by the Talk module of [EMA](https://github.com/ebonyfaye/ema)
+  by EbonyFaye (written new, not copied). Whispers your alts get from players outside the team
+  show up in a chat window of the receiver (group leader, a chosen character or everyone with an
+  MMT role), with clickable names, timestamps and a sound; what the alts whisper back is shown
+  too. Answer through the alt: whisper it and it passes the text on to whoever last whispered it
+  (`@Name text` / `@First Last: text` picks someone else); R can reply through the alt or
+  straight to the sender. Optional Battle.net whispers (never real names); automatic answers
+  (`<DBM> ...`) and whispers with ignored words stay on the alt. Texts the game hides in combat
+  lockdown aren't forwarded. Settings sync through MMT's "Sync to team". `/mmtw`, `/mmtw test`.
 
 ## Install
 Copy the `MMT_*` folders from this repo next to the `MMT` folder in
