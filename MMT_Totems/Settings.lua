@@ -152,18 +152,57 @@ M.Page = function(_, page)
         if mod.IsShaman(own) and not MMT.db.team[own] then table.insert(t, 1, { value = own, text = MMT.FirstName(own) }) end
         return t
     end
-    local seqBox
+    -- the sequence as four buttons: "<>" between two swaps them,
+    -- right-click leaves an element out of the sequence (or takes it back)
+    local ShowSequence
     C:Cycle("Sequence of", Shamans, function() return seqKey end, function(v)
         seqKey = v
-        seqBox:SetText(mod.Sequence(v)); seqBox:UpdatePlaceholder()
+        ShowSequence()
     end)
-    seqBox = UI.EditBox(cp, COL_W, "Fire, Air, Water, Earth  (Enter)", function(text, box)
+    local SEQ_COLOR = { Fire = { 1, 0.45, 0.2 }, Air = { 0.6, 0.85, 1 }, Water = { 0.3, 0.6, 1 }, Earth = { 0.85, 0.65, 0.35 } }
+    local SW = 16
+    local EW = math.floor((COL_W - 3 * SW) / 4)
+    local seqRow = CreateFrame("Frame", nil, cp)
+    seqRow:SetSize(COL_W, UI.ROW)
+    local order, used = mod.SequenceOrder(mod.DEFAULT_SEQUENCE)
+    local function Save()
         if not seqKey then status.Show_("Choose a shaman first.", true) return end
-        mod.SetSequence(seqKey, text)
-        box:ClearFocus()
+        mod.SetSequence(seqKey, mod.SequenceText(order, used))
         status.Show_(("Sequence for %s: %s"):format(MMT.FirstName(seqKey), mod.Sequence(seqKey)))
-    end)
-    C:Add(seqBox, UI.ROW + 4)
+        ShowSequence()
+    end
+    local elButtons = {}
+    for i = 1, 4 do
+        local b = UI.Button(seqRow, EW, "", function(self, button)
+            local el = order[i]
+            if button == "RightButton" then
+                used[el] = not used[el] or nil
+                if not next(used) then used[el] = true; status.Show_("The sequence needs at least one element.", true) return end
+                Save()
+            end
+        end)
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        b:SetPoint("LEFT", (i - 1) * (EW + SW), 0)
+        UI.Tooltip(b, "Sequence", "Click <> to swap two elements. Right-click leaves an element out of the sequence (greyed) or takes it back.")
+        elButtons[i] = b
+        if i < 4 then
+            local swap = UI.TextButton(seqRow, "<>", function()
+                order[i], order[i + 1] = order[i + 1], order[i]
+                Save()
+            end, SW)
+            swap:SetPoint("LEFT", b, "RIGHT", 0, 0)
+        end
+    end
+    ShowSequence = function()
+        order, used = mod.SequenceOrder(seqKey and mod.Sequence(seqKey) or mod.DEFAULT_SEQUENCE)
+        for i, b in ipairs(elButtons) do
+            local el, c = order[i], SEQ_COLOR[order[i]]
+            b.label:SetText(el)
+            if used[el] then b.label:SetTextColor(c[1], c[2], c[3]) else b.label:SetTextColor(0.4, 0.4, 0.4) end
+        end
+    end
+    ShowSequence()
+    C:Add(seqRow, UI.ROW + 4)
 
     local R = UI.Column(cp, COL2_X, 0, COL_W)
     R:Header("Presets")
@@ -184,7 +223,7 @@ M.Page = function(_, page)
             local first = Shamans()[1]
             seqKey = first and first.value
         end
-        if seqKey and not seqBox:HasFocus() then seqBox:SetText(mod.Sequence(seqKey)); seqBox:UpdatePlaceholder() end
+        ShowSequence()
     end
 end
 

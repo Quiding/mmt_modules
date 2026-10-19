@@ -3,6 +3,7 @@
 ## Notes: MMT module: runtime fixes for other MMT modules until they are fixed upstream.
 ## Version: 0.1.1
 ## Author: Quiding
+## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## OptionalDeps: MMT_ItemCompare

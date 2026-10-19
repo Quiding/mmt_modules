@@ -74,6 +74,22 @@ function mod.ElementTotems(element, key, keep)
     return out
 end
 
+-- for the sequence editor: all four elements, the sequence's first, then the
+-- ones left out of it; used[element] = true for those in the sequence
+function mod.SequenceOrder(text)
+    local order, used = {}, {}
+    for _, el in ipairs(mod.ParseSequence(text)) do order[#order + 1] = el; used[el] = true end
+    for _, el in ipairs(mod.ELEMENTS) do if not used[el] then order[#order + 1] = el end end
+    return order, used
+end
+
+-- back to text: the used elements in order (all left out -> the default)
+function mod.SequenceText(order, used)
+    local t = {}
+    for _, el in ipairs(order) do if used[el] then t[#t + 1] = el end end
+    return #t > 0 and table.concat(t, ", ") or mod.DEFAULT_SEQUENCE
+end
+
 -- "Fire, Air, Water, Earth" -> { "Fire", "Air", ... } (unknown words skipped)
 function mod.ParseSequence(text)
     local out, seen = {}, {}

@@ -3,6 +3,7 @@
 ## Notes: MMT module: which team members have (or miss) the buffs you track. Port of EMA Buffs.
 ## Version: 0.7.0
 ## Author: Quiding
+## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## OptionalDeps: MMT_Cooldowns

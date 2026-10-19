@@ -248,6 +248,16 @@ print("B:", B.eval(r'''function(m)
   return "remote totems ok"
 end''')(bmod))
 print("A:", A.eval(r'''function(m)
+  -- sequence editor: order, swap, leave out
+  local order, used = m.SequenceOrder("Earth, Fire")
+  assert(table.concat(order, ",") == "Earth,Fire,Air,Water" and used.Earth and used.Fire and not used.Air, "order")
+  order[1], order[2] = order[2], order[1]
+  used.Water = true
+  assert(m.SequenceText(order, used) == "Fire, Earth, Water", m.SequenceText(order, used))
+  assert(m.SequenceText(order, {}) == m.DEFAULT_SEQUENCE, "empty sequence")
+  return "sequence editor ok"
+end''')(amod))
+print("A:", A.eval(r'''function(m)
   -- presets
   local ok, msg = m.SavePreset("Anna-Smith", "AoE")
   assert(ok, msg)

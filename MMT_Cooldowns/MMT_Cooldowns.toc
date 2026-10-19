@@ -3,6 +3,7 @@
 ## Notes: MMT module: team cooldown bars (spells, trinkets, potions). Port of EMA Cooldowns.
 ## Version: 0.8.0
 ## Author: Quiding
+## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## X-MMT-Module: 1
