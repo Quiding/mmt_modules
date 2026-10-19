@@ -41,7 +41,16 @@ M.Page = function(_, page)
     }, ga, sa)
     Check(L, "Lock position", "locked")
     Check(L, "Click-through", "clickThrough", "Mouse clicks go through the window (no tooltips, no dragging).")
-    Check(L, "Members side by side", "vertical", "Off: one row per member. On: one column per member.")
+    L:Cycle("Growth direction", {
+        { value = "DOWN", text = "Top > Down" },
+        { value = "UP", text = "Down > Top" },
+        { value = "RIGHT", text = "Left > Right" },
+        { value = "LEFT", text = "Right > Left" },
+    }, function() return MMTIconBars.Growth(M.db) end, function(v)
+        M.db.growth = v
+        M.db.vertical = (v == "RIGHT" or v == "LEFT")
+        Apply()
+    end)
     Check(L, "Include your own character", "includeSelf")
     Check(L, "Only online or grouped members", "onlyOnline")
     L:Cycle("Names", {
@@ -95,6 +104,18 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
     R:Add(who, UI.ROW + 2)
     R:Note("The All row turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
+    R:Header("Share")
+    local half2 = (COL_W - 8) / 2
+    local sendAll = UI.Button(p, half2, "Send to team", function()
+        mod.SendAll()
+        status.Show_("Everything sent; the team is asked before taking it over.")
+    end)
+    UI.Tooltip(sendAll, "Send to team", "Sends every setting of this module (bars, look, lists, window position) to the online team. Each client is asked first.")
+    R:Add(sendAll, 0)
+    local ie = UI.Button(p, half2, "Import / Export...", function() mod.OpenTransfer() end)
+    ie:SetPoint("LEFT", sendAll, "RIGHT", 8, 0)
+    R:Space(UI.ROW + 2)
+
 
     -- Look ------------------------------------------------------------------
     local LL = mod.LookTab(panels.look, Opt, Apply)
@@ -153,9 +174,16 @@ M.Page = function(_, page)
         row.down:SetPoint("RIGHT", row.del, "LEFT", -2, 0)
         row.up = UI.TextButton(row, "^", function() Move(row.index, -1) end, 16)
         row.up:SetPoint("RIGHT", row.down, "LEFT", -2, 0)
+        -- on / off: switched-off entries stay in the list but aren't tracked
+        row.toggle = UI.TextButton(row, "", function()
+            local e = M.db.lists[class][row.index]
+            if e then e.off = (not e.off) or nil; Changed() end
+        end, 26)
+        row.toggle:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
+        UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
         row.name = UI.Label(row, "")
         row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-        row.name:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
+        row.name:SetPoint("RIGHT", row.toggle, "LEFT", -4, 0)
         row.name:SetJustifyH("LEFT")
         row.name:SetWordWrap(false)
         row:EnableMouse(true)
@@ -171,6 +199,9 @@ M.Page = function(_, page)
         row.entry, row.index = e, index
         row.icon:SetTexture(mod.EntryIcon(e))
         row.name:SetText(mod.EntryName(e))
+        row.toggle.label:SetText(e.off and "|cff777777off|r" or "|cff55ff55on|r")
+        row.icon:SetDesaturated(e.off and true or false)
+        row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
     end)
     LS:Add(list, 14 * 22 + 6)
 
@@ -199,12 +230,14 @@ M.Page = function(_, page)
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
-    RS:Header("Share")
-    RS:Button("Send lists to team", function()
-        mod.SendLists()
-        status.Show_("Lists sent to the online team.")
+    RS:Button("Add preset entries", function()
+        local preset = mod.DEFAULT_LISTS[class]
+        if not preset then status.Show_("There is no preset for this list.", true) return end
+        local n = mod.AddPreset(class, preset, function(e) return e.id end)
+        status.Show_(n > 0 and ("Added %d preset entries."):format(n) or "This list already has every preset entry.")
+        Changed()
     end)
-    RS:Button("Import / Export...", function() mod.OpenTransfer() end)
+    RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
         status.Show_("Lists reset.")

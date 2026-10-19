@@ -24,7 +24,8 @@
 --   state: "ready" | "cd" (start/duration) | "active" (glow) | "buff" (start/duration
 --          optional, count) | "missing"
 --
--- cfg fields: shown, locked, clickThrough, vertical, iconSize, spacing, rowGap,
+-- cfg fields: shown, locked, clickThrough, growth ("DOWN" top > down, "UP" down > top,
+--   "RIGHT" left > right, "LEFT" right > left; older profiles: vertical), iconSize, spacing, rowGap,
 --   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y },
 --   font (MMT font name), timerColor {r,g,b}, bgTexture / borderTexture (LibSharedMedia
@@ -35,7 +36,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 9
+local VERSION = 10
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -97,6 +98,28 @@ local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize, tint)
     return inset
 end
 lib.Media = Media
+
+-- direction the members are added in; older profiles only have "vertical"
+function lib.Growth(c)
+    local g = c.growth
+    if g == "DOWN" or g == "UP" or g == "RIGHT" or g == "LEFT" then return g end
+    return c.vertical and "RIGHT" or "DOWN"
+end
+
+-- the frame is pinned at the edge it grows away from
+local ANCHOR = { DOWN = "TOPLEFT", RIGHT = "TOPLEFT", UP = "BOTTOMLEFT", LEFT = "TOPRIGHT" }
+lib.ANCHOR = ANCHOR
+
+-- where a frame is now, as { anchor, anchor, x, y } relative to the same corner of UIParent
+function lib.PointAt(f, anchor)
+    local l, r, t, b = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+    if not (l and r and t and b) then return nil end
+    local ratio = UIParent:GetEffectiveScale() / f:GetEffectiveScale()
+    local W, H = UIParent:GetRight() * ratio, UIParent:GetTop() * ratio
+    local x = anchor:find("RIGHT") and (r - W) or l
+    local y = anchor:find("BOTTOM") and b or (t - H)
+    return { anchor, anchor, math.floor(x + 0.5), math.floor(y + 0.5) }
+end
 
 local function FormatTime(t)
     if t >= 3600 then return ("%dh"):format(math.floor(t / 3600 + 0.5)) end
@@ -237,8 +260,14 @@ function lib.NewWindow(def)
     f:SetScript("OnDragStart", function(self) if not def.cfg().locked then self:StartMoving() end end)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
-        def.cfg().point = { point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5) }
+        local c = def.cfg()
+        local p = lib.PointAt(self, ANCHOR[lib.Growth(c)])
+        if not p then
+            local point, _, relPoint, x, y = self:GetPoint()
+            p = { point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5) }
+        end
+        c.point = p
+        w.placed = p
     end)
     f:SetScript("OnMouseUp", function(_, button) if button == "RightButton" and def.config then def.config() end end)
     f:Hide()
@@ -306,7 +335,14 @@ function Window:Refresh()
     local ok, rows = pcall(def.rows)
     if not ok then rows = {} end
     local size, gap = c.iconSize or 28, c.spacing or 2
-    local rowGap, vertical = c.rowGap or 4, c.vertical
+    local growth = lib.Growth(c)
+    local rowGap, vertical = c.rowGap or 4, (growth == "RIGHT" or growth == "LEFT")
+    -- down > top / right > left: the same layout, members in reverse order
+    if growth == "UP" or growth == "LEFT" then
+        local rev = {}
+        for i = #rows, 1, -1 do rev[#rev + 1] = rows[i] end
+        rows = rev
+    end
     local nameH = c.showNames and ((c.nameSize or 11) + 3) or 0
     -- frame background / border first: the border decides the padding
     local PAD = 4 + Skin(f, c.bgTexture, c.bgColor, c.bgAlpha or 0.4, c.borderTexture, c.borderColor, c.borderSize, c.bgTint)
@@ -373,12 +409,19 @@ function Window:Refresh()
     for i = used + 1, #self.rows do self.rows[i]:Hide() end
 
     if used == 0 then f:Hide() return end
+    -- the growth direction changed: keep the window where it is, pinned at the new edge
+    local anchor = ANCHOR[growth]
+    local p = c.point
+    if p and p[1] ~= anchor and f:IsShown() then
+        local np = lib.PointAt(f, anchor)
+        if np then c.point = np end
+    end
     if vertical then f:SetSize(x - rowGap + PAD, maxH + 2 * PAD)
     else f:SetSize(maxW + 2 * PAD, -y - rowGap + PAD) end
     f:SetScale(c.scale or 1)
     f:EnableMouse(not c.clickThrough)
-    -- position only when it changed (profile switch, reset), never while dragging
-    local p = c.point
+    -- position only when it changed (profile switch, reset, direction), never while dragging
+    p = c.point
     if p and p ~= self.placed then
         self.placed = p
         f:ClearAllPoints()

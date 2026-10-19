@@ -50,7 +50,7 @@ end
 ---------------------------------------------------------------------------
 -- Send everything (chosen totems, sequences, presets) to the team
 ---------------------------------------------------------------------------
-function mod.SendAll()
+function mod.SendTotemsOnly()
     local data = { selected = M.db.selected, sequences = M.db.sequences,
                    presets = M.db.presets, teamPresets = M.db.teamPresets }
     local payload = MMTTransfer.Encode("MTTP1", data)
@@ -118,7 +118,12 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if buf.got < buf.total then return end
     buffers[key] = nil
     local data = MMTTransfer.Decode("MTTP1", table.concat(buf.parts))
-    if data and mod.TakeOver(data) then
-        MMT.Print("Totems: chosen totems, sequences and presets received from %s.", MMT.FullDisplay(key))
-    end
+    if not data then return end
+    -- ask first (like MMT's own profile sync): presets would be replaced
+    MMT.UI.Confirm(("%s sent you their chosen totems, sequences and presets.\n\nTake them over? Your presets are replaced.")
+        :format(MMT.FullDisplay(key)), "Take them over", function()
+        if mod.TakeOver(data) then
+            MMT.Print("Totems: chosen totems, sequences and presets taken over from %s.", MMT.FullDisplay(key))
+        end
+    end, "Keep mine")
 end)

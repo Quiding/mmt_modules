@@ -5,7 +5,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
+local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
     "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
     "hideUnseenItems", "showBuffs" }
@@ -23,6 +23,12 @@ local function SetKeys(keys, data)
     for _, k in ipairs(keys) do
         local v = data[k]
         if v ~= nil and k == "font" and type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
+        if k == "growth" then
+            if v == "DOWN" or v == "UP" or v == "RIGHT" or v == "LEFT" then
+                M.db.growth, M.db.vertical = v, (v == "RIGHT" or v == "LEFT"); n = n + 1
+            end
+            v = nil
+        end
         if type(v) == "table" and k:find("Color$") then
             v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
         end
@@ -41,7 +47,7 @@ local function SetLists(data)
             for _, e in ipairs(list) do
                 if type(e) == "table" and (e.t == "s" or e.t == "i") and type(e.id) == "number"
                     and type(e.cd) == "number" and e.cd >= 0 then
-                    clean[#clean + 1] = { t = e.t, id = e.id, cd = e.cd }
+                    clean[#clean + 1] = { t = e.t, id = e.id, cd = e.cd, off = (e.off == true) or nil }
                 end
             end
             M.db.lists[class] = clean
@@ -58,8 +64,10 @@ local function SetPosition(p)
     return true
 end
 
-function mod.OpenTransfer()
-    MMTTransfer.Open({
+-- everything this module can export / send: the import / export dialog and
+-- "Send to team" (all sections, the team is asked before taking them over)
+function mod.TransferDef()
+    return {
         title = "Cooldowns",
         prefix = "MMTCD1",
         sections = {
@@ -72,6 +80,17 @@ function mod.OpenTransfer()
         after = function()
             mod.BuildIndex()
             mod.window:Refresh()
+            mod.ShareCheck()       -- our running cooldowns that just became tracked
+            mod.RequestRunning()   -- and the team's
         end,
-    })
+    }
 end
+
+function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
+
+function mod.SendAll() return MMTTransfer.SendAll("MCDA", mod.TransferDef()) end
+
+M:Listen("TEAM_MESSAGE", function(key, sender, text)
+    if MMT.IsSelf(key) then return end
+    MMTTransfer.Receive("MCDA", mod.TransferDef(), key, sender, text)
+end)

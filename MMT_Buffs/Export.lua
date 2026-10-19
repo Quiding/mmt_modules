@@ -5,7 +5,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "attach", "locked", "clickThrough", "vertical", "includeSelf", "onlyOnline",
+local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "attach", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
     "iconSize", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "allMissingLook" }
 local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { PLAIN = true, RED = true, GREY = true } }
@@ -23,6 +23,12 @@ local function SetKeys(keys, data)
     for _, k in ipairs(keys) do
         local v = data[k]
         if v ~= nil and k == "font" and type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
+        if k == "growth" then
+            if v == "DOWN" or v == "UP" or v == "RIGHT" or v == "LEFT" then
+                M.db.growth, M.db.vertical = v, (v == "RIGHT" or v == "LEFT"); n = n + 1
+            end
+            v = nil
+        end
         if type(v) == "table" and k:find("Color$") then
             v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
         end
@@ -41,7 +47,7 @@ local function SetLists(data)
         if mod.ValidListKey(class) and type(list) == "table" then
             local clean = {}
             for _, e in ipairs(list) do
-                if type(e) == "table" and type(e.id) == "number" then clean[#clean + 1] = { id = e.id } end
+                if type(e) == "table" and type(e.id) == "number" then clean[#clean + 1] = { id = e.id, off = (e.off == true) or nil } end
             end
             M.db.lists[class] = clean
             n = n + 1
@@ -79,8 +85,10 @@ local function SetPosition(p)
     return true
 end
 
-function mod.OpenTransfer()
-    MMTTransfer.Open({
+-- everything this module can export / send: the import / export dialog and
+-- "Send to team" (all sections, the team is asked before taking them over)
+function mod.TransferDef()
+    return {
         title = "Buffs",
         prefix = "MMTBF1",
         sections = {
@@ -96,5 +104,14 @@ function mod.OpenTransfer()
             mod.ScanGroup()
             mod.Apply()
         end,
-    })
+    }
 end
+
+function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
+
+function mod.SendAll() return MMTTransfer.SendAll("MBFA", mod.TransferDef()) end
+
+M:Listen("TEAM_MESSAGE", function(key, sender, text)
+    if MMT.IsSelf(key) then return end
+    MMTTransfer.Receive("MBFA", mod.TransferDef(), key, sender, text)
+end)

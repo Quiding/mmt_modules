@@ -35,7 +35,16 @@ M.Page = function(_, page)
     Check(L, "Show the totem bars", "shown")
     Check(L, "Lock position", "locked")
     Check(L, "Ungrouped bars (move each bar)", "ungrouped", "Each shaman's bar moves on its own, e.g. next to their unit frame.")
-    Check(L, "Vertical", "vertical", "Icons in a column instead of a row.")
+    L:Cycle("Growth direction", {
+        { value = "DOWN", text = "Top > Down" },
+        { value = "UP", text = "Down > Top" },
+        { value = "RIGHT", text = "Left > Right" },
+        { value = "LEFT", text = "Right > Left" },
+    }, function() return mod.Growth(M.db) end, function(v)
+        M.db.growth = v
+        M.db.vertical = (v == "RIGHT" or v == "LEFT")
+        mod.Refresh()
+    end)
     Check(L, "Include your own character", "includeSelf")
     Check(L, "Only online or grouped shamans", "onlyOnline")
     Check(L, "Only timers (no casting / choosing)", "onlyTimers", "Passive mode: the bars only show totems and timers.")
@@ -73,6 +82,17 @@ M.Page = function(_, page)
     RB:Header("How the bars work")
     RB:Note("One bar per shaman: the totem that is down with its time left, else the chosen one, else the last one used. Right-click a slot to choose a totem, left-click a slot on your own bar to cast it. Right-click the background for these settings.")
     RB:Note("Ungrouped: each bar moves on its own and gets the background and border itself. Size, colours and textures are on the Look tab.")
+    RB:Header("Share")
+    local half2 = (COL_W - 8) / 2
+    local sendAll = UI.Button(p, half2, "Send to team", function()
+        mod.SendAll()
+        status.Show_("Everything sent; the team is asked before taking it over.")
+    end)
+    UI.Tooltip(sendAll, "Send to team", "Sends every setting of this module (bars, look, chosen totems, sequences, presets, window position) to the online team. Each client is asked first.")
+    RB:Add(sendAll, 0)
+    local ie = UI.Button(p, half2, "Import / Export...", function() mod.OpenTransfer() end)
+    ie:SetPoint("LEFT", sendAll, "RIGHT", 8, 0)
+    RB:Space(UI.ROW + 2)
     RB:Header("Totem slots")
     Check(RB, "Hide without the totem item", "hideNoItem", "Hide an element when that shaman doesn't carry its totem (Earth / Fire / Water / Air Totem) in the bags.")
     Check(RB, "Hide with no totem learned", "hideUnlearned", "Hide an element when that shaman hasn't learned any of its totems yet.")
@@ -167,16 +187,6 @@ M.Page = function(_, page)
     }, Opt("presetSide"))
     R:Button("Manage presets...", function() mod.OpenPresets() end)
 
-    R:Header("Share")
-    local half2 = (COL_W - 8) / 2
-    local send = UI.Button(cp, half2, "Send to team", function()
-        mod.SendAll()
-        status.Show_("Chosen totems, sequences and presets sent.")
-    end)
-    UI.Tooltip(send, "Send to team", "Sends every shaman's chosen totems, sequences and all presets to the online team.")
-    R:Add(send, 0)
-    local ie = UI.Button(cp, half2, "Import / Export...", function() mod.OpenTransfer() end)
-    ie:SetPoint("LEFT", send, "RIGHT", 8, 0)
 
     page.OnRefresh = function()
         if not capturing then keyButton.label:SetText("Sequence key: " .. KeyText()) end

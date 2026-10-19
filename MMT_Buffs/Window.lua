@@ -76,6 +76,8 @@ local function AllRow()
     local icons = {}
     local members = mod.AllMembers()
     for _, e in ipairs(cfg.lists.ALL or {}) do
+        if e.off then e = nil end
+        if e then
         local missingBy, noData = {}, 0
         local minStart, minDur, minLeft
         for _, key in ipairs(members) do
@@ -100,6 +102,7 @@ local function AllRow()
         end
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
         icons[#icons + 1] = Look(i)
+        end
     end
     return { label = "All", color = { 1, 0.82, 0 }, icons = icons }
 end
@@ -109,7 +112,10 @@ mod.window = MMTIconBars.NewWindow({
     cfg = function() return M.db end,
     rows = function()
         local rows = {}
-        if M.db.allBar and #(M.db.lists.ALL or {}) > 0 then rows[1] = AllRow() end
+        if M.db.allBar then
+            local all = AllRow()
+            if #all.icons > 0 then rows[1] = all end
+        end
         if not mod.Attached() then
             for _, key in ipairs(mod.Members()) do rows[#rows + 1] = { key = key, icons = Icons(key) } end
         end

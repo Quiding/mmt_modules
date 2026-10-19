@@ -39,6 +39,12 @@ local M = MMT.NewModule({
 })
 mod.M = M
 
+-- tell the team our race (for the race lists); tiny, rides on MMT's heartbeat
+M:Heartbeat("race", function()
+    local _, race = UnitRace("player")
+    return race and race:gsub("[^%w]", "") or nil
+end)
+
 mod.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_Cooldowns", "Version") or "?"
 
 M.OnEnable = function()

@@ -55,7 +55,7 @@ end'''
 
 cd = new_mod(r'''function(m)
   m.CLASSES = {"WARRIOR","MAGE","ALL"}
-  m.M = { db = { shown=true, iconSize=28, scale=1, showBuffs=true, hideReady=false,
+  m.M = { Listen = function() end, db = { shown=true, iconSize=28, scale=1, showBuffs=true, hideReady=false,
                  lists = { WARRIOR = {{t="s",id=871,cd=1800}}, MAGE = {}, ALL = {} },
                  point = {"CENTER","CENTER",200,0} } }
   m.BuildIndex = function() end
@@ -67,7 +67,7 @@ print(lua.eval(TEST)(cd, 'MMTCD1', captured, True))
 
 bf = new_mod(r'''function(m)
   m.CLASSES = {"WARRIOR","MAGE","ALL"}
-  m.M = { db = { shown=true, attach="OFF", iconSize=28, missingAlpha=0.25, allBar=true, allMissingLook="RED",
+  m.M = { Listen = function() end, db = { shown=true, attach="OFF", iconSize=28, missingAlpha=0.25, allBar=true, allMissingLook="RED",
                  allExclude = { ["Alt-Realm"] = true },
                  lists = { WARRIOR = {{id=6673}}, MAGE = {{id=1459}}, ALL = {{id=1243}} },
                  point = {"CENTER","CENTER",-200,0} } }

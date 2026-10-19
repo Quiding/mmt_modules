@@ -22,6 +22,8 @@ function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
 function MMT.SendToTeam(msg) SENT[#SENT+1] = msg end
 function MMT.Print() end
 function MMT.RefreshConfig() end
+CONFIRMS = {}
+MMT.UI = { Confirm = function(text, acceptText, onAccept) CONFIRMS[#CONFIRMS + 1] = { text = text, accept = onAccept } end }
 C_Timer = { After = function(_, f) f() end }
 function UnitClass() return "Priest", "PRIEST" end
 ''')
@@ -45,7 +47,7 @@ for folder, entry_id, lists_src in [
                    'm.M = { db = { lists = lists }, Debug = function() end, '
                    'Listen = function(_, ev, fn) LISTENERS[ev] = fn end } return m end')(lua.eval(lists_src))
     lua.eval('function(m, id) m.EntryKey = id; m.BuffName = id; m.BuildIndex = function() end; '
-             'm.Refresh = function() end; m.ScanGroup = function() end end')(mod, lua.eval(entry_id))
+             'm.Refresh = function() end; m.ScanGroup = function() end; m.ShareCheck = function() end; m.RequestRunning = function() end end')(mod, lua.eval(entry_id))
     load('MMT_Cooldowns/ListKeys.lua', mod)
     load(folder + '/Sync.lua', mod)
     print(lua.eval(r'''function(m, idf, folder)
@@ -66,16 +68,40 @@ for folder, entry_id, lists_src in [
       local c = m.ListChoices()
       local values, headers = {}, 0
       for _, it in ipairs(c) do if it.header then headers = headers + 1 else values[#values+1] = it.value end end
-      assert(headers == 3, "headers " .. headers)
-      assert(table.concat(values, ",") == "WARRIOR,PRIEST,ALL,ROLE:Healer,ROLE:Raid Lead|x,ROLE:Tank,CHAR:Anna-Smith,CHAR:Bob-Stone", table.concat(values, ","))
-      -- send lists to team, receive on another client
+      assert(headers == 4, "headers " .. headers)
+      local races = "RACE:Human,RACE:Dwarf,RACE:NightElf,RACE:Gnome,RACE:Orc,RACE:Scourge,RACE:Tauren,RACE:Troll"
+      assert(table.concat(values, ",") == "WARRIOR,PRIEST,ALL," .. races .. ",ROLE:Healer,ROLE:Raid Lead|x,ROLE:Tank,CHAR:Anna-Smith,CHAR:Bob-Stone", table.concat(values, ","))
+      -- a member's race (from their heartbeat) adds their race list, remembered while offline
+      m.M.store = {}
+      MMT.status = { ["Bob-Stone"] = { ext = { race = "Troll" } } }
+      assert(table.concat(m.ListKeysFor("Bob-Stone", false), ",") == "WARRIOR,RACE:Troll,ROLE:Raid Lead|x,ROLE:Tank,CHAR:Bob-Stone", "race list missing")
+      MMT.status = {}
+      assert(table.concat(m.ListKeysFor("Bob-Stone", false), ",") == "WARRIOR,RACE:Troll,ROLE:Raid Lead|x,ROLE:Tank,CHAR:Bob-Stone", "race not remembered")
+      assert(m.ValidListKey("RACE:Troll") and not m.ValidListKey("RACE:") and not m.ValidListKey("RACE:a b"))
+      -- switched-off entries aren't tracked; a preset only adds what's missing
+      m.M.db.lists["RACE:Troll"] = { { t = "s", id = 777, cd = 1, off = true } }
+      local n = #m.CollectEntries("Bob-Stone", false, idf)
+      m.M.db.lists["RACE:Troll"][1].off = nil
+      assert(#m.CollectEntries("Bob-Stone", false, idf) == n + 1, "off entry tracked / on entry not tracked")
+      local added = m.AddPreset("RACE:Troll", { { t = "s", id = 777, cd = 1 }, { t = "s", id = 888, cd = 2, off = true } }, idf)
+      assert(added == 1 and #m.M.db.lists["RACE:Troll"] == 2 and m.M.db.lists["RACE:Troll"][2].off == true, "preset merge")
+      m.M.db.lists["RACE:Troll"] = nil
+      MMT.status = nil
+      -- send lists to team, receive on another client (one entry switched off: the flag travels)
+      m.M.db.lists.PRIEST[1].off = true
       local before = MMT.CopyTable(m.M.db.lists)
       SENT = {}
       m.SendLists()
       m.M.db.lists = { PRIEST = {} }
       MMT.IsSelf = function() return false end
+      CONFIRMS = {}
       for _, msg in ipairs(SENT) do LISTENERS.TEAM_MESSAGE("Bob-Stone", "Bob", msg) end
+      -- asked first: nothing changes until accepted
+      assert(#CONFIRMS == 1, "not asked before taking over the lists")
+      assert(#m.M.db.lists.PRIEST == 0, "lists replaced without asking")
+      CONFIRMS[1].accept()
       local after = m.M.db.lists
+      assert(after.PRIEST[1].off == true, "off flag lost")
       local function same(a, b)
         if type(a) ~= type(b) then return false end
         if type(a) ~= "table" then return a == b end

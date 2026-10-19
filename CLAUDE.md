@@ -78,7 +78,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
 
-### MMT_Cooldowns (v0.6.0) / MMT_Buffs (v0.5.0) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.7.0) / MMT_Buffs (v0.6.0) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -94,13 +94,19 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Exception agreed with the user: Cooldowns `Share.lua` sends ONE message per use of a tracked
   cooldown (`MCDU:<s|i><id>:<rem>/<dur>` or `:a` for after-buff spells), from own state changes
   on SPELL/BAG_UPDATE_COOLDOWN, + `:b<rem>/<dur>` for the buff the use gave. Never periodic.
+- Share.lua also sends `MCDU:<ek>:r` when an own cooldown becomes ready > 1.5 s early (Cold Snap,
+  Preparation); a newly tracked running cooldown is announced (lists changed: `mod.ShareCheck()`);
+  `MCDQ` = "send me your running cooldowns" (after taking over lists), answered by whisper.
 - `showBuffs`: a tracked spell/item's buff = buff with the SAME NAME as the cast on the user
   (player / group unit via `unitOf`, else the time from MCDU). Icon: state "buff" + glow,
   `after` = the cooldown.
   Comm is only "Send lists to team" (`MCDL` / `MBFL`, chunked).
-- Lists in `M.db.lists[key]`, key = class token | "ALL" | "ROLE:<MMT role>" | "CHAR:<team key>"
+- Lists in `M.db.lists[key]`, key = class token | "ALL" | "RACE:<race token>" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,
-  `ValidListKey`). Cooldowns entry `{t="s"|"i", id, cd}`, Buffs `{id}`. Sync escapes list keys.
+  `ValidListKey`, `RaceOf`, `AddPreset`). Cooldowns entry `{t="s"|"i", id, cd, off}`, Buffs `{id, off}`;
+  `off` = in the list but not tracked. Races: own `UnitRace`, others from the heartbeat `race=<token>`
+  (registered by Cooldowns only), cached in `M.store.races`. `DEFAULT_LISTS` = the presets
+  (Cooldowns: class extras + `RACE:*` racials all `off`). Sync / export carry `off` ("-" suffix).
 - Only register events that exist on this client (e.g. NO `LEARNED_SPELL_IN_TAB`, NO
   `COMBAT_LOG_EVENT_UNFILTERED`); `RegisterEvent` errors on unknown ones. Check another installed
   addon (EllesmereUI) uses an event before relying on it.
@@ -118,12 +124,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Buffs missing look `allMissingLook` (PLAIN/RED/GREY) + `glowMissing` apply to ALL buff icons
   (`Look()` in Window.lua). "All classes" row (`allBar`, `allExclude`): ALL-list buffs aggregated
   over the team, removed from member rows; stays in the Buffs window even when attached.
+- Growth direction `growth` (DOWN/UP/RIGHT/LEFT; older profiles: `vertical`): `MMTIconBars.Growth(c)`,
+  reversed member order for UP/LEFT, frame pinned at `ANCHOR[growth]` (`lib.PointAt`), also in Totems.
+- "Send to team" = `MMTTransfer.SendAll(tag, mod.TransferDef())` (MCDA / MBFA / MTTA): every export
+  section incl. position; `MMTTransfer.Receive` asks (`MMT.UI.Confirm`) before applying. The old
+  list-only MCDL / MBFL / MTTP are still received (also with a prompt).
 - Import/export: `Transfer.lua` = shared lib `MMTTransfer` (identical in both, newest VERSION
   wins): own serializer + base64 + checksum, `PREFIX:sum:data` (MMTCD1 / MMTBF1), never
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.3.3) – port of ema_totems
+### MMT_Totems (v0.4.0) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -153,7 +164,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 `tests/run_all.py` (from Interface/AddOns): syntax of every module file, shared files identical,
 and every `tests/test_*.py` (stubbed WoW API; Totems runs two clients passing messages).
 Setup: `pip install --target <scratch>/py lupa luaparser`, `PYTHONPATH=<scratch>/py`.
-Run it before every commit; add a test when fixing a bug.
+Run it before every commit; add a test when fixing a bug. It also lints `local a, b = x and f()`
+(keeps only f's first value: bit us twice).
 
 ## Testing
 The user tests in game. Errors are caught by BugSack/!BugGrabber; ask the user to paste them.

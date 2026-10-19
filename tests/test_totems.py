@@ -125,6 +125,8 @@ function MMT.RefreshConfig() end
 function MMT.ApplyFont(fs) fs._font = true end
 function MMT.Repr(s) return s end
 MMT.UI = setmetatable({}, { __index = function() return function() return CreateFrame("Frame") end end })
+CONFIRMS = {}
+MMT.UI.Confirm = function(text, acceptText, onAccept) CONFIRMS[#CONFIRMS + 1] = { text = text, accept = onAccept } end
 function UnitClass() return "Shaman", "SHAMAN" end
 MMT.ConfigHelpers = { COL_W = 248, COL2_X = 270, PAGE_W = 518 }
 function MMT.NewModule(def)
@@ -133,6 +135,8 @@ function MMT.NewModule(def)
   function M:On(ev, fn) EVENTS[ev] = EVENTS[ev] or {}; table.insert(EVENTS[ev], fn) end
   function M:Listen(ev, fn) LISTEN[ev] = LISTEN[ev] or {}; table.insert(LISTEN[ev], fn) end
   function M:Debug() end
+  HEARTBEATS = HEARTBEATS or {}
+  function M:Heartbeat(k, fn) HEARTBEATS[k] = fn end
   M.db = copy(def.defaults)
   M.store = {}
   return M
@@ -254,6 +258,10 @@ print("A:", A.eval(r'''function(m)
 end''')(amod))
 deliver("Anna-Smith", sent(A), B)
 print("B:", B.eval(r'''function(m)
+  -- asked first; nothing changes until accepted
+  assert(#CONFIRMS == 1 and CONFIRMS[1].text:find("Anna Smith"), "not asked before taking over")
+  assert(not (m.M.db.presets["Anna-Smith"] and m.M.db.presets["Anna-Smith"].AoE), "taken over without asking")
+  CONFIRMS[1].accept()
   assert(m.M.db.presets["Anna-Smith"] and m.M.db.presets["Anna-Smith"].AoE, "presets not received")
   assert(m.M.db.teamPresets.Raid and m.M.db.teamPresets.Raid.members["Bob-Stone"].totems.Earth == 8075, "team preset not received")
   -- import / export round trip
@@ -482,4 +490,53 @@ print("A:", A.eval(r"""function(m)
   c.barPoints = {}
   m.Refresh()
   return "right-click settings + drag ok"
+end""")(amod))
+
+# --- growth direction: shared bars (IconBars) and the totem frame ---------------
+A.eval('function(src) assert(loadstring(src, "IconBars.lua"))() end')(open('MMT_Cooldowns/IconBars.lua', encoding='utf-8').read())
+print("A:", A.eval(r"""function(m)
+  local cfg = { shown = true, iconSize = 20, spacing = 0, rowGap = 0, showNames = false, point = { "CENTER", "CENTER", 0, 0 } }
+  local w = MMTIconBars.NewWindow({ name = "TestBars", cfg = function() return cfg end,
+    rows = function() return { { key = "Anna-Smith", icons = { { state = "ready" } } }, { key = "Bob-Stone", icons = { { state = "ready" } } } } end })
+  local function Y(i) return w.rows[i]._pt[3] end
+  local function X(i) return w.rows[i]._pt[2] end
+  local function Name(i) return w.rows[i].icons[1].key end
+  w:Refresh()
+  assert(Name(1) == "Anna-Smith" and Y(1) > Y(2), "top > down: first member on top")
+  cfg.growth = "UP"; w:Refresh()
+  assert(Name(1) == "Bob-Stone" and Name(2) == "Anna-Smith" and Y(2) < Y(1), "down > top: first member at the bottom")
+  cfg.growth = "RIGHT"; w:Refresh()
+  assert(Name(1) == "Anna-Smith" and X(2) > X(1), "left > right")
+  cfg.growth = "LEFT"; w:Refresh()
+  assert(Name(1) == "Bob-Stone" and Name(2) == "Anna-Smith", "right > left")
+  -- older profile without growth: vertical decides
+  cfg.growth = nil; cfg.vertical = true
+  assert(MMTIconBars.Growth(cfg) == "RIGHT")
+  cfg.vertical = false
+  assert(MMTIconBars.Growth(cfg) == "DOWN")
+  -- pinned at the edge it grows away from: a frame at left 100, right 300, top 500, bottom 400
+  -- on a 1000 x 800 screen, same scales
+  local f = { GetLeft = function() return 100 end, GetRight = function() return 300 end,
+              GetTop = function() return 500 end, GetBottom = function() return 400 end,
+              GetEffectiveScale = function() return 1 end }
+  UIParent.GetEffectiveScale = function() return 1 end
+  UIParent.GetRight = function() return 1000 end
+  UIParent.GetTop = function() return 800 end
+  local p = MMTIconBars.PointAt(f, "BOTTOMLEFT")
+  assert(p[1] == "BOTTOMLEFT" and p[3] == 100 and p[4] == 400, "bottom-left point")
+  p = MMTIconBars.PointAt(f, "TOPRIGHT")
+  assert(p[1] == "TOPRIGHT" and p[3] == -700 and p[4] == -300, "top-right point")
+  p = MMTIconBars.PointAt(f, "TOPLEFT")
+  assert(p[3] == 100 and p[4] == -300, "top-left point")
+  -- totems: grouped frame in reverse order too
+  local c = m.M.db
+  c.ungrouped, c.showNames, c.showPresets = false, false, false
+  c.growth = "UP"; m.Refresh()
+  local a, b = m.bars["Anna-Smith"], m.bars["Bob-Stone"]
+  assert(a._pt[3] < b._pt[3], "totems down > top: first shaman not at the bottom")
+  c.growth = "DOWN"; m.Refresh()
+  assert(a._pt[3] > b._pt[3], "totems top > down")
+  c.showNames, c.showPresets = true, true
+  m.Refresh()
+  return "growth direction ok"
 end""")(amod))

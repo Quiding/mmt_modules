@@ -67,6 +67,27 @@ container.bg:SetAllPoints()
 container:Hide()
 mod.container = container
 
+-- growth direction of the grouped frame (as in the Buffs / Cooldowns bars);
+-- older profiles only have "vertical"
+local function Growth(c)
+    local g = c.growth
+    if g == "DOWN" or g == "UP" or g == "RIGHT" or g == "LEFT" then return g end
+    return c.vertical and "RIGHT" or "DOWN"
+end
+mod.Growth = Growth
+local ANCHOR = { DOWN = "TOPLEFT", RIGHT = "TOPLEFT", UP = "BOTTOMLEFT", LEFT = "TOPRIGHT" }
+
+-- where a frame is now, as { anchor, anchor, x, y } relative to the same corner of UIParent
+local function PointAt(f, anchor)
+    local l, r, t, b = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+    if not (l and r and t and b) then return nil end
+    local ratio = UIParent:GetEffectiveScale() / f:GetEffectiveScale()
+    local W, H = UIParent:GetRight() * ratio, UIParent:GetTop() * ratio
+    local x = anchor:find("RIGHT") and (r - W) or l
+    local y = anchor:find("BOTTOM") and b or (t - H)
+    return { anchor, anchor, math.floor(x + 0.5), math.floor(y + 0.5) }
+end
+
 local function Font(fs, size)
     MMT.ApplyFont(fs, M.db and M.db.font, size, "OUTLINE")
 end
@@ -104,7 +125,10 @@ local function Grip(parent, target, onStop)
     return g
 end
 
-container.grip = Grip(container, container, function(p) M.db.point = p end)
+container.grip = Grip(container, container, function(p)
+    p = PointAt(container, ANCHOR[Growth(M.db)]) or p
+    M.db.point = p; container.placed = p
+end)
 
 -- the background / border: right-click opens the Totems settings, left-drag moves
 -- (like the Buffs / Cooldowns windows); the slot buttons keep their own clicks
@@ -122,7 +146,9 @@ local function Background(frame, which)
         moving:StopMovingOrSizing()
         local point, _, relPoint, x, y = moving:GetPoint()
         local p = { point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5) }
-        if moving == container then M.db.point = p; container.placed = p
+        if moving == container then
+            p = PointAt(container, ANCHOR[Growth(M.db)]) or p
+            M.db.point = p; container.placed = p
         else M.db.barPoints[moving.key] = p end
         moving = nil
     end)
@@ -350,8 +376,14 @@ function mod.Refresh()
     if c.showNames and not c.vertical and not c.ungrouped then
         for _, key in ipairs(keys) do nameW = math.max(nameW, SetName(bars[key] or NewBar(key)) + 6) end
     end
+    local growth = Growth(c)
+    local order = keys
+    if not c.ungrouped and (growth == "UP" or growth == "LEFT") then
+        order = {}
+        for i = #keys, 1, -1 do order[#order + 1] = keys[i] end
+    end
     local x, y, maxW, maxH = pad, -pad, 0, 0
-    for _, key in ipairs(keys) do
+    for _, key in ipairs(order) do
         local bar = bars[key] or NewBar(key)
         local inset
         if c.ungrouped then
@@ -389,6 +421,12 @@ function mod.Refresh()
     if c.ungrouped or #keys == 0 then
         container:Hide()
     else
+        -- the direction changed: keep the frame where it is, pinned at the new edge
+        local anchor = ANCHOR[growth]
+        if c.point and c.point[1] ~= anchor and container:IsShown() then
+            local np = PointAt(container, anchor)
+            if np then c.point = np end
+        end
         if c.vertical then container:SetSize(x - c.rowGap + pad, maxH + 2 * pad)
         else container:SetSize(maxW + 2 * pad, -y - c.rowGap + pad) end
         container:SetScale(c.scale)

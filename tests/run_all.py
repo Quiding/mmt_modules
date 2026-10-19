@@ -20,6 +20,16 @@ for d in ours:
             print("SYNTAX", f, str(e)[:200])
 print("syntax: %d failure(s)" % bad)
 
+# Lua slip seen twice: "local a, b = x and f()" keeps only f's FIRST value
+import re
+slip = re.compile(r"^\s*local\s+\w+\s*,\s*\w+\s*=\s*[\w.]+\s+and\s+[\w.:]+\(")
+for d in ours:
+    for f in glob.glob(os.path.join(root, d, "*.lua")):
+        for n, line in enumerate(open(f, encoding="utf-8"), 1):
+            if slip.search(line):
+                bad += 1
+                print("LINT %s:%d two values from 'x and f()' - only the first survives" % (f, n))
+
 shared = [("IconBars", ["MMT_Cooldowns", "MMT_Buffs"]), ("ListKeys", ["MMT_Cooldowns", "MMT_Buffs"]), ("SettingsKit", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"]),
           ("Compat", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"]), ("Transfer", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"])]
 for name, dirs in shared:
