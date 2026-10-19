@@ -27,6 +27,7 @@ M.Page = function(_, page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
     local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" } })
+    mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
@@ -104,17 +105,6 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
     R:Add(who, UI.ROW + 2)
     R:Note("The All row turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
-    R:Header("Share")
-    local half2 = (COL_W - 8) / 2
-    local sendAll = UI.Button(p, half2, "Send to team", function()
-        mod.SendAll()
-        status.Show_("Everything sent; the team is asked before taking it over.")
-    end)
-    UI.Tooltip(sendAll, "Send to team", "Sends every setting of this module (bars, look, lists, window position) to the online team. Each client is asked first.")
-    R:Add(sendAll, 0)
-    local ie = UI.Button(p, half2, "Import / Export...", function() mod.OpenTransfer() end)
-    ie:SetPoint("LEFT", sendAll, "RIGHT", 8, 0)
-    R:Space(UI.ROW + 2)
 
 
     -- Look ------------------------------------------------------------------
@@ -217,12 +207,7 @@ M.Page = function(_, page)
         Changed()
     end
     box = UI.EditBox(lp, COL_W - 58, "Buff name, ID or shift-click", function() Add() end)
-    local function OnLink(link)
-        if type(link) == "string" and link:find("|Hspell:", 1, true) and box:IsVisible() and box:HasFocus() then
-            box:SetText(link); box:UpdatePlaceholder()
-        end
-    end
-    if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnLink) end
+    mod.AcceptSpellLinks(box)
     LS:Add(box, 0)
     local add = UI.Button(lp, 54, "Add", Add)
     add:SetPoint("LEFT", box, "RIGHT", 4, 0)
@@ -230,13 +215,7 @@ M.Page = function(_, page)
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
-    RS:Button("Add preset entries", function()
-        local preset = mod.DEFAULT_LISTS[class]
-        if not preset then status.Show_("There is no preset for this list.", true) return end
-        local n = mod.AddPreset(class, preset, function(e) return e.id end)
-        status.Show_(n > 0 and ("Added %d preset entries."):format(n) or "This list already has every preset entry.")
-        Changed()
-    end)
+    mod.PresetBox(RS, lp, function() return class end, function(e) return e.id end, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)

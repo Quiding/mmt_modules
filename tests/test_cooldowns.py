@@ -160,6 +160,15 @@ function MMT.NewModule(def)
   return M
 end
 function FIRE(ev, ...) for _, fn in ipairs(EVENTS[ev] or {}) do fn(...) end end
+-- what the core's ns.ImportModuleSettings does with a module's synced M.db
+function CORE_SYNC(M, data, from)
+  assert(M.sync == true, "module doesn't opt in to the core sync")
+  data = MMT.CopyTable(data)
+  for _, k in ipairs(M.syncExclude or {}) do data[k] = M.db[k] end
+  M.db = data
+  if M.OnProfileChanged then M.OnProfileChanged(M) end
+  if M.OnSyncReceived then M.OnSyncReceived(M, from) end
+end
 function DELIVER(from, msg) for _, fn in ipairs(LISTEN.TEAM_MESSAGE or {}) do fn(from, from, msg) end end
 '''
 
@@ -258,30 +267,32 @@ print("A:", A.eval(r"""function(m)
   return "MCDQ answer + newly tracked ok"
 end""")(amod))
 
-# "Send to team": every setting of the module, the receiver is asked first
-print("A:", A.eval(r"""function(m)
+# the core's "Sync to team": M.db replaced, then the running cooldowns are asked for
+print("B:", B.eval(r"""function(m)
+  local data = MMT.CopyTable(m.M.db)
+  data.iconSize = 33
+  SENT = {}
+  CORE_SYNC(m.M, data, "Anna-Smith")
+  assert(m.M.db.iconSize == 33, "synced settings not in M.db")
+  local asked
+  for _, s in ipairs(SENT) do if s == "MCDQ" then asked = true end end
+  assert(asked, "running cooldowns not requested after the sync")
+  return "core sync ok"
+end""")(bmod))
+
+# the core's "Sync to team" from another client: look, position and lists arrive
+STR = A.eval(r"""function(m)
   local c = m.M.db
   c.iconSize, c.growth, c.vertical, c.bgAlpha = 40, "UP", false, 0.8
   c.point = { "BOTTOMLEFT", "BOTTOMLEFT", 123, 45 }
   c.lists.MAGE[1].off = true
-  SENT = {}
-  m.SendAll()
-  assert(#SENT >= 1 and SENT[1]:find("^MCDA:"), "nothing sent")
-  return "sent " .. #SENT .. " part(s)"
-end""")(amod))
-msgs = take(A)
-print("B:", B.eval(r"""function(m)
-  CONFIRMS = {}
-  return "ready"
-end""")(bmod))
-deliver("Anna-Smith", msgs, B)
-print("B:", B.eval(r"""function(m)
+  return MMTTransfer.Encode("T", c)
+end""")(amod)
+print("B:", B.eval(r"""function(m, str)
+  CORE_SYNC(m.M, assert(MMTTransfer.Decode("T", str)), "Anna-Smith")
   local c = m.M.db
-  assert(#CONFIRMS == 1 and CONFIRMS[1].text:find("Anna Smith") and CONFIRMS[1].text:find("Position"), "not asked / position missing")
-  assert(c.iconSize ~= 40, "taken over before accepting")
-  CONFIRMS[1].accept()
   assert(c.iconSize == 40 and c.growth == "UP" and c.bgAlpha == 0.8, "look not taken over")
   assert(c.point[1] == "BOTTOMLEFT" and c.point[3] == 123 and c.point[4] == 45, "position not taken over")
   assert(c.lists.MAGE[1].off == true, "lists not taken over")
-  return "send to team ok"
-end""")(bmod))
+  return "sync from the team ok"
+end""")(bmod, STR))

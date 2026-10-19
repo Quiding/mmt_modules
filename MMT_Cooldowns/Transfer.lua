@@ -6,16 +6,13 @@
 -- The data is our own small format (strings, numbers, booleans, tables),
 -- parsed by hand: nothing pasted is ever run as Lua code.
 --
---   MMTTransfer.SendAll(tag, def)        every section of def to the online team
---   MMTTransfer.Receive(tag, def, key, sender, text)   for TEAM_MESSAGE: puts the parts
---                                        together, asks "take them over?", applies them
 --   MMTTransfer.Open{
 --       title = "Cooldowns", prefix = "MMTCD1",
 --       sections = { { id = "lists", label = "Tracked lists", get = fn() -> data,
 --                      set = fn(data) -> ok, err }, ... },
 --   }
 
-local VERSION = 3
+local VERSION = 4
 if MMTTransfer and (MMTTransfer.version or 0) >= VERSION then return end
 
 local lib = MMTTransfer or {}
@@ -162,75 +159,6 @@ function lib.Decode(prefix, text)
     local data = lib.Deserialize(raw)
     if type(data) ~= "table" then return nil, "The string could not be read." end
     return data
-end
-
----------------------------------------------------------------------------
--- Send everything to the team ("<tag>:<id>:<part>:<total>:<export string part>")
----------------------------------------------------------------------------
-local CHUNK = 200
-
-function lib.SendAll(tag, def)
-    local data = { sections = {} }
-    for _, s in ipairs(def.sections) do
-        local ok, v = pcall(s.get)
-        if ok and v ~= nil then data.sections[s.id] = v end
-    end
-    local payload = lib.Encode(def.prefix, data)
-    local id = tostring(math.random(100000, 999999))
-    local total = math.max(1, math.ceil(#payload / CHUNK))
-    for i = 1, total do
-        local msg = ("%s:%s:%d:%d:%s"):format(tag, id, i, total, payload:sub((i - 1) * CHUNK + 1, i * CHUNK))
-        C_Timer.After((i - 1) * 0.2, function() MMT.SendToTeam(msg, true) end)
-    end
-    return total
-end
-
--- applies the sections of data that def knows; returns the labels taken over
-function lib.Apply(def, data)
-    local done = {}
-    local secs = type(data.sections) == "table" and data.sections or {}
-    for _, s in ipairs(def.sections) do
-        if secs[s.id] ~= nil then
-            local ok, res = pcall(s.set, secs[s.id])
-            if ok and res ~= false then done[#done + 1] = s.label end
-        end
-    end
-    if def.after then pcall(def.after) end
-    if MMT.RefreshConfig then MMT.RefreshConfig() end
-    return done
-end
-
-local incoming = {}   -- [tag .. key] = { id, total, got, parts }
-
--- returns true when text was one of our parts (whole or not)
-function lib.Receive(tag, def, key, sender, text)
-    local id, idx, total, chunk = text:match("^" .. tag .. ":(%d+):(%d+):(%d+):(.*)$")
-    if not id then return false end
-    idx, total = tonumber(idx), tonumber(total)
-    if total < 1 or total > 80 or idx < 1 or idx > total then return true end
-    local slot = tag .. key
-    local buf = incoming[slot]
-    if not buf or buf.id ~= id then
-        buf = { id = id, total = total, got = 0, parts = {} }
-        incoming[slot] = buf
-    end
-    if not buf.parts[idx] then buf.parts[idx] = chunk; buf.got = buf.got + 1 end
-    if buf.got < buf.total then return true end
-    incoming[slot] = nil
-    local data = lib.Decode(def.prefix, table.concat(buf.parts))
-    if not data then return true end
-    local names = {}
-    for _, s in ipairs(def.sections) do
-        if type(data.sections) == "table" and data.sections[s.id] ~= nil then names[#names + 1] = s.label end
-    end
-    if #names == 0 then return true end
-    -- ask first, like MMT's own profile sync
-    MMT.UI.Confirm(("%s sent you their %s settings:\n%s.\n\nTake them over? Yours are replaced.")
-        :format(MMT.FullDisplay(key), def.title, table.concat(names, ", ")), "Take them over", function()
-        local done = lib.Apply(def, data)
-        MMT.Print("%s: %s taken over from %s.", def.title, table.concat(done, ", "), MMT.FullDisplay(key))
-    end, "Keep mine")
-    return true
 end
 
 ---------------------------------------------------------------------------

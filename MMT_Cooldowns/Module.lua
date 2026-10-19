@@ -9,7 +9,7 @@
 --   Window.lua    rows for MMTIconBars (IconBars.lua, shared with MMT_Buffs)
 --   Share.lua     one message (MCDU) when YOUR character uses a tracked cooldown,
 --                 so members outside the group are tracked too
---   Sync.lua      "Send lists to team" (MCDL)
+--   Export.lua    import / export strings; the core's "Sync to team" sends M.db
 --   Settings.lua  settings page and debug report
 
 local _, mod = ...
@@ -19,6 +19,7 @@ local M = MMT.NewModule({
     name = "Cooldowns",
     title = "Cooldowns",
     description = "Team cooldown bars: every member's important spells and items.",
+    sync = true,               -- the core's "Sync to team" sends M.db (lists, look, position)
     defaults = {
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,

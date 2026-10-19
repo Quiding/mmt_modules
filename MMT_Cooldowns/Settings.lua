@@ -27,6 +27,7 @@ M.Page = function(_, page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
     local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" } })
+    mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
@@ -78,17 +79,6 @@ M.Page = function(_, page)
     Check(R, "Hide what you don't have", "hideUnknown", "Your own spells you haven't learned yet and items you don't carry.")
     Check(R, "Others' items only after first use", "hideUnseenItems", "Trinkets and potions of other members show up once you have seen them used.")
     R:Note("Each client sends one short message when its character uses a tracked cooldown (needs Cooldowns on that client too). Group members are also seen directly.")
-    R:Header("Share")
-    local half2 = (COL_W - 8) / 2
-    local sendAll = UI.Button(p, half2, "Send to team", function()
-        mod.SendAll()
-        status.Show_("Everything sent; the team is asked before taking it over.")
-    end)
-    UI.Tooltip(sendAll, "Send to team", "Sends every setting of this module (bars, look, lists, window position) to the online team. Each client is asked first.")
-    R:Add(sendAll, 0)
-    local ie = UI.Button(p, half2, "Import / Export...", function() mod.OpenTransfer() end)
-    ie:SetPoint("LEFT", sendAll, "RIGHT", 8, 0)
-    R:Space(UI.ROW + 2)
 
 
     -- Look ------------------------------------------------------------------
@@ -192,12 +182,7 @@ M.Page = function(_, page)
     secs = UI.EditBox(lp, 50, "sec", function() Add() end)
     UI.AcceptItemLinks(box, Prefill)
     -- spell links (shift-click in the spellbook) go into the box too
-    local function OnLink(link)
-        if type(link) == "string" and link:find("|Hspell:", 1, true) and box:IsVisible() and box:HasFocus() then
-            box:SetText(link); box:UpdatePlaceholder(); Prefill()
-        end
-    end
-    if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnLink) end
+    mod.AcceptSpellLinks(box, Prefill)
     box:HookScript("OnEditFocusLost", Prefill)
     LS:Add(box, 0)
     secs:SetPoint("LEFT", box, "RIGHT", 4, 0)
@@ -207,13 +192,7 @@ M.Page = function(_, page)
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them.")
-    RS:Button("Add preset entries", function()
-        local preset = mod.DEFAULT_LISTS[class]
-        if not preset then status.Show_("There is no preset for this list.", true) return end
-        local n = mod.AddPreset(class, preset, mod.EntryKey)
-        status.Show_(n > 0 and ("Added %d preset entries (the extras are switched off)."):format(n) or "This list already has every preset entry.")
-        Changed()
-    end)
+    mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)

@@ -128,6 +128,48 @@ function mod.ListChoices()
     return t
 end
 
+-- presets (mod.PRESETS) for the dropdown: the ones made for this kind of list
+-- first (its class, races for a race list, "every member" for ALL), then the rest
+function mod.PresetChoices(listKey)
+    local group
+    if listKey == "ALL" or IsClass(listKey) then group = listKey
+    elseif listKey and listKey:match("^RACE:") then group = "RACE" end
+    local fit, other = {}, {}
+    for _, p in ipairs(mod.PRESETS or {}) do
+        local item = { value = p.key, text = p.name }
+        if p.group == group or (group == "RACE" and p.race and listKey == "RACE:" .. p.race) then fit[#fit + 1] = item
+        else other[#other + 1] = item end
+    end
+    local t = {}
+    if #fit > 0 then
+        t[#t + 1] = { header = true, text = "For this list" }
+        for _, i in ipairs(fit) do t[#t + 1] = i end
+    end
+    t[#t + 1] = { header = true, text = (#fit > 0) and "Other presets" or "Presets" }
+    for _, i in ipairs(other) do t[#t + 1] = i end
+    return t
+end
+
+function mod.PresetByKey(key)
+    for _, p in ipairs(mod.PRESETS or {}) do if p.key == key then return p end end
+end
+
+-- the first preset made for a list (the dropdown's starting value)
+function mod.DefaultPreset(listKey)
+    for _, c in ipairs(mod.PresetChoices(listKey)) do
+        if not c.header then return c.value end
+    end
+end
+
+-- puts a preset into a list: replace = the list becomes the preset, else only
+-- the entries it misses are added. Returns how many entries were added.
+function mod.ApplyPreset(listKey, presetKey, replace, id)
+    local p = mod.PresetByKey(presetKey)
+    if not p then return 0 end
+    if replace then mod.M.db.lists[listKey] = {} end
+    return mod.AddPreset(listKey, p.entries, id)
+end
+
 -- adds the preset entries of a list that aren't in it yet (switched on/off as
 -- in the preset); returns how many were added. id(e) tells entries apart.
 function mod.AddPreset(listKey, preset, id)

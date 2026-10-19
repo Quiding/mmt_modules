@@ -9,45 +9,7 @@ local _, mod = ...
 
 mod.CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "ALL" }
 
-local function S(id, cd) return { t = "s", id = id, cd = cd } end
--- in the preset, but switched off until you turn it on
-local function O(id, cd) return { t = "s", id = id, cd = cd, off = true } end
-
--- the preset of each list: the important cooldowns on, more of them off (switch
--- them on in the list editor), and every race's cooldown racials (off).
--- New profiles start with it; "Add preset entries" adds what a list misses.
-mod.DEFAULT_LISTS = {
-    WARRIOR = { S(871, 1800), S(1719, 1800), S(20230, 1800), S(12292, 180), S(5246, 180),
-                O(12975, 600), O(18499, 30), O(2687, 60), O(1161, 600), O(676, 60), O(6552, 10),
-                O(72, 12), O(100, 15), O(20252, 30) },
-    PALADIN = { S(642, 300), S(633, 3600), S(1022, 300), S(853, 60), S(20216, 120),
-                O(498, 300), O(1044, 20), O(20066, 60), O(20473, 30), O(2878, 30) },
-    HUNTER  = { S(3045, 300), S(19574, 120), S(5384, 30), S(19263, 300),
-                O(19503, 30), O(19386, 120), O(1499, 15), O(19577, 60), O(5116, 12), O(19434, 6), O(19306, 5) },
-    ROGUE   = { S(13750, 300), S(13877, 120), S(5277, 300), S(1856, 300), S(1766, 10),
-                O(2983, 300), O(14177, 180), O(14185, 600), O(2094, 300), O(408, 20), O(1776, 10),
-                O(14183, 120), O(14278, 20), O(1725, 30) },
-    PRIEST  = { S(10060, 180), S(14751, 180), S(8122, 30), S(586, 30),
-                O(13908, 600), O(15487, 45), O(724, 600), O(8092, 8) },
-    SHAMAN  = { S(16166, 180), S(16188, 180), S(16190, 300), S(8042, 6), S(8177, 15),
-                O(20608, 3600), O(17364, 20), O(421, 6), O(8056, 6), O(8050, 6) },
-    MAGE    = { S(12051, 480), S(11958, 300), S(12043, 180), S(12042, 180), S(11129, 180), S(2139, 30),
-                O(12472, 600), O(11426, 30), O(122, 25), O(1953, 15), O(2136, 8), O(120, 10), O(11113, 45) },
-    WARLOCK = { S(6789, 120), S(5484, 40), S(18708, 900), S(18288, 180),
-                O(17877, 15), O(17962, 10), O(1122, 3600), O(603, 60) },
-    DRUID   = { S(29166, 360), S(17116, 180), S(20484, 1800), S(22812, 60), S(740, 300),
-                O(5211, 60), O(1850, 300), O(22842, 180), O(5209, 600), O(16914, 60), O(18562, 15), O(5229, 60) },
-    ALL     = {},
-    -- cooldown racials (Classic); other races (e.g. WoW: Forever's own): add them to your race's list
-    ["RACE:Human"]    = { O(20600, 180) },               -- Perception
-    ["RACE:Dwarf"]    = { O(20594, 180) },               -- Stoneform
-    ["RACE:NightElf"] = { O(20580, 10) },                -- Shadowmeld
-    ["RACE:Gnome"]    = { O(20589, 60) },                -- Escape Artist
-    ["RACE:Orc"]      = { O(20572, 120) },               -- Blood Fury
-    ["RACE:Scourge"]  = { O(7744, 120), O(20577, 120) }, -- Will of the Forsaken, Cannibalize
-    ["RACE:Tauren"]   = { O(20549, 120) },               -- War Stomp
-    ["RACE:Troll"]    = { O(20554, 180) },               -- Berserking
-}
+-- the presets and the default lists are in Presets.lua
 
 -- spells whose cooldown starts when their buff is used up, not on the cast
 local AFTER_BUFF_IDS = { 16188, 17116, 16166, 12043, 14751 }

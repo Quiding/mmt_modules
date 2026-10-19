@@ -6,15 +6,7 @@ local _, mod = ...
 
 mod.CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "ALL" }
 
-local function B(id) return { id = id } end
-local AI, BS = 1459, 6673   -- Arcane Intellect, Battle Shout
-
-mod.DEFAULT_LISTS = {
-    WARRIOR = { B(BS) }, ROGUE = { B(BS) },
-    PALADIN = { B(AI) }, HUNTER = { B(AI) }, PRIEST = { B(AI) }, SHAMAN = { B(AI) },
-    MAGE = { B(AI) }, WARLOCK = { B(AI) }, DRUID = { B(AI) },
-    ALL = { B(1243), B(1126) },   -- Power Word: Fortitude, Mark of the Wild
-}
+-- the presets and the default lists are in Presets.lua
 
 -- group versions count as the single-target buff (and the other way round):
 -- group spell ID -> single spell ID

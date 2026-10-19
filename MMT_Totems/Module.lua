@@ -11,7 +11,7 @@
 --   Known.lua     which totems each shaman has learned (MTTK, once per login / when learning)
 --   Tracker.lua   active totems: your own from the game; other shamans from
 --                 one message per totem change (MTT), and group members' casts
---   Sync.lua      chosen totems / sequences (MTTS, MTTQ) and "Send to team" (MTTP)
+--   Sync.lua      chosen totems / sequences (MTTS, MTTQ)
 --   Bars.lua      the bars, the totem chooser, preset buttons
 --   Secure.lua    casting: secure buttons, /castsequence, the key binding
 --   Presets.lua   individual + team presets; PresetsDialog.lua edits them
@@ -25,6 +25,8 @@ local M = MMT.NewModule({
     name = "Totems",
     title = "Totems",
     description = "Totem bars for the team's shamans: timers, choose and cast totems, sequences and presets.",
+    sync = true,               -- the core's "Sync to team" sends M.db ...
+    syncExclude = { "keybind" },   -- ... except the key binding (it belongs to one computer)
     defaults = {
         shown = true, locked = false, ungrouped = false, vertical = false,
         includeSelf = true, onlyOnline = true, order = "TEAM",

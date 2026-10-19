@@ -142,6 +142,15 @@ function MMT.NewModule(def)
   return M
 end
 function FIRE(ev, ...) for _, fn in ipairs(EVENTS[ev] or {}) do fn(...) end end
+-- what the core's ns.ImportModuleSettings does with a module's synced M.db
+function CORE_SYNC(M, data, from)
+  assert(M.sync == true, "module doesn't opt in to the core sync")
+  data = MMT.CopyTable(data)
+  for _, k in ipairs(M.syncExclude or {}) do data[k] = M.db[k] end
+  M.db = data
+  if M.OnProfileChanged then M.OnProfileChanged(M) end
+  if M.OnSyncReceived then M.OnSyncReceived(M, from) end
+end
 function DELIVER(from, msg) for _, fn in ipairs(LISTEN.TEAM_MESSAGE or {}) do fn(from, from, msg) end end
 '''
 
@@ -253,15 +262,15 @@ print("A:", A.eval(r'''function(m)
   assert(m.Selected("Bob-Stone", "Earth") == 8075, "team preset not applied")
   assert(not m.SavePreset(nil, "x") and not m.SavePreset("Anna-Smith", "  "))
   SENT = {}
-  m.SendAll()
   return "presets ok"
 end''')(amod))
-deliver("Anna-Smith", sent(A), B)
-print("B:", B.eval(r'''function(m)
-  -- asked first; nothing changes until accepted
-  assert(#CONFIRMS == 1 and CONFIRMS[1].text:find("Anna Smith"), "not asked before taking over")
-  assert(not (m.M.db.presets["Anna-Smith"] and m.M.db.presets["Anna-Smith"].AoE), "taken over without asking")
-  CONFIRMS[1].accept()
+sent(A)
+# the core's "Sync to team": A's whole M.db, except B keeps its key binding
+STR = A.eval('function(m) return MMTTransfer.Encode("T", m.M.db) end')(amod)
+print("B:", B.eval(r'''function(m, str)
+  m.M.db.keybind = "F5"
+  CORE_SYNC(m.M, assert(MMTTransfer.Decode("T", str)), "Anna-Smith")
+  assert(m.M.db.keybind == "F5", "key binding synced")
   assert(m.M.db.presets["Anna-Smith"] and m.M.db.presets["Anna-Smith"].AoE, "presets not received")
   assert(m.M.db.teamPresets.Raid and m.M.db.teamPresets.Raid.members["Bob-Stone"].totems.Earth == 8075, "team preset not received")
   -- import / export round trip
@@ -279,8 +288,8 @@ print("B:", B.eval(r'''function(m)
   assert(m.M.db.selected["Anna-Smith"].Fire == before.selected["Anna-Smith"].Fire, "totems not restored")
   assert(m.M.db.presets["Anna-Smith"].AoE, "presets not restored")
   for _, s in ipairs(captured.sections) do assert(s.set("junk") == false, "junk accepted: " .. s.id) end
-  return "sync all + import/export ok"
-end''')(bmod))
+  return "core sync + import/export ok"
+end''')(bmod, STR))
 
 print("A:", A.eval(r"""function(m)
   local captured

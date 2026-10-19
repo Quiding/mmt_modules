@@ -8,7 +8,7 @@
 --                 Nothing is sent between the clients for this.
 --   Window.lua    own window, or icons attached to the Cooldowns window
 --                 (MMTIconBars extras, IconBars.lua shared with MMT_Cooldowns)
---   Sync.lua      "Send lists to team" (the only addon messages, tag MBFL)
+--   Export.lua    import / export strings; the core's "Sync to team" sends M.db
 --   Settings.lua  settings page and debug report
 
 local _, mod = ...
@@ -18,6 +18,7 @@ local M = MMT.NewModule({
     name = "Buffs",
     title = "Buffs",
     description = "Team buff bars: who has, and who misses, the buffs you track.",
+    sync = true,               -- the core's "Sync to team" sends M.db (lists, look, position)
     defaults = {
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,

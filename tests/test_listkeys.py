@@ -49,7 +49,6 @@ for folder, entry_id, lists_src in [
     lua.eval('function(m, id) m.EntryKey = id; m.BuffName = id; m.BuildIndex = function() end; '
              'm.Refresh = function() end; m.ScanGroup = function() end; m.ShareCheck = function() end; m.RequestRunning = function() end end')(mod, lua.eval(entry_id))
     load('MMT_Cooldowns/ListKeys.lua', mod)
-    load(folder + '/Sync.lua', mod)
     print(lua.eval(r'''function(m, idf, folder)
       -- which lists apply
       local keys = table.concat(m.ListKeysFor("Anna-Smith", true), ",")
@@ -87,28 +86,5 @@ for folder, entry_id, lists_src in [
       assert(added == 1 and #m.M.db.lists["RACE:Troll"] == 2 and m.M.db.lists["RACE:Troll"][2].off == true, "preset merge")
       m.M.db.lists["RACE:Troll"] = nil
       MMT.status = nil
-      -- send lists to team, receive on another client (one entry switched off: the flag travels)
-      m.M.db.lists.PRIEST[1].off = true
-      local before = MMT.CopyTable(m.M.db.lists)
-      SENT = {}
-      m.SendLists()
-      m.M.db.lists = { PRIEST = {} }
-      MMT.IsSelf = function() return false end
-      CONFIRMS = {}
-      for _, msg in ipairs(SENT) do LISTENERS.TEAM_MESSAGE("Bob-Stone", "Bob", msg) end
-      -- asked first: nothing changes until accepted
-      assert(#CONFIRMS == 1, "not asked before taking over the lists")
-      assert(#m.M.db.lists.PRIEST == 0, "lists replaced without asking")
-      CONFIRMS[1].accept()
-      local after = m.M.db.lists
-      assert(after.PRIEST[1].off == true, "off flag lost")
-      local function same(a, b)
-        if type(a) ~= type(b) then return false end
-        if type(a) ~= "table" then return a == b end
-        for k, v in pairs(a) do if not same(v, b[k]) then return false end end
-        for k in pairs(b) do if a[k] == nil then return false end end
-        return true
-      end
-      for k, v in pairs(before) do assert(same(v, after[k]), "sync lost " .. k) end
-      return folder .. ": list keys, dropdown and sync ok (" .. #SENT .. " message(s))"
+      return folder .. ": list keys and dropdown ok"
     end''')(mod, lua.eval(entry_id), folder))

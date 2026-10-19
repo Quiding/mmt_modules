@@ -1,6 +1,8 @@
 -- Settings helpers shared by MMT_Cooldowns and MMT_Buffs (they ship the same
 -- copy of this file: KEEP BOTH IDENTICAL):
 --   mod.Tabs(page, { {id, text}, ... })  -> panels[id]   tab buttons like /mmt > Help
+--   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export
+--                                          left, the core's "Sync to team" right
 --   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
 -- Opt(key) returns getter, setter for M.db[key]; apply() redraws.
 
@@ -8,6 +10,7 @@ local _, mod = ...
 local MMT = MMT
 
 local current = {}   -- [page] = selected tab id (kept while the game runs)
+local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 
 function mod.Tabs(page, list)
     local UI = MMT.UI
@@ -28,11 +31,83 @@ function mod.Tabs(page, list)
         buttons[t[1]] = b
         local p = CreateFrame("Frame", nil, page)
         p:SetPoint("TOPLEFT", 0, -30)
-        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30))
+        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30 - BOTTOM))
         panels[t[1]] = p
     end
     Show(current[mod] and panels[current[mod]] and current[mod] or list[1][1])
     return panels
+end
+
+-- the share bar at the bottom of the page, like the tab buttons at the top:
+-- Import / Export in the bottom left; the core puts its "Sync to team"
+-- button (sync = true in NewModule) in the bottom right after M.Page
+function mod.ShareBar(page, status)
+    local UI = MMT.UI
+    local W = MMT.ConfigHelpers.PAGE_W
+    local ie = UI.Button(page, 176, "Import / Export...", function() mod.OpenTransfer() end)
+    ie:SetPoint("BOTTOMLEFT", 0, 2)
+    UI.Tooltip(ie, "Import / Export", "Choose parts and copy them as a text string, or paste one to take it over.")
+    status:ClearAllPoints()
+    status:SetPoint("BOTTOMLEFT", 0, 32)
+    status:SetWidth(W)
+    return ie
+end
+
+-- shift-clicking a spell (spellbook, chat link) while box has focus puts the
+-- link into it. This client sends links through ChatFrameUtil.InsertLink (the
+-- old ChatEdit_InsertLink is only a fallback), so hook whichever exists, once.
+local spellBoxes, spellHooked = {}, false
+local function OnInsertLink(link)
+    if type(link) ~= "string" or not link:find("|Hspell:", 1, true) then return end
+    for box, onLink in pairs(spellBoxes) do
+        if box:IsVisible() and box:HasFocus() then
+            box:SetText(link)
+            if box.UpdatePlaceholder then box:UpdatePlaceholder() end
+            if onLink then onLink(link, box) end
+            return
+        end
+    end
+end
+function mod.AcceptSpellLinks(box, onLink)
+    spellBoxes[box] = onLink or false
+    if spellHooked then return end
+    spellHooked = true
+    if ChatFrameUtil and ChatFrameUtil.InsertLink then hooksecurefunc(ChatFrameUtil, "InsertLink", OnInsertLink)
+    elseif ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnInsertLink) end
+end
+
+-- preset picker for the list editor: a dropdown + Add to list / Replace list.
+-- listKey() = the list being edited, id(e) tells entries apart, changed() redraws
+function mod.PresetBox(col, parent, listKey, id, changed, status)
+    local UI, H = MMT.UI, MMT.ConfigHelpers
+    local COL_W = H.COL_W
+    local chosen, chosenFor
+    local function Current()
+        if chosenFor ~= listKey() or not chosen then chosen, chosenFor = mod.DefaultPreset(listKey()), listKey() end
+        return chosen
+    end
+    col:Header("Presets")
+    col:Cycle("Preset", function() return mod.PresetChoices(listKey()) end, Current,
+        function(v) chosen, chosenFor = v, listKey() end)
+    local half = (COL_W - 8) / 2
+    local add = UI.Button(parent, half, "Add to list", function()
+        local p = mod.PresetByKey(Current())
+        if not p then return end
+        local n = mod.ApplyPreset(listKey(), p.key, false, id)
+        status.Show_(n > 0 and ("Added %d entries from \"%s\"."):format(n, p.name) or "The list already has every entry of that preset.")
+        changed()
+    end)
+    UI.Tooltip(add, "Add to list", "Adds the preset's entries this list doesn't have yet (on or off as in the preset). Your own entries stay.")
+    col:Add(add, 0)
+    local replace = H.ConfirmButton(parent, half, "Replace list", function()
+        local p = mod.PresetByKey(Current())
+        if not p then return end
+        mod.ApplyPreset(listKey(), p.key, true, id)
+        status.Show_(("The list is now \"%s\"."):format(p.name))
+        changed()
+    end)
+    replace:SetPoint("LEFT", add, "RIGHT", 8, 0)
+    col:Space(UI.ROW + 2)
 end
 
 -- texture choices from LibSharedMedia (brought by other addons), plus a plain one

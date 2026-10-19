@@ -78,7 +78,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
 
-### MMT_Cooldowns (v0.7.0) / MMT_Buffs (v0.6.0) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.0) / MMT_Buffs (v0.7.0) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -100,7 +100,6 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `showBuffs`: a tracked spell/item's buff = buff with the SAME NAME as the cast on the user
   (player / group unit via `unitOf`, else the time from MCDU). Icon: state "buff" + glow,
   `after` = the cooldown.
-  Comm is only "Send lists to team" (`MCDL` / `MBFL`, chunked).
 - Lists in `M.db.lists[key]`, key = class token | "ALL" | "RACE:<race token>" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,
   `ValidListKey`, `RaceOf`, `AddPreset`). Cooldowns entry `{t="s"|"i", id, cd, off}`, Buffs `{id, off}`;
@@ -112,8 +111,16 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   addon (EllesmereUI) uses an event before relying on it.
 - Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
   font is set errors ("Font not set"). The test stub enforces this.
-- Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in both: `mod.Tabs`,
-  `mod.LookTab`): Bars / Look / lists. One status line at the page bottom.
+- Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all three: `mod.Tabs`,
+  `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
+  BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
+  Status line just above the share bar.
+- Spell links: this client inserts shift-clicked links via `ChatFrameUtil.InsertLink`;
+  `ChatEdit_InsertLink` is only a fallback. Hook through `mod.AcceptSpellLinks`.
+- Presets: `Presets.lua` in each (`mod.PRESETS` {key, group = class | "RACE" | "ALL", race, name,
+  entries}; `mod.DEFAULT_LISTS` built from them). Data from Wowhead Forever (nether.wowhead.com
+  tooltips; 40xxxx IDs that aren't talents are Season of Discovery runes, leave them out).
+  `ListKeys.lua`: `PresetChoices`, `PresetByKey`, `DefaultPreset`, `ApplyPreset(listKey, key, replace, id)`.
 - Settings pages are ~564 px high: check both columns still fit when adding widgets.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
@@ -126,15 +133,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   over the team, removed from member rows; stays in the Buffs window even when attached.
 - Growth direction `growth` (DOWN/UP/RIGHT/LEFT; older profiles: `vertical`): `MMTIconBars.Growth(c)`,
   reversed member order for UP/LEFT, frame pinned at `ANCHOR[growth]` (`lib.PointAt`), also in Totems.
-- "Send to team" = `MMTTransfer.SendAll(tag, mod.TransferDef())` (MCDA / MBFA / MTTA): every export
-  section incl. position; `MMTTransfer.Receive` asks (`MMT.UI.Confirm`) before applying. The old
-  list-only MCDL / MBFL / MTTP are still received (also with a prompt).
+- Settings sync = the CORE's (`sync = true` in NewModule; Totems `syncExclude = { "keybind" }`):
+  button bottom right of the page, `/mmt sync <module>`, the core sends M.db, asks the receiver,
+  replaces M.db, runs OnProfileChanged then `M.OnSyncReceived` (Cooldowns: ShareCheck +
+  RequestRunning; Buffs: ScanGroup + Apply). No own Send-to-team messages any more (MCDA / MBFA /
+  MTTA / MCDL / MBFL / MTTP were removed before release). Tests: `CORE_SYNC(M, data, from)` stub.
 - Import/export: `Transfer.lua` = shared lib `MMTTransfer` (identical in both, newest VERSION
   wins): own serializer + base64 + checksum, `PREFIX:sum:data` (MMTCD1 / MMTBF1), never
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.0) – port of ema_totems
+### MMT_Totems (v0.4.1) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -142,7 +151,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Never re-apply bindings on UPDATE_BINDINGS (setting an override fires it: loop).
 - Totems: own `GetTotemInfo`; others `MTT:<slot>:<rem>/<dur>:<name>` / `MTT:<slot>:0` per change
   (PLAYER_TOTEM_UPDATE), + group `UNIT_SPELLCAST_SUCCEEDED`. Chosen totems `MTTS:<el>:<id>:<key>`,
-  sequences `MTTQ:<key>=<text>`, "Send to team" `MTTP` (MMTTransfer string, chunked).
+  sequences `MTTQ:<key>=<text>`; everything at once via the core sync.
 - Learned totems: own via IsPlayerSpell / IsSpellKnown (all missing -> show all); others send
   `MTTK:<ids>` at login / on learning, stored in `M.store.known[key]`; no list yet -> show all.
   Chooser + preset editor filter by it, own casting skips unlearned chosen totems.

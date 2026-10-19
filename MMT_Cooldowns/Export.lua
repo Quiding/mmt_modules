@@ -64,8 +64,7 @@ local function SetPosition(p)
     return true
 end
 
--- everything this module can export / send: the import / export dialog and
--- "Send to team" (all sections, the team is asked before taking them over)
+-- everything this module can export / import (the import / export dialog)
 function mod.TransferDef()
     return {
         title = "Cooldowns",
@@ -88,9 +87,8 @@ end
 
 function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
 
-function mod.SendAll() return MMTTransfer.SendAll("MCDA", mod.TransferDef()) end
-
-M:Listen("TEAM_MESSAGE", function(key, sender, text)
-    if MMT.IsSelf(key) then return end
-    MMTTransfer.Receive("MCDA", mod.TransferDef(), key, sender, text)
-end)
+-- the core's "Sync to team" (sync = true) replaced M.db and ran OnProfileChanged
+M.OnSyncReceived = function()
+    mod.ShareCheck()       -- our running cooldowns that just became tracked
+    mod.RequestRunning()   -- and the team's
+end
