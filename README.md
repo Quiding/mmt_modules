@@ -90,6 +90,8 @@ addon and only lists our own module folders.
   each character. Next to Baganator / Syndicator (which list the account you're on) it adds your
   other accounts' characters below their lines, with a total over everyone. `/mmtinv send | request`.
 
+  <img src="media/teaminventory.png" alt="Team inventory lines in the item tooltip" width="277">
+
 Every module's settings page has **Reset to defaults** (click twice), next to Import / Export and
 Sync to team.
 
