@@ -18,19 +18,21 @@ addon and only lists our own module folders.
 - Cooldowns and Buffs track lists per class, race, MMT role or character; list entries can be
   switched off without deleting them. Presets from Wowhead's WoW: Forever data (per class:
   recommended / major only / everything; racials per race; potions & runes; raid, world buff and
-  flask buffs) can be added to a list or replace it. Shift-click a spell to put it in the add box.
+  flask buffs) can be added to a list or replace it. Type a name in the add box and pick from the
+  search list (every spell, also ones your character doesn't know; for Cooldowns also the items you
+  carry), or shift-click a spell / item.
 - All three bar modules: growth direction (Top > Down, Down > Top, Left > Right, Right > Left),
   and a bar at the bottom of every settings tab: "Import / Export" on the left, MMT's own
   "Sync to team" on the right (`/mmt sync cooldowns|buffs|totems`; every setting incl. the window
   position, the other clients are asked first; the Totems key binding stays on each client).
-- **MMT_Cooldowns** (0.8.1): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
+- **MMT_Cooldowns** (0.8.2): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
   One row per member with their important spells, trinkets and potions. Every client sends one
   short message when its character uses a tracked cooldown (exact remaining time), so members
   outside the group are tracked too; group members are also seen directly. While a spell's buff
   is up (Berserking, Evasion, trinkets, ...) its icon glows with the buff's time left. Per-class
   lists, editable on the settings page, can be sent to the team. Import / export as a text
   string (choose: lists, look, position). `/mmtcd`, `/mmtcd test`, `/mmtcd export`.
-- **MMT_Buffs** (0.7.1): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
+- **MMT_Buffs** (0.7.2): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
   members have or miss the buffs tracked for their class (any rank, group versions like Prayer
   of Fortitude count too), with exact timers. Own window or
   attached to the Cooldowns bars. Missing buffs show as the normal icon, red or grey (optionally glowing), at their own opacity. An

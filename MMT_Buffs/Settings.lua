@@ -196,11 +196,18 @@ M.Page = function(_, page)
     LS:Add(list, 14 * 22 + 6)
 
     local box
+    -- picked from the search list, else a link / ID / known name, else the name index
+    local function Parse()
+        local text = box:GetText()
+        if box.picked and box.picked.text == text then return box.picked.id end
+        return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
+    end
     local function Add()
-        local id = mod.ParseEntry(box:GetText())
-        if not id then status.Show_("Unknown spell. Use its ID or shift-click it in the spellbook.", true) return end
+        local id = Parse()
+        if not id then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook.", true) return end
         M.db.lists[class] = M.db.lists[class] or {}
         table.insert(M.db.lists[class], { id = id })
+        box.picked = nil
         box:SetText("")
         box:ClearFocus()
         status.Show_(("Added %s."):format(mod.EntryName({ id = id })))
@@ -208,6 +215,7 @@ M.Page = function(_, page)
     end
     box = UI.EditBox(lp, COL_W - 58, "Buff name, ID or shift-click", function() Add() end)
     mod.AcceptSpellLinks(box)
+    mod.AttachSearch(box, { items = false })
     LS:Add(box, 0)
     local add = UI.Button(lp, 54, "Add", Add)
     add:SetPoint("LEFT", box, "RIGHT", 4, 0)

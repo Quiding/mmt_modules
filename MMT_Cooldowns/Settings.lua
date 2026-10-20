@@ -161,20 +161,29 @@ M.Page = function(_, page)
 
     -- add: name / ID / shift-click a spell or item, and the cooldown in seconds
     local box, secs
+    -- picked from the search list, else a link / ID / known name, else the name index
+    local function Parse()
+        local text = box:GetText()
+        if box.picked and box.picked.text == text then return box.picked.t, box.picked.id end
+        local t, id = mod.ParseEntry(text)
+        if t then return t, id end
+        return mod.FindByName(text, true)
+    end
     local function Add()
-        local t, id = mod.ParseEntry(box:GetText())
-        if not t then status.Show_("Unknown spell or item. Use its ID or shift-click it.", true) return end
+        local t, id = Parse()
+        if not t then status.Show_("Unknown spell or item: pick it from the list, use its ID or shift-click it.", true) return end
         local cd = tonumber(secs:GetText()) or mod.BaseCooldown(t, id)
         if not cd then status.Show_("Enter the cooldown in seconds.", true) return end
         M.db.lists[class] = M.db.lists[class] or {}
         table.insert(M.db.lists[class], { t = t, id = id, cd = cd })
+        box.picked = nil
         box:SetText(""); secs:SetText("")
         box:ClearFocus(); secs:ClearFocus()
         status.Show_(("Added %s (%ds)."):format(mod.EntryName({ t = t, id = id }), cd))
         Changed()
     end
     local function Prefill()
-        local t, id = mod.ParseEntry(box:GetText())
+        local t, id = Parse()
         local cd = t and mod.BaseCooldown(t, id)
         if cd and secs:GetText() == "" then secs:SetText(tostring(cd)); secs:UpdatePlaceholder() end
     end
@@ -184,6 +193,7 @@ M.Page = function(_, page)
     -- spell links (shift-click in the spellbook) go into the box too
     mod.AcceptSpellLinks(box, Prefill)
     box:HookScript("OnEditFocusLost", Prefill)
+    mod.AttachSearch(box, { items = true, onPick = function() Prefill() end })
     LS:Add(box, 0)
     secs:SetPoint("LEFT", box, "RIGHT", 4, 0)
     local add = UI.Button(lp, 54, "Add", Add)

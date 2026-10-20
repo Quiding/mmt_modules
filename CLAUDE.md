@@ -73,7 +73,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.1) / MMT_Buffs (v0.7.1) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.2) / MMT_Buffs (v0.7.2) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -110,6 +110,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
   Status line just above the share bar.
+- Name search: `Search.lua` (identical in Cooldowns / Buffs): the game finds
+  spells BY NAME only if the character knows them, so `mod.AttachSearch(box, {items, onPick})` builds a
+  session index of all names over ID ranges 1-60000, 400000-440000, 1250000-1330000 (ticker, 3000 per
+  step, presets' IDs win for duplicate names) and shows a popup; `box.picked` = the chosen {t, id, text};
+  `mod.FindByName` for typed exact names. Items: bags + equipped only. Test: test_search.py.
 - Spell links: this client inserts shift-clicked links via `ChatFrameUtil.InsertLink`;
   `ChatEdit_InsertLink` is only a fallback. Hook through `mod.AcceptSpellLinks`.
 - Presets: `Presets.lua` in each (`mod.PRESETS` {key, group = class | "RACE" | "ALL", race, name,
