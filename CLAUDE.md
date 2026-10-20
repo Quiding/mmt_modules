@@ -24,8 +24,8 @@ Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` 
 ## Writing MMT modules
 A module is its own addon folder `MMT_<Name>` whose `.toc` has
 `## Interface: 16001`, `## Dependencies: MMT`, `## X-MMT-Module: 1`, `## X-MMT-Title: <Title>`.
-The core finds it automatically (shown under /mmt > MODULES). A NEW folder needs a full
-game restart; changes to existing files only need `/reload`.
+The core finds it automatically (shown under /mmt > MODULES). New folders and changed files
+only need a `/reload` on this client (no game restart).
 
 Use ONLY the documented API (see /mmt help > "Writing modules" / "Team communication",
 source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:

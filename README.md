@@ -18,7 +18,7 @@ MODULES, with its own settings page.
 
 1. Copy the `MMT_*` folders next to the `MMT` folder in
    `World of Warcraft/_classic_beta_/Interface/AddOns/` on every client.
-2. Restart the game completely (new addon folders don't show up after just `/reload`).
+2. `/reload` (or log in) and switch the modules on under `/mmt` > MODULES if needed.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
 
