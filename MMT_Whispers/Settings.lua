@@ -18,7 +18,8 @@ end
 
 -- "Send them to": the group leader, a character or everyone with a role
 local function TargetChoices()
-    local t = { { value = "LEADER", text = "Group leader" }, { header = true, text = "Character" } }
+    local t = { { value = "FTL", text = "FTL leader ({FTL})" }, { value = "LEADER", text = "Group leader" },
+                { header = true, text = "Character" } }
     for _, key in ipairs(MMT.SortedMembers()) do t[#t + 1] = { value = "CHAR:" .. key, text = MMT.FullDisplay(key) } end
     local roles = MMT.SortedRoleNames()
     if #roles > 0 then
@@ -49,7 +50,8 @@ local function ReceiverNames()
     local t = {}
     for key in pairs(mod.Receivers()) do t[#t + 1] = MMT.IsSelf(key) and "you" or MMT.FirstName(key) end
     table.sort(t)
-    return #t > 0 and table.concat(t, ", ") or "nobody (not in a group?)"
+    if #t > 0 then return table.concat(t, ", ") end
+    return M.db.to == "FTL" and "nobody (no FTL leader set: /mmt leader)" or "nobody (not in a group?)"
 end
 
 M.Page = function(_, page)

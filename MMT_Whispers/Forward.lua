@@ -45,8 +45,12 @@ end
 
 -- set of team keys (yourself included) the whispers go to
 function mod.Receivers()
-    local to, out = M.db.to or "LEADER", {}
-    if to == "LEADER" then
+    local to, out = M.db.to or "FTL", {}
+    if to == "FTL" then
+        -- MMT's FTL leader: the character you play ({FTL} in macros)
+        local key = MMT.FTLLeader and MMT.FTLLeader()
+        if type(key) == "string" then out[MMT.IsSelf(key) and MMT.PlayerFull() or key] = true end
+    elseif to == "LEADER" then
         local key = mod.LeaderKey()
         if key then out[key] = true end
     elseif to:sub(1, 5) == "CHAR:" then
@@ -78,13 +82,21 @@ function mod.SendOn(kind, flags, name, text)
     local id = tostring(math.random(1000, 9999))
     local total = math.max(1, math.ceil(#data / CHUNK))
     local n = 0
+    local function Part(i) return ("MWF:%s:%d:%d:%s"):format(id, i, total, data:sub((i - 1) * CHUNK + 1, i * CHUNK)) end
+    if (M.db.to or "FTL") == "FTL" and MMT.SendToLeader then
+        -- the core whispers the leader it knows, or asks the team "@L:" if that one is offline
+        for i = 1, total do
+            if MMT.SendToLeader(Part(i), "ALERT") ~= true then return 0 end
+        end
+        if kind ~= "N" then mod.sent = mod.sent + 1 end
+        return 1
+    end
     for key in pairs(mod.Receivers()) do
         if not MMT.IsSelf(key) and MMT.IsOnline(key) then
             n = n + 1
             local target = MMT.WhisperTarget and MMT.WhisperTarget(key) or key
             for i = 1, total do
-                MMT.SendAddon(("MWF:%s:%d:%d:%s"):format(id, i, total, data:sub((i - 1) * CHUNK + 1, i * CHUNK)),
-                    "WHISPER", target)
+                MMT.SendAddon(Part(i), "WHISPER", target)
             end
         end
     end

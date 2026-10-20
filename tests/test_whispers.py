@@ -36,6 +36,14 @@ function MMT.FirstName(key) return (key:match("^[^-]+")) end
 function MMT.FullDisplay(key) return (key:gsub("-", " ")) end
 function MMT.SplitUnit(u) return nil, nil, u == "party1" and OTHER or ME end
 function MMT.SendAddon(msg, channel, target) ADDON[#ADDON + 1] = { msg = msg, to = target } end
+FTL = "Anna-Smith"
+function MMT.FTLLeader() return FTL end
+function MMT.SendToLeader(msg, prio)
+  if not FTL then return false end
+  if MMT.IsSelf(FTL) then return "self" end
+  ADDON[#ADDON + 1] = { msg = msg, to = MMT.WhisperTarget(FTL), prio = prio }
+  return true
+end
 function MMT.Ago() return "1 s" end
 function MMT.NewModule(def)
   local M = def
@@ -87,18 +95,26 @@ def take(lua):
 def deliver(msgs, lua, fromKey, fromName):
     for m in msgs: lua.eval('DELIVER')(fromKey, fromName, m)
 
-# who receives: Anna leads the group, so she does; Bob forwards
+# who receives: Anna is the FTL leader (and leads the group), so she does; Bob forwards
 print("A:", A.eval(r'''function(m)
-  assert(m.IAmReceiver(), "the leader isn't the receiver")
+  assert(m.M.db.to == "FTL" and m.IAmReceiver(), "the FTL leader isn't the receiver")
+  FTL = "Bob-Stone"; assert(not m.IAmReceiver(), "FTL leader moved")
+  FTL = nil; assert(next(m.Receivers()) == nil, "no FTL leader: nobody")
+  m.M.db.to = "LEADER"; assert(m.IAmReceiver(), "group leader receiver")
+  FTL = "Anna-Smith"
+  -- an older profile with Group leader becomes FTL leader once
+  m.M.db.toFTL = nil; m.M.OnEnable(m.M); assert(m.M.db.to == "FTL", "not migrated")
+  m.M.db.to = "LEADER"; m.M.OnProfileChanged(m.M); assert(m.M.db.to == "LEADER", "migrated twice")
   m.M.db.to = "ROLE:Main"; assert(m.IAmReceiver(), "role receiver")
   m.M.db.to = "CHAR:Bob-Stone"; assert(not m.IAmReceiver(), "char receiver")
-  m.M.db.to = "LEADER"
+  m.M.db.to = "FTL"
   return "receivers ok"
 end''')(amod))
 
 # a whisper to Bob reaches Anna's chat, R goes to Bob
 print("B:", B.eval(r'''function(m)
   assert(not m.IAmReceiver(), "the alt thinks it receives")
+  assert(m.M.db.to == "FTL", "default")
   FIRE("CHAT_MSG_WHISPER", "hello there, got a sec?", "Stranger-Realm", "", "", "", "")
   assert(#ADDON == 1 and ADDON[1].to == "Anna Smith" and ADDON[1].msg:find("^MWF:%d+:1:1:W::Stranger%-Realm:hello"), "not forwarded: " .. tostring(ADDON[1] and ADDON[1].msg))
   return "forwarded"

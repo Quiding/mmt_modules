@@ -11,7 +11,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.0"
+mod.VERSION = "0.1.1"
 
 local M = MMT.NewModule({
     name = "Whispers",
@@ -21,7 +21,7 @@ local M = MMT.NewModule({
     syncExclude = { "chatFrame" }, -- ... except the chat window (each client has its own)
     defaults = {
         forward = true,            -- alts send whispers on to the receiver
-        to = "LEADER",             -- LEADER | CHAR:<team key> | ROLE:<MMT role>
+        to = "FTL",                -- FTL (MMT's FTL leader = {FTL}) | LEADER (group leader) | CHAR:<team key> | ROLE:<MMT role>
         informs = true,            -- also what the alts whisper to others
         bn = false,                -- Battle.net whispers too
         skipAddon = true,          -- "<DBM> ..." style automatic answers stay on the alt
@@ -34,6 +34,16 @@ local M = MMT.NewModule({
     },
 })
 mod.M = M
+
+-- profiles made before the FTL leader was the default: Group leader -> FTL leader (once)
+local function Migrate()
+    if not M.db.toFTL then
+        if M.db.to == "LEADER" then M.db.to = "FTL" end
+        M.db.toFTL = true
+    end
+end
+M.OnEnable = Migrate
+M.OnProfileChanged = Migrate
 
 SLASH_MMTWHISPERS1 = "/mmtw"
 SLASH_MMTWHISPERS2 = "/mmtwhispers"
