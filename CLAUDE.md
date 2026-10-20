@@ -203,6 +203,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
+### MMT_TeamInventory (v0.1.0)
+- Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
+  = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
+  `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
+  `MailFrame` is shown; never rescan after closing: it would read as empty), `Sync.lua`, `Tooltip.lua`, `Settings.lua`.
+- Comm: heartbeat `tiv=<hash>`, `TIVREQ` (whisper, 60 s cooldown), `TIVS:<hash>#b=id x n,...;k=...` via
+  `MMT.SendLong` (BULK), `TIVD:<hash>#b13446=4;k...` deltas to the team (snapshot if > 240 bytes).
+- Tooltip: `TooltipDataProcessor.AddTooltipPostCall(Item)` installed at PLAYER_LOGIN (after Syndicator's, so
+  below its block); fallback OnTooltipSetItem. With Syndicator (`withSyndicator`): OTHERS = only characters
+  not in `mine`, total over everyone; ALL; OFF. Syndicator's own data is private (no injection into it).
+- Test: `tests/test_teaminventory.py` (two clients).
+
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between
   Import / Export and the core's Sync button. Others: a local `ResetButton(page, done)` in their settings

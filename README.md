@@ -52,7 +52,7 @@ addon and only lists our own module folders.
   <img src="media/buffs_lists.png" alt="Buffs: tracked buffs and the name search" width="600">
   <img src="media/buffs_look.png" alt="Buffs: look settings" width="600">
 
-- **MMT_Totems** (0.4.3): port of [EMA Totems](https://github.com/Quiding/ema_totems). A bar per
+- **MMT_Totems** (0.4.3) *(probably not ready yet, not heavily tested)*: port of [EMA Totems](https://github.com/Quiding/ema_totems). A bar per
   shaman (Fire, Air, Water, Earth): active totem with timer, else the chosen / last one.
   Right-click a slot to choose a totem (only those that shaman has learned, for any shaman), left-click your own to cast it, a
   sequence (reorder the four element buttons) + key (`/castsequence`, spam-safe option), individual and team presets (P / TP),
@@ -83,6 +83,12 @@ addon and only lists our own module folders.
   `/mmtgear <name>`.
 
   <img src="media/teamgear.png" alt="Team Gear: whole team and one member's gear" width="600">
+- **MMT_TeamInventory** (0.1.0) *(probably not ready yet, not heavily tested)*: the item tooltip shows how many your team has, across all your
+  accounts and characters (bags, bank, mail, equipped), also for members who are offline. Each
+  client counts its own items and shares them (a hash on MMT's heartbeat, a full copy when it
+  differs, then only the changes). Bank and mailbox are counted while open: open them once on
+  each character. Next to Baganator / Syndicator (which list the account you're on) it adds your
+  other accounts' characters below their lines, with a total over everyone. `/mmtinv send | request`.
 
 Every module's settings page has **Reset to defaults** (click twice), next to Import / Export and
 Sync to team.

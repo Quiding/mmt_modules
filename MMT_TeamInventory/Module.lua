@@ -1,0 +1,86 @@
+-- MMT module: Team Inventory.
+-- Hover an item: the tooltip shows how many your team has, on every account
+-- and character (bags, bank, mail, equipped), also while they are offline.
+-- Each client counts its own items and shares them with the team; everything
+-- is kept account-wide, so every client knows the whole team.
+--
+--   Scan.lua      counts this character's items (bank and mail only while open)
+--   Sync.lua      shares them: hash on the heartbeat, a full copy when it
+--                 differs, then only the changes (tag TIV)
+--   Tooltip.lua   the lines in the item tooltip, next to Syndicator's
+--   Settings.lua  settings page and debug report
+--
+-- Stored in M.store.chars[teamKey] = { b = {[itemID] = n}, k = bank, m = mail,
+-- e = equipped, hash, time }, and M.store.mine[key] = true for characters of
+-- this account (Syndicator already lists those in its own tooltip lines).
+
+local _, mod = ...
+local MMT = MMT
+
+mod.VERSION = "0.1.0"
+mod.PLACES = { "b", "k", "m", "e" }
+mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
+
+local M = MMT.NewModule({
+    name = "TeamInventory",
+    title = "Team Inventory",
+    description = "The item tooltip shows how many your team has, across all your accounts and characters.",
+    sync = true,
+    defaults = {
+        tooltip = true,        -- lines in the item tooltip
+        equipped = true,       -- count equipped items too
+        withSyndicator = "OTHERS",  -- Syndicator shown: OTHERS (other accounts only) | ALL | OFF (leave the tooltip to it)
+        limit = 10,            -- characters listed at most
+        onlyShift = false,     -- only while Shift is held
+    },
+})
+mod.M = M
+
+function mod.Chars()
+    M.store.chars = M.store.chars or {}
+    return M.store.chars
+end
+
+function mod.Mine()
+    M.store.mine = M.store.mine or {}
+    return M.store.mine
+end
+
+-- Syndicator (Baganator's data addon) is there and shows its own tooltip lines
+function mod.HasSyndicator()
+    return Syndicator and Syndicator.API and Syndicator.API.GetInventoryInfoByItemID and true or false
+end
+
+-- one character's counts of an item: total, { place = n }
+function mod.CountOf(key, itemID)
+    local rec = mod.Chars()[key]
+    if not rec then return 0 end
+    local total, parts = 0, {}
+    for _, p in ipairs(mod.PLACES) do
+        local n = rec[p] and rec[p][itemID] or 0
+        if p == "e" and not M.db.equipped then n = 0 end
+        if n > 0 then parts[p] = n; total = total + n end
+    end
+    return total, parts
+end
+
+M.OnEnable = function()
+    local key = MMT.PlayerFull()
+    if key then mod.Mine()[key] = true end
+    mod.ScanAll()
+end
+
+SLASH_MMTTEAMINV1 = "/mmtinv"
+SlashCmdList.MMTTEAMINV = function(msg)
+    if not M.enabled then MMT.Print("Team Inventory is switched off (/mmt modules).") return end
+    msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if msg == "send" then
+        mod.SendSnapshot()
+        MMT.Print("Team Inventory: your items were sent to the team.")
+    elseif msg == "request" then
+        mod.RequestAll()
+        MMT.Print("Team Inventory: asked the team for their items.")
+    else
+        MMT.Print("Team Inventory: /mmtinv send | request. Open your bank and mailbox once on each character so they're counted.")
+    end
+end
