@@ -62,6 +62,20 @@ function mod.Buff(unit, i)
     end
 end
 
+-- the same for harmful auras (some self buffs are debuffs, e.g. Death Wish)
+function mod.Debuff(unit, i)
+    if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
+        local ok, a = pcall(C_UnitAuras.GetDebuffDataByIndex, unit, i)
+        if not ok or type(a) ~= "table" then return nil end
+        if MMT.IsSecret(a.name) then return "secret" end
+        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime)
+    end
+    if UnitDebuff then
+        local name, icon, count, _, duration, expiration = UnitDebuff(unit, i)
+        return name, icon, count, duration, expiration
+    end
+end
+
 -- item ID -> name and ID of its use spell
 function mod.ItemSpell(id)
     local fn = (C_Item and C_Item.GetItemSpell) or GetItemSpell

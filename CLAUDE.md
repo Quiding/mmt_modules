@@ -73,7 +73,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.2) / MMT_Buffs (v0.7.2) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.3) / MMT_Buffs (v0.7.2) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -93,7 +93,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Preparation); a newly tracked running cooldown is announced (lists changed: `mod.ShareCheck()`);
   `MCDQ` = "send me your running cooldowns" (after taking over lists), answered by whisper.
 - `showBuffs`: a tracked spell/item's buff = buff with the SAME NAME as the cast on the user
-  (player / group unit via `unitOf`, else the time from MCDU). Icon: state "buff" + glow,
+  (player / group unit via `unitOf`, else the time from MCDU); helpful auras first, then harmful ones
+  (`mod.Debuff` in Compat: Death Wish is a debuff on the warrior). Icon: state "buff" + glow,
   `after` = the cooldown.
 - Lists in `M.db.lists[key]`, key = class token | "ALL" | "RACE:<race token>" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,

@@ -144,16 +144,27 @@ M:On("GROUP_ROSTER_UPDATE", MapUnits)
 M:On("PLAYER_ENTERING_WORLD", MapUnits)
 M:Listen("TEAM_CHANGED", MapUnits)
 
--- start, duration of a timed buff called name on unit, or nil
-local function UnitBuffTime(unit, name)
+-- start, duration of a timed aura called name on unit, or nil: helpful first,
+-- then harmful (a few self "buffs" are debuffs, e.g. Death Wish)
+local function AuraTime(read, unit, name)
     for i = 1, 40 do
-        local n, _, _, dur, expiration = mod.Buff(unit, i)
-        if not n or n == "secret" then return nil end
+        local n, _, _, dur, expiration = read(unit, i)
+        if not n or n == "secret" then return nil, true end
         if n == name then
             if dur and dur > 0 and expiration then return expiration - dur, dur end
-            return nil
+            return nil, false
         end
     end
+    return nil, true
+end
+
+local function UnitBuffTime(unit, name)
+    local start, dur = AuraTime(mod.Buff, unit, name)
+    if start then return start, dur end
+    if dur == false then return nil end   -- found as a buff without a timer
+    start, dur = AuraTime(mod.Debuff, unit, name)
+    if start then return start, dur end
+    return nil
 end
 mod.UnitBuffTime = UnitBuffTime
 

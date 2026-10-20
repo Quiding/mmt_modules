@@ -308,3 +308,21 @@ print("B:", B.eval(r"""function(m)
   assert(#db.lists.MAGE == #m.M.defaults.lists.MAGE and db.lists ~= m.M.defaults.lists, "lists not reset / shared with the defaults")
   return "reset to defaults ok"
 end""")(bmod))
+
+# a cast's "buff" that the game files as a debuff (Death Wish) still counts
+print("A:", A.eval(r"""function(m)
+  local buffs = { { name = "Battle Shout", duration = 120, expirationTime = 1100 } }
+  local debuffs = { { name = "Death Wish", duration = 30, expirationTime = 1025 } }
+  C_UnitAuras = {
+    GetBuffDataByIndex = function(_, i) return buffs[i] end,
+    GetDebuffDataByIndex = function(_, i) return debuffs[i] end,
+  }
+  local s, d = m.UnitBuffTime("player", "Death Wish")
+  assert(s == 995 and d == 30, "debuff not found: " .. tostring(s) .. " / " .. tostring(d))
+  s, d = m.UnitBuffTime("player", "Battle Shout")
+  assert(s == 980 and d == 120, "buff")
+  s, d = m.UnitBuffTime("player", "Recklessness")
+  assert(s == nil and d == nil, "missing aura: " .. tostring(d))
+  C_UnitAuras = nil
+  return "debuff as the cast's buff ok"
+end""")(amod))

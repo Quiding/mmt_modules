@@ -25,7 +25,7 @@ addon and only lists our own module folders.
   and a bar at the bottom of every settings tab: "Import / Export" on the left, MMT's own
   "Sync to team" on the right (`/mmt sync cooldowns|buffs|totems`; every setting incl. the window
   position, the other clients are asked first; the Totems key binding stays on each client).
-- **MMT_Cooldowns** (0.8.2): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
+- **MMT_Cooldowns** (0.8.3): port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns).
   One row per member with their important spells, trinkets and potions. Every client sends one
   short message when its character uses a tracked cooldown (exact remaining time), so members
   outside the group are tracked too; group members are also seen directly. While a spell's buff
