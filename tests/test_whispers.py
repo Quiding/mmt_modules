@@ -95,26 +95,26 @@ def take(lua):
 def deliver(msgs, lua, fromKey, fromName):
     for m in msgs: lua.eval('DELIVER')(fromKey, fromName, m)
 
-# who receives: Anna is the FTL leader (and leads the group), so she does; Bob forwards
+# who receives: Anna leads the group (and is the FTL leader), so she does; Bob forwards
 print("A:", A.eval(r'''function(m)
-  assert(m.M.db.to == "FTL" and m.IAmReceiver(), "the FTL leader isn't the receiver")
+  assert(m.M.db.to == "LEADER" and m.IAmReceiver(), "the group leader isn't the receiver")
+  m.M.db.to = "FTL"; assert(m.IAmReceiver(), "FTL leader receiver")
   FTL = "Bob-Stone"; assert(not m.IAmReceiver(), "FTL leader moved")
   FTL = nil; assert(next(m.Receivers()) == nil, "no FTL leader: nobody")
-  m.M.db.to = "LEADER"; assert(m.IAmReceiver(), "group leader receiver")
   FTL = "Anna-Smith"
-  -- an older profile with Group leader becomes FTL leader once
-  m.M.db.toFTL = nil; m.M.OnEnable(m.M); assert(m.M.db.to == "FTL", "not migrated")
-  m.M.db.to = "LEADER"; m.M.OnProfileChanged(m.M); assert(m.M.db.to == "LEADER", "migrated twice")
+  -- a profile that got the FTL leader as default in 0.1.1 goes back to the group leader once
+  m.M.db.toLeader = nil; m.M.OnEnable(m.M); assert(m.M.db.to == "LEADER", "not migrated back")
+  m.M.db.to = "FTL"; m.M.OnProfileChanged(m.M); assert(m.M.db.to == "FTL", "a later choice was undone")
   m.M.db.to = "ROLE:Main"; assert(m.IAmReceiver(), "role receiver")
   m.M.db.to = "CHAR:Bob-Stone"; assert(not m.IAmReceiver(), "char receiver")
-  m.M.db.to = "FTL"
+  m.M.db.to = "LEADER"
   return "receivers ok"
 end''')(amod))
 
 # a whisper to Bob reaches Anna's chat, R goes to Bob
 print("B:", B.eval(r'''function(m)
   assert(not m.IAmReceiver(), "the alt thinks it receives")
-  assert(m.M.db.to == "FTL", "default")
+  assert(m.M.db.to == "LEADER", "default")
   FIRE("CHAT_MSG_WHISPER", "hello there, got a sec?", "Stranger-Realm", "", "", "", "")
   assert(#ADDON == 1 and ADDON[1].to == "Anna Smith" and ADDON[1].msg:find("^MWF:%d+:1:1:W::Stranger%-Realm:hello"), "not forwarded: " .. tostring(ADDON[1] and ADDON[1].msg))
   return "forwarded"

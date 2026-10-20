@@ -18,7 +18,7 @@ end
 
 -- "Send them to": the group leader, a character or everyone with a role
 local function TargetChoices()
-    local t = { { value = "FTL", text = "FTL leader ({FTL})" }, { value = "LEADER", text = "Group leader" },
+    local t = { { value = "LEADER", text = "Group leader" }, { value = "FTL", text = "FTL leader ({FTL})" },
                 { header = true, text = "Character" } }
     for _, key in ipairs(MMT.SortedMembers()) do t[#t + 1] = { value = "CHAR:" .. key, text = MMT.FullDisplay(key) } end
     local roles = MMT.SortedRoleNames()

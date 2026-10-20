@@ -45,7 +45,7 @@ end
 
 -- set of team keys (yourself included) the whispers go to
 function mod.Receivers()
-    local to, out = M.db.to or "FTL", {}
+    local to, out = M.db.to or "LEADER", {}
     if to == "FTL" then
         -- MMT's FTL leader: the character you play ({FTL} in macros)
         local key = MMT.FTLLeader and MMT.FTLLeader()
@@ -83,7 +83,7 @@ function mod.SendOn(kind, flags, name, text)
     local total = math.max(1, math.ceil(#data / CHUNK))
     local n = 0
     local function Part(i) return ("MWF:%s:%d:%d:%s"):format(id, i, total, data:sub((i - 1) * CHUNK + 1, i * CHUNK)) end
-    if (M.db.to or "FTL") == "FTL" and MMT.SendToLeader then
+    if M.db.to == "FTL" and MMT.SendToLeader then
         -- the core whispers the leader it knows, or asks the team "@L:" if that one is offline
         for i = 1, total do
             if MMT.SendToLeader(Part(i), "ALERT") ~= true then return 0 end
