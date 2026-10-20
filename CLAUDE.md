@@ -10,7 +10,7 @@ World of Warcraft: Forever (interface `16001`, Lua 5.1 WoW API).
 This git repo lives **directly in `Interface/AddOns`**, which also contains many
 other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
 `.gitignore` ignores everything (`/*`) and whitelists only our files:
-`.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, and each of OUR module folders.
+`.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `tests/`, `media/` (README pictures / gifs), and each of OUR module folders.
 - `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker` belong to the
   friend: never edit or commit them. Read them for reference only.
 - **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, list it in README.md.

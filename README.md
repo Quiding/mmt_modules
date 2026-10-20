@@ -15,6 +15,9 @@ addon and only lists our own module folders.
   replacing Pawn's own lines (setting: Replace / Add below / Off).
   Members whose class can never use the item (a bow for a shaman, plate for a mage) get no value
   (switchable). `/mmtpc`, `/mmtpc send`, `/mmtpc request`.
+
+  <img src="media/pawncompare.png" alt="Team upgrades in the item tooltip" width="306">
+
 - Cooldowns and Buffs track lists per class, race, MMT role or character; list entries can be
   switched off without deleting them. Presets from Wowhead's WoW: Forever data (per class:
   recommended / major only / everything; racials per race; potions & runes; raid, world buff and
@@ -32,12 +35,23 @@ addon and only lists our own module folders.
   is up (Berserking, Evasion, trinkets, ...) its icon glows with the buff's time left. Per-class
   lists, editable on the settings page, can be sent to the team. Import / export as a text
   string (choose: lists, look, position). `/mmtcd`, `/mmtcd test`, `/mmtcd export`.
+
+  ![Cooldowns bar](media/cooldowns.gif)
+
+  <img src="media/cooldowns_lists.png" alt="Cooldowns: tracked spells and presets" width="600">
+
 - **MMT_Buffs** (0.7.2): port of [EMA Buffs](https://github.com/Quiding/ema_buffs). Which group
   members have or miss the buffs tracked for their class (any rank, group versions like Prayer
   of Fortitude count too), with exact timers. Own window or
   attached to the Cooldowns bars. Missing buffs show as the normal icon, red or grey (optionally glowing), at their own opacity. An
   "All classes" row sums up the team-wide buffs: missing when anyone lacks one, otherwise the shortest time left; members can be left out of it.
   Import / export as a text string. `/mmtbf`, `/mmtbf test`, `/mmtbf export`.
+
+  ![Buffs bar](media/buffs.gif)
+
+  <img src="media/buffs_lists.png" alt="Buffs: tracked buffs and the name search" width="600">
+  <img src="media/buffs_look.png" alt="Buffs: look settings" width="600">
+
 - **MMT_Totems** (0.4.3): port of [EMA Totems](https://github.com/Quiding/ema_totems). A bar per
   shaman (Fire, Air, Water, Earth): active totem with timer, else the chosen / last one.
   Right-click a slot to choose a totem (only those that shaman has learned, for any shaman), left-click your own to cast it, a
@@ -56,7 +70,6 @@ addon and only lists our own module folders.
   straight to the sender. Optional Battle.net whispers (never real names); automatic answers
   (`<DBM> ...`) and whispers with ignored words stay on the alt. Texts the game hides in combat
   lockdown aren't forwarded. Settings sync through MMT's "Sync to team". `/mmtw`, `/mmtw test`.
-
 - **MMT_TeamGear** (0.1.0): a button on the character panel lists the team; click a member to
   see their equipped items in an inspect-like window (item names and levels, average item level,
   their 3D model while they're in your group and in sight). Works for offline members too: the
@@ -68,6 +81,8 @@ addon and only lists our own module folders.
   each client shares its race and gender on MMT's heartbeat). "Whole team" (top of the list, the
   Team button or `/mmtgear all`) shows everyone at once: one row per member with every slot.
   `/mmtgear <name>`.
+
+  <img src="media/teamgear.png" alt="Team Gear: whole team and one member's gear" width="600">
 
 Every module's settings page has **Reset to defaults** (click twice), next to Import / Export and
 Sync to team.
