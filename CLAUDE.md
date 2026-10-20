@@ -73,15 +73,6 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_BugFixes (v0.1.2)
-- Runtime fixes for OTHER modules (friend's), never editing their files. Each fix = one file +
-  a `M.db` toggle registered in `mod.fixes` (shown on the page and in the debug report) + an
-  upstream patch in `patches/` (made with `git diff --no-index` against a copy) for the friend.
-- `CompareOverlap.lua`: ItemCompare anchors MMTCompareTip1 at GameTooltip's side, under the
-  ShoppingTooltip1/2 ("Equipped"). We re-anchor tip 1 past their outer edge (or below them
-  if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
-  The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
-
 ### MMT_Cooldowns (v0.8.1) / MMT_Buffs (v0.7.1) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be

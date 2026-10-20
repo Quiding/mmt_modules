@@ -15,11 +15,6 @@ addon and only lists our own module folders.
   replacing Pawn's own lines (setting: Replace / Add below / Off).
   Members whose class can never use the item (a bow for a shaman, plate for a mage) get no value
   (switchable). `/mmtpc`, `/mmtpc send`, `/mmtpc request`.
-- **MMT_BugFixes** (0.1.2): runtime fixes for other MMT modules, each switchable on its settings
-  page, with a patch for the module's author in `MMT_BugFixes/patches/`:
-  - Item Compare's team tooltips no longer cover the game's "Equipped" comparison tooltips
-    (`patches/ItemCompare_overlap.patch`). Merged upstream in Item Compare 1.0.2; the fix
-    switches itself off there.
 - Cooldowns and Buffs track lists per class, race, MMT role or character; list entries can be
   switched off without deleting them. Presets from Wowhead's WoW: Forever data (per class:
   recommended / major only / everything; racials per race; potions & runes; raid, world buff and
