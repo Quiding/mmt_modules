@@ -83,14 +83,27 @@ addon and only lists our own module folders.
   `/mmtgear <name>`.
 
   <img src="media/teamgear.png" alt="Team Gear: whole team and one member's gear" width="600">
-- **MMT_TeamInventory** (0.1.0) *(probably not ready yet, not heavily tested)*: the item tooltip shows how many your team has, across all your
+- **MMT_TeamInventory** (0.2.0) *(probably not ready yet, not heavily tested)*: the item tooltip shows how many your team has, across all your
   accounts and characters (bags, bank, mail, equipped), also for members who are offline. Each
   client counts its own items and shares them (a hash on MMT's heartbeat, a full copy when it
   differs, then only the changes). Bank and mailbox are counted while open: open them once on
   each character. Next to Baganator / Syndicator (which list the account you're on) it adds your
-  other accounts' characters below their lines, with a total over everyone. `/mmtinv send | request`.
+  other accounts' characters below their lines, with a total over everyone. **Team bags**: a
+  minimap button (left-click bags, right-click bank) or a key (Options > Keybindings > AddOns >
+  MMT - Team Inventory: bags, bank, by character) opens a bag window for any character, the
+  whole team added up or the whole team by character, with Bags / Bank / Mail / Equipped tabs, a search box, and the items grouped
+  in Baganator's categories when it's on (your order, custom and hidden categories, priorities and
+  dragged items, read live), else in built-in ones like Baganator's defaults (one slot per item with
+  its count: only counts are synced).
+  *Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator)*, the team bags then use
+  its categories (and the tooltip sits right below its own lines); without it the built-in
+  categories are used.
+  `/mmtinv bags | bank | mail | send | request`.
 
   <img src="media/teaminventory.png" alt="Team inventory lines in the item tooltip" width="277">
+  <img src="media/teambags_team.png" alt="Team bags: the whole team in Baganator's categories" width="400">
+  <img src="media/teambags_bycharacter.png" alt="Team bags: the whole team by character" width="400">
+  <img src="media/teambags_equipped.png" alt="Team bags: one character's equipped items" width="400">
 
 Every module's settings page has **Reset to defaults** (click twice), next to Import / Export and
 Sync to team.

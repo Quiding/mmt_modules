@@ -1,0 +1,11 @@
+<Bindings>
+	<Binding name="MMTTEAMINV_BAGS" header="MMTTEAMINV" category="ADDONS">
+		MMTTeamInventory_Toggle("b")
+	</Binding>
+	<Binding name="MMTTEAMINV_BANK" category="ADDONS">
+		MMTTeamInventory_Toggle("k")
+	</Binding>
+	<Binding name="MMTTEAMINV_BYCHAR" category="ADDONS">
+		MMTTeamInventory_Toggle("b", "__BYCHAR__")
+	</Binding>
+</Bindings>

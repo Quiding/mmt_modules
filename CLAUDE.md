@@ -203,7 +203,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.1.0)
+### MMT_TeamInventory (v0.2.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -213,7 +213,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Tooltip: `TooltipDataProcessor.AddTooltipPostCall(Item)` installed at PLAYER_LOGIN (after Syndicator's, so
   below its block); fallback OnTooltipSetItem. With Syndicator (`withSyndicator`): OTHERS = only characters
   not in `mine`, total over everyone; ALL; OFF. Syndicator's own data is private (no injection into it).
-- Test: `tests/test_teaminventory.py` (two clients).
+- `Bags.lua`: team bags window `MMTTeamBagsWindow` (character picker incl. `__ALL__` = summed, `__BYCHAR__` = a section per character in category order, tabs b/k/m/e,
+  search, `mod.CATEGORIES` = Baganator's default Classic order by GetItemInfoInstant classID, quality 0 = Junk
+  last; lines = headers + rows of 10; the window grows to fit, scrolls by line only past the screen height) and the own minimap button
+  `MMTTeamBagsMinimapButton` (`minimapAngle`, left bags / right bank, drag). Keys: `Bindings.xml` (own header
+  MMTTEAMINV) -> global `MMTTeamInventory_Toggle(place, who)`.
+- `BaganatorCats.lua`: with Baganator on, `mod.BaganatorGroups(slots)` reads `BAGANATOR_CONFIG.Profiles[BAGANATOR_CURRENT_PROFILE]`
+  (category_display_order, custom_categories, category_modifications priority / addedItems "i:<id>",
+  category_hidden) READ ONLY on every draw; default_* searches rebuilt like Baganator's Forever defaults
+  (its definitions are private); matching = `Syndicator.Search.CheckItem(GetBaseInfo{...}, search)`, highest
+  priority wins (prio = offset + (mod.priority+1)*200, ties by order). Auto categories skipped. Any problem: nil
+  -> built-in `mod.Group`. Setting `baganatorCats`.
+- Tests: `tests/test_teaminventory.py` (two clients), `tests/test_teambags.py` (window, Baganator categories, stand-ins).
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between

@@ -8,6 +8,8 @@
 --   Sync.lua      shares them: hash on the heartbeat, a full copy when it
 --                 differs, then only the changes (tag TIV)
 --   Tooltip.lua   the lines in the item tooltip, next to Syndicator's
+--   Bags.lua      "Team bags": any character's stored items in a bag window,
+--                 and the minimap button (left: bags, right: bank)
 --   Settings.lua  settings page and debug report
 --
 -- Stored in M.store.chars[teamKey] = { b = {[itemID] = n}, k = bank, m = mail,
@@ -17,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.0"
+mod.VERSION = "0.2.0"
 mod.PLACES = { "b", "k", "m", "e" }
 mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
 
@@ -26,12 +28,19 @@ local M = MMT.NewModule({
     title = "Team Inventory",
     description = "The item tooltip shows how many your team has, across all your accounts and characters.",
     sync = true,
+    syncExclude = { "minimapAngle", "bagsPoint", "bagsScale", "lastWho" },   -- belong to each screen
     defaults = {
         tooltip = true,        -- lines in the item tooltip
         equipped = true,       -- count equipped items too
         withSyndicator = "OTHERS",  -- Syndicator shown: OTHERS (other accounts only) | ALL | OFF (leave the tooltip to it)
         limit = 10,            -- characters listed at most
         onlyShift = false,     -- only while Shift is held
+        minimap = true,        -- minimap button: left-click team bags, right-click team bank
+        minimapAngle = 200,
+        bagsScale = 1,
+        categories = true,     -- team bags grouped by category (false = one grid)
+        baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
+        openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },
 })
 mod.M = M
@@ -68,19 +77,32 @@ M.OnEnable = function()
     local key = MMT.PlayerFull()
     if key then mod.Mine()[key] = true end
     mod.ScanAll()
+    mod.SetupMinimap()
+end
+
+M.OnDisable = function()
+    if mod.minimap then mod.minimap:Hide() end
+    if mod.bags then mod.bags:Hide() end
+end
+
+M.OnProfileChanged = function()
+    mod.SetupMinimap()
+    if mod.RefreshBags then mod.RefreshBags() end
 end
 
 SLASH_MMTTEAMINV1 = "/mmtinv"
 SlashCmdList.MMTTEAMINV = function(msg)
     if not M.enabled then MMT.Print("Team Inventory is switched off (/mmt modules).") return end
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-    if msg == "send" then
+    if msg == "bags" or msg == "bank" or msg == "mail" then
+        mod.OpenBags(({ bags = "b", bank = "k", mail = "m" })[msg])
+    elseif msg == "send" then
         mod.SendSnapshot()
         MMT.Print("Team Inventory: your items were sent to the team.")
     elseif msg == "request" then
         mod.RequestAll()
         MMT.Print("Team Inventory: asked the team for their items.")
     else
-        MMT.Print("Team Inventory: /mmtinv send | request. Open your bank and mailbox once on each character so they're counted.")
+        MMT.Print("Team Inventory: /mmtinv bags | bank | mail | send | request. Open your bank and mailbox once on each character so they're counted.")
     end
 end

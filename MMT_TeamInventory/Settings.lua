@@ -55,6 +55,36 @@ M.Page = function(_, page)
     }, gs, ss)
     local gl, sl = Opt("limit")
     L:Slider("Characters listed at most", 3, 30, 1, gl, sl)
+    L:Header("Team bags")
+    L:Check("Minimap button", function() return M.db.minimap end, function(v)
+        M.db.minimap = v
+        mod.SetupMinimap()
+    end, "Left-click: team bags, right-click: team bank. Drag it around the minimap.")
+    L:Check("Group by category", function() return M.db.categories end, function(v)
+        M.db.categories = v
+        if mod.RefreshBags then mod.RefreshBags() end
+    end, "Consumables, Quest items, Weapons, Armor, Reagents, Trade goods, ... and Junk last.")
+    local gw, sw = Opt("openOn")
+    L:Cycle("Open on", {
+        { value = "LAST", text = "The last one viewed" },
+        { value = "SELF", text = "This character" },
+        { value = "ALL", text = "Whole team" },
+        { value = "BYCHAR", text = "Whole team, by character" },
+    }, gw, sw)
+    L:Check("Use Baganator's categories", function() return M.db.baganatorCats end, function(v)
+        M.db.baganatorCats = v
+        if mod.RefreshBags then mod.RefreshBags() end
+    end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
+    L:Slider("Window size", 0.5, 1.5, 0.05, function() return M.db.bagsScale or 1 end, function(v)
+        M.db.bagsScale = v
+        if mod.bags then mod.bags:SetScale(v) end
+    end, "%.2f")
+    local half = math.floor((COL_W - 8) / 2)
+    local ob = UI.Button(page, half, "Team bags", function() mod.OpenBags("b") end)
+    L:Add(ob, 0)
+    local ok = UI.Button(page, half, "Team bank", function() mod.OpenBags("k") end)
+    ok:SetPoint("LEFT", ob, "RIGHT", 8, 0)
+    L:Space(UI.ROW + 2)
 
     local R = UI.Column(page, COL2_X, 0, COL_W)
     R:Header("How it works")
