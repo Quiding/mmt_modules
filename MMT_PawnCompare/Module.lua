@@ -27,6 +27,7 @@ local M = MMT.NewModule({
         showInCompare = true,
         allScales = true,     -- every visible scale of the member, or only the first
         showPercent = true,
+        hideUnusable = true,  -- no values for members whose class can never use the item
         teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF
     },
 })

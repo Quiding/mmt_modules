@@ -11,7 +11,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.1"
+mod.VERSION = "0.1.2"
 
 local M = MMT.NewModule({
     name = "Whispers",

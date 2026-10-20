@@ -296,3 +296,15 @@ print("B:", B.eval(r"""function(m, str)
   assert(c.lists.MAGE[1].off == true, "lists not taken over")
   return "sync from the team ok"
 end""")(bmod, STR))
+
+# "Reset to defaults": every setting back, in the same table the core keeps
+print("B:", B.eval(r"""function(m)
+  local db = m.M.db
+  db.iconSize, db.extra = 55, "junk"
+  db.lists.MAGE = {}
+  m.ResetSettings()
+  assert(m.M.db == db, "db table replaced")
+  assert(db.iconSize == m.M.defaults.iconSize and db.extra == nil, "not reset")
+  assert(#db.lists.MAGE == #m.M.defaults.lists.MAGE and db.lists ~= m.M.defaults.lists, "lists not reset / shared with the defaults")
+  return "reset to defaults ok"
+end""")(bmod))

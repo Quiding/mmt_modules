@@ -97,7 +97,7 @@ local function AddTeam(tip, link)
     local rows = {}
     for _, key in ipairs(MMT.SortedMembers()) do
         local rec = mod.ScalesOf(key)
-        if rec and #rec.scales > 0 and mod.HasEquipment(key) then
+        if rec and #rec.scales > 0 and mod.HasEquipment(key) and not (cfg.hideUnusable and not mod.CanUse(key, link)) then
             for i, scale in ipairs(rec.scales) do
                 if i > 1 and not cfg.allScales then break end
                 local left = ClassName(key)

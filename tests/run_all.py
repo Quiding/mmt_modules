@@ -7,7 +7,7 @@ Run:         python tests/run_all.py        (from Interface/AddOns)
 import glob, os, subprocess, sys
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ours = ["MMT_PawnCompare", "MMT_BugFixes", "MMT_Cooldowns", "MMT_Buffs", "MMT_Totems", "MMT_Whispers"]
+ours = ["MMT_PawnCompare", "MMT_BugFixes", "MMT_Cooldowns", "MMT_Buffs", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear"]
 
 from luaparser import ast
 bad = 0

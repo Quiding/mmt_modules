@@ -26,7 +26,7 @@
 --
 -- cfg fields: shown, locked, clickThrough, growth ("DOWN" top > down, "UP" down > top,
 --   "RIGHT" left > right, "LEFT" right > left; older profiles: vertical), iconSize, spacing, rowGap,
---   showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
+--   iconZoom (% cut off each edge of the icon, default 8), showNames, fullNames, nameSize, showTimers, timerSize, readyAlpha, cdAlpha, missingAlpha, activeAlpha,
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y },
 --   font (MMT font name), timerColor {r,g,b}, bgTexture / borderTexture (LibSharedMedia
 --   names, "FLAT" / "NONE"), bgColor, borderColor {r,g,b}, borderSize, rowColor, rowAlpha,
@@ -36,7 +36,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 10
+local VERSION = 11
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -224,6 +224,8 @@ local function Setup(b, i, key, c)
     local t = i.tint
     b.tex:SetVertexColor(t and t[1] or 1, t and t[2] or 1, t and t[3] or 1)
     if b.tex.SetDesaturated then b.tex:SetDesaturated(i.desaturate and true or false) end
+    local z = math.max(0, math.min(40, tonumber(c.iconZoom) or 8)) / 100
+    b.tex:SetTexCoord(z, 1 - z, z, 1 - z)
     local size = c.iconSize or 28
     b:SetSize(size, size)
     b.glow:SetSize(size * 1.8, size * 1.8)

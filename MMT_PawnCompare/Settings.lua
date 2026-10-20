@@ -19,7 +19,23 @@ local function ScaleNames(rec)
     return table.concat(t, ", ")
 end
 
+-- "Reset to defaults" (click twice), left of the core's "Sync to team" button
+local function ResetButton(page, done)
+    local b = H.ConfirmButton(page, 150, "Reset to defaults", function()
+        for k in pairs(M.db) do M.db[k] = nil end
+        for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
+        if M.OnProfileChanged then M.OnProfileChanged(M) end
+        if done then done() end
+        if MMT.RefreshConfig then MMT.RefreshConfig() end
+        MMT.Print("%s: settings reset to defaults.", M.title)
+    end)
+    b:SetPoint("BOTTOMRIGHT", M.sync and -(176 + 8) or 0, 2)
+    UI.Tooltip(b, "Reset to defaults", "Puts every setting of this module back to the default of a new profile. Click twice.")
+    return b
+end
+
 M.Page = function(_, page)
+    ResetButton(page)
     local L = UI.Column(page, 0, 0, COL_W)
     local status
 
@@ -37,6 +53,8 @@ M.Page = function(_, page)
     L:Check("Show every scale of the member", ga, sa, "Off: only their first visible Pawn scale.")
     local gp, sp = Opt("showPercent")
     L:Check("Show the change in percent", gp, sp)
+    local gu, su = Opt("hideUnusable")
+    L:Check("Skip classes that can't use the item", gu, su, "No values for members whose class can never use it, e.g. a bow for a shaman or plate for a mage. Mail and plate count from the start for the classes that learn them at 40.")
     local gt, st = Opt("teamTooltip")
     L:Cycle("Team in the item tooltip", {
         { value = "REPLACE", text = "Replace Pawn's lines" },

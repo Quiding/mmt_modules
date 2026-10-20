@@ -321,6 +321,8 @@ local function LayoutBar(bar, pad, nameW)
     local colW = math.max(size, c.showNames and (textW + 2) or 0)
     local colX = c.vertical and math.floor((colW - size) / 2 + 0.5) or 0
 
+    local z = math.max(0, math.min(40, tonumber(c.iconZoom) or 8)) / 100
+    for _, s in pairs(bar.slots) do s.icon:SetTexCoord(z, 1 - z, z, 1 - z) end
     for i, item in ipairs(items) do
         if item == seqBtn then seqBtn:SetParent(bar) end
         item:SetSize(size, size)

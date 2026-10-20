@@ -54,10 +54,26 @@ local function ReceiverNames()
     return M.db.to == "FTL" and "nobody (no FTL leader set: /mmt leader)" or "nobody (not in a group?)"
 end
 
+-- "Reset to defaults" (click twice), left of the core's "Sync to team" button
+local function ResetButton(page, done)
+    local b = H.ConfirmButton(page, 150, "Reset to defaults", function()
+        for k in pairs(M.db) do M.db[k] = nil end
+        for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
+        if M.OnProfileChanged then M.OnProfileChanged(M) end
+        if done then done() end
+        if MMT.RefreshConfig then MMT.RefreshConfig() end
+        MMT.Print("%s: settings reset to defaults.", M.title)
+    end)
+    b:SetPoint("BOTTOMRIGHT", M.sync and -(176 + 8) or 0, 2)
+    UI.Tooltip(b, "Reset to defaults", "Puts every setting of this module back to the default of a new profile. Click twice.")
+    return b
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
-    status:SetPoint("BOTTOMLEFT", 0, 2)
-    status:SetWidth(COL2_X + COL_W - 190)
+    status:SetPoint("BOTTOMLEFT", 0, 32)
+    status:SetWidth(H.PAGE_W)
+    ResetButton(page)
 
     local L = UI.Column(page, 0, 0, COL_W)
     L:Header("Forwarding (on the alts)")

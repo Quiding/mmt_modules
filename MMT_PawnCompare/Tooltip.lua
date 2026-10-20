@@ -55,6 +55,11 @@ end
 
 -- offHand: the member's off-hand item when a two-hander is compared on the main hand
 local function AddLines(tip, key, hovered, equipped, offHand)
+    if M.db.hideUnusable and not mod.CanUse(key, hovered) then
+        tip:AddLine(" ")
+        tip:AddLine("Pawn: " .. MMT.FirstName(key) .. "'s class can't use this item", 0.5, 0.5, 0.5)
+        return
+    end
     local rec = mod.ScalesOf(key)
     local name = MMT.FirstName(key)
     if not rec or #rec.scales == 0 then

@@ -46,7 +46,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.2.2)
+### MMT_PawnCompare (v0.3.0)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -69,9 +69,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `PawnAddValuesToTooltip` to skip GameTooltip (only for equippable items while own scales exist).
   Rings/trinkets: vs the weaker slot; 1H: MH, or OH if a weapon is there; 2H: MH + OH.
 - Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
+- `Proficiency.lua`: `mod.CanUse(key, link)` from GetItemInfoInstant classID/subclassID and Classic weapon /
+  armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_BugFixes (v0.1.1)
+### MMT_BugFixes (v0.1.2)
 - Runtime fixes for OTHER modules (friend's), never editing their files. Each fix = one file +
   a `M.db` toggle registered in `mod.fixes` (shown on the page and in the debug report) + an
   upstream patch in `patches/` (made with `git diff --no-index` against a copy) for the friend.
@@ -80,7 +82,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   if off screen) after each layout. Patch: `patches/ItemCompare_overlap.patch`.
   The friend merged it in Item Compare 1.0.2: the fix checks the version and does nothing there.
 
-### MMT_Cooldowns (v0.8.0) / MMT_Buffs (v0.7.0) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.1) / MMT_Buffs (v0.7.1) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -126,7 +128,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Settings pages are ~564 px high: check both columns still fit when adding widgets.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
-  bump VERSION on change (now 7: backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 11: v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Buffs: group buffs count as the single one (`GROUP` in Lists.lua: Prayer of Fortitude ->
   Fortitude, Gift of the Wild, Arcane Brilliance, Prayers, Greater Blessings); `mod.Canonical(name)`
   on every scanned buff and in `BuffName`; `EntryName` keeps the entry's own name.
@@ -145,7 +147,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.2) – port of ema_totems
+### MMT_Totems (v0.4.3) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -172,7 +174,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
   (secure frames throw in combat) and runs two clients passing messages.
 
-### MMT_Whispers (v0.1.1) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
+### MMT_Whispers (v0.1.2) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
 - Files: `Module.lua` (defaults, `/mmtw`), `Forward.lua` (alts: CHAT_MSG_WHISPER / _INFORM / BN_WHISPER / BN_WHISPER_INFORM,
   `mod.Receivers()` from `to` = FTL (default: `MMT.FTLLeader()`, sent with `MMT.SendToLeader`) | LEADER (group) | CHAR:<key> | ROLE:<role>;
   older profiles' LEADER -> FTL once (`toFTL` flag), pass-on of the receiver's whispers,
@@ -183,6 +185,32 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Reply target: `ChatFrameUtil.SetLastTellTarget` (fallback `ChatEdit_SetLastTellTarget`), pcall; sending:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
+
+### MMT_TeamGear (v0.1.0)
+- Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
+  members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
+  window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
+  Item Compare's `EQUIPMENT_CHANGED`), `Button.lua` (button on `CharacterFrame`, shift-drag, `buttonPoint`
+  offsets from its TOPLEFT; member list via `MMT.UI.OpenList`), `Settings.lua`. Sends nothing.
+- Item Compare's store is account-wide per character and never pruned (only its Clear), so `mod.Groups()`
+  lists: this team, other profiles' teams (`MMTDB.profiles[name].team`, read only, skips `MMT.profileName`),
+  then every other stored character (`others` setting, default off; headers "Team N (<profile>)",
+  members indented with "-"). `mod.AllKeys()` = that order for < >.
+- Looks: real appearance can't be cached (no API). Heartbeat `tgl=<raceID>.<sex>`, units in sight read
+  directly, `M.store.looks[key]`; out of sight `mod.Mannequin`: DressUpModel `SetCustomRace(race, sex - 2)`,
+  `Undress`, `TryOn` each stored item (after OnModelLoaded / 0.1 s).
+- `Overview.lua`: whole team at once (`mod.OpenOverview`, list entry `__ALL__`, `/mmtgear all`), rows of
+  17 slot icons (no shirt/tabard), same `mod.AllKeys()` order, max 20 rows.
+- New frames start SHOWN: `f:Hide()` at the end of Build, and place a window when it has no point yet
+  (`not f:GetPoint(1)`), or it is "shown" without an anchor and invisible (test stub frames start shown too).
+- Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
+- Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
+
+### Reset to defaults (every module)
+- Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between
+  Import / Export and the core's Sync button. Others: a local `ResetButton(page, done)` in their settings
+  (left of the Sync button when `M.sync`, else bottom right). Both use `H.ConfirmButton` (click twice), wipe
+  `M.db` IN PLACE (the core holds that table), copy `M.defaults`, run OnProfileChanged.
 
 ## Tests (no Lua installed: Python + lupa's Lua 5.1, the same Lua as WoW)
 `tests/run_all.py` (from Interface/AddOns): syntax of every module file, shared files identical,

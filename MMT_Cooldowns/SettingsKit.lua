@@ -1,8 +1,9 @@
 -- Settings helpers shared by MMT_Cooldowns and MMT_Buffs (they ship the same
 -- copy of this file: KEEP BOTH IDENTICAL):
 --   mod.Tabs(page, { {id, text}, ... })  -> panels[id]   tab buttons like /mmt > Help
---   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export
---                                          left, the core's "Sync to team" right
+--   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export,
+--                                          Reset to defaults, the core's "Sync to team"
+--   mod.ResetSettings()                    every setting of the module back to its default
 --   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
 -- Opt(key) returns getter, setter for M.db[key]; apply() redraws.
 
@@ -47,10 +48,26 @@ function mod.ShareBar(page, status)
     local ie = UI.Button(page, 176, "Import / Export...", function() mod.OpenTransfer() end)
     ie:SetPoint("BOTTOMLEFT", 0, 2)
     UI.Tooltip(ie, "Import / Export", "Choose parts and copy them as a text string, or paste one to take it over.")
+    local reset = MMT.ConfigHelpers.ConfirmButton(page, 150, "Reset to defaults", function()
+        mod.ResetSettings()
+        status.Show_("Every setting is back to its default.")
+    end)
+    reset:SetPoint("LEFT", ie, "RIGHT", 8, 0)
+    UI.Tooltip(reset, "Reset to defaults", "Puts every setting of this module (all tabs, lists, window position) back to the default of a new profile. Click twice.")
     status:ClearAllPoints()
     status:SetPoint("BOTTOMLEFT", 0, 32)
     status:SetWidth(W)
     return ie
+end
+
+-- every setting back to the default (the same table, so the core's profile keeps it)
+function mod.ResetSettings()
+    local M = mod.M
+    for k in pairs(M.db) do M.db[k] = nil end
+    for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
+    if M.OnProfileChanged then M.OnProfileChanged(M) end
+    if MMT.RefreshConfig then MMT.RefreshConfig() end
+    MMT.Print("%s: settings reset to defaults.", M.title)
 end
 
 -- shift-clicking a spell (spellbook, chat link) while box has focus puts the
@@ -145,6 +162,8 @@ function mod.LookTab(panel, Opt, apply)
     L:Header("Size")
     local gi, si = Opt("iconSize")
     L:Slider("Icon size", 16, 64, 1, gi, si)
+    local gz, sz = Opt("iconZoom")
+    L:Slider("Icon zoom", 0, 30, 1, function() return gz() or 8 end, sz, "%d%%")
     local gs, ss = Opt("scale")
     L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
     local gsp, ssp = Opt("spacing")
