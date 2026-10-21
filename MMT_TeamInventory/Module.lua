@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.5.7"
+mod.VERSION = "0.6.0"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -48,6 +48,10 @@ local M = MMT.NewModule({
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         autoAccept = true,     -- accept a trade that holds nothing but planned gifts (both sides)
         sidePanel = true,      -- the team / trades panel beside the team bags
+        -- team bags look (settings > Look); defaults = MMT's settings window
+        bagIconSize = 36, bagColumns = 10, bagSpacing = 4, bagQuality = true,
+        bagBgTexture = "FLAT", bagBgColor = { r = 0.05, g = 0.05, b = 0.06 }, bagBgAlpha = 0.94,
+        bagBorderColor = { r = 0.22, g = 0.22, b = 0.24 }, bagCountSize = 14,   -- bagFont = MMT font name (nil = game font)
         -- bagFilters = { boe / bound / reagent / quest / consumable = "HIDE" | "ONLY" (Include) } (team bags; mod.Filters())
         openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },

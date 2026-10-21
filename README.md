@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.5.7 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.6.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
@@ -142,6 +142,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   to cancel. A "Planned items" button under the trade window fills it by hand. **Trade** in the
   panel makes the giver open the trade itself (they need to be grouped, or see each
   other's nameplate with friendly nameplates on).
+- **Look** tab in the settings: window size, background (colour, opacity, LibSharedMedia texture),
+  border colour, icon size, columns, spacing, quality colours, count font and size.
 - Open it from the minimap button (left-click bags, right-click bank) or a key (Keybindings >
   AddOns > MMT - Team Inventory).
 - The bank and mailbox are counted while open: open them once on each character.

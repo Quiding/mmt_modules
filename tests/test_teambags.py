@@ -662,3 +662,52 @@ print(lua.eval(r'''function(m)
   assert(m.M.db.bagsPoint[1] == "TOPLEFT" and m.M.db.bagsPoint[3] == 120, "drag not saved by the top")
   return "window stays put ok"
 end''')(mod))
+
+# look: icon size, columns, spacing, background / border, texture, quality colours
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  local db = m.M.db
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  local function First()
+    for _, b in ipairs(f.slots) do if b:IsShown() and rawget(b, "slot") then return b end end
+  end
+  assert(f._w == 416 and First()._w == 36, "default size: " .. tostring(f._w))
+  -- bigger icons, more columns: a wider window; fewer / smaller: never narrower than the top row
+  db.bagIconSize, db.bagColumns, db.bagSpacing = 40, 14, 2
+  m.RefreshBags()
+  assert(First()._w == 40 and f._w == 10 * 2 + 14 * 42 - 2, "big: " .. tostring(f._w))
+  db.bagIconSize, db.bagColumns = 24, 6
+  m.RefreshBags()
+  assert(First()._w == 24 and f._w == 416, "small keeps the minimum width: " .. tostring(f._w))
+  db.bagIconSize, db.bagColumns, db.bagSpacing = 36, 10, 4
+  -- background and border colours, on the window and the side panel
+  db.bagBgColor, db.bagBgAlpha, db.bagBorderColor = { r = 0.2, g = 0.1, b = 0 }, 0.5, { r = 1, g = 0, b = 0 }
+  m.RefreshBags()
+  for _, fr in ipairs({ f, f.team }) do
+    local sk = m.SkinFrame(fr)
+    assert(sk.bg._color[1] == 0.2 and sk.bg._color[4] == 0.5 and sk.edges[1]._color[1] == 1, "colours")
+  end
+  -- a LibSharedMedia background, tinted by the colour
+  LibStub = function(n) if n == "LibSharedMedia-3.0" then return { Fetch = function(_, k, name) return "media/" .. k .. "/" .. name end } end end
+  db.bagBgTexture = "Marble"
+  m.RefreshBags()
+  assert(m.SkinFrame(f).bg._tex == "media/background/Marble", "texture")
+  LibStub, db.bagBgTexture = nil, "FLAT"
+  -- quality colours off: the sword's green border goes grey
+  ITEMS[5000][2] = 2
+  db.bagQuality = false
+  m.RefreshBags()
+  for _, b in ipairs(f.slots) do
+    local s = rawget(b, "slot")
+    if b:IsShown() and s and s.id == 5000 then assert(b.bg._color[2] == 0.2, "quality colour shown while off") end
+  end
+  db.bagQuality = true
+  m.RefreshBags()
+  for _, b in ipairs(f.slots) do
+    local s = rawget(b, "slot")
+    if b:IsShown() and s and s.id == 5000 then assert(b.bg._color[2] == 1, "quality colour missing") end
+  end
+  db.bagBgColor, db.bagBgAlpha, db.bagBorderColor = { r = 0.05, g = 0.05, b = 0.06 }, 0.94, { r = 0.22, g = 0.22, b = 0.24 }
+  return "look ok"
+end''')(mod))

@@ -1,4 +1,4 @@
--- MMT Team Inventory: settings page and debug report.
+-- MMT Team Inventory: settings page (tabs: General / Team bags / Look) and debug report.
 
 local _, mod = ...
 local MMT = MMT
@@ -33,13 +33,33 @@ local function Known()
     return n, items
 end
 
+-- redraws the team bags after a look / filter change
+local function Redraw() if mod.RefreshBags then mod.RefreshBags() end end
+
+local function LookOpt(key)
+    return function() return M.db[key] end, function(v) M.db[key] = v; Redraw() end
+end
+
+local function FontChoices()
+    local t = { { value = "", text = "Game font" } }
+    for _, f in ipairs(MMT.fonts or {}) do t[#t + 1] = { value = f.name, text = f.name } end
+    return t
+end
+
+local FILTER_CHOICES = { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }
+
+-- Tabs (SettingsKit.lua, shared with Cooldowns / Buffs / Totems):
+-- General (tooltip, sharing) / Team bags (window, gifts, filters) / Look
 M.Page = function(_, page)
     ResetButton(page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)
     status:SetWidth(H.PAGE_W)
+    local panels = mod.Tabs(page, { { "general", "General" }, { "bags", "Team bags" }, { "look", "Look" } })
 
-    local L = UI.Column(page, 0, 0, COL_W)
+    -- General ---------------------------------------------------------------
+    local p = panels.general
+    local L = UI.Column(p, 0, 0, COL_W)
     L:Header("Item tooltip")
     local gt, st = Opt("tooltip")
     L:Check("Show the team's counts", gt, st, "Below the item's tooltip: how many each character has (bags, bank, mail, equipped) and the total.")
@@ -55,42 +75,8 @@ M.Page = function(_, page)
     }, gs, ss)
     local gl, sl = Opt("limit")
     L:Slider("Characters listed at most", 3, 30, 1, gl, sl)
-    L:Header("Team bags")
-    L:Check("Minimap button", function() return M.db.minimap end, function(v)
-        M.db.minimap = v
-        mod.SetupMinimap()
-    end, "Left-click: team bags, right-click: team bank. Drag it around the minimap.")
-    L:Check("Group by category", function() return M.db.categories end, function(v)
-        M.db.categories = v
-        if mod.RefreshBags then mod.RefreshBags() end
-    end, "Consumables, Quest items, Weapons, Armor, Reagents, Trade goods, ... and Junk last.")
-    local gw, sw = Opt("openOn")
-    L:Cycle("Open on", {
-        { value = "LAST", text = "The last one viewed" },
-        { value = "SELF", text = "This character" },
-        { value = "ALL", text = "Whole team" },
-        { value = "BYCHAR", text = "Whole team, by character" },
-    }, gw, sw)
-    L:Check("Use Baganator's categories", function() return M.db.baganatorCats end, function(v)
-        M.db.baganatorCats = v
-        if mod.RefreshBags then mod.RefreshBags() end
-    end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
-    local gg, sg = Opt("giveTrade")
-    L:Check("Planned gifts go into the trade", gg, sg, "Team bags, by character: drag an item onto another character. The next time those two trade, the giver puts it into the trade window. Off: use the \"Planned items\" button under the trade window.")
-    local ga, sa = Opt("autoAccept")
-    L:Check("Accept trades of planned gifts", ga, sa, "Both characters accept by themselves when the trade holds nothing but the planned gifts between them: no gold, nothing else. Any other trade stays yours to accept. A confirmation the game asks for (e.g. soulbound) is still a click.")
-    L:Slider("Window size", 0.5, 1.5, 0.05, function() return M.db.bagsScale or 1 end, function(v)
-        M.db.bagsScale = v
-        if mod.bags then mod.bags:SetScale(v) end
-    end, "%.2f")
-    local half = math.floor((COL_W - 8) / 2)
-    local ob = UI.Button(page, half, "Team bags", function() mod.OpenBags("b") end)
-    L:Add(ob, 0)
-    local ok = UI.Button(page, half, "Team bank", function() mod.OpenBags("k") end)
-    ok:SetPoint("LEFT", ob, "RIGHT", 8, 0)
-    L:Space(UI.ROW + 2)
 
-    local R = UI.Column(page, COL2_X, 0, COL_W)
+    local R = UI.Column(p, COL2_X, 0, COL_W)
     R:Header("How it works")
     R:Note("Each client counts its own bags, equipped items, and - while you have them open - its bank and mailbox, and shares them with the team. Every client keeps the whole team's counts, also for members who are offline.")
     R:Note("Open the bank and the mailbox once on each character so they are counted.")
@@ -103,16 +89,92 @@ M.Page = function(_, page)
         mod.RequestAll()
         status.Show_("Asked the team for their items.")
     end)
-    R:Header("Team bags panel")
-    R:Cycle("BoE gear", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("boe") end, function(v) mod.SetFilter("boe", v) end)
-    R:Cycle("Soulbound", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("bound") end, function(v) mod.SetFilter("bound", v) end)
-    R:Cycle("Crafting reagents", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("reagent") end, function(v) mod.SetFilter("reagent", v) end)
-    R:Cycle("Quest items", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("quest") end, function(v) mod.SetFilter("quest", v) end)
-    R:Cycle("Consumables", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("consumable") end, function(v) mod.SetFilter("consumable", v) end)
-    R:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
+
+    -- Team bags -------------------------------------------------------------
+    p = panels.bags
+    L = UI.Column(p, 0, 0, COL_W)
+    L:Header("Window")
+    L:Check("Minimap button", function() return M.db.minimap end, function(v)
+        M.db.minimap = v
+        mod.SetupMinimap()
+    end, "Left-click: team bags, right-click: team bank. Drag it around the minimap.")
+    local gw, sw = Opt("openOn")
+    L:Cycle("Open on", {
+        { value = "LAST", text = "The last one viewed" },
+        { value = "SELF", text = "This character" },
+        { value = "ALL", text = "Whole team" },
+        { value = "BYCHAR", text = "Whole team, by character" },
+    }, gw, sw)
+    L:Check("Group by category", function() return M.db.categories end, function(v)
+        M.db.categories = v
+        Redraw()
+    end, "Consumables, Quest items, Weapons, Armor, Reagents, Trade goods, ... and Junk last.")
+    L:Check("Use Baganator's categories", function() return M.db.baganatorCats end, function(v)
+        M.db.baganatorCats = v
+        Redraw()
+    end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
+    L:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
-        if mod.RefreshBags then mod.RefreshBags() end
+        Redraw()
     end, "The panel next to the team bags: your team (click a name for their bags, drop an item on a name to give it) and the planned trades with their Trade buttons. Off: drop items on a character's section in \"by character\" instead.")
+    L:Header("Planned gifts")
+    local gg, sg = Opt("giveTrade")
+    L:Check("Planned gifts go into the trade", gg, sg, "Drag an item onto another character in the team bags. The next time those two trade, the giver puts it into the trade window. Off: use the \"Planned items\" button under the trade window.")
+    local ga, sa = Opt("autoAccept")
+    L:Check("Accept trades of planned gifts", ga, sa, "Both characters accept by themselves when the trade holds nothing but the planned gifts between them: no gold, nothing else. Any other trade stays yours to accept. A confirmation the game asks for (e.g. soulbound) is still a click.")
+    L:Space(4)
+    local half = math.floor((COL_W - 8) / 2)
+    local ob = UI.Button(p, half, "Team bags", function() mod.OpenBags("b") end)
+    L:Add(ob, 0)
+    local ok = UI.Button(p, half, "Team bank", function() mod.OpenBags("k") end)
+    ok:SetPoint("LEFT", ob, "RIGHT", 8, 0)
+
+    R = UI.Column(p, COL2_X, 0, COL_W)
+    R:Header("Filters")
+    for _, k in ipairs(mod.FILTER_KINDS) do
+        R:Cycle(k.text, FILTER_CHOICES, function() return mod.FilterState(k.key) end, function(v) mod.SetFilter(k.key, v) end)
+    end
+    R:Note("Also under Filter in the team bags. Hide removes those items; with one or more kinds on Include, only the included kinds are shown.")
+
+    -- Look ------------------------------------------------------------------
+    p = panels.look
+    L = UI.Column(p, 0, 0, COL_W)
+    L:Header("Window")
+    L:Slider("Window size", 0.5, 1.5, 0.05, function() return M.db.bagsScale or 1 end, function(v)
+        M.db.bagsScale = v
+        if mod.bags then mod.bags:SetScale(v) end
+    end, "%.2f")
+    L:Cycle("Background", function() return mod.MediaChoices("background", "FLAT", "Flat") end, LookOpt("bagBgTexture"))
+    L:Color("Background colour", function() return M.db.bagBgColor end, function(c)
+        M.db.bagBgColor = { r = c.r, g = c.g, b = c.b }
+        Redraw()
+    end)
+    local gb, sb = LookOpt("bagBgAlpha")
+    L:Slider("Background opacity", 0, 1, 0.05, gb, sb, "%.2f")
+    L:Color("Border colour", function() return M.db.bagBorderColor end, function(c)
+        M.db.bagBorderColor = { r = c.r, g = c.g, b = c.b }
+        Redraw()
+    end)
+    L:Note("The panel beside the window takes the same background and border. Textures come from LibSharedMedia (other addons such as Details bring many).")
+
+    R = UI.Column(p, COL2_X, 0, COL_W)
+    R:Header("Items")
+    local gi, si = LookOpt("bagIconSize")
+    R:Slider("Icon size", 20, 64, 1, gi, si)
+    local gc, sc = LookOpt("bagColumns")
+    R:Slider("Columns", 4, 24, 1, gc, sc)
+    local gp, sp = LookOpt("bagSpacing")
+    R:Slider("Spacing", 0, 12, 1, gp, sp)
+    local gq, sq = LookOpt("bagQuality")
+    R:Check("Quality colour around items", gq, sq, "Green, blue, purple ... border for uncommon and better items.")
+    R:Header("Count text")
+    R:Cycle("Font", FontChoices, function() return M.db.bagFont or "" end, function(v)
+        M.db.bagFont = (v ~= "") and v or nil
+        Redraw()
+    end)
+    local gz, sz = LookOpt("bagCountSize")
+    R:Slider("Size", 8, 24, 1, gz, sz)
+
     page.OnRefresh = function()
         local n, items = Known()
         status.Show_(("Known: %d characters, %d item stacks.%s"):format(n, items,

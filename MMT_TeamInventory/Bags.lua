@@ -15,6 +15,49 @@ local UI = MMT.UI
 local COLS, SIZE, GAP, PAD, TOP = 10, 36, 4, 10, 66
 -- the item area grows with the items; it scrolls only when the window would
 -- not fit on the screen any more
+-- the look (settings > Look): icon size, columns, spacing come from M.db on every redraw;
+-- the window never gets narrower than its top row of buttons
+local MIN_W = PAD * 2 + 10 * (36 + 4) - 4
+local function ReadLook()
+    SIZE = math.max(20, math.min(64, tonumber(M.db.bagIconSize) or 36))
+    COLS = math.max(4, math.min(24, tonumber(M.db.bagColumns) or 10))
+    GAP = math.max(0, math.min(12, tonumber(M.db.bagSpacing) or 4))
+end
+local function GridW() return math.max(MIN_W, PAD * 2 + COLS * (SIZE + GAP) - GAP) - PAD * 2 end
+
+-- background (plain colour, or a LibSharedMedia texture tinted by it) and a 1 px border
+local skins = {}   -- [frame] = { bg = texture, edges = { 4 textures } }
+local function SkinFrame(fr)
+    local sk = skins[fr]
+    if not sk then
+        sk = { bg = fr:CreateTexture(nil, "BACKGROUND"), edges = {} }
+        sk.bg:SetAllPoints()
+        for i, pts in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+                               { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+            local t = fr:CreateTexture(nil, "BORDER")
+            t:SetPoint(pts[1]); t:SetPoint(pts[2])
+            if pts[3] then t:SetWidth(pts[3]) end
+            if pts[4] then t:SetHeight(pts[4]) end
+            sk.edges[i] = t
+        end
+        skins[fr] = sk
+    end
+    local c, a = M.db.bagBgColor or { r = 0.05, g = 0.05, b = 0.06 }, tonumber(M.db.bagBgAlpha) or 0.94
+    local name = M.db.bagBgTexture
+    local LSM = name and name ~= "FLAT" and LibStub and LibStub("LibSharedMedia-3.0", true)
+    local file = LSM and LSM:Fetch("background", name, true)
+    if file then
+        sk.bg:SetTexture(file)
+        sk.bg:SetVertexColor(c.r or 1, c.g or 1, c.b or 1, a)
+    else
+        sk.bg:SetColorTexture(c.r or 0, c.g or 0, c.b or 0, a)
+    end
+    local e = M.db.bagBorderColor or { r = 0.22, g = 0.22, b = 0.24 }
+    for _, t in ipairs(sk.edges) do t:SetColorTexture(e.r or 0, e.g or 0, e.b or 0, 1) end
+    return sk
+end
+mod.SkinFrame = SkinFrame
+
 local function MaxHeight(f)
     local screen = (tonumber(UIParent:GetHeight()) or 768) / math.max(0.1, tonumber(f:GetScale()) or 1)
     return math.max(4 * (36 + 4), screen - TOP - 80)
@@ -491,6 +534,7 @@ local function NewSlot(parent)
     b:SetScript("OnDragStart", function(self)
         if not CanDrag(self.slot) then return end
         local d = DragIcon()
+        d:SetSize(SIZE, SIZE)
         d.tex:SetTexture(self.slot.icon)
         d:Show()
         self.dragging = self.slot
@@ -575,8 +619,7 @@ local function Build()
         local l, t = mod.PinTop(self)
         if l then M.db.bagsPoint = { "TOPLEFT", "BOTTOMLEFT", l, t } end
     end)
-    UI.Fill(f, 0.05, 0.05, 0.06, 0.94)       -- like MMT's settings window
-    UI.Border(f, 0.22, 0.22, 0.24, 1)
+    SkinFrame(f)   -- defaults like MMT's settings window; settings > Look
     UI.CloseOnEscape(f)
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
@@ -677,8 +720,7 @@ local function Build()
     -- item on a name = a planned gift) and the trades to do
     f.team = CreateFrame("Frame", nil, f)
     f.team:SetWidth(TEAM_W)
-    UI.Fill(f.team, 0.05, 0.05, 0.06, 0.94)
-    UI.Border(f.team, 0.22, 0.22, 0.24, 1)
+    SkinFrame(f.team)
     f.team:EnableMouse(true)
     -- section titles like MMT's settings: gold text, a thin line under it
     local function Title(text)
@@ -881,6 +923,11 @@ end
 function mod.RefreshBags()
     local f = mod.bags
     if not f or not f:IsShown() then return end
+    ReadLook()
+    SkinFrame(f)
+    SkinFrame(f.team)
+    local countFont, countSize = M.db.bagFont, tonumber(M.db.bagCountSize) or 14
+    local quality = M.db.bagQuality ~= false
     local who, place = f.who, f.place
     f.owner.label:SetText(OwnerText(who))
     local on = mod.FiltersOn()
@@ -943,13 +990,14 @@ function mod.RefreshBags()
                 h.line:SetColorTexture(1, 1, 1, 0.08)
                 h.line:SetHeight(1)
                 h.line:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -2)
-                h.line:SetWidth(COLS * (SIZE + GAP) - GAP)
+                h.line:SetWidth(GridW())
                 f.headers[nHead] = h
             end
             h.line:Show()
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", PAD, y - 3)
-            h:SetWidth(COLS * (SIZE + GAP) - GAP)
+            h:SetWidth(GridW())
+            h.line:SetWidth(GridW())
             h:SetJustifyH("LEFT")
             h:SetWordWrap(false)
             h:SetText(line.header)
@@ -963,6 +1011,8 @@ function mod.RefreshBags()
                     local b = f.slots[nSlot] or NewSlot(f)
                     f.slots[nSlot] = b
                     b.slot = s
+                    b:SetSize(SIZE, SIZE)
+                    MMT.ApplyFont(b.count, countFont ~= "" and countFont or nil, countSize, "OUTLINE")
                     b:ClearAllPoints()
                     b:SetPoint("TOPLEFT", PAD + (c - 1) * (SIZE + GAP), y)
                     local r, g, bl = 0.2, 0.2, 0.2
@@ -972,7 +1022,7 @@ function mod.RefreshBags()
                         b.count:SetText(s.count > 1 and s.count or "")
                         if s.quality then
                             local qr, qg, qb = MMT.Safe(QualityColor, s.quality)
-                            if qr and s.quality > 1 then r, g, bl = qr, qg, qb end
+                            if qr and s.quality > 1 and quality then r, g, bl = qr, qg, qb end
                         end
                     else
                         b.icon:Hide()
@@ -998,7 +1048,7 @@ function mod.RefreshBags()
     end
     for i = nSlot + 1, #f.slots do f.slots[i]:Hide() end
     for i = nHead + 1, #f.headers do f.headers[i]:Hide(); f.headers[i].line:Hide() end
-    f:SetSize(PAD * 2 + COLS * (SIZE + GAP) - GAP, -y + 26)
+    f:SetSize(GridW() + PAD * 2, -y + 26)
 
     local total = 0
     for _, s in ipairs(slots) do total = total + s.count end
