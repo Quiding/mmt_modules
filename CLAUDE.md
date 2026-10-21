@@ -214,7 +214,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.7.0)
+### MMT_TeamInventory (v0.7.1)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -249,7 +249,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `InitiateTrade(unit)` (works from an addon message, user-tested with party1), unit from `mod.UnitOf`
   (partyN / raidN, then friendly nameplates, matched by `MMT.SplitUnit` key: same first names!); not found -> `TIVN` whispered back.
   Trade: TRADE_SHOW -> `mod.FillTrade` after the CORE's own Trade.lua fill (it precomputes free slots: we wait
-  2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton, skips bound/locked,
+  2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton at once (after a split CursorHasItem is still false: never check it first), skips bound/locked,
   counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on
   UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
   `autoAccept`: the watcher calls `mod.AcceptTrade()` (AcceptTrade, else TradeFrameTradeButton:Click; works from a timer: user-tested in game; C_Timer.After(1, AcceptTrade) itself errors, wrap it in a function) when `mod.TradeIsPlanned()`: only

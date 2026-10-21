@@ -384,8 +384,10 @@ function mod.FillTrade(manual)
             ClearCursor()
             if st.split then C.SplitContainerItem(st.bag, st.slot, st.split)
             else C.PickupContainerItem(st.bag, st.slot) end
-            if CursorHasItem() then ClickTradeButton(free) end
-            if CursorHasItem() then ClearCursor() end
+            -- drop it at once: right after a split the cursor doesn't show the item yet
+            -- (CursorHasItem is false), but the click still places it (like EllesmereUI Bags)
+            ClickTradeButton(free)
+            C_Timer.After(0.2, function() if CursorHasItem() then ClearCursor() end end)
         end)
     end
     if #steps > 0 then
@@ -404,6 +406,7 @@ end
 ---------------------------------------------------------------------------
 local STEADY = 1.5   -- seconds the trade must stay unchanged
 local signature, changedAt, accepted = nil, 0, false
+local toldFor          -- the trade state the "not accepting" note was given for
 
 -- { [itemID] = count } on the partner's side
 local function InTarget()
@@ -443,19 +446,34 @@ local function Signature(mine, theirs)
     return table.concat(parts, ";")
 end
 
--- true when this trade may be accepted by itself
+-- the first item on a side that isn't planned (or more than planned): text for chat
+local function NotPlanned(items, plans, side)
+    for id, n in pairs(items) do
+        if not plans[id] then return ("%s %s isn't a planned gift"):format(side, ItemName(id)) end
+        if n > plans[id] then return ("%s %d %s, %d planned"):format(side, n, ItemName(id), plans[id]) end
+    end
+end
+
+-- true when this trade may be accepted by itself; else false and why (nil: nothing to say)
 function mod.TradeIsPlanned()
     local own = MMT.PlayerFull()
-    if not (tradeOpen and own and partner) then return false end
-    if (tonumber(MMT.Safe(GetPlayerTradeMoney)) or 0) ~= 0 or (tonumber(MMT.Safe(GetTargetTradeMoney)) or 0) ~= 0 then return false end
-    local extra = MAX_SLOTS + 1   -- "will not be traded" (enchanting)
-    if MMT.Safe(GetTradePlayerItemLink, extra) or MMT.Safe(GetTradeTargetItemLink, extra) then return false end
-    local mine, theirs = InTrade(), InTarget()
+    if not (tradeOpen and own) then return false end
+    if not partner then return false end   -- not in the team: no gifts with them (debug dump shows the partner)
     local give, get = Plans(own, partner), Plans(partner, own)
+    if next(give) == nil and next(get) == nil then return false end   -- no gifts between these two
+    if (tonumber(MMT.Safe(GetPlayerTradeMoney)) or 0) ~= 0 or (tonumber(MMT.Safe(GetTargetTradeMoney)) or 0) ~= 0 then
+        return false, "there's gold in the trade"
+    end
+    local extra = MAX_SLOTS + 1   -- "will not be traded" (enchanting)
+    if MMT.Safe(GetTradePlayerItemLink, extra) or MMT.Safe(GetTradeTargetItemLink, extra) then
+        return false, "something is in the \"will not be traded\" slot"
+    end
+    local mine, theirs = InTrade(), InTarget()
     if next(mine) == nil and next(theirs) == nil then return false end
-    if not (OnlyPlanned(mine, give) and OnlyPlanned(theirs, get)) then return false end
+    local why = NotPlanned(mine, give, "your side has") or NotPlanned(theirs, get, MMT.FirstName(partner) .. "'s side has")
+    if why then return false, why end
     -- the giver: nothing it could still add
-    if next(give) ~= nil and #(Steps(give, mine)) > 0 then return false end
+    if next(give) ~= nil and #(Steps(give, mine)) > 0 then return false, "not all planned items are in yet" end
     return true
 end
 
@@ -490,10 +508,17 @@ watcher:SetScript("OnUpdate", function(_, e)
     lastTrade = { partner = partner, items = mine }
     local sig = Signature(mine, InTarget())
     if sig ~= signature then signature, changedAt, accepted = sig, GetTime(), false end
-    if M.db.autoAccept and not accepted and GetTime() - changedAt >= STEADY and mod.TradeIsPlanned() then
-        accepted = true
-        if mod.AcceptTrade() then
-            MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+    if M.db.autoAccept and not accepted and GetTime() - changedAt >= STEADY then
+        local ok, why = mod.TradeIsPlanned()
+        if ok then
+            accepted = true
+            if mod.AcceptTrade() then
+                MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+            end
+        elseif why and toldFor ~= signature then
+            -- once per state of the trade: why it waits for you
+            toldFor = signature
+            MMT.Print("Team Inventory: not accepting by itself - %s.", why)
         end
     end
 end)

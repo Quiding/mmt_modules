@@ -43,7 +43,8 @@ ERR_TRADE_COMPLETE = "Trade complete."
 function GetTradePlayerItemLink(s) local t = TRADE[s] return t and ("|Hitem:" .. t.id .. ":0|h[x]|h") end
 function GetTradePlayerItemInfo(s) local t = TRADE[s] if t then return "x", 1, t.n end end
 function ClickTradeButton(s) if CURSOR and not TRADE[s] then TRADE[s] = CURSOR; CURSOR = nil end end
-function CursorHasItem() return CURSOR ~= nil end
+-- like this client: right after a split the cursor doesn't report the piece yet (a click still places it)
+function CursorHasItem() return CURSOR ~= nil and not CURSOR.split end
 TARGET, MONEY, TMONEY, ACCEPTED = {}, 0, 0, 0
 function GetTradeTargetItemLink(s) local t = TARGET[s] return t and ("|Hitem:" .. t.id .. ":0|h[x]|h") end
 function GetTradeTargetItemInfo(s) local t = TARGET[s] if t then return "x", 1, t.n end end
@@ -71,6 +72,7 @@ function MMT.Safe(fn, ...) local ok, a, b, c, d, e, f, g = pcall(fn, ...) if ok 
 function MMT.PlayerFull() return ME end
 function MMT.IsSelf(k) return k == ME end
 function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
+function MMT.FirstName(k) return (k:match("^[^-]+")) end
 function MMT.Ago() return "1 min ago" end
 function MMT.Print() end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = { msg = msg } end
@@ -467,3 +469,43 @@ print("A:", A.eval(r"""function(m)
   assert(m.Gold("Bob-Stone") == 777777, "gold lost with a snapshot")
   return "gold ok"
 end""")(amod))
+
+# bug: split amounts never went in (CursorHasItem is false right after a split), so the
+# giver never accepted either; and when it doesn't accept, it says why
+print("B:", B.eval(r"""function(m)
+  local said = {}
+  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
+  function MMT.FirstName(k) return (k:match("^[^-]+")) end
+  SENT, TRADE, TARGET, ACCEPTED, MONEY, TMONEY = {}, {}, {}, 0, 0, 0
+  m.M.db.autoAccept, m.M.db.giveTrade = true, true
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 7)   -- part of the stack of 20
+  PARTNER = "Anna"
+  FIRE("TRADE_SHOW")
+  assert(TRADE[1] and TRADE[1].id == 2589 and TRADE[1].n == 7 and TRADE[1].split, "split not placed: " .. tostring(TRADE[1] and TRADE[1].n))
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "not accepted after the split")
+  FIRE("TRADE_CLOSED")
+  -- why it doesn't accept: more than planned on our side
+  TRADE, ACCEPTED, said = { [1] = { id = 2589, n = 20 } }, 0, {}
+  m.M.db.giveTrade = false
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK(); NOW = NOW + 2; TICK()
+  local notes = 0
+  for _, t in ipairs(said) do if t:find("not accepting", 1, true) then notes = notes + 1; assert(t:find("20", 1, true) and t:find("7 planned", 1, true), t) end end
+  assert(ACCEPTED == 0 and notes == 1, "reason not said once: " .. notes)
+  -- gold in the trade
+  said, TMONEY = {}, 500
+  TICK(); NOW = NOW + 2; TICK()
+  assert(said[1] and said[1]:find("gold", 1, true), "gold reason: " .. tostring(said[1]))
+  TMONEY = 0
+  FIRE("TRADE_CLOSED")
+  -- a trade with no gifts between the two: nothing said
+  said, TRADE, PARTNER = {}, { [1] = { id = 13446, n = 1 } }, "Wally"
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(#said == 0, "spoke about a trade without gifts: " .. tostring(said[1]))
+  FIRE("TRADE_CLOSED")
+  TRADE, m.M.db.giveTrade, MMT.Print = {}, true, function() end
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  return "split + accept reasons ok"
+end""")(bmod))
