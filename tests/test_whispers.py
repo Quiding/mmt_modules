@@ -162,13 +162,26 @@ print("B:", B.eval(r'''function(m)
   assert(CHAT[2].to == "Stranger-Realm" and CHAT[2].msg == "yes", "@name: " .. tostring(CHAT[2] and CHAT[2].to))
   FIRE("CHAT_MSG_WHISPER", "@Other Guy: see you", "Anna Smith", "", "", "", "")
   assert(CHAT[3].to == "Other Guy" and CHAT[3].msg == "see you", "@First Last:")
+  -- bug: "@First Last text" (no colon) whispered only the first name with "Last text";
+  -- a team member, or a recent sender, by both names now
+  FIRE("CHAT_MSG_WHISPER", "@Anna Smith hey", "Anna Smith", "", "", "", "")
+  assert(CHAT[4].to == "Anna Smith" and CHAT[4].msg == "hey", "@First Last text: " .. tostring(CHAT[4].to) .. " / " .. tostring(CHAT[4].msg))
+  FIRE("CHAT_MSG_WHISPER", "@Stranger Realm thanks", "Anna Smith", "", "", "", "")
+  -- (a recent sender "Stranger-Realm": both words match it)
+  assert(CHAT[5].to == "Stranger-Realm" and CHAT[5].msg == "thanks", "recent by two words: " .. tostring(CHAT[5].to))
+  -- one name of a team member: whispered by its full name
+  FIRE("CHAT_MSG_WHISPER", "@anna hi there", "Anna Smith", "", "", "", "")
+  assert(CHAT[6].to == "Anna Smith" and CHAT[6].msg == "hi there", "@first: " .. tostring(CHAT[6].to) .. " / " .. tostring(CHAT[6].msg))
+  -- someone unknown with a first word only: as typed, the rest is the message
+  FIRE("CHAT_MSG_WHISPER", "@Zed good game", "Anna Smith", "", "", "", "")
+  assert(CHAT[7].to == "Zed" and CHAT[7].msg == "good game", "unknown: " .. tostring(CHAT[7].to))
   -- what Bob whispered is shown on Anna too
   FIRE("CHAT_MSG_WHISPER_INFORM", "yes", "Stranger-Realm")
   assert(#ADDON == 1 and ADDON[1].msg:find(":I::Stranger%-Realm:yes$"), "inform not forwarded")
   -- nobody to pass it on to
   m.recentSenders = {}
   FIRE("CHAT_MSG_WHISPER", "anyone?", "Anna Smith", "", "", "", "")
-  assert(#CHAT == 3 and #ADDON == 2 and ADDON[2].msg:find(":N:"), "no note")
+  assert(#CHAT == 7 and #ADDON == 2 and ADDON[2].msg:find(":N:"), "no note")
   return "pass on ok"
 end''')(bmod))
 deliver(take(B), A, "Bob-Stone", "Bob Stone")

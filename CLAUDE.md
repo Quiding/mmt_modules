@@ -185,11 +185,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
   (secure frames throw in combat) and runs two clients passing messages.
 
-### MMT_Whispers (v0.1.3) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
+### MMT_Whispers (v0.1.4) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
 - Files: `Module.lua` (defaults, `/mmtw`), `Forward.lua` (alts: CHAT_MSG_WHISPER / _INFORM / BN_WHISPER / BN_WHISPER_INFORM,
   `mod.Receivers()` from `to` = LEADER (group, default) | FTL (`MMT.FTLLeader()`, sent with `MMT.SendToLeader`) | CHAR:<key> | ROLE:<role>;
   profiles that got FTL as default in 0.1.1/0.1.2 go back to LEADER once (`toLeader` flag), pass-on of the receiver's whispers,
   `mod.recentSenders`), `Display.lua` (receiver: MWF assembly, `mod.Show`, `mod.SetReply`), `Settings.lua`.
+- Pass-on "@Name text": "@First Last: text"; without a colon the first TWO words are the name when they match a recent
+  sender or a team member (characters have two names - "@Alash Erelia hey" whispered only "Alash" before 0.1.4), else
+  the first word; team members are whispered via `MMT.WhisperTarget(key)`.
 - Comm: `MWF:<id>:<part>:<total>:<kind>:<flags>:<name>:<text>` (kinds W I B b N, flag G = GM) by WHISPER to
   online receivers only. Secret texts/names stay on the alt. Skipped whispers (`<...>`, ignore words) aren't
   remembered as reply targets. `sync = true`, `syncExclude = { "chatFrame" }`.

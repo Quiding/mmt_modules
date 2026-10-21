@@ -124,13 +124,23 @@ local function Remember(name, bn)
     while #list > RECENT do table.remove(list) end
 end
 
--- "@anna hi" -> the recent sender starting with "anna" (or the name as typed)
-local function Pick(name)
+-- the recent sender whose name starts with it ("anna", "anna smith"), or nil
+local function Recent(name)
     local want = MMT.NormKey(name)
     for _, s in ipairs(mod.recentSenders) do
         if MMT.NormKey(s.name):sub(1, #want) == want then return s end
     end
-    return { name = name }
+end
+
+-- a team member: whispered the way the core whispers them ("First Last" on this client)
+local function Member(name)
+    local key = MMT.Resolve and MMT.Resolve(name)
+    if key then return { name = MMT.WhisperTarget and MMT.WhisperTarget(key) or name } end
+end
+
+-- "@anna hi" -> a recent sender starting with "anna", a team member, or the name as typed
+local function Pick(name)
+    return Recent(name) or Member(name) or { name = name }
 end
 
 ---------------------------------------------------------------------------
@@ -140,7 +150,14 @@ local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
 
 function mod.PassOn(text)
     local name, rest = text:match("^@([^:]+):%s*(.+)$")
-    if not name then name, rest = text:match("^@(%S+)%s+(.+)$") end
+    if not name then
+        -- characters here have two names: "@Alash Erelia hey" is for Alash Erelia when
+        -- that's someone known (a recent sender or a team member), else the first word
+        local first, last, more = text:match("^@(%S+)%s+(%S+)%s+(.+)$")
+        local two = first and (first .. " " .. last)
+        if two and (Recent(two) or Member(two)) then name, rest = two, more
+        else name, rest = text:match("^@(%S+)%s+(.+)$") end
+    end
     local target = name and Pick(name) or mod.recentSenders[1]
     local msg = name and rest or text
     if not target then
