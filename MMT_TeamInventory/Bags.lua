@@ -136,9 +136,16 @@ function mod.BagSlots(who, place, search)
             local s = NewSlotData(p.id, p.n, search)
             if s then s.owner, s.planned = who, p.from; slots[#slots + 1] = s end
         end
+        -- what leaves: still shown at the giver, dimmed, with the receiver's name
+        for _, p in ipairs(mod.PlannedOutList(who)) do
+            local s = NewSlotData(p.id, p.n, search)
+            if s then s.owner, s.outgoing = who, p.to; slots[#slots + 1] = s end
+        end
     end
     table.sort(slots, function(a, b)
-        if (a.planned ~= nil) ~= (b.planned ~= nil) then return a.planned ~= nil end   -- planned gifts first
+        -- planned gifts first: coming in, then going out
+        local ra, rb = a.planned and 0 or a.outgoing and 1 or 2, b.planned and 0 or b.outgoing and 1 or 2
+        if ra ~= rb then return ra < rb end
         if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
         if (a.name or "") ~= (b.name or "") then return (a.name or "~") < (b.name or "~") end
         return a.id < b.id
@@ -234,7 +241,7 @@ mod.DropSlot = Drop
 
 local function CanDrag(s)
     local f = mod.bags
-    return s and s.owner and not s.planned and f and f.who == BYCHAR and f.place == "b"
+    return s and s.owner and not s.planned and not s.outgoing and f and f.who == BYCHAR and f.place == "b"
 end
 
 ---------------------------------------------------------------------------
@@ -266,6 +273,13 @@ local function NewSlot(parent)
     fade:SetFromAlpha(1); fade:SetToAlpha(0.3); fade:SetDuration(0.6)
     b.pulse = pulse
     b.glow:Hide()
+    -- the other character of a planned gift (giver on a glowing one, receiver on a dimmed one)
+    b.tag = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.tag:SetPoint("TOPLEFT", 1, -1)
+    b.tag:SetPoint("TOPRIGHT", -1, -1)
+    b.tag:SetJustifyH("LEFT")
+    b.tag:SetWordWrap(false)
+    MMT.ApplyFont(b.tag, nil, 9, "OUTLINE")
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b:RegisterForDrag("LeftButton")
     b:SetScript("OnEnter", function(self)
@@ -273,10 +287,11 @@ local function NewSlot(parent)
         if not s then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         pcall(GameTooltip.SetHyperlink, GameTooltip, s.link or ("item:" .. s.id))
-        if s.planned then
+        if s.planned or s.outgoing then
+            local from, to = s.planned or s.owner, s.outgoing or s.owner
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(("Planned: %s gives %d to %s."):format(MMT.FullDisplay(s.planned), s.count, MMT.FullDisplay(s.owner)), 0.3, 1, 0.3, true)
-            GameTooltip:AddLine("Goes into the trade window the next time they trade. Right-click: cancel.", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine(("Planned: %s gives %d to %s."):format(MMT.FullDisplay(from), s.count, MMT.FullDisplay(to)), 0.3, 1, 0.3, true)
+            GameTooltip:AddLine(("%s trades %s: it goes into the trade window by itself. Right-click: cancel."):format(MMT.FirstName(from), MMT.FirstName(to)), 0.7, 0.7, 0.7, true)
         elseif CanDrag(s) then
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine("Drag onto another character to plan a gift (Shift: how many).", 0.7, 0.7, 0.7, true)
@@ -288,7 +303,8 @@ local function NewSlot(parent)
         local s = self.slot
         if not s then return end
         if button == "RightButton" then
-            if s.planned then mod.SetGive(s.planned, s.owner, s.id, 0) end
+            if s.planned then mod.SetGive(s.planned, s.owner, s.id, 0)
+            elseif s.outgoing then mod.SetGive(s.owner, s.outgoing, s.id, 0) end
         elseif IsShiftKeyDown() then
             pcall(InsertLink, s.link or ("item:" .. s.id))
         end
@@ -330,8 +346,16 @@ end
 
 local OwnerText
 
+-- a character's first name in their class colour
+local function NameTag(key)
+    local class = mod.ClassOf and mod.ClassOf(key)
+    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    local hex = c and ("%02x%02x%02x"):format(math.floor(c.r * 255 + 0.5), math.floor(c.g * 255 + 0.5), math.floor(c.b * 255 + 0.5)) or "ffffff"
+    return "|cff" .. hex .. MMT.FirstName(key) .. "|r"
+end
+
 -- "by character": { { name = class-coloured name, key, slots }, ... } in the picker's
--- order; planned gifts first in their receiver's section
+-- order; planned gifts first (coming in, then going out)
 function mod.ByCharacter(place, search)
     local out = {}
     for _, key in ipairs(mod.BagOwners()) do
@@ -339,7 +363,7 @@ function mod.ByCharacter(place, search)
         if #slots > 0 then
             local planned, rest = {}, {}
             for _, s in ipairs(slots) do
-                if s.planned then planned[#planned + 1] = s else rest[#rest + 1] = s end
+                if s.planned or s.outgoing then planned[#planned + 1] = s else rest[#rest + 1] = s end
             end
             for _, s in ipairs(ByCategory(rest)) do planned[#planned + 1] = s end
             out[#out + 1] = { name = OwnerText(key), key = key, slots = planned }
@@ -464,6 +488,18 @@ function mod.RefreshBags()
     if who == BYCHAR then groups = mod.ByCharacter(place, f.search:GetText())
     elseif M.db.categories ~= false then groups = mod.Categorize(slots)
     else groups = { { slots = slots } } end
+    -- by character: who has to trade whom, one line per pair
+    if who == BYCHAR and place == "b" then
+        local gifts = mod.GiftPairs()
+        if #gifts > 0 then lines[1] = { header = "Trades to do" } end
+        for _, p in ipairs(gifts) do
+            local parts = {}
+            for _, it in ipairs(p.items) do
+                parts[#parts + 1] = it.n .. " " .. (MMT.Safe(GetInfo, it.id) or ("item " .. it.id))
+            end
+            lines[#lines + 1] = { header = ("%s gives %s:  |cffdddddd%s|r"):format(NameTag(p.from), NameTag(p.to), table.concat(parts, ", ")), trade = true }
+        end
+    end
     for _, g in ipairs(groups) do
         if g.name then lines[#lines + 1] = { header = g.name .. "  |cff888888" .. #g.slots .. "|r", key = g.key } end
         for i = 1, #g.slots, COLS do
@@ -498,7 +534,10 @@ function mod.RefreshBags()
             local h = f.headers[nHead] or f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             f.headers[nHead] = h
             h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", PAD, y - 3)
+            h:SetPoint("TOPLEFT", PAD + (line.trade and 8 or 0), y - 3)
+            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and 8 or 0))
+            h:SetJustifyH("LEFT")
+            h:SetWordWrap(false)
             h:SetText(line.header)
             h:Show()
             y = y - HEADER_H
@@ -526,6 +565,10 @@ function mod.RefreshBags()
                         b.count:SetText("")
                     end
                     b.bg:SetColorTexture(r, g, bl, 1)
+                    local other = s and (s.planned or s.outgoing)
+                    b.tag:SetText(other and NameTag(other) or "")
+                    b.icon:SetDesaturated(s and s.outgoing and true or false)
+                    b.icon:SetAlpha(s and s.outgoing and 0.45 or 1)
                     if s and s.planned then
                         if not b.glow:IsShown() then b.glow:Show(); b.pulse:Play() end
                     elseif b.glow:IsShown() then

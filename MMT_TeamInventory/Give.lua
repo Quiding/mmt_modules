@@ -82,6 +82,43 @@ function mod.PlannedIn(to)
     return list
 end
 
+-- { { to, id, n }, ... } a character has planned to give, sorted
+function mod.PlannedOutList(from)
+    local list = {}
+    for to, items in pairs(mod.Gives()[from] or {}) do
+        for id, e in pairs(items) do
+            if e.n > 0 then list[#list + 1] = { to = to, id = id, n = e.n } end
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.to ~= b.to then return a.to < b.to end
+        return a.id < b.id
+    end)
+    return list
+end
+
+-- who has to trade whom: { { from, to, items = { { id, n }, ... } }, ... }
+function mod.GiftPairs()
+    local list = {}
+    for from, tos in pairs(mod.Gives()) do
+        for to, items in pairs(tos) do
+            local p = { from = from, to = to, items = {} }
+            for id, e in pairs(items) do
+                if e.n > 0 then p.items[#p.items + 1] = { id = id, n = e.n } end
+            end
+            if #p.items > 0 then
+                table.sort(p.items, function(a, b) return a.id < b.id end)
+                list[#list + 1] = p
+            end
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.from ~= b.from then return a.from < b.from end
+        return a.to < b.to
+    end)
+    return list
+end
+
 local function Prune()
     local old = Now() - KEEP_DONE
     for from, tos in pairs(mod.Gives()) do

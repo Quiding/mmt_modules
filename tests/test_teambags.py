@@ -58,6 +58,8 @@ function MMT.PlayerFull() return "Anna-Smith" end
 function MMT.IsSelf(k) return k == "Anna-Smith" end
 function MMT.SortedMembers() return { "Anna-Smith", "Bob-Stone" } end
 function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
+function MMT.FirstName(k) return (k:match("^[^-]+")) end
+function MMT.ApplyFont(fs) end
 function MMT.Ago() return "1 min ago" end
 function MMT.Print() end
 function MMT.NewModule(def)
@@ -272,7 +274,7 @@ print(lua.eval(r'''function(m)
   local function Button(owner, id, planned)
     for _, b in ipairs(f.slots) do
       local s = rawget(b, "slot")
-      if b:IsShown() and s and s.owner == owner and s.id == id and (s.planned ~= nil) == (planned or false) then return b, s end
+      if b:IsShown() and s and s.owner == owner and s.id == id and (s.planned ~= nil) == (planned or false) and not s.outgoing then return b, s end
     end
   end
   f:Hide()
@@ -284,19 +286,38 @@ print(lua.eval(r'''function(m)
   b._OnDragStart(b)
   b._OnDragStop(b)
   assert(SENT[1] == "TIVG:2589:20:" .. m.Gives()["Anna-Smith"]["Bob-Stone"][2589].t .. ":Anna-Smith:Bob-Stone", "plan message: " .. tostring(SENT[1]))
-  -- the icon moved: gone from Anna, glowing first in Bob's section
+  -- the icon moved: glowing first in Bob's section with "Anna" on it; at Anna dimmed with "Bob"
   assert(not Button("Anna-Smith", 2589), "still in Anna's bags")
   local pb, ps = Button("Bob-Stone", 2589, true)
   assert(pb and ps.count == 20 and ps.planned == "Anna-Smith" and pb.glow:IsShown(), "not glowing at Bob")
+  assert(pb.tag:GetText():find("Anna", 1, true), "giver's name not on the icon")
+  local ob, os_
+  for _, x in ipairs(f.slots) do local s = rawget(x, "slot") if x:IsShown() and s and s.outgoing then ob, os_ = x, s end end
+  assert(os_ and os_.owner == "Anna-Smith" and os_.outgoing == "Bob-Stone" and os_.count == 20, "no dimmed slot at Anna")
+  assert(ob.tag:GetText():find("Bob", 1, true) and not ob.glow:IsShown(), "receiver's name / glow at Anna")
+  -- who trades whom, at the top
+  local heads = {}
+  for _, h in ipairs(f.headers) do if h:IsShown() then heads[#heads + 1] = h:GetText() end end
+  assert(heads[1] == "Trades to do" and heads[2]:find("Anna", 1, true) and heads[2]:find("gives", 1, true)
+    and heads[2]:find("Bob", 1, true) and heads[2]:find("20 Linen Cloth", 1, true), "trades list: " .. tostring(heads[2]))
+  -- dragging the dimmed one does nothing; right-clicking it cancels too
+  ob._OnDragStart(ob)
+  assert(not rawget(ob, "dragging"), "dragged an outgoing gift")
   local first
   for _, x in ipairs(f.slots) do if rawget(x, "slot") and x.slot.owner == "Bob-Stone" then first = x.slot break end end
   assert(first.planned, "planned gift not first in Bob's section")
+  ob._OnClick(ob, "RightButton")
+  assert(not Button("Bob-Stone", 2589, true), "right-click on the giver's side didn't cancel")
+  b = Button("Anna-Smith", 2589)
+  b._OnDragStart(b); b._OnDragStop(b)
+  pb = Button("Bob-Stone", 2589, true)
   -- the whole team added up doesn't change
   local slots = m.BagSlots("__ALL__", "b", "")
   for _, s in ipairs(slots) do if s.id == 2589 then assert(s.count == 20, "whole team count changed") end end
   -- right-click cancels it: back at Anna, no glow left
   pb._OnClick(pb, "RightButton")
   assert(Button("Anna-Smith", 2589) and not Button("Bob-Stone", 2589, true), "not cancelled")
+  for _, h in ipairs(f.headers) do assert(not (h:IsShown() and h:GetText() == "Trades to do"), "trades list left over") end
   for _, x in ipairs(f.slots) do if x:IsShown() then assert(not x.glow:IsShown(), "glow left over") end end
   -- Shift + drop: how many
   SHIFT = true
