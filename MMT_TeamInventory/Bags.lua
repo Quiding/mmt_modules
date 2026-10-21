@@ -165,7 +165,7 @@ end
 ---------------------------------------------------------------------------
 -- the character under the cursor: a name in the team list, else a section (f.bands)
 local function KeyAtCursor(f)
-    for _, b in ipairs(f.teamButtons or {}) do
+    for _, b in ipairs((f.team and f.team:IsShown() and f.teamButtons) or {}) do
         if b:IsShown() and b.key and b:IsMouseOver() == true then return b.key end
     end
     local x, y = GetCursorPosition()
@@ -630,6 +630,9 @@ end
 
 -- the side panel: the team (names) and the trades to do (one block per pair)
 function mod.RefreshTeam(f)
+    -- switched off in the settings: no panel (drops still work on a character's section, by character)
+    if M.db.sidePanel == false then f.team:Hide() return end
+    f.team:Show()
     local keys = {}
     for _, key in ipairs(MMT.SortedMembers()) do keys[#keys + 1] = key end
     local own = MMT.PlayerFull()

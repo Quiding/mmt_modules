@@ -514,3 +514,27 @@ print(lua.eval(r'''function(m)
   anna.s = nil
   return "soulbound items ok"
 end''')(mod))
+
+# the team / trades panel can be switched off in the settings
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  assert(f.team:IsShown(), "panel not shown by default")
+  m.M.db.sidePanel = false
+  m.RefreshBags()
+  assert(not f.team:IsShown(), "panel shown while switched off")
+  -- a drop can't land on the hidden names
+  local bob
+  for _, tb in ipairs(f.teamButtons) do if tb.key == "Bob-Stone" then bob = tb end end
+  rawset(bob, "IsMouseOver", function() return true end)
+  local b
+  for _, x in ipairs(f.slots) do local s = rawget(x, "slot") if x:IsShown() and s and s.id == 2589 then b = x end end
+  b._OnDragStart(b); b._OnDragStop(b)
+  assert(m.PlannedOut("Anna-Smith", 2589) == 0, "dropped on a hidden name")
+  rawset(bob, "IsMouseOver", nil)
+  m.M.db.sidePanel = true
+  m.RefreshBags()
+  assert(f.team:IsShown(), "panel not back")
+  return "side panel setting ok"
+end''')(mod))

@@ -103,6 +103,11 @@ M.Page = function(_, page)
         mod.RequestAll()
         status.Show_("Asked the team for their items.")
     end)
+    R:Header("Team bags panel")
+    R:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
+        M.db.sidePanel = v
+        if mod.RefreshBags then mod.RefreshBags() end
+    end, "The panel next to the team bags: your team (click a name for their bags, drop an item on a name to give it) and the planned trades with their Trade buttons. Off: drop items on a character's section in \"by character\" instead.")
     page.OnRefresh = function()
         local n, items = Known()
         status.Show_(("Known: %d characters, %d item stacks.%s"):format(n, items,

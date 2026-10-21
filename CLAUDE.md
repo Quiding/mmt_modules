@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.4.6)
+### MMT_TeamInventory (v0.4.7)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -231,7 +231,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   the side panel `f.team` beside the window (`mod.RefreshTeam`: `f.teamButtons` = every team member, click = their
   bags, "+n" incoming; then `f.pairRows` = one block per `mod.GiftPairs` pair with Trade, "x" (`mod.CancelGifts`) and
   small item icons (right-click cancels one); `mod.PlaceTeam` flips it left at the screen edge, also while the window
-  is dragged (OnUpdate while `isMoving`)), then `f.bands` per character section; Shift = amount box `MMTTeamBagsAmount`); `M.store.gives[from][to][id] = {n, t}`
+  is dragged (OnUpdate while `isMoving`); setting `sidePanel` hides it), then `f.bands` per character section; Shift = amount box `MMTTeamBagsAmount`); `M.store.gives[from][to][id] = {n, t}`
   (t = GetServerTime, newest wins, n = 0 kept a week as tombstone). `TIVG:<id>:<n>:<t>:<from>:<to>` to the team,
   whispered to a member the first time they're seen online (XP_RECEIVED). `mod.BagSlots` (one char, "b"):
   giver's count minus `PlannedOut` plus dimmed `outgoing` slots (receiver's name), receiver gets glowing `planned`
