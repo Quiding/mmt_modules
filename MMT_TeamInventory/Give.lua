@@ -1,8 +1,8 @@
 -- MMT Team Inventory: planned gifts. In the team bags ("Whole team, by
 -- character", Bags tab) drag an item from one character onto another: it
 -- moves there and glows. The next time those two trade, the giver's client
--- puts it into the trade window (after the core's own role items). With
--- autoAccept, both sides accept a trade that holds nothing but planned gifts.
+-- puts it into the trade window (after the core's own role items). Accepting
+-- takes a key press or a click (the game blocks addons): mod.AcceptPlanned.
 -- When the trade completes, what was handed over comes off the plan.
 --
 --   M.store.gives[from][to][itemID] = { n = count, t = server time }
@@ -451,16 +451,12 @@ function mod.FillTrade(manual)
 end
 
 ---------------------------------------------------------------------------
--- Accepting by itself (setting autoAccept): only when the trade is nothing but
--- planned gifts between these two - the giver's side holds everything it can
--- hand over and nothing else, the receiver's side nothing at all, no gold, no
--- item in the "will not be traded" slot - and it hasn't changed for a moment.
--- Any change in the trade takes both accepts back; it is checked again then.
--- An extra confirmation popup of the game (e.g. soulbound) stays a click.
+-- When is a trade just the planned gifts: only planned items between these two on
+-- each side (no more than planned), the giver has nothing left to add, no gold, nothing
+-- in the "will not be traded" slot. Any change in the trade takes both accepts back.
 ---------------------------------------------------------------------------
 local STEADY = 1.5   -- seconds the trade must stay unchanged
-local signature, changedAt, accepted = nil, 0, false
-local toldFor          -- the trade state the "not accepting" note was given for
+local signature, changedAt = nil, 0
 
 -- { [itemID] = count } on the partner's side
 local function InTarget()
@@ -508,7 +504,8 @@ local function NotPlanned(items, plans, side)
     end
 end
 
--- true when this trade may be accepted by itself; else false and why (nil: nothing to say)
+-- true when this trade is just the planned gifts (the accept key / button may accept it);
+-- else false and why (nil: nothing to say)
 function mod.TradeIsPlanned()
     local own = MMT.PlayerFull()
     if not (tradeOpen and own) then return false end
@@ -531,56 +528,35 @@ function mod.TradeIsPlanned()
     return true
 end
 
--- accepts the open trade: the game's AcceptTrade, else a click on the trade
--- window's Trade button; false (and a note, once) when neither is there / works
-local warned = false
-function mod.AcceptTrade(viaButton)
-    local ok = false
-    if type(AcceptTrade) == "function" and not viaButton then
-        ok = pcall(AcceptTrade)
-    elseif TradeFrameTradeButton and TradeFrameTradeButton.Click then
-        ok = pcall(TradeFrameTradeButton.Click, TradeFrameTradeButton)
-    elseif type(AcceptTrade) == "function" then
-        ok = pcall(AcceptTrade)
+-- Accepting: the game blocks an addon from accepting a trade by itself (tested in
+-- game: ADDON_ACTION_BLOCKED from a timer / OnUpdate). It takes a key press or a
+-- click: the "Accept trade (planned gifts only)" key (Keybindings > AddOns; with
+-- ISBoxer one key for every character) or the "Accept planned gifts" button under
+-- the trade window. Both accept only a trade that is nothing but the planned gifts
+-- between these two (mod.TradeIsPlanned), else they say why. A game confirmation
+-- popup (e.g. soulbound) stays a click.
+function mod.AcceptPlanned()
+    if not tradeOpen then
+        MMT.Print("Team Inventory: no trade window open.")
+        return false
     end
-    if not ok and not warned then
-        warned = true
-        MMT.Print("Team Inventory: couldn't accept the trade by itself on this client - click Trade. (/mmt debug dump says more)")
+    local ok, why = mod.TradeIsPlanned()
+    if not ok then
+        MMT.Print("Team Inventory: not accepted - %s.", why or "this trade isn't just planned gifts (click Trade yourself)")
+        return false
     end
-    if M.Debug then M:Debug("AcceptTrade: %s (AcceptTrade=%s button=%s)", tostring(ok), type(AcceptTrade), tostring(TradeFrameTradeButton ~= nil)) end
-    return ok
+    if type(AcceptTrade) == "function" then AcceptTrade()
+    elseif TradeFrameTradeButton then TradeFrameTradeButton:Click() end
+    return true
 end
-
--- our side accepted? The game's own highlight on the trade window says so (nil: can't tell)
-function mod.TradeAccepted()
-    local h = TradeHighlightPlayer
-    if h and h.IsShown then return h:IsShown() and true or false end
-end
-
--- an accept can be ignored without an error (the game holds the Trade button back for a
--- moment after the trade changed): check the highlight, try again once a second (also by
--- pressing the button), and only say "accepted" when it really is
-local TRIES = 6
-local function Confirm(try, sig)
-    if not tradeOpen or signature ~= sig then return end
-    local state = mod.TradeAccepted()
-    if state ~= false then
-        MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
-        return
-    end
-    if try >= TRIES then
-        local b = TradeFrameTradeButton
-        local enabled = b and b.IsEnabled and b:IsEnabled()
-        MMT.Print("Team Inventory: couldn't accept the trade by itself (Trade button %s) - click Trade.",
-            enabled == nil and "?" or (enabled and "enabled" or "disabled"))
-        return
-    end
-    mod.AcceptTrade(try % 2 == 1)
-    C_Timer.After(1, function() Confirm(try + 1, sig) end)
+function MMTTeamInventory_AcceptPlanned()   -- Bindings.xml
+    if not M.enabled then return end
+    mod.AcceptPlanned()
 end
 
 -- what our side holds, read while the trade is open (it is empty again once
--- it completed), and the auto-accept check
+-- it completed); once it is just the planned gifts (and steady), a hint to accept
+local hinted
 local watcher = CreateFrame("Frame")
 local acc = 0
 watcher:SetScript("OnUpdate", function(_, e)
@@ -591,44 +567,43 @@ watcher:SetScript("OnUpdate", function(_, e)
     local mine = InTrade()
     lastTrade = { partner = partner, items = mine }
     local sig = Signature(mine, InTarget())
-    if sig ~= signature then signature, changedAt, accepted = sig, GetTime(), false end
-    if M.db.autoAccept and not accepted and GetTime() - changedAt >= STEADY then
-        local ok, why = mod.TradeIsPlanned()
-        if ok then
-            accepted = true
-            if mod.AcceptTrade() then
-                local sig = signature
-                C_Timer.After(1, function() Confirm(1, sig) end)
-            end
-        elseif why and toldFor ~= signature then
-            -- once per state of the trade: why it waits for you
-            toldFor = signature
-            MMT.Print("Team Inventory: not accepting by itself - %s.", why)
-        end
+    if sig ~= signature then signature, changedAt = sig, GetTime() end
+    if hinted ~= signature and GetTime() - changedAt >= STEADY and mod.TradeIsPlanned() then
+        hinted = signature
+        local key = GetBindingKey and GetBindingKey("MMTTEAMINV_ACCEPT")
+        MMT.Print("Team Inventory: the trade with %s is just the planned gifts - %s.", MMT.FirstName(partner),
+            key and ("press " .. key .. " to accept") or "click \"Accept planned gifts\" (or bind a key in Keybindings > AddOns)")
     end
 end)
 
--- a button under the trade window while something is planned for the partner:
--- fills it again (or for the first time, with the setting off)
-local button
+-- buttons under the trade window while gifts are planned between the two:
+-- "Planned items" (the giver: fill it again, or at all with the setting off) and
+-- "Accept planned gifts" (both sides)
+local fillButton, acceptButton
 local function ShowButton()
     if not TradeFrame then return end
-    if not button then
-        button = MMT.UI.Button(TradeFrame, 150, "Planned items", function() mod.FillTrade(true) end)
-        button:SetPoint("TOPLEFT", TradeFrame, "BOTTOMLEFT", 4, -2)
-        MMT.UI.Tooltip(button, "Planned items", "Puts the items you planned for this character in the team bags into the trade window.")
+    if not fillButton then
+        fillButton = MMT.UI.Button(TradeFrame, 150, "Planned items", function() mod.FillTrade(true) end)
+        fillButton:SetPoint("TOPLEFT", TradeFrame, "BOTTOMLEFT", 4, -2)
+        MMT.UI.Tooltip(fillButton, "Planned items", "Puts the items you planned for this character in the team bags into the trade window.")
+        acceptButton = MMT.UI.Button(TradeFrame, 150, "Accept planned gifts", function() mod.AcceptPlanned() end)
+        acceptButton:SetPoint("LEFT", fillButton, "RIGHT", 6, 0)
+        MMT.UI.Tooltip(acceptButton, "Accept planned gifts", "Accepts the trade if it holds nothing but the planned gifts between you two (else it says why). Also a key: Keybindings > AddOns > MMT - Team Inventory.")
     end
     local own = MMT.PlayerFull()
-    local planned = false
-    for _, e in pairs(((own and mod.Gives()[own]) or {})[partner or ""] or {}) do
-        if e.n > 0 then planned = true end
-    end
-    button:SetShown(planned)
+    local give, get = false, false
+    for _, e in pairs(((own and mod.Gives()[own]) or {})[partner or ""] or {}) do if e.n > 0 then give = true end end
+    for _, e in pairs(((partner and mod.Gives()[partner]) or {})[own or ""] or {}) do if e.n > 0 then get = true end end
+    if give then fillButton:Show() else fillButton:Hide() end
+    if give or get then acceptButton:Show() else acceptButton:Hide() end
+    acceptButton:ClearAllPoints()
+    if give then acceptButton:SetPoint("LEFT", fillButton, "RIGHT", 6, 0)
+    else acceptButton:SetPoint("TOPLEFT", TradeFrame, "BOTTOMLEFT", 4, -2) end
 end
 
 M:On("TRADE_SHOW", function()
-    tradeOpen, partner, lastTrade, acc = true, nil, nil, 0
-    signature, changedAt, accepted = nil, GetTime(), false
+    tradeOpen, partner, lastTrade, acc, hinted = true, nil, nil, 0, nil
+    signature, changedAt = nil, GetTime()
     partner = Partner()
     ShowButton()
     if not M.db.giveTrade then return end
@@ -655,7 +630,7 @@ M:On("UI_INFO_MESSAGE", function(_, msg)
         local e = plans[id]
         if e and e.n > 0 then mod.SetGive(own, done.partner, id, math.max(0, e.n - n)) end
     end
-    if button then button:Hide() end
+    if fillButton then fillButton:Hide(); acceptButton:Hide() end
 end)
 
 -- for tests / the debug report

@@ -8,4 +8,7 @@
 	<Binding name="MMTTEAMINV_BYCHAR" category="ADDONS">
 		MMTTeamInventory_Toggle("b", "__BYCHAR__")
 	</Binding>
+	<Binding name="MMTTEAMINV_ACCEPT" category="ADDONS">
+		MMTTeamInventory_AcceptPlanned()
+	</Binding>
 </Bindings>

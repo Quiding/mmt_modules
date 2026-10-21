@@ -342,81 +342,6 @@ print("A:", A.eval(r"""function(m)
   return "not found shown"
 end""")(amod))
 
-# auto-accept: a trade of nothing but planned gifts, on both sides
-print("B:", B.eval(r"""function(m)
-  SENT, TRADE, TARGET, ACCEPTED = {}, {}, {}, 0
-  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 10)
-  PARTNER = "Anna"
-  FIRE("TRADE_SHOW")
-  assert(TRADE[1] and TRADE[1].n == 10, "not filled")
-  TICK()
-  assert(ACCEPTED == 0, "accepted before the trade was steady")
-  NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "giver didn't accept a trade of planned items")
-  NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "accepted twice without a change")
-  -- the partner adds gold: changed, not accepted again
-  TMONEY = 100
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "accepted with gold in the trade")
-  TMONEY = 0
-  -- the partner puts an item in: not ours to accept
-  TARGET = { [1] = { id = 13446, n = 1 } }
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "accepted with an unplanned item from the partner")
-  TARGET = {}
-  -- something unplanned on our side
-  TRADE[2] = { id = 13446, n = 1 }
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "accepted with an unplanned item of ours")
-  TRADE[2] = nil
-  -- back to only the plan: accepted again; setting off: never
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 2, "not accepted again after the trade went back to the plan")
-  FIRE("TRADE_CLOSED")
-  m.M.db.autoAccept = false
-  TRADE = {}
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 2, "accepted with the setting off")
-  m.M.db.autoAccept = true
-  FIRE("TRADE_CLOSED")
-  -- not all of it in yet (another stack still to add): wait
-  TRADE = { [1] = { id = 2589, n = 4 } }
-  m.M.db.giveTrade = false
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 2, "accepted before everything planned was in")
-  m.M.db.giveTrade = true
-  FIRE("TRADE_CLOSED")
-  TRADE = {}
-  return "giver auto-accept ok"
-end""")(bmod))
-for msg in take(B): A.eval('DELIVER')("Bob-Stone", msg)
-print("A:", A.eval(r"""function(m)
-  TRADE, TARGET, ACCEPTED = {}, {}, 0
-  PARTNER = "Bob"
-  -- Bob gives the planned 10: Anna accepts
-  TARGET = { [1] = { id = 2589, n = 10 } }
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "receiver didn't accept planned gifts")
-  -- more than planned: no
-  TARGET = { [1] = { id = 2589, n = 11 } }
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "receiver accepted more than planned")
-  FIRE("TRADE_CLOSED")
-  -- someone without a plan: no
-  PARTNER = "Wally"
-  TARGET = { [1] = { id = 2589, n = 10 } }
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "accepted a trade from someone without a plan")
-  FIRE("TRADE_CLOSED")
-  TARGET = {}
-  return "receiver auto-accept ok"
-end""")(amod))
-
 # a gift "from __ALL__" saved by 0.4.1 is removed the first time the plans are read
 C, cmod = client("Cara-Sun")
 print("C:", C.eval(r"""function(m)
@@ -449,33 +374,6 @@ print("A:", A.eval(r"""function(m)
   return "soulbound shared"
 end""")(amod))
 
-# AcceptTrade missing on the client: the Trade button instead; neither: one note, never "accepted"
-print("A:", A.eval(r"""function(m)
-  local said = {}
-  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
-  local real = AcceptTrade
-  AcceptTrade = nil
-  local clicked = 0
-  TradeFrameTradeButton = { Click = function() clicked = clicked + 1 end }
-  assert(m.AcceptTrade() == true and clicked == 1, "button not clicked")
-  TradeFrameTradeButton = nil
-  assert(m.AcceptTrade() == false and m.AcceptTrade() == false, "accepted without a way to")
-  local notes = 0
-  for _, t in ipairs(said) do if t:find("couldn't accept", 1, true) then notes = notes + 1 end end
-  assert(notes == 1, "note not shown once: " .. notes)
-  -- the watcher: no "accepted" message when it didn't work
-  said = {}
-  PARTNER, TARGET = "Bob", { [1] = { id = 2589, n = 10 } }
-  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 10)
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  for _, t in ipairs(said) do assert(not t:find("accepted", 1, true), "said accepted: " .. t) end
-  FIRE("TRADE_CLOSED")
-  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
-  TARGET, AcceptTrade, MMT.Print = {}, real, function() end
-  return "accept fallback ok"
-end""")(amod))
-
 # gold: own from GetMoney (and on PLAYER_MONEY), others from the core's heartbeat; kept when the items are re-sent
 print("A:", A.eval(r"""function(m)
   MONEY_ME = 25000
@@ -493,45 +391,78 @@ print("A:", A.eval(r"""function(m)
   return "gold ok"
 end""")(amod))
 
-# bug: split amounts never went in (CursorHasItem is false right after a split), so the
-# giver never accepted either; and when it doesn't accept, it says why
+# bug: split amounts never went in, then the whole stack (a trade slot holds a bag
+# slot); accepting takes the key / button (the game blocks addons), which says why not
 print("B:", B.eval(r"""function(m)
   local said = {}
   MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
-  function MMT.FirstName(k) return (k:match("^[^-]+")) end
   SENT, TRADE, TARGET, ACCEPTED, MONEY, TMONEY = {}, {}, {}, 0, 0, 0
-  m.M.db.autoAccept, m.M.db.giveTrade = true, true
+  m.M.db.giveTrade = true
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 7)   -- part of the stack of 20
   PARTNER = "Anna"
   FIRE("TRADE_SHOW")
   assert(TRADE[1] and TRADE[1].id == 2589 and TRADE[1].n == 7, "split not placed (the whole stack?): " .. tostring(TRADE[1] and TRADE[1].n))
-  TICK(); NOW = NOW + 2; TICK()
-  assert(ACCEPTED == 1, "not accepted after the split")
+  -- nothing accepts by itself, ever
+  TICK(); NOW = NOW + 2; TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 0, "accepted without a key press")
+  -- a hint once it's just the planned gifts, naming the key
+  GetBindingKey = function(b) if b == "MMTTEAMINV_ACCEPT" then return "CTRL-T" end end
+  local hints = 0
+  for _, t in ipairs(said) do if t:find("just the planned gifts", 1, true) then hints = hints + 1 end end
+  -- (the hint above came before GetBindingKey existed: it says to click / bind instead)
+  assert(hints == 1, "hint not given once: " .. hints)
+  -- the key accepts it
+  assert(MMTTeamInventory_AcceptPlanned() == nil and ACCEPTED == 1, "key didn't accept")
   FIRE("TRADE_CLOSED")
-  -- why it doesn't accept: more than planned on our side
+  -- the key refuses (and says why): more than planned on our side
   TRADE, ACCEPTED, said = { [1] = { id = 2589, n = 20 } }, 0, {}
   m.M.db.giveTrade = false
   FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK(); NOW = NOW + 2; TICK()
-  local notes = 0
-  for _, t in ipairs(said) do if t:find("not accepting", 1, true) then notes = notes + 1; assert(t:find("20", 1, true) and t:find("7 planned", 1, true), t) end end
-  assert(ACCEPTED == 0 and notes == 1, "reason not said once: " .. notes)
+  MMTTeamInventory_AcceptPlanned()
+  assert(ACCEPTED == 0 and said[#said]:find("20", 1, true) and said[#said]:find("7 planned", 1, true), "why: " .. tostring(said[#said]))
   -- gold in the trade
-  said, TMONEY = {}, 500
-  TICK(); NOW = NOW + 2; TICK()
-  assert(said[1] and said[1]:find("gold", 1, true), "gold reason: " .. tostring(said[1]))
+  TRADE[1].n, TMONEY = 7, 500
+  MMTTeamInventory_AcceptPlanned()
+  assert(ACCEPTED == 0 and said[#said]:find("gold", 1, true), "gold: " .. tostring(said[#said]))
   TMONEY = 0
+  -- the button does the same
+  assert(m.AcceptPlanned() == true and ACCEPTED == 1, "button didn't accept")
   FIRE("TRADE_CLOSED")
-  -- a trade with no gifts between the two: nothing said
-  said, TRADE, PARTNER = {}, { [1] = { id = 13446, n = 1 } }, "Wally"
+  -- a trade without gifts between the two: the key says so, the hint stays quiet
+  said, TRADE, PARTNER, ACCEPTED = {}, { [1] = { id = 13446, n = 1 } }, "Wally", 0
   FIRE("TRADE_SHOW")
   TICK(); NOW = NOW + 2; TICK()
   assert(#said == 0, "spoke about a trade without gifts: " .. tostring(said[1]))
+  MMTTeamInventory_AcceptPlanned()
+  assert(ACCEPTED == 0 and said[1]:find("not accepted", 1, true), "key on another trade")
   FIRE("TRADE_CLOSED")
-  TRADE, m.M.db.giveTrade, MMT.Print = {}, true, function() end
+  -- no trade open
+  said = {}
+  MMTTeamInventory_AcceptPlanned()
+  assert(said[1]:find("no trade", 1, true), "no trade")
+  TRADE, m.M.db.giveTrade, MMT.Print, GetBindingKey = {}, true, function() end, nil
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
-  return "split + accept reasons ok"
+  return "split + accept key ok"
 end""")(bmod))
+
+# the receiver accepts with the key when only the planned gifts come in
+for msg in take(B): A.eval('DELIVER')("Bob-Stone", msg)
+print("A:", A.eval(r"""function(m)
+  TRADE, TARGET, ACCEPTED, MONEY, TMONEY = {}, {}, 0, 0, 0
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 10)
+  PARTNER = "Bob"
+  TARGET = { [1] = { id = 2589, n = 10 } }
+  FIRE("TRADE_SHOW")
+  MMTTeamInventory_AcceptPlanned()
+  assert(ACCEPTED == 1, "receiver didn't accept planned gifts")
+  TARGET[1].n = 11
+  MMTTeamInventory_AcceptPlanned()
+  assert(ACCEPTED == 1, "receiver accepted more than planned")
+  FIRE("TRADE_CLOSED")
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  TARGET = {}
+  return "receiver accept key ok"
+end""")(amod))
 
 # a split needs a free bag slot: with full bags it says so and puts nothing in (never the whole stack)
 print("B:", B.eval(r"""function(m)
@@ -556,49 +487,4 @@ print("B:", B.eval(r"""function(m)
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
   MMT.Print = function() end
   return "full bags ok"
-end""")(bmod))
-
-# bug: "accepted" was said but the game ignored the accept (Trade button held back for a
-# moment): check the game's highlight, try again (also via the button), be honest
-print("B:", B.eval(r"""function(m)
-  local said = {}
-  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
-  local lit = false
-  TradeHighlightPlayer = { IsShown = function() return lit end }
-  local ignore, calls, clicks = 2, 0, 0
-  local real = AcceptTrade
-  AcceptTrade = function() calls = calls + 1; if calls > ignore then lit = true end end
-  TradeFrameTradeButton = { Click = function() clicks = clicks + 1; AcceptTrade() end, IsEnabled = function() return calls > ignore end }
-  TRADE, TARGET, MONEY, TMONEY = {}, {}, 0, 0
-  m.M.db.autoAccept, m.M.db.giveTrade = true, true
-  NUMSLOTS[0] = 16   -- room for the split (earlier tests filled the backpack)
-  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
-  PARTNER = "Anna"
-  FIRE("TRADE_SHOW")
-  assert(TRADE[1] and TRADE[1].n == 3, "not filled")
-  TICK(); NOW = NOW + 2; TICK()
-  assert(lit and calls == 3 and clicks >= 1, "not retried until accepted: calls " .. calls .. " clicks " .. clicks)
-  local ok, bad = 0, 0
-  for _, t in ipairs(said) do
-    if t:find("accepted (only planned", 1, true) then ok = ok + 1 end
-    if t:find("couldn't accept", 1, true) then bad = bad + 1 end
-  end
-  assert(ok == 1 and bad == 0, "messages: " .. table.concat(said, " | "))
-  FIRE("TRADE_CLOSED")
-  -- never accepted: says so (with the button state), never "accepted"
-  said, lit, calls, ignore = {}, false, 0, 99
-  TRADE = {}
-  FIRE("TRADE_SHOW")
-  TICK(); NOW = NOW + 2; TICK()
-  ok, bad = 0, 0
-  for _, t in ipairs(said) do
-    if t:find("accepted (only planned", 1, true) then ok = ok + 1 end
-    if t:find("couldn't accept the trade by itself (Trade button disabled)", 1, true) then bad = bad + 1 end
-  end
-  assert(ok == 0 and bad == 1, "messages: " .. table.concat(said, " | "))
-  FIRE("TRADE_CLOSED")
-  TradeHighlightPlayer, TradeFrameTradeButton, AcceptTrade, MMT.Print = nil, nil, real, function() end
-  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
-  TRADE = {}
-  return "accept verified ok"
 end""")(bmod))

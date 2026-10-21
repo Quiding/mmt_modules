@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.7.3"
+mod.VERSION = "0.8.0"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -46,7 +46,6 @@ local M = MMT.NewModule({
         categories = true,     -- team bags grouped by category (false = one grid)
         baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
-        autoAccept = true,     -- accept a trade that holds nothing but planned gifts (both sides)
         sidePanel = true,      -- the team / trades panel beside the team bags
         otherChars = false,    -- team bags: also characters outside the team (other profiles, old teams)
         -- team bags look (settings > Look); defaults = MMT's settings window

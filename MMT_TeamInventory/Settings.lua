@@ -124,8 +124,7 @@ M.Page = function(_, page)
     L:Header("Planned gifts")
     local gg, sg = Opt("giveTrade")
     L:Check("Planned gifts go into the trade", gg, sg, "Drag an item onto another character in the team bags. The next time those two trade, the giver puts it into the trade window. Off: use the \"Planned items\" button under the trade window.")
-    local ga, sa = Opt("autoAccept")
-    L:Check("Accept trades of planned gifts", ga, sa, "Both characters accept by themselves when the trade holds nothing but the planned gifts between them: no gold, nothing else. Any other trade stays yours to accept. A confirmation the game asks for (e.g. soulbound) is still a click.")
+    L:Note("Accepting takes a key press (the game blocks addons from accepting): bind \"Accept trade (planned gifts only)\" in Keybindings > AddOns > MMT - Team Inventory - with ISBoxer one key for every character - or click \"Accept planned gifts\" under the trade window. It accepts only a trade that is nothing but the planned gifts.")
     L:Space(4)
     local half = math.floor((COL_W - 8) / 2)
     local ob = UI.Button(p, half, "Team bags", function() mod.OpenBags("b") end)
@@ -196,7 +195,8 @@ M.Report = function(_, add)
     local open, partner = mod.TradeState()
     local gifts = 0
     for _, tos in pairs(mod.Gives()) do for _, items in pairs(tos) do for _, e in pairs(items) do if e.n > 0 then gifts = gifts + 1 end end end end
-    add(("  planned gifts=%d giveTrade=%s autoAccept=%s trade open=%s partner=%s"):format(gifts, tostring(M.db.giveTrade), tostring(M.db.autoAccept), tostring(open), tostring(partner)))
+    add(("  planned gifts=%d giveTrade=%s acceptKey=%s trade open=%s partner=%s"):format(gifts, tostring(M.db.giveTrade),
+        tostring(GetBindingKey and GetBindingKey("MMTTEAMINV_ACCEPT")), tostring(open), tostring(partner)))
     local mine = mod.Mine()
     for key, rec in pairs(mod.Chars()) do
         local c = {}

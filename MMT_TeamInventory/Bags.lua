@@ -1128,6 +1128,7 @@ BINDING_HEADER_MMTTEAMINV = "MMT - Team Inventory"
 BINDING_NAME_MMTTEAMINV_BAGS = "Team bags"
 BINDING_NAME_MMTTEAMINV_BANK = "Team bank"
 BINDING_NAME_MMTTEAMINV_BYCHAR = "Team bags, by character"
+BINDING_NAME_MMTTEAMINV_ACCEPT = "Accept trade (planned gifts only)"
 function MMTTeamInventory_Toggle(place, who)
     if not M.enabled then MMT.Print("Team Inventory is switched off (/mmt modules).") return end
     mod.OpenBags(place, who)
