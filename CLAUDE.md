@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.4.3)
+### MMT_TeamInventory (v0.4.4)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -246,6 +246,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
+- Tradeable: `mod.NeverTradeable(id)` = bind type 1 / 4 (14th GetItemInfo value); `mod.Tradeable(key, id)` = bags -
+  soulbound - promised. Soulbound counts per bag item = synced place `s` (`mod.SYNC_PLACES`, NOT in `mod.PLACES`, not
+  in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
 ### Reset to defaults (every module)

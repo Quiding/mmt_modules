@@ -41,7 +41,8 @@ SlashCmdList = {}
 ITEMS = { [6948] = { "Hearthstone", 1, 15 }, [13446] = { "Major Healing Potion", 1, 0 }, [2589] = { "Linen Cloth", 1, 7 },
   [5000] = { "Sword", 2, 2 }, [7073] = { "Broken Fang", 0, 15 }, [9999] = { "Quest Thing", 1, 12 } }
 C_Item = {
-  GetItemInfo = function(id) local i = ITEMS[id] if i then return i[1], "|Hitem:" .. id .. "|h[" .. i[1] .. "]|h", i[2], nil, nil, nil, nil, nil, nil, 1000 + id end end,
+  -- 14th value: bind type (ITEMS[id][4]: 1 Bind on Pickup, 2 Bind on Equip, 4 quest item)
+  GetItemInfo = function(id) local i = ITEMS[id] if i then return i[1], "|Hitem:" .. id .. "|h[" .. i[1] .. "]|h", i[2], nil, nil, nil, nil, nil, nil, 1000 + id, nil, nil, nil, i[4] end end,
   GetItemInfoInstant = function(id) local i = ITEMS[id] return id, nil, nil, nil, 1000 + id, i and i[3], 0 end,
   GetItemQualityColor = function() return 0.1, 1, 0 end,
 }
@@ -462,4 +463,50 @@ print(lua.eval(r'''function(m)
   m.SetGive("Cara-Sun", "Bob-Stone", 13446, 0)
   chars["Cara-Sun"] = nil
   return "drag from the whole team view ok"
+end''')(mod))
+
+# soulbound items can't be given: Bind on Pickup (Hearthstone), a Bind on Equip one
+# that was equipped (the owner's client sends how many are bound), part of a stack
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  ITEMS[6948][4] = 1      -- Hearthstone: Bind on Pickup
+  ITEMS[5000][4] = 2      -- Sword: Bind on Equip
+  local anna = m.Chars()["Anna-Smith"]
+  anna.s = { [5000] = 1, [13446] = 2 }   -- her sword was equipped once, 2 of 5 potions are soulbound
+  for from in pairs(m.Gives()) do m.Gives()[from] = nil end
+  LINES = {}
+  GameTooltip = setmetatable({ AddLine = function(_, t) LINES[#LINES + 1] = t end }, { __index = function() return function() end end })
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  local function Slot(id)
+    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.id == id and not s.planned and not s.outgoing then return b, s end end
+  end
+  local bob
+  for _, tb in ipairs(f.teamButtons) do if tb.key == "Bob-Stone" then bob = tb end end
+  rawset(bob, "IsMouseOver", function() return true end)
+  local function Tip(b) LINES = {}; b._OnEnter(b); return table.concat(LINES, " | ") end
+  for _, id in ipairs({ 6948, 5000 }) do
+    local b = Slot(id)
+    b._OnDragStart(b)
+    assert(not rawget(b, "dragging"), "dragged soulbound item " .. id)
+    assert(Tip(b):find("can't be traded", 1, true), "no soulbound line for " .. id .. ": " .. Tip(b))
+  end
+  -- potions: only the 3 that aren't soulbound
+  local b = Slot(13446)
+  assert(Tip(b):find("only 3 can be given", 1, true), "partial line: " .. Tip(b))
+  b._OnDragStart(b); b._OnDragStop(b)
+  assert(m.PlannedOut("Anna-Smith", 13446) == 3, "gave soulbound potions: " .. m.PlannedOut("Anna-Smith", 13446))
+  -- all tradeable ones promised: nothing more to drag
+  b = Slot(13446)
+  b._OnDragStart(b)
+  assert(not rawget(b, "dragging"), "dragged potions already promised")
+  -- whole team: the hearthstone can't be dragged there either
+  m.OpenBags("b", "__ALL__")
+  b = Slot(6948)
+  b._OnDragStart(b)
+  assert(not rawget(b, "dragging") and Tip(b):find("can't be traded", 1, true), "hearthstone in the whole team view")
+  rawset(bob, "IsMouseOver", nil)
+  m.SetGive("Anna-Smith", "Bob-Stone", 13446, 0)
+  anna.s = nil
+  return "soulbound items ok"
 end''')(mod))

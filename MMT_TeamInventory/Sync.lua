@@ -3,7 +3,8 @@
 --   TIVREQ                 "send me your counts" (whispered when a hash differs)
 --   TIVS:<hash>:<CLASS>#<data>  every count of one character (MMT.SendLong: any size)
 --   TIVD:<hash>#<changes>  only what changed ("b13446=4;k6948=0"), to the team
--- data = "b=13446x4,6948x1;k=...;m=...;e=..." (b bags, k bank, m mail, e equipped)
+-- data = "b=13446x4,6948x1;k=...;m=...;e=...;s=..." (b bags, k bank, m mail, e equipped,
+-- s = how many of the bag items are soulbound; the hash leaves s out)
 
 local _, mod = ...
 local MMT = MMT
@@ -25,7 +26,7 @@ end
 -- rec (or a part of it) -> text, the same text for the same counts
 function mod.Encode(rec)
     local parts = {}
-    for _, p in ipairs(mod.PLACES) do
+    for _, p in ipairs(mod.SYNC_PLACES) do
         if rec[p] then
             local items = {}
             for _, id in ipairs(SortedIDs(rec[p])) do items[#items + 1] = id .. "x" .. rec[p][id] end
@@ -36,7 +37,7 @@ function mod.Encode(rec)
 end
 
 function mod.Decode(text)
-    local rec = { b = {}, k = {}, m = {}, e = {} }
+    local rec = { b = {}, k = {}, m = {}, e = {}, s = {} }
     for p, items in (text or ""):gmatch("(%a)=([^;]*)") do
         if rec[p] then
             for id, n in items:gmatch("(%d+)x(%d+)") do rec[p][tonumber(id)] = tonumber(n) end
@@ -135,6 +136,7 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         local rec = mod.Chars()[key]
         if not rec then Request(key, sender) return end
         for p, id, n in data:gmatch("(%a)(%d+)=(%d+)") do
+            if p == "s" then rec.s = rec.s or {} end   -- records from before 0.4.4 have no s yet
             if rec[p] then
                 n = tonumber(n)
                 rec[p][tonumber(id)] = n > 0 and n or nil

@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.4.3 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.4.4 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
@@ -131,7 +131,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   **Trade** button and an "x" to cancel. It moves to the other side at the screen edge.
 - **Planned gifts**: on the Bags tab (any view), drag an item onto a name in the team list or onto
   another character's section (Shift: choose how many). From "Whole team" it comes from whoever has
-  it; if several do, a list asks who gives it. It glows at the receiver with the giver's name on it, stays dimmed at the
+  it; if several do, a list asks who gives it. Soulbound items (Bind on Pickup, quest items, an
+  equipped Bind on Equip one) can't be dragged; the tooltip says why. It glows at the receiver with the giver's name on it, stays dimmed at the
   giver with the receiver's name. The next time those two trade, the giver's
   client puts it into the trade window, and both accept by themselves when the trade holds nothing
   but those gifts (no gold, nothing else; a soulbound warning is still a click; setting). Right-click a glowing item

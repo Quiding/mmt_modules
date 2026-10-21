@@ -71,6 +71,25 @@ function mod.SetGive(from, to, id, n)
     if mod.RefreshBags then mod.RefreshBags() end
 end
 
+-- Tradeable or not: Bind on Pickup and quest items never are (bind type from
+-- the item info, any client); a Bind on Equip one is once its character
+-- equipped it - only that client sees it, it sends the count with its bags (s)
+local GetInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+
+function mod.NeverTradeable(id)
+    local bind = select(14, MMT.Safe(GetInfo, id))
+    return bind == 1 or bind == 4   -- 1 Bind on Pickup, 4 quest item
+end
+
+-- how many of an item a character can still give: in the bags, not soulbound, not promised
+function mod.Tradeable(key, id)
+    if mod.NeverTradeable(id) then return 0 end
+    local rec = mod.Chars()[key]
+    if not rec then return 0 end
+    local n = (rec.b and rec.b[id] or 0) - (rec.s and rec.s[id] or 0) - mod.PlannedOut(key, id)
+    return math.max(0, n)
+end
+
 -- cancels every gift from one character to another
 function mod.CancelGifts(from, to)
     for id, e in pairs((mod.Gives()[from] or {})[to] or {}) do

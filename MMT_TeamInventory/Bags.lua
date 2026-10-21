@@ -241,13 +241,12 @@ local function AskAmount(s, to)
 end
 
 -- a drop: plan the whole stack (Shift: ask how many)
--- who could give an item to a character: { { key, n }, ... } (bags, minus what they already give away)
+-- who could give an item to a character: { { key, n }, ... } (tradeable ones in the bags)
 function mod.Holders(id, to)
     local list = {}
     for _, key in ipairs(mod.BagOwners()) do
         if key ~= to then
-            local rec = mod.Chars()[key]
-            local n = (rec and rec.b and rec.b[id] or 0) - mod.PlannedOut(key, id)
+            local n = mod.Tradeable(key, id)
             if n > 0 then list[#list + 1] = { key = key, n = n } end
         end
     end
@@ -278,6 +277,15 @@ function Drop(s, to)
     if not to then return end
     if not s.owner then return DropFromTeam(s, to) end
     if to == s.owner then return end
+    -- only what can be traded (not soulbound, not promised to someone else)
+    local n = mod.Tradeable(s.owner, s.id)
+    if n <= 0 then return end
+    if n ~= s.count then
+        local one = {}
+        for k, v in pairs(s) do one[k] = v end
+        one.count = n
+        s = one
+    end
     if IsShiftKeyDown() and s.count > 1 then return AskAmount(s, to) end
     local cur = (((mod.Gives()[s.owner] or {})[to] or {})[s.id] or {}).n or 0
     mod.SetGive(s.owner, to, s.id, cur + s.count)
@@ -286,8 +294,25 @@ mod.DropSlot = Drop
 
 local function CanDrag(s)
     local f = mod.bags
-    return s and not s.planned and not s.outgoing and f and f.place == "b"
-        and (f.who == BYCHAR or f.who == ALL or (s.owner and f.who == s.owner))
+    if not (s and not s.planned and not s.outgoing and f and f.place == "b"
+        and (f.who == BYCHAR or f.who == ALL or (s.owner and f.who == s.owner))) then return false end
+    if s.owner then return mod.Tradeable(s.owner, s.id) > 0 end
+    return #mod.Holders(s.id) > 0
+end
+
+-- why an item in the bags can't be given (nil = it can, or not a bags slot)
+local function WhyNot(s)
+    local f = mod.bags
+    if not (s and f and f.place == "b") or s.planned or s.outgoing then return nil end
+    if mod.NeverTradeable(s.id) then return "Soulbound (Bind on Pickup / quest item): can't be traded." end
+    if s.owner then
+        local rec = mod.Chars()[s.owner]
+        local bound = rec and rec.s and rec.s[s.id] or 0
+        if bound >= s.count then return "Soulbound: can't be traded." end
+        if bound > 0 then return ("%d of these are soulbound: only %d can be given."):format(bound, s.count - bound) end
+    elseif #mod.Holders(s.id) == 0 then
+        return "Soulbound everywhere: can't be traded."
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -338,9 +363,16 @@ local function NewSlot(parent)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(("Planned: %s gives %d to %s."):format(MMT.FullDisplay(from), s.count, MMT.FullDisplay(to)), 0.3, 1, 0.3, true)
             GameTooltip:AddLine(("%s trades %s: it goes into the trade window by itself. Right-click: cancel."):format(MMT.FirstName(from), MMT.FirstName(to)), 0.7, 0.7, 0.7, true)
-        elseif CanDrag(s) then
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("Drag onto a name in the team list (or another character's section) to plan a gift. Shift: how many.", 0.7, 0.7, 0.7, true)
+        else
+            local why = WhyNot(s)
+            if why then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(why, 1, 0.3, 0.3, true)
+            end
+            if CanDrag(s) then
+                if not why then GameTooltip:AddLine(" ") end
+                GameTooltip:AddLine("Drag onto a name in the team list (or another character's section) to plan a gift. Shift: how many.", 0.7, 0.7, 0.7, true)
+            end
         end
         GameTooltip:Show()
     end)

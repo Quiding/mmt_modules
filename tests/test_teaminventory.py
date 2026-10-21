@@ -400,3 +400,25 @@ print("C:", C.eval(r"""function(m)
   assert(m.Gives().__ALL__ == nil and m.Gives()["Anna-Smith"].__BYCHAR__ == nil, "not cleaned")
   return "old view gifts cleaned"
 end""")(cmod))
+
+# the owner's client counts soulbound stacks in its bags (s) and sends them; the hash stays the same
+print("B:", B.eval(r"""function(m)
+  SENT = {}
+  local before = m.Own().hash
+  BAGS[1][1].isBound = true          -- the potion in bag 1 became soulbound
+  FIRE("BAG_UPDATE_DELAYED")
+  local rec = m.Own()
+  assert(rec.s[13446] == 1, "soulbound not counted")
+  assert(rec.hash == before, "soulbound changed the hash")
+  assert(#SENT == 1 and SENT[1].msg:find("s13446=1", 1, true), "soulbound change not sent: " .. tostring(SENT[1] and SENT[1].msg))
+  return "soulbound counted"
+end""")(bmod))
+for msg in take(B): A.eval('DELIVER')("Bob-Stone", msg)
+print("A:", A.eval(r"""function(m)
+  local rec = m.Chars()["Bob-Stone"]
+  assert(rec.s and rec.s[13446] == 1, "soulbound count not stored")
+  -- and it comes along in a full copy too
+  local copy = m.Decode(m.Encode(rec))
+  assert(copy.s[13446] == 1 and copy.b[13446] == rec.b[13446], "soulbound not in the snapshot")
+  return "soulbound shared"
+end""")(amod))

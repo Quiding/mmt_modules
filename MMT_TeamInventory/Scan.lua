@@ -38,6 +38,21 @@ local function CountBags(list)
     return t
 end
 
+-- soulbound items in the bags (can't be traded): { [itemID] = n }
+local function CountBound(list)
+    local t = {}
+    for _, bag in ipairs(list) do
+        local n = C.GetContainerNumSlots and MMT.Safe(C.GetContainerNumSlots, bag) or 0
+        for slot = 1, n do
+            local info = C.GetContainerItemInfo and MMT.Safe(C.GetContainerItemInfo, bag, slot)
+            if type(info) == "table" and info.itemID and info.isBound then
+                t[info.itemID] = (t[info.itemID] or 0) + (info.stackCount or 1)
+            end
+        end
+    end
+    return t
+end
+
 local function CountEquipped()
     local t = {}
     for slot = 1, 19 do
@@ -74,7 +89,7 @@ end
 function mod.ScanAll()
     local rec = mod.Own()
     if not rec then return false end
-    local new = { b = CountBags(BAGS), e = CountEquipped() }
+    local new = { b = CountBags(BAGS), e = CountEquipped(), s = CountBound(BAGS) }
     if bankOpen then new.k = CountBags(BANK) end
     if mailOpen then new.m = CountMail() end
     local changed = false

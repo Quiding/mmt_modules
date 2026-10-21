@@ -15,14 +15,17 @@
 --   Settings.lua  settings page and debug report
 --
 -- Stored in M.store.chars[teamKey] = { b = {[itemID] = n}, k = bank, m = mail,
--- e = equipped, hash, time }, and M.store.mine[key] = true for characters of
+-- e = equipped, s = soulbound ones in the bags, hash, time }, and M.store.mine[key] = true for characters of
 -- this account (Syndicator already lists those in its own tooltip lines).
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.4.3"
+mod.VERSION = "0.4.4"
 mod.PLACES = { "b", "k", "m", "e" }
+-- what is synced: the places + "s" = how many of each item in the bags are soulbound
+-- (not a place: never counted in totals; older clients ignore the letter)
+mod.SYNC_PLACES = { "b", "k", "m", "e", "s" }
 mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
 
 local M = MMT.NewModule({
