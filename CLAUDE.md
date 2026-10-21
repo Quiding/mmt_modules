@@ -242,7 +242,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton, skips bound/locked,
   counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on
   UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
-  `autoAccept`: the watcher calls `mod.AcceptTrade()` (AcceptTrade, else TradeFrameTradeButton:Click; NOT yet confirmed from a timer: the user's test line failed) when `mod.TradeIsPlanned()`: only
+  `autoAccept`: the watcher calls `mod.AcceptTrade()` (AcceptTrade, else TradeFrameTradeButton:Click; works from a timer: user-tested in game; C_Timer.After(1, AcceptTrade) itself errors, wrap it in a function) when `mod.TradeIsPlanned()`: only
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
