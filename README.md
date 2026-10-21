@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.3.4 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.4.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
@@ -129,10 +129,11 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 - **Planned gifts**: in "whole team, by character" (Bags tab), drag an item onto another character
   (Shift: choose how many). It glows at the receiver with the giver's name on it, stays dimmed at the
   giver with the receiver's name, and "Trades to do" at the top lists who gives whom what. The next time those two trade, the giver's
-  client puts it into the trade window (never accepted automatically). Right-click a glowing item
+  client puts it into the trade window, and both accept by themselves when the trade holds nothing
+  but those gifts (no gold, nothing else; a soulbound warning is still a click; setting). Right-click a glowing item
   to cancel. A "Planned items" button under the trade window fills it by hand. **Trade** on a
   "Trades to do" line makes the giver open the trade itself (they need to be grouped, or see each
-  other's nameplate with friendly nameplates on); both still click Trade to finish.
+  other's nameplate with friendly nameplates on).
 - Open it from the minimap button (left-click bags, right-click bank) or a key (Keybindings >
   AddOns > MMT - Team Inventory).
 - The bank and mailbox are counted while open: open them once on each character.

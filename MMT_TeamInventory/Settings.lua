@@ -76,7 +76,9 @@ M.Page = function(_, page)
         if mod.RefreshBags then mod.RefreshBags() end
     end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
     local gg, sg = Opt("giveTrade")
-    L:Check("Planned gifts go into the trade", gg, sg, "Team bags, by character: drag an item onto another character. The next time those two trade, the giver puts it into the trade window (never accepted automatically). Off: use the \"Planned items\" button under the trade window.")
+    L:Check("Planned gifts go into the trade", gg, sg, "Team bags, by character: drag an item onto another character. The next time those two trade, the giver puts it into the trade window. Off: use the \"Planned items\" button under the trade window.")
+    local ga, sa = Opt("autoAccept")
+    L:Check("Accept trades of planned gifts", ga, sa, "Both characters accept by themselves when the trade holds nothing but the planned gifts between them: no gold, nothing else. Any other trade stays yours to accept. A confirmation the game asks for (e.g. soulbound) is still a click.")
     L:Slider("Window size", 0.5, 1.5, 0.05, function() return M.db.bagsScale or 1 end, function(v)
         M.db.bagsScale = v
         if mod.bags then mod.bags:SetScale(v) end
@@ -118,7 +120,7 @@ M.Report = function(_, add)
     local open, partner = mod.TradeState()
     local gifts = 0
     for _, tos in pairs(mod.Gives()) do for _, items in pairs(tos) do for _, e in pairs(items) do if e.n > 0 then gifts = gifts + 1 end end end end
-    add(("  planned gifts=%d giveTrade=%s trade open=%s partner=%s"):format(gifts, tostring(M.db.giveTrade), tostring(open), tostring(partner)))
+    add(("  planned gifts=%d giveTrade=%s autoAccept=%s trade open=%s partner=%s"):format(gifts, tostring(M.db.giveTrade), tostring(M.db.autoAccept), tostring(open), tostring(partner)))
     local mine = mod.Mine()
     for key, rec in pairs(mod.Chars()) do
         local c = {}

@@ -544,7 +544,7 @@ function mod.RefreshBags()
                 if not tb then
                     tb = UI.Button(f, TRADE_W, "Trade", function(self) mod.RequestTrade(self.from, self.to) end)
                     tb:SetHeight(HEADER_H - 2)
-                    UI.Tooltip(tb, "Trade now", "The giver's client opens the trade with the receiver and puts the planned items in. Both still click Trade to finish it. They need to be in a group, or see each other's nameplate.")
+                    UI.Tooltip(tb, "Trade now", "The giver's client opens the trade with the receiver and puts the planned items in; with 'Accept trades of planned gifts' on, both accept by themselves. They need to be in a group, or see each other's nameplate.")
                     f.tradeButtons[nTrade] = tb
                 end
                 tb.from, tb.to = line.trade.from, line.trade.to

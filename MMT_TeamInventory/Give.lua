@@ -1,9 +1,9 @@
 -- MMT Team Inventory: planned gifts. In the team bags ("Whole team, by
 -- character", Bags tab) drag an item from one character onto another: it
 -- moves there and glows. The next time those two trade, the giver's client
--- puts it into the trade window (after the core's own role items). Trades are
--- never accepted automatically. When the trade completes, what was handed
--- over comes off the plan.
+-- puts it into the trade window (after the core's own role items). With
+-- autoAccept, both sides accept a trade that holds nothing but planned gifts.
+-- When the trade completes, what was handed over comes off the plan.
 --
 --   M.store.gives[from][to][itemID] = { n = count, t = server time }
 --   (n = 0 is kept a while as "cancelled / done", so an older copy on a
@@ -348,7 +348,73 @@ function mod.FillTrade(manual)
     return #steps
 end
 
--- what our side holds, read while the trade is open (it is empty again once it completed)
+---------------------------------------------------------------------------
+-- Accepting by itself (setting autoAccept): only when the trade is nothing but
+-- planned gifts between these two - the giver's side holds everything it can
+-- hand over and nothing else, the receiver's side nothing at all, no gold, no
+-- item in the "will not be traded" slot - and it hasn't changed for a moment.
+-- Any change in the trade takes both accepts back; it is checked again then.
+-- An extra confirmation popup of the game (e.g. soulbound) stays a click.
+---------------------------------------------------------------------------
+local STEADY = 1.5   -- seconds the trade must stay unchanged
+local signature, changedAt, accepted = nil, 0, false
+
+-- { [itemID] = count } on the partner's side
+local function InTarget()
+    local t = {}
+    for s = 1, MAX_SLOTS do
+        local id = ItemID(MMT.Safe(GetTradeTargetItemLink, s))
+        if id then
+            local _, _, n = MMT.Safe(GetTradeTargetItemInfo, s)
+            t[id] = (t[id] or 0) + (tonumber(n) or 1)
+        end
+    end
+    return t
+end
+
+local function Plans(from, to)
+    local t = {}
+    for id, e in pairs((mod.Gives()[from] or {})[to] or {}) do
+        if e.n > 0 then t[id] = e.n end
+    end
+    return t
+end
+
+-- every item on that side is planned, and no more of it than planned
+local function OnlyPlanned(items, plans)
+    for id, n in pairs(items) do
+        if not plans[id] or n > plans[id] then return false end
+    end
+    return true
+end
+
+local function Signature(mine, theirs)
+    local parts = {}
+    for id, n in pairs(mine) do parts[#parts + 1] = "m" .. id .. "x" .. n end
+    for id, n in pairs(theirs) do parts[#parts + 1] = "t" .. id .. "x" .. n end
+    table.sort(parts)
+    parts[#parts + 1] = tostring(MMT.Safe(GetPlayerTradeMoney)) .. "/" .. tostring(MMT.Safe(GetTargetTradeMoney))
+    return table.concat(parts, ";")
+end
+
+-- true when this trade may be accepted by itself
+function mod.TradeIsPlanned()
+    local own = MMT.PlayerFull()
+    if not (tradeOpen and own and partner) then return false end
+    if (tonumber(MMT.Safe(GetPlayerTradeMoney)) or 0) ~= 0 or (tonumber(MMT.Safe(GetTargetTradeMoney)) or 0) ~= 0 then return false end
+    local extra = MAX_SLOTS + 1   -- "will not be traded" (enchanting)
+    if MMT.Safe(GetTradePlayerItemLink, extra) or MMT.Safe(GetTradeTargetItemLink, extra) then return false end
+    local mine, theirs = InTrade(), InTarget()
+    local give, get = Plans(own, partner), Plans(partner, own)
+    if next(mine) == nil and next(theirs) == nil then return false end
+    if not (OnlyPlanned(mine, give) and OnlyPlanned(theirs, get)) then return false end
+    -- the giver: nothing it could still add
+    if next(give) ~= nil and #(Steps(give, mine)) > 0 then return false end
+    return true
+end
+
+-- what our side holds, read while the trade is open (it is empty again once
+-- it completed), and the auto-accept check
 local watcher = CreateFrame("Frame")
 local acc = 0
 watcher:SetScript("OnUpdate", function(_, e)
@@ -356,7 +422,15 @@ watcher:SetScript("OnUpdate", function(_, e)
     acc = acc + e
     if acc < 0.25 then return end
     acc = 0
-    lastTrade = { partner = partner, items = InTrade() }
+    local mine = InTrade()
+    lastTrade = { partner = partner, items = mine }
+    local sig = Signature(mine, InTarget())
+    if sig ~= signature then signature, changedAt, accepted = sig, GetTime(), false end
+    if M.db.autoAccept and not accepted and GetTime() - changedAt >= STEADY and mod.TradeIsPlanned() then
+        accepted = true
+        MMT.Safe(AcceptTrade)
+        MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+    end
 end)
 
 -- a button under the trade window while something is planned for the partner:
@@ -379,6 +453,7 @@ end
 
 M:On("TRADE_SHOW", function()
     tradeOpen, partner, lastTrade, acc = true, nil, nil, 0
+    signature, changedAt, accepted = nil, GetTime(), false
     partner = Partner()
     ShowButton()
     if not M.db.giveTrade then return end

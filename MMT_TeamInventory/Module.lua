@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.4"
+mod.VERSION = "0.4.0"
 mod.PLACES = { "b", "k", "m", "e" }
 mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
 
@@ -43,6 +43,7 @@ local M = MMT.NewModule({
         categories = true,     -- team bags grouped by category (false = one grid)
         baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
+        autoAccept = true,     -- accept a trade that holds nothing but planned gifts (both sides)
         openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },
 })

@@ -44,6 +44,12 @@ function GetTradePlayerItemLink(s) local t = TRADE[s] return t and ("|Hitem:" ..
 function GetTradePlayerItemInfo(s) local t = TRADE[s] if t then return "x", 1, t.n end end
 function ClickTradeButton(s) if CURSOR and not TRADE[s] then TRADE[s] = CURSOR; CURSOR = nil end end
 function CursorHasItem() return CURSOR ~= nil end
+TARGET, MONEY, TMONEY, ACCEPTED = {}, 0, 0, 0
+function GetTradeTargetItemLink(s) local t = TARGET[s] return t and ("|Hitem:" .. t.id .. ":0|h[x]|h") end
+function GetTradeTargetItemInfo(s) local t = TARGET[s] if t then return "x", 1, t.n end end
+function GetPlayerTradeMoney() return MONEY end
+function GetTargetTradeMoney() return TMONEY end
+function AcceptTrade() ACCEPTED = ACCEPTED + 1 end
 function ClearCursor() CURSOR = nil end
 function UnitFullName(u) if u == "NPC" then return PARTNER end end
 -- like the core: first, last, team key ("First-Last"); UNITS[unit] = team key
@@ -308,4 +314,79 @@ print("A:", A.eval(r"""function(m)
   assert(said and said:find("can't find Anna", 1, true), "not-found not shown: " .. tostring(said))
   MMT.Print = function() end
   return "not found shown"
+end""")(amod))
+
+# auto-accept: a trade of nothing but planned gifts, on both sides
+print("B:", B.eval(r"""function(m)
+  SENT, TRADE, TARGET, ACCEPTED = {}, {}, {}, 0
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 10)
+  PARTNER = "Anna"
+  FIRE("TRADE_SHOW")
+  assert(TRADE[1] and TRADE[1].n == 10, "not filled")
+  TICK()
+  assert(ACCEPTED == 0, "accepted before the trade was steady")
+  NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "giver didn't accept a trade of planned items")
+  NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "accepted twice without a change")
+  -- the partner adds gold: changed, not accepted again
+  TMONEY = 100
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "accepted with gold in the trade")
+  TMONEY = 0
+  -- the partner puts an item in: not ours to accept
+  TARGET = { [1] = { id = 13446, n = 1 } }
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "accepted with an unplanned item from the partner")
+  TARGET = {}
+  -- something unplanned on our side
+  TRADE[2] = { id = 13446, n = 1 }
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "accepted with an unplanned item of ours")
+  TRADE[2] = nil
+  -- back to only the plan: accepted again; setting off: never
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 2, "not accepted again after the trade went back to the plan")
+  FIRE("TRADE_CLOSED")
+  m.M.db.autoAccept = false
+  TRADE = {}
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 2, "accepted with the setting off")
+  m.M.db.autoAccept = true
+  FIRE("TRADE_CLOSED")
+  -- not all of it in yet (another stack still to add): wait
+  TRADE = { [1] = { id = 2589, n = 4 } }
+  m.M.db.giveTrade = false
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 2, "accepted before everything planned was in")
+  m.M.db.giveTrade = true
+  FIRE("TRADE_CLOSED")
+  TRADE = {}
+  return "giver auto-accept ok"
+end""")(bmod))
+for msg in take(B): A.eval('DELIVER')("Bob-Stone", msg)
+print("A:", A.eval(r"""function(m)
+  TRADE, TARGET, ACCEPTED = {}, {}, 0
+  PARTNER = "Bob"
+  -- Bob gives the planned 10: Anna accepts
+  TARGET = { [1] = { id = 2589, n = 10 } }
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "receiver didn't accept planned gifts")
+  -- more than planned: no
+  TARGET = { [1] = { id = 2589, n = 11 } }
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "receiver accepted more than planned")
+  FIRE("TRADE_CLOSED")
+  -- someone without a plan: no
+  PARTNER = "Wally"
+  TARGET = { [1] = { id = 2589, n = 10 } }
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(ACCEPTED == 1, "accepted a trade from someone without a plan")
+  FIRE("TRADE_CLOSED")
+  TARGET = {}
+  return "receiver auto-accept ok"
 end""")(amod))
