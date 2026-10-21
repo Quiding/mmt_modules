@@ -122,23 +122,28 @@ local function NewSlotData(id, n, search)
         icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
 end
 
--- Filters (window panel / settings, M.db.bagFilters): per kind of item SHOW or
--- HIDE, all at once. BoE gear = weapons and armour that are
--- Bind on Equip and not bound yet; soulbound = Bind on Pickup / quest items,
--- equipped bind-on-equip ones, and what the owner's client counted as bound (s);
--- crafting reagents = mod.IsReagent.
+-- Filters (window panel / settings, M.db.bagFilters): per kind of item SHOW,
+-- HIDE or ONLY (shown as "Include"), all at once. HIDE removes those; with one
+-- or more kinds on Include an item must be at least one of them (the panel
+-- says "Showing only: ..."). An item can be several kinds (a soulbound quest item).
+--   BoE gear    weapons / armour, Bind on Equip, not bound yet
+--   soulbound   Bind on Pickup / quest items, equipped bind-on-equip ones, and what
+--               the owner's client counted as bound (s)
+--   reagents    mod.IsReagent; quest items: Quest class or bind type 4; consumables: class 0
 mod.FILTER_KINDS = {
     { key = "boe", text = "BoE gear" },
     { key = "bound", text = "Soulbound" },
     { key = "reagent", text = "Crafting reagents" },
+    { key = "quest", text = "Quest items" },
+    { key = "consumable", text = "Consumables" },
 }
-mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide" }
+mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide", ONLY = "Include" }   -- ONLY: the saved name of Include
+local NEXT_STATE = { SHOW = "HIDE", HIDE = "ONLY", ONLY = "SHOW" }
 
--- the filters, made from the single filter of 0.5.0 / 0.5.1 once; "only" choices
--- (0.5.0 - 0.5.4) are gone: back to Show
+-- the filters, made from the single filter of 0.5.0 / 0.5.1 once
 local OLD_FILTER = {
     NOBOE = { boe = "HIDE" }, NOBOUND = { bound = "HIDE" }, NOBOTH = { boe = "HIDE", bound = "HIDE" },
-    NOREAGENT = { reagent = "HIDE" },
+    BOE = { boe = "ONLY" }, BOUND = { bound = "ONLY" }, NOREAGENT = { reagent = "HIDE" }, REAGENT = { reagent = "ONLY" },
 }
 function mod.Filters()
     local t = M.db.bagFilters
@@ -147,17 +152,16 @@ function mod.Filters()
         for k, v in pairs(OLD_FILTER[M.db.bagFilter or ""] or {}) do t[k] = v end
         M.db.bagFilters, M.db.bagFilter = t, nil
     end
-    for k, v in pairs(t) do if v ~= "HIDE" then t[k] = nil end end
     return t
 end
 
 function mod.FilterState(kind) return mod.Filters()[kind] or "SHOW" end
 function mod.SetFilter(kind, state)
-    mod.Filters()[kind] = (state ~= "SHOW") and state or nil
+    mod.Filters()[kind] = (state == "HIDE" or state == "ONLY") and state or nil
     if mod.bags then mod.bags.offset = 0 end
     if mod.RefreshBags then mod.RefreshBags() end
 end
-function mod.ToggleFilter(kind) mod.SetFilter(kind, mod.FilterState(kind) == "HIDE" and "SHOW" or "HIDE") end
+function mod.CycleFilter(kind) mod.SetFilter(kind, NEXT_STATE[mod.FilterState(kind)]) end
 
 -- how many filters are on (for the button)
 function mod.FiltersOn()
@@ -166,14 +170,24 @@ function mod.FiltersOn()
     return n
 end
 
+-- the kinds on Include, by name ("BoE gear, Consumables"), or nil
+function mod.IncludedText()
+    local t = {}
+    for _, k in ipairs(mod.FILTER_KINDS) do
+        if mod.FilterState(k.key) == "ONLY" then t[#t + 1] = k.text end
+    end
+    return #t > 0 and table.concat(t, ", ") or nil
+end
+
 -- a crafting material: the game's "crafting reagent" flag, else the Trade Goods class (cloth, ore, herbs, ...)
 function mod.IsReagent(id, class)
     local flag = select(17, mod.ItemInfo(id))
     return flag == true or class == 7
 end
 
--- "boe", "bound" or nil for an item of a character (who = key) or the whole team
-function mod.SlotKind(id, class, count, who, place)
+-- every kind an item is: { boe, bound, reagent, quest, consumable = true / false }
+-- (who = a character key or the whole team, place = b / k / m / e)
+function mod.ItemKinds(id, class, count, who, place)
     local bind = select(14, mod.ItemInfo(id))
     local bound = bind == 1 or bind == 4 or (place == "e" and bind == 2)
     if not bound and place == "b" then
@@ -186,16 +200,25 @@ function mod.SlotKind(id, class, count, who, place)
         end
         bound = n >= count
     end
-    if bound then return "bound" end
-    if bind == 2 and (class == 2 or class == 4) then return "boe" end
+    return {
+        bound = bound,
+        boe = not bound and bind == 2 and (class == 2 or class == 4),
+        reagent = mod.IsReagent(id, class),
+        quest = class == 12 or bind == 4,
+        consumable = class == 0,
+    }
 end
 
-local function Passes(kind, reagent)
-    local is = { boe = kind == "boe", bound = kind == "bound", reagent = reagent and true or false }
+local function Passes(is)
+    local anyOnly, matchOnly = false, false
     for k, state in pairs(mod.Filters()) do
         if state == "HIDE" and is[k] then return false end
+        if state == "ONLY" then
+            anyOnly = true
+            if is[k] then matchOnly = true end
+        end
     end
-    return true
+    return not anyOnly or matchOnly
 end
 
 -- sorted slots { id, count, name, link, quality, icon } matching the search and the filter.
@@ -209,7 +232,7 @@ function mod.BagSlots(who, place, search)
     for id, n in pairs(Contents(who, place)) do
         if plans then n = n - math.min(n, mod.PlannedOut(who, id)) end
         local s = n > 0 and NewSlotData(id, n, search)
-        if s and not Passes(mod.SlotKind(id, s.class, n, who, place), mod.IsReagent(id, s.class)) then s = nil end
+        if s and not Passes(mod.ItemKinds(id, s.class, n, who, place)) then s = nil end
         -- the whole team added up: no owner (a drop asks / finds who has it)
         if s then s.owner = char and who or nil; slots[#slots + 1] = s end
     end
@@ -612,20 +635,28 @@ local function Build()
     end)
     f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
     UI.Tooltip(f.filter, "Filter", "Show / hide / only: Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), crafting reagents (cloth, ore, herbs, leather, ...). They all apply at once.")
-    -- the filters: one row per kind, click = Show / Hide; stays open
+    -- the filters: one row per kind, click = Show -> Hide -> Include, right-click = Show;
+    -- stays open; a line at the bottom says what Include leaves
     f.filters = CreateFrame("Frame", nil, f)
     f.filters:SetPoint("TOPRIGHT", f.filter, "BOTTOMRIGHT", 0, -2)
     f.filters:SetSize(206, 8 + #mod.FILTER_KINDS * 24 + 4)
+    f.filters.only = f.filters:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.filters.only:SetPoint("TOPLEFT", 8, -8 - #mod.FILTER_KINDS * 24)
+    f.filters.only:SetWidth(190)
+    f.filters.only:SetJustifyH("LEFT")
     f.filters:SetFrameStrata("FULLSCREEN_DIALOG")
     f.filters:EnableMouse(true)
     UI.Fill(f.filters, 0.05, 0.05, 0.06, 0.98)
     UI.Border(f.filters, 0.35, 0.35, 0.35, 1)
     f.filterRows = {}
     for i, k in ipairs(mod.FILTER_KINDS) do
-        local b = UI.Button(f.filters, 194, "", function() mod.ToggleFilter(k.key) end)
+        local b = UI.Button(f.filters, 194, "", function(_, button)
+            if button == "RightButton" then mod.SetFilter(k.key, "SHOW") else mod.CycleFilter(k.key) end
+        end)
         b:SetHeight(22)
         b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 24)
-        UI.Tooltip(b, k.text, "Click: show / hide these items.")
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        UI.Tooltip(b, k.text, "Click: Show -> Hide -> Include. Right-click: Show. Include: only the included kinds are shown (any of them); Hide always removes.")
         b.kind = k
         f.filterRows[i] = b
     end
@@ -829,11 +860,14 @@ function mod.RefreshBags()
     f.owner.label:SetText(OwnerText(who))
     local on = mod.FiltersOn()
     f.filter.label:SetText(on > 0 and ("|cffffd100Filter (" .. on .. ")|r") or "Filter")
-    local COLOR = { SHOW = "|cff999999", HIDE = "|cffff6060" }
+    local COLOR = { SHOW = "|cff999999", HIDE = "|cffff6060", ONLY = "|cff40ff40" }
     for _, b in ipairs(f.filterRows) do
         local state = mod.FilterState(b.kind.key)
         b.label:SetText(("%s:  %s%s|r"):format(b.kind.text, COLOR[state], mod.FILTER_STATES[state]))
     end
+    local only = mod.IncludedText()
+    f.filters.only:SetText(only and ("|cff40ff40Showing only:|r " .. only) or "")
+    f.filters:SetHeight(8 + #mod.FILTER_KINDS * 24 + 4 + (only and ((tonumber(f.filters.only:GetStringHeight()) or 12) + 6) or 0))
     for p, b in pairs(f.tabs) do
         if p == place then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
         else b.label:SetTextColor(0.8, 0.8, 0.8) end

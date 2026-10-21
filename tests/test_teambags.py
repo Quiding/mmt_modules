@@ -545,12 +545,14 @@ print(lua.eval(r'''function(m)
   return "side panel setting ok"
 end''')(mod))
 
-# filters: BoE gear / soulbound / crafting reagents, each Show / Hide, all at once
+# filters: BoE gear / soulbound / crafting reagents / quest items / consumables,
+# each Show / Hide / Include, all at once
 print(lua.eval(r'''function(m)
   local f = m.bags
-  ITEMS[6948][4] = 1        -- Hearthstone: Bind on Pickup -> soulbound
+  ITEMS[6948][4] = 1        -- Hearthstone (misc): Bind on Pickup -> soulbound
   ITEMS[5000][4] = 2        -- Sword (weapon): Bind on Equip -> BoE gear (not soulbound by default)
-  ITEMS[13446][5] = true    -- the potion flagged as a crafting reagent (17th value); cloth = Trade Goods
+  ITEMS[13446][5] = true    -- the potion (consumable) flagged as a crafting reagent too; cloth = Trade Goods
+  ITEMS[13447] = ITEMS[13447] or { "Bought Thing", 1, 0 }   -- a consumable
   local get = C_Item.GetItemInfo
   C_Item.GetItemInfo = function(id)
     local r = { get(id) }
@@ -559,7 +561,9 @@ print(lua.eval(r'''function(m)
   end
   local anna = m.Chars()["Anna-Smith"]
   anna.s = { [13446] = 5 }  -- all 5 potions soulbound
+  anna.b[13447] = 3
   for from in pairs(m.Gives()) do m.Gives()[from] = nil end
+  m.M.db.bagFilters = {}
   f:Hide()
   m.OpenBags("b", "Anna-Smith")
   local function Ids()
@@ -570,47 +574,66 @@ print(lua.eval(r'''function(m)
   end
   local all = Ids()
   local function Row(kind) for _, b in ipairs(f.filterRows) do if b.kind.key == kind then return b end end end
-  local function Click(kind) local b = Row(kind); b._click(b) end
+  local function Click(kind, button) local b = Row(kind); b._click(b, button or "LeftButton") end
+  assert(#f.filterRows == 5 and Row("quest") and Row("consumable"), "rows")
   -- the panel: opens with the button, stays open while clicking
   f.filter._click(f.filter)
   assert(f.filters:IsShown(), "filter panel not open")
-  Click("boe")
+  Click("boe")                                   -- Show -> Hide
   assert(f.filters:IsShown(), "panel closed after a click")
   assert(not Ids():find("5000", 1, true) and Ids():find("6948", 1, true), "hide BoE: " .. Ids())
   assert(Row("boe").label:GetText():find("Hide", 1, true) and f.filter.label:GetText():find("(1)", 1, true), "labels")
+  assert(f.filters.only:GetText() == "", "showing-only line without Include")
+  Click("boe")                                   -- Hide -> Include
+  assert(Ids() == "5000", "include BoE: " .. Ids())
+  assert(Row("boe").label:GetText():find("Include", 1, true), "row label")
+  assert(f.filters.only:GetText():find("Showing only", 1, true) and f.filters.only:GetText():find("BoE gear", 1, true), "showing-only line")
+  -- several on Include: any of them
+  Click("consumable"); Click("consumable")       -- Show -> Hide -> Include
+  assert(Ids() == "5000,13446,13447", "BoE + consumables: " .. Ids())
+  assert(f.filters.only:GetText():find("BoE gear, Consumables", 1, true), "both named: " .. f.filters.only:GetText())
+  -- Hide still removes: the soulbound potions
+  Click("bound")
+  assert(Ids() == "5000,13447", "include + hide soulbound: " .. Ids())
+  -- right-click: back to Show
+  Click("boe", "RightButton"); Click("consumable", "RightButton"); Click("bound", "RightButton")
+  assert(Ids() == all and f.filter.label:GetText() == "Filter", "reset: " .. Ids())
+  -- quest items: Quest class (or bind type 4)
+  m.SetFilter("quest", "ONLY")
+  assert(Ids() == "9999", "include quest: " .. Ids())
+  m.SetFilter("quest", "HIDE")
+  assert(not Ids():find("9999", 1, true) and Ids():find("6948", 1, true), "hide quest: " .. Ids())
+  m.SetFilter("quest", "SHOW")
+  -- crafting reagents: the cloth (Trade Goods) and the flagged potion
+  m.SetFilter("reagent", "ONLY")
+  assert(Ids() == "2589,13446", "include reagents: " .. Ids())
+  m.SetFilter("reagent", "SHOW")
   -- the BoE sword isn't soulbound until its owner reports it (or it's equipped)
-  Click("boe"); Click("bound")
-  assert(Ids():find("5000", 1, true) and not Ids():find("6948", 1, true) and not Ids():find("13446", 1, true), "hide soulbound: " .. Ids())
-  -- several at once
-  Click("reagent")
-  assert(not Ids():find("2589", 1, true) and f.filter.label:GetText():find("(2)", 1, true), "hide soulbound + reagents: " .. Ids())
-  Click("bound"); Click("reagent")
-  assert(Ids() == all and f.filter.label:GetText() == "Filter", "all shown again: " .. Ids())
-  -- equipped: a BoE sword there is bound
+  m.SetFilter("bound", "ONLY")
+  assert(Ids() == "6948,13446", "include soulbound: " .. Ids())
   anna.e = { [5000] = 1 }
   m.OpenBags("e", "Anna-Smith")
-  m.SetFilter("bound", "HIDE")
-  assert(Ids() == "", "equipped BoE counts as soulbound: " .. Ids())
+  assert(Ids() == "5000", "equipped BoE counts as soulbound: " .. Ids())
   m.SetFilter("bound", "SHOW")
   -- planned gifts stay visible whatever the filters
   m.OpenBags("b", "Anna-Smith")
-  m.SetFilter("reagent", "HIDE")
+  m.SetFilter("quest", "ONLY")
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
   local planned = false
   for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.planned then planned = true end end
   assert(planned, "planned gift hidden by the filter")
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
-  m.SetFilter("reagent", "SHOW")
-  -- older settings: the single filter of 0.5.0 / 0.5.1, and "Include" (0.5.2 - 0.5.4) back to Show
+  m.SetFilter("quest", "SHOW")
+  -- the single filter of 0.5.0 / 0.5.1 becomes the new ones once; Include values are kept
   m.M.db.bagFilters, m.M.db.bagFilter = nil, "NOBOTH"
   assert(m.FilterState("boe") == "HIDE" and m.FilterState("bound") == "HIDE" and m.FilterState("reagent") == "SHOW", "old filter not carried over")
-  m.M.db.bagFilters = { boe = "ONLY", reagent = "HIDE" }
-  assert(m.FilterState("boe") == "SHOW" and m.FilterState("reagent") == "HIDE", "old Include not dropped")
+  m.M.db.bagFilters = { boe = "ONLY" }
+  assert(m.FilterState("boe") == "ONLY", "Include not kept")
   m.M.db.bagFilters = {}
   f.filter._click(f.filter)
   assert(not f.filters:IsShown(), "filter panel didn't close")
   C_Item.GetItemInfo, ITEMS[13446][5] = get, nil
-  anna.s, anna.e = nil, {}
+  anna.s, anna.e, anna.b[13447] = nil, {}, nil
   return "filters ok"
 end''')(mod))
 

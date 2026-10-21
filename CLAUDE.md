@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.5.5)
+### MMT_TeamInventory (v0.5.6)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -246,11 +246,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
-- Filters `bagFilters` = { boe / bound / reagent = "HIDE" } (`mod.Filters()`, old single `bagFilter` converted once,
-  old "ONLY" values dropped - the user chose plain Show / Hide; window: `f.filter` toggles the sticky panel `f.filters` /
-  `f.filterRows`, click toggles; settings: one "Hide ..." check per kind; not synced).
-  `mod.SlotKind(id, class, count, who, place)`
-  = "bound" (bind 1/4, equipped bind 2, or owner(s)' `s` covers the count) / "boe" (bind 2 weapon/armour) / nil;
+- Filters `bagFilters` = { boe / bound / reagent / quest / consumable = "HIDE" | "ONLY" } ("ONLY" shown as Include;
+  `mod.Filters()`, old single `bagFilter` converted once; window: `f.filter` toggles the sticky panel `f.filters` /
+  `f.filterRows`, click cycles Show/Hide/Include, right-click Show, `f.filters.only` = "Showing only: ..." line;
+  settings: one Cycle per kind; not synced). HIDE removes; with any Include an item must be one of them.
+  `mod.ItemKinds(id, class, count, who, place)` = every kind of an item (quest: class 12 or bind 4; consumable: class 0).
+  bound = bind 1/4, equipped bind 2, or owner(s)' `s` covers the count; boe = bind 2 weapon/armour not bound;
   applied in `mod.BagSlots` to ordinary slots only (planned gifts always shown); NOREAGENT / REAGENT via
   `mod.IsReagent` (item info value 17 "crafting reagent", else class 7 Trade Goods).
 - **`MMT.Safe` returns only 7 values**: the bind type (14th) / crafting reagent (17th) need `mod.ItemInfo(id)`
