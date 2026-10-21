@@ -25,6 +25,8 @@ local TABS = { { "b", "Bags" }, { "k", "Bank" }, { "m", "Mail" }, { "e", "Equipp
 
 local HEADER_H = 18
 local TRADE_W = 52   -- "Trade" button on a "Trades to do" line
+local CANCEL_W = 16  -- the "x" next to it: cancels that pair's gifts
+local TEAM_W, TEAM_ROW = 120, 24   -- the team list beside the window
 
 -- Baganator's default categories, in its Classic order: { id, name, test(slot) }
 -- (classID / subclassID from GetItemInfoInstant, known before the item's name)
@@ -155,10 +157,15 @@ function mod.BagSlots(who, place, search)
 end
 
 ---------------------------------------------------------------------------
--- Planning gifts: drag an item onto another character ("by character", Bags)
+-- Planning gifts: drag an item (Bags tab, one character or by character) onto
+-- a name in the team list beside the window, or onto another character's
+-- section in "by character"
 ---------------------------------------------------------------------------
--- the character section under the cursor (f.bands, made by RefreshBags)
+-- the character under the cursor: a name in the team list, else a section (f.bands)
 local function KeyAtCursor(f)
+    for _, b in ipairs(f.teamButtons or {}) do
+        if b:IsShown() and b.key and b:IsMouseOver() == true then return b.key end
+    end
     local x, y = GetCursorPosition()
     local s = f:GetEffectiveScale()
     x, y = x / s, y / s
@@ -242,7 +249,8 @@ mod.DropSlot = Drop
 
 local function CanDrag(s)
     local f = mod.bags
-    return s and s.owner and not s.planned and not s.outgoing and f and f.who == BYCHAR and f.place == "b"
+    return s and s.owner and not s.planned and not s.outgoing and f and f.place == "b"
+        and (f.who == BYCHAR or f.who == s.owner)
 end
 
 ---------------------------------------------------------------------------
@@ -295,7 +303,7 @@ local function NewSlot(parent)
             GameTooltip:AddLine(("%s trades %s: it goes into the trade window by itself. Right-click: cancel."):format(MMT.FirstName(from), MMT.FirstName(to)), 0.7, 0.7, 0.7, true)
         elseif CanDrag(s) then
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("Drag onto another character to plan a gift (Shift: how many).", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine("Drag onto a name on the right (or another character's section) to plan a gift. Shift: how many.", 0.7, 0.7, 0.7, true)
         end
         GameTooltip:Show()
     end)
@@ -460,10 +468,60 @@ local function Build()
     f.info:SetPoint("BOTTOMRIGHT", -PAD, 8)
     f.info:SetJustifyH("LEFT")
 
-    f.slots, f.headers, f.tradeButtons = {}, {}, {}
+    f.slots, f.headers, f.tradeButtons, f.cancelButtons = {}, {}, {}, {}
+
+    -- the team beside the window, always there: click = that character's bags,
+    -- drop an item on a name = plan a gift for them
+    f.team = CreateFrame("Frame", nil, f)
+    f.team:SetWidth(TEAM_W)
+    UI.Fill(f.team, 0.05, 0.05, 0.06, 0.95)
+    UI.Border(f.team, 0.25, 0.25, 0.25, 1)
+    f.team:EnableMouse(true)
+    f.team.title = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.team.title:SetPoint("TOPLEFT", 8, -8)
+    f.team.title:SetText("Team")
+    f.teamButtons = {}
     f.who, f.place, f.offset = false, false, 0   -- set by OpenBags
     f:Hide()   -- new frames start shown: hidden until placed
     return f
+end
+
+-- the team list: every team member, in team order (gifts can go to anyone)
+local function RefreshTeam(f)
+    local keys = {}
+    for _, key in ipairs(MMT.SortedMembers()) do keys[#keys + 1] = key end
+    local own = MMT.PlayerFull()
+    local listed = false
+    for _, key in ipairs(keys) do if key == own then listed = true end end
+    if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
+    for i, key in ipairs(keys) do
+        local b = f.teamButtons[i]
+        if not b then
+            b = UI.Button(f.team, TEAM_W - 12, "", function(self)
+                f.who, f.offset = self.key, 0
+                M.db.lastWho = self.key
+                mod.RefreshBags()
+            end)
+            b:SetHeight(TEAM_ROW - 4)
+            b:SetPoint("TOPLEFT", 6, -24 - (i - 1) * TEAM_ROW)
+            UI.Tooltip(b, "Team", "Click: this character's bags. Drop an item here: give it to them (planned gift, Shift: how many).")
+            f.teamButtons[i] = b
+        end
+        b.key = key
+        local incoming = #mod.PlannedIn(key)
+        b.label:SetText((f.who == key and "|cffffd100>|r " or "") .. NameTag(key)
+            .. (incoming > 0 and ("  |cff33ff33+" .. incoming .. "|r") or ""))
+        b:Show()
+    end
+    for i = #keys + 1, #f.teamButtons do f.teamButtons[i]:Hide() end
+    f.team:SetHeight(24 + #keys * TEAM_ROW + 4)
+    -- right of the window, or left of it when the screen ends there
+    local right, es = tonumber(f:GetRight()), tonumber(f:GetEffectiveScale())
+    local screen, ues = tonumber(UIParent:GetRight()), tonumber(UIParent:GetEffectiveScale())
+    local left = right and es and screen and ues and (right + TEAM_W + 2) * es > screen * ues
+    f.team:ClearAllPoints()
+    if left then f.team:SetPoint("TOPRIGHT", f, "TOPLEFT", -2, 0)
+    else f.team:SetPoint("TOPLEFT", f, "TOPRIGHT", 2, 0) end
 end
 
 local function Place(f)
@@ -536,7 +594,7 @@ function mod.RefreshBags()
             f.headers[nHead] = h
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", PAD + (line.trade and 8 or 0), y - 3)
-            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and (8 + TRADE_W + 6) or 0))
+            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and (8 + TRADE_W + CANCEL_W + 10) or 0))
             if line.trade then
                 -- "Trade": the giver's client opens the trade with the receiver
                 nTrade = nTrade + 1
@@ -549,8 +607,19 @@ function mod.RefreshBags()
                 end
                 tb.from, tb.to = line.trade.from, line.trade.to
                 tb:ClearAllPoints()
-                tb:SetPoint("TOPRIGHT", -PAD, y - 1)
+                tb:SetPoint("TOPRIGHT", -PAD - CANCEL_W - 4, y - 1)
                 tb:Show()
+                -- "x": cancel every gift of this pair
+                local cb = f.cancelButtons[nTrade]
+                if not cb then
+                    cb = UI.TextButton(f, "x", function(self) mod.CancelGifts(self.from, self.to) end, CANCEL_W)
+                    UI.Tooltip(cb, "Cancel", "Cancels these planned gifts: the items go back to the giver.")
+                    f.cancelButtons[nTrade] = cb
+                end
+                cb.from, cb.to = line.trade.from, line.trade.to
+                cb:ClearAllPoints()
+                cb:SetPoint("TOPRIGHT", -PAD, y)
+                cb:Show()
             end
             h:SetJustifyH("LEFT")
             h:SetWordWrap(false)
@@ -599,13 +668,14 @@ function mod.RefreshBags()
     for i = nSlot + 1, #f.slots do f.slots[i]:Hide() end
     for i = nHead + 1, #f.headers do f.headers[i]:Hide() end
     for i = nTrade + 1, #f.tradeButtons do f.tradeButtons[i]:Hide() end
+    for i = nTrade + 1, #f.cancelButtons do f.cancelButtons[i]:Hide() end
     f:SetSize(PAD * 2 + COLS * (SIZE + GAP) - GAP, -y + 26)
 
     local total = 0
     for _, s in ipairs(slots) do total = total + s.count end
     local note = ("%d different items, %d in all"):format(#slots, total)
     if maxOffset > 0 then note = note .. "  -  mouse wheel scrolls" end
-    if who == BYCHAR and place == "b" and maxOffset == 0 then note = note .. "  -  drag items onto another character" end
+    if who ~= ALL and place == "b" and maxOffset == 0 then note = note .. "  -  drag items onto a name to give" end
     local team = who == ALL or who == BYCHAR
     local rec = not team and mod.Chars()[who]
     if rec and rec.time then note = note .. "  -  updated " .. MMT.Ago(rec.time) end
@@ -613,6 +683,7 @@ function mod.RefreshBags()
         note = place == "k" and "Nothing known: open the bank once on that character." or "Nothing known: open the mailbox once on that character."
     end
     f.info:SetText(note)
+    RefreshTeam(f)
 end
 
 -- whose items the window opens on ("Open on" setting)

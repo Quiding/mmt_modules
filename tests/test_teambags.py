@@ -51,6 +51,7 @@ MMT = { CopyTable = copy, ConfigHelpers = { COL_W = 248, COL2_X = 270, PAGE_W = 
   UI = setmetatable({ ACCENT = { 0.3, 0.7, 1 } }, { __index = function() return function() return new() end end }) }
 function MMT.UI.OpenList(owner, items, current, onPick) LIST = { items = items, pick = onPick } end
 function MMT.UI.Button(parent, w, text, onClick) local b = new(); b.label = new(); b._click = onClick; return b end
+function MMT.UI.TextButton(parent, text, onClick) local b = new(); b.label = new(); rawset(b, "_OnClick", onClick); return b end
 function MMT.UI.EditBox() local e = new(); return e end
 function MMT.IsSecret() return false end
 function MMT.Safe(fn, ...) local r = { pcall(fn, ...) } if r[1] then return select(2, unpack(r)) end end
@@ -337,12 +338,43 @@ print(lua.eval(r'''function(m)
   function GetCursorPosition() return 900, 100 end
   b._OnDragStart(b); b._OnDragStop(b)
   assert(#SENT == n, "a drop on the own section / outside planned something")
-  -- one character's view: no dragging (nowhere to drop)
+  -- the team list beside the window: every member, always there
+  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 0)
   m.OpenBags("b", "Anna-Smith")
+  local names = {}
+  for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
+  assert(table.concat(names, ",") == "Anna-Smith,Bob-Stone", "team list: " .. table.concat(names, ","))
+  -- one character's view: drag onto a name in the list
+  local bobButton = f.teamButtons[2]
+  rawset(bobButton, "IsMouseOver", function() return true end)
   b = Button("Anna-Smith", 2589)
-  Over("Anna-Smith")
   b._OnDragStart(b)
-  assert(not rawget(b, "dragging"), "dragging in a single character's view")
+  assert(rawget(b, "dragging"), "can't drag in a single character's view")
+  b._OnDragStop(b)
+  rawset(bobButton, "IsMouseOver", nil)
+  assert(m.PlannedOut("Anna-Smith", 2589) == 20, "drop on a name (the whole stack): " .. m.PlannedOut("Anna-Smith", 2589))
+  assert(bobButton.label:GetText():find("+1", 1, true), "incoming count on the name: " .. tostring(bobButton.label:GetText()))
+  -- the bank isn't tradeable: no dragging there
+  m.OpenBags("k", "Anna-Smith")
+  for _, x in ipairs(f.slots) do
+    local s = rawget(x, "slot")
+    if x:IsShown() and s then x._OnDragStart(x); assert(not rawget(x, "dragging"), "dragging from the bank") end
+  end
+  -- clicking a name shows that character
+  m.OpenBags("b", "Anna-Smith")
+  bobButton._click(bobButton)
+  assert(f.who == "Bob-Stone", "name click didn't switch")
+  assert(bobButton.label:GetText():find(">", 1, true), "current character not marked")
+  -- the "x" on a Trades to do line cancels that pair's gifts
+  m.SetGive("Anna-Smith", "Bob-Stone", 13446, 2)
+  m.OpenBags("b", "__BYCHAR__")
+  local cb = f.cancelButtons[1]
+  assert(cb and cb:IsShown() and cb.from == "Anna-Smith" and cb.to == "Bob-Stone", "no cancel x")
+  cb._OnClick(cb)
+  assert(m.PlannedOut("Anna-Smith", 2589) == 0 and m.PlannedOut("Anna-Smith", 13446) == 0, "x didn't cancel the pair")
+  assert(not f.cancelButtons[1]:IsShown() and not f.tradeButtons[1]:IsShown(), "line buttons left over")
+  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 20)
+  m.OpenBags("b", "__BYCHAR__")
   -- "Trade" on the "Trades to do" line: Anna is the giver, so this client opens it with Bob
   m.OpenBags("b", "__BYCHAR__")
   local tb = f.tradeButtons[1]

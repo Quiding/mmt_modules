@@ -57,6 +57,13 @@ function mod.SetGive(from, to, id, n)
     if mod.RefreshBags then mod.RefreshBags() end
 end
 
+-- cancels every gift from one character to another
+function mod.CancelGifts(from, to)
+    for id, e in pairs((mod.Gives()[from] or {})[to] or {}) do
+        if e.n > 0 then mod.SetGive(from, to, id, 0) end
+    end
+end
+
 -- how many of an item a character has planned to give away (all receivers)
 function mod.PlannedOut(from, id)
     local sum = 0
