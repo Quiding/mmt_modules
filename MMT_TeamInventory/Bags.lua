@@ -307,8 +307,8 @@ local function AskAmount(s, to)
         f:SetSize(220, 64)
         f:SetFrameStrata("FULLSCREEN_DIALOG")
         f:EnableMouse(true)
-        UI.Fill(f, 0.05, 0.05, 0.06, 0.97)
-        UI.Border(f, 0.35, 0.35, 0.35, 1)
+        UI.Fill(f, 0.07, 0.07, 0.08, 0.98)                          -- MMT's popups (lists, colours)
+        UI.Border(f, UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3], 0.5)
         f.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         f.text:SetPoint("TOPLEFT", 8, -8)
         f.text:SetPoint("TOPRIGHT", -8, -8)
@@ -575,8 +575,8 @@ local function Build()
         local l, t = mod.PinTop(self)
         if l then M.db.bagsPoint = { "TOPLEFT", "BOTTOMLEFT", l, t } end
     end)
-    UI.Fill(f, 0.05, 0.05, 0.06, 0.95)
-    UI.Border(f, 0.25, 0.25, 0.25, 1)
+    UI.Fill(f, 0.05, 0.05, 0.06, 0.94)       -- like MMT's settings window
+    UI.Border(f, 0.22, 0.22, 0.24, 1)
     UI.CloseOnEscape(f)
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
@@ -597,8 +597,8 @@ local function Build()
     f.owner:SetPoint("TOPLEFT", PAD, -PAD)
     UI.Tooltip(f.owner, "Character", "Whose items to show. Whole team: everyone's added up.")
 
-    local close = UI.TextButton(f, "x", function() f:Hide() end, 22)
-    close:SetPoint("TOPRIGHT", -6, -6)
+    local close = UI.TextButton(f, "x", function() f:Hide() end, 20)
+    close:SetPoint("TOPRIGHT", -8, -8)
 
     -- cog: the Team Inventory settings (own flat white gear, coloured like the "x")
     local cog = CreateFrame("Button", nil, f)
@@ -646,8 +646,8 @@ local function Build()
     f.filters.only:SetJustifyH("LEFT")
     f.filters:SetFrameStrata("FULLSCREEN_DIALOG")
     f.filters:EnableMouse(true)
-    UI.Fill(f.filters, 0.05, 0.05, 0.06, 0.98)
-    UI.Border(f.filters, 0.35, 0.35, 0.35, 1)
+    UI.Fill(f.filters, 0.07, 0.07, 0.08, 0.98)
+    UI.Border(f.filters, UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3], 0.5)
     f.filterRows = {}
     for i, k in ipairs(mod.FILTER_KINDS) do
         local b = UI.Button(f.filters, 194, "", function(_, button)
@@ -677,14 +677,23 @@ local function Build()
     -- item on a name = a planned gift) and the trades to do
     f.team = CreateFrame("Frame", nil, f)
     f.team:SetWidth(TEAM_W)
-    UI.Fill(f.team, 0.05, 0.05, 0.06, 0.95)
-    UI.Border(f.team, 0.25, 0.25, 0.25, 1)
+    UI.Fill(f.team, 0.05, 0.05, 0.06, 0.94)
+    UI.Border(f.team, 0.22, 0.22, 0.24, 1)
     f.team:EnableMouse(true)
-    f.team.title = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    -- section titles like MMT's settings: gold text, a thin line under it
+    local function Title(text)
+        local fs = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fs:SetText(text)
+        fs.line = f.team:CreateTexture(nil, "ARTWORK")
+        fs.line:SetColorTexture(1, 1, 1, 0.08)
+        fs.line:SetHeight(1)
+        fs.line:SetPoint("TOPLEFT", fs, "BOTTOMLEFT", 0, -3)
+        fs.line:SetWidth(TEAM_W - 16)
+        return fs
+    end
+    f.team.title = Title("Team")
     f.team.title:SetPoint("TOPLEFT", 8, -8)
-    f.team.title:SetText("Team")
-    f.team.tradesTitle = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    f.team.tradesTitle:SetText("Trades")
+    f.team.tradesTitle = Title("Trades")
     f.team.empty = f.team:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     f.team.empty:SetJustifyH("LEFT")
     f.team.empty:SetWidth(TEAM_W - 16)
@@ -772,23 +781,39 @@ function mod.RefreshTeam(f)
     local listed = false
     for _, key in ipairs(keys) do if key == own then listed = true end end
     if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
-    local y = -24
+    local y = -30
     for i, key in ipairs(keys) do
         local b = f.teamButtons[i]
         if not b then
-            b = UI.Button(f.team, TEAM_W - 12, "", function(self)
+            -- a row like MMT's settings list: the one shown gets the blue bar
+            b = CreateFrame("Button", nil, f.team)
+            b:SetSize(TEAM_W - 12, TEAM_ROW - 2)
+            b.bg = UI.Fill(b, 1, 1, 1, 0)
+            b.bar = b:CreateTexture(nil, "ARTWORK")
+            b.bar:SetColorTexture(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3], 1)
+            b.bar:SetPoint("TOPLEFT"); b.bar:SetPoint("BOTTOMLEFT")
+            b.bar:SetWidth(2)
+            b.label = UI.Label(b, "", "GameFontNormal")
+            b.label:SetPoint("LEFT", 10, 0)
+            b.count = UI.Label(b, "")
+            b.count:SetPoint("RIGHT", -8, 0)
+            local hl = b:CreateTexture(nil, "HIGHLIGHT")
+            hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.03)
+            b:SetScript("OnClick", function(self)
                 f.who, f.offset = self.key, 0
                 M.db.lastWho = self.key
                 mod.RefreshBags()
             end)
-            b:SetHeight(TEAM_ROW - 2)
             UI.Tooltip(b, "Team", "Click: this character's bags. Drop an item here: give it to them (Shift: how many).")
             f.teamButtons[i] = b
         end
         b.key = key
         local incoming = #mod.PlannedIn(key)
-        b.label:SetText((f.who == key and "|cffffd100>|r " or "") .. NameTag(key)
-            .. (incoming > 0 and ("  |cff33ff33+" .. incoming .. "|r") or ""))
+        local selected = f.who == key
+        if selected then b.bar:Show() else b.bar:Hide() end
+        b.bg:SetColorTexture(1, 1, 1, selected and 0.06 or 0)
+        b.label:SetText(NameTag(key))
+        b.count:SetText(incoming > 0 and ("|cffffcc33+" .. incoming .. "|r") or "")
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", 6, y)
         b:Show()
@@ -799,7 +824,7 @@ function mod.RefreshTeam(f)
     y = y - 8
     f.team.tradesTitle:ClearAllPoints()
     f.team.tradesTitle:SetPoint("TOPLEFT", 8, y)
-    y = y - 16
+    y = y - 22
     local trades = mod.GiftPairs()
     f.team.empty:SetShown(#trades == 0)
     if #trades == 0 then
@@ -910,8 +935,18 @@ function mod.RefreshBags()
         end
         if line.header then
             nHead = nHead + 1
-            local h = f.headers[nHead] or f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            f.headers[nHead] = h
+            local h = f.headers[nHead]
+            if not h then
+                h = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                -- a thin line under it, like the section titles in MMT's settings
+                h.line = f:CreateTexture(nil, "ARTWORK")
+                h.line:SetColorTexture(1, 1, 1, 0.08)
+                h.line:SetHeight(1)
+                h.line:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -2)
+                h.line:SetWidth(COLS * (SIZE + GAP) - GAP)
+                f.headers[nHead] = h
+            end
+            h.line:Show()
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", PAD, y - 3)
             h:SetWidth(COLS * (SIZE + GAP) - GAP)
@@ -962,7 +997,7 @@ function mod.RefreshBags()
         end
     end
     for i = nSlot + 1, #f.slots do f.slots[i]:Hide() end
-    for i = nHead + 1, #f.headers do f.headers[i]:Hide() end
+    for i = nHead + 1, #f.headers do f.headers[i]:Hide(); f.headers[i].line:Hide() end
     f:SetSize(PAD * 2 + COLS * (SIZE + GAP) - GAP, -y + 26)
 
     local total = 0

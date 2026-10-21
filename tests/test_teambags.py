@@ -366,7 +366,7 @@ print(lua.eval(r'''function(m)
   b._OnDragStop(b)
   rawset(bobButton, "IsMouseOver", nil)
   assert(m.PlannedOut("Anna-Smith", 2589) == 20, "drop on a name (the whole stack): " .. m.PlannedOut("Anna-Smith", 2589))
-  assert(bobButton.label:GetText():find("+1", 1, true), "incoming count on the name: " .. tostring(bobButton.label:GetText()))
+  assert(bobButton.count:GetText():find("+1", 1, true), "incoming count on the name: " .. tostring(bobButton.count:GetText()))
   -- the bank isn't tradeable: no dragging there
   m.OpenBags("k", "Anna-Smith")
   for _, x in ipairs(f.slots) do
@@ -375,9 +375,10 @@ print(lua.eval(r'''function(m)
   end
   -- clicking a name shows that character
   m.OpenBags("b", "Anna-Smith")
-  bobButton._click(bobButton)
+  assert(not bobButton.bar:IsShown(), "Bob marked while Anna is shown")
+  bobButton._OnClick(bobButton)
   assert(f.who == "Bob-Stone", "name click didn't switch")
-  assert(bobButton.label:GetText():find(">", 1, true), "current character not marked")
+  assert(bobButton.bar:IsShown() and bobButton.bg._color[4] > 0, "current character not marked (MMT's blue bar)")
   -- the trades are in the panel in every view: here one character's bags
   m.SetGive("Anna-Smith", "Bob-Stone", 13446, 2)
   m.OpenBags("b", "Anna-Smith")
