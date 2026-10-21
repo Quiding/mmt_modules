@@ -29,7 +29,25 @@ function GetInboxItem(i, a) if a == 1 and MAIL[i] then return "x", MAIL[i][1], 1
 MailFrame = { IsShown = function() return MAILOPEN end }
 C_Timer = { After = function(_, f) f() end }
 function IsLoggedIn() return false end
-function CreateFrame() return { RegisterEvent = function() end, SetScript = function() end, UnregisterAllEvents = function() end } end
+FRAMES = {}
+function CreateFrame()
+  local f = { RegisterEvent = function() end, UnregisterAllEvents = function() end }
+  function f:SetScript(ev, fn) self[ev] = fn end
+  FRAMES[#FRAMES + 1] = f
+  return f
+end
+function TICK() for _, f in ipairs(FRAMES) do if f.OnUpdate then f.OnUpdate(f, 1) end end end
+-- trade window: our 6 slots, the cursor
+TRADE, CURSOR = {}, nil
+ERR_TRADE_COMPLETE = "Trade complete."
+function GetTradePlayerItemLink(s) local t = TRADE[s] return t and ("|Hitem:" .. t.id .. ":0|h[x]|h") end
+function GetTradePlayerItemInfo(s) local t = TRADE[s] if t then return "x", 1, t.n end end
+function ClickTradeButton(s) if CURSOR and not TRADE[s] then TRADE[s] = CURSOR; CURSOR = nil end end
+function CursorHasItem() return CURSOR ~= nil end
+function ClearCursor() CURSOR = nil end
+function UnitFullName(u) if u == "NPC" then return PARTNER end end
+function GetServerTime() return SERVERTIME end
+SERVERTIME = 5000
 function UnitClass() if ME == "Bob-Stone" then return "Warrior", "WARRIOR" end return "Shaman", "SHAMAN" end
 RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
 SlashCmdList = {}
@@ -44,13 +62,18 @@ function MMT.Print() end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = { msg = msg } end
 function MMT.SendAddon(msg, _, to) SENT[#SENT + 1] = { msg = msg, to = to } end
 function MMT.SendLong(text, to) SENT[#SENT + 1] = { msg = text, to = to, long = true } end
+function MMT.Resolve(name) if name == "Anna" then return "Anna-Smith" elseif name == "Bob" then return "Bob-Stone" end end
 function MMT.NewModule(def)
   local M = def
   M.enabled = true
   M.db = copy(def.defaults)
   M.store = {}
   function M:On(ev, fn) EVENTS[ev] = EVENTS[ev] or {}; table.insert(EVENTS[ev], fn) end
-  function M:Listen(ev, fn) LISTEN[ev] = fn end
+  -- every listener of a callback runs (like the core); LISTEN.X(...) calls them all
+  function M:Listen(ev, fn)
+    LISTEN[ev] = LISTEN[ev] or setmetatable({}, { __call = function(t, ...) for _, f in ipairs(t) do f(...) end end })
+    table.insert(LISTEN[ev], fn)
+  end
   function M:Heartbeat(k, fn) HEARTBEAT = fn end
   return M
 end
@@ -170,3 +193,71 @@ print("A:", A.eval(r'''function(m)
   assert(n >= 3, "report")
   return "changes ok"
 end''')(amod))
+
+# planned gifts: Anna drags 15 of Bob's 20 Linen Cloth onto herself in the team bags
+print("A:", A.eval(r"""function(m)
+  SENT = {}
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 15)
+  assert(#SENT == 1 and SENT[1].msg == "TIVG:2589:15:5000:Bob-Stone:Anna-Smith", "plan message: " .. tostring(SENT[1] and SENT[1].msg))
+  assert(m.PlannedOut("Bob-Stone", 2589) == 15 and m.PlannedIn("Anna-Smith")[1].n == 15, "plan not stored")
+  return "gift planned"
+end""")(amod))
+for msg in take(A): B.eval('DELIVER')("Anna-Smith", msg)
+print("B:", B.eval(r"""function(m)
+  assert(m.PlannedOut("Bob-Stone", 2589) == 15, "plan didn't reach the giver")
+  -- a trade with someone else: nothing goes in
+  PARTNER = "Wally"
+  FIRE("TRADE_SHOW")
+  assert(next(TRADE) == nil, "items put into a trade with someone else")
+  FIRE("TRADE_CLOSED")
+  -- the core (or Bob) already put 5 linen in: only 10 more, split off the stack of 20
+  PARTNER = "Anna"
+  TRADE = { [1] = { id = 2589, n = 5 } }
+  C_Container.SplitContainerItem = function(bag, slot, n) CURSOR = { id = BAGS[bag][slot].itemID, n = n, split = true } end
+  C_Container.PickupContainerItem = function(bag, slot) CURSOR = { id = BAGS[bag][slot].itemID, n = BAGS[bag][slot].stackCount } end
+  FIRE("TRADE_SHOW")
+  assert(TRADE[2] and TRADE[2].id == 2589 and TRADE[2].n == 10 and TRADE[2].split, "not split into the trade: " .. tostring(TRADE[2] and TRADE[2].n))
+  assert(not TRADE[3], "too much put in")
+  -- the button under the trade window again: it counts what's already in, adds nothing
+  assert(m.FillTrade(true) == 0 and not TRADE[3], "filled twice")
+  -- the trade completes: 15 handed over, the plan is done and the team told
+  TICK()
+  SENT = {}
+  SERVERTIME = 5100
+  FIRE("TRADE_CLOSED")
+  FIRE("UI_INFO_MESSAGE", 0, "Trade complete.")
+  assert(m.PlannedOut("Bob-Stone", 2589) == 0, "plan not done after the trade")
+  assert(#SENT == 1 and SENT[1].msg == "TIVG:2589:0:5100:Bob-Stone:Anna-Smith", "done message: " .. tostring(SENT[1] and SENT[1].msg))
+  TRADE = {}
+  -- soulbound stacks are left alone
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 5)
+  BAGS[0][2].isBound = true
+  FIRE("TRADE_SHOW")
+  assert(next(TRADE) == nil, "a soulbound stack went into the trade")
+  BAGS[0][2].isBound = nil
+  -- a cancelled trade ("Trade cancelled" is not "Trade complete") changes nothing
+  FIRE("TRADE_CLOSED")
+  FIRE("UI_INFO_MESSAGE", 0, "Trade cancelled.")
+  assert(m.PlannedOut("Bob-Stone", 2589) == 5, "cancelled trade changed the plan")
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  return "trade filled + plan done"
+end""")(bmod))
+for msg in take(B): A.eval('DELIVER')("Bob-Stone", msg)
+print("A:", A.eval(r"""function(m)
+  assert(m.PlannedOut("Bob-Stone", 2589) == 0 and #m.PlannedIn("Anna-Smith") == 0, "done not applied")
+  -- an older copy (a client that was offline) can't bring it back
+  DELIVER("Wally-Warrior", "TIVG:2589:15:5000:Bob-Stone:Anna-Smith")
+  assert(m.PlannedOut("Bob-Stone", 2589) == 0, "old plan came back")
+  -- a member seen online for the first time gets the plans they're in, whispered
+  -- (only the plans Wally gives or gets; Bob was seen before, he got his by the team message)
+  m.SetGive("Anna-Smith", "Wally-Warrior", 13446, 2)
+  SENT = {}
+  LISTEN.XP_RECEIVED("Wally-Warrior", "Wally", {})
+  local n = 0
+  for _, s in ipairs(SENT) do if s.msg:find("^TIVG:") and s.to == "Wally" then n = n + 1 end end
+  assert(n == 1, "plans whispered on first sight: " .. n)
+  SENT = {}
+  LISTEN.XP_RECEIVED("Wally-Warrior", "Wally", {})
+  for _, s in ipairs(SENT) do assert(not s.msg:find("^TIVG:"), "whispered again") end
+  return "gift sync ok"
+end""")(amod))

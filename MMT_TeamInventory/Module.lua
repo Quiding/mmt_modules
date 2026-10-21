@@ -8,6 +8,8 @@
 --   Sync.lua      shares them: hash on the heartbeat, a full copy when it
 --                 differs, then only the changes (tag TIV)
 --   Tooltip.lua   the lines in the item tooltip, next to Syndicator's
+--   Give.lua      planned gifts: drag an item onto another character in the
+--                 team bags, it goes into the trade window when they trade (TIVG)
 --   Bags.lua      "Team bags": any character's stored items in a bag window,
 --                 and the minimap button (left: bags, right: bank)
 --   Settings.lua  settings page and debug report
@@ -19,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.0"
+mod.VERSION = "0.3.0"
 mod.PLACES = { "b", "k", "m", "e" }
 mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
 
@@ -40,6 +42,7 @@ local M = MMT.NewModule({
         bagsScale = 1,
         categories = true,     -- team bags grouped by category (false = one grid)
         baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
+        giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },
 })

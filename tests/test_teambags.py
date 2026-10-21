@@ -26,6 +26,7 @@ U.__index = function(t, k)
   return function() return new() end
 end
 function CreateFrame(_, name) local f = new(); if name then _G[name] = f end return f end
+STUBFRAME = new
 UIParent, Minimap = new(), new()
 C_Timer = { After = function(_, f) f() end }
 function wipe(t) for k in pairs(t) do t[k] = nil end return t end
@@ -249,4 +250,78 @@ print(lua.eval(r'''function(m)
   _, b = m.Categorize(m.BagSlots("Anna-Smith", "b", ""))
   assert(b == false, "no fallback without Baganator's data")
   return "Baganator categories ok"
+end''')(mod))
+
+# planned gifts: by character, drag Anna's Linen Cloth onto Bob's section
+print(lua.eval(r'''function(m)
+  SENT = {}
+  function MMT.SendToTeam(msg) SENT[#SENT + 1] = msg end
+  function IsShiftKeyDown() return SHIFT end
+  GameTooltip = STUBFRAME()
+  rawset(UIParent, "GetEffectiveScale", function() return 1 end)
+  local f = m.bags
+  rawset(f, "GetLeft", function() return 0 end)
+  rawset(f, "GetRight", function() return 400 end)
+  rawset(f, "GetTop", function() return 500 end)
+  rawset(f, "GetEffectiveScale", function() return 1 end)
+  local function Section(key) for _, b in ipairs(f.bands) do if b.key == key then return b end end end
+  local function Over(key)   -- the cursor over that character's section
+    local b = Section(key)
+    function GetCursorPosition() return 10, 500 + (b.top + b.bottom) / 2 end
+  end
+  local function Button(owner, id, planned)
+    for _, b in ipairs(f.slots) do
+      local s = rawget(b, "slot")
+      if b:IsShown() and s and s.owner == owner and s.id == id and (s.planned ~= nil) == (planned or false) then return b, s end
+    end
+  end
+  f:Hide()
+  m.OpenBags("b", "__BYCHAR__")
+  assert(Section("Anna-Smith") and Section("Bob-Stone"), "no drop zones")
+  local b = Button("Anna-Smith", 2589)
+  assert(b, "Anna's linen not shown")
+  Over("Bob-Stone")
+  b._OnDragStart(b)
+  b._OnDragStop(b)
+  assert(SENT[1] == "TIVG:2589:20:" .. m.Gives()["Anna-Smith"]["Bob-Stone"][2589].t .. ":Anna-Smith:Bob-Stone", "plan message: " .. tostring(SENT[1]))
+  -- the icon moved: gone from Anna, glowing first in Bob's section
+  assert(not Button("Anna-Smith", 2589), "still in Anna's bags")
+  local pb, ps = Button("Bob-Stone", 2589, true)
+  assert(pb and ps.count == 20 and ps.planned == "Anna-Smith" and pb.glow:IsShown(), "not glowing at Bob")
+  local first
+  for _, x in ipairs(f.slots) do if rawget(x, "slot") and x.slot.owner == "Bob-Stone" then first = x.slot break end end
+  assert(first.planned, "planned gift not first in Bob's section")
+  -- the whole team added up doesn't change
+  local slots = m.BagSlots("__ALL__", "b", "")
+  for _, s in ipairs(slots) do if s.id == 2589 then assert(s.count == 20, "whole team count changed") end end
+  -- right-click cancels it: back at Anna, no glow left
+  pb._OnClick(pb, "RightButton")
+  assert(Button("Anna-Smith", 2589) and not Button("Bob-Stone", 2589, true), "not cancelled")
+  for _, x in ipairs(f.slots) do if x:IsShown() then assert(not x.glow:IsShown(), "glow left over") end end
+  -- Shift + drop: how many
+  SHIFT = true
+  b = Button("Anna-Smith", 2589)
+  b._OnDragStart(b); b._OnDragStop(b)
+  SHIFT = false
+  local box = MMTTeamBagsAmount
+  assert(box and box.accept, "no amount box")
+  box.accept("5")
+  local _, rest = Button("Anna-Smith", 2589)
+  local _, gift = Button("Bob-Stone", 2589, true)
+  assert(rest.count == 15 and gift.count == 5, "split gift")
+  -- dropped on her own section, or outside the window: nothing
+  local n = #SENT
+  b = Button("Anna-Smith", 2589)
+  Over("Anna-Smith"); b._OnDragStart(b); b._OnDragStop(b)
+  function GetCursorPosition() return 900, 100 end
+  b._OnDragStart(b); b._OnDragStop(b)
+  assert(#SENT == n, "a drop on the own section / outside planned something")
+  -- one character's view: no dragging (nowhere to drop)
+  m.OpenBags("b", "Anna-Smith")
+  b = Button("Anna-Smith", 2589)
+  Over("Anna-Smith")
+  b._OnDragStart(b)
+  assert(not rawget(b, "dragging"), "dragging in a single character's view")
+  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 0)
+  return "planned gifts in the team bags ok"
 end''')(mod))

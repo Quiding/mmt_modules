@@ -203,7 +203,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.2.1)
+### MMT_TeamInventory (v0.3.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -224,7 +224,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (its definitions are private); matching = `Syndicator.Search.CheckItem(GetBaseInfo{...}, search)`, highest
   priority wins (prio = offset + (mod.priority+1)*200, ties by order). Auto categories skipped. Any problem: nil
   -> built-in `mod.Group`. Setting `baganatorCats`.
-- Tests: `tests/test_teaminventory.py` (two clients), `tests/test_teambags.py` (window, Baganator categories, stand-ins).
+- `Give.lua`: planned gifts. BYCHAR + Bags tab: drag a slot (`OnDragStart/Stop`, drop zone = `f.bands` per
+  character section from RefreshBags, Shift = amount box `MMTTeamBagsAmount`); `M.store.gives[from][to][id] = {n, t}`
+  (t = GetServerTime, newest wins, n = 0 kept a week as tombstone). `TIVG:<id>:<n>:<t>:<from>:<to>` to the team,
+  whispered to a member the first time they're seen online (XP_RECEIVED). `mod.BagSlots` (one char, "b"):
+  giver's count minus `PlannedOut`, receiver gets `planned` slots (glow, first in BYCHAR, right-click cancels).
+  Trade: TRADE_SHOW -> `mod.FillTrade` after the CORE's own Trade.lua fill (it precomputes free slots: we wait
+  2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton, skips bound/locked,
+  counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on
+  UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
+  "Planned items" button under TradeFrame.
+- Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between

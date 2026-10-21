@@ -4,6 +4,8 @@
 -- Pick a character (or the whole team), Bags / Bank / Mail, search by name.
 -- Grouped like Baganator's default categories (Classic order), or one grid.
 -- Opened from the minimap button (left: bags, right: bank) or /mmtinv bags|bank.
+-- By character, Bags tab: drag an item onto another character to plan a gift
+-- (Give.lua); it shows glowing at the receiver until it was traded.
 
 local _, mod = ...
 local MMT = MMT
@@ -108,24 +110,131 @@ local function Contents(who, place)
     return sum
 end
 
--- sorted slots { id, count, name, link, quality, icon } matching the search
+local function NewSlotData(id, n, search)
+    local name, link, quality, _, _, _, _, _, _, icon = MMT.Safe(GetInfo, id)
+    if search ~= "" and not (name and name:lower():find(search, 1, true)) then return nil end
+    local _, _, _, _, instIcon, class, subclass = MMT.Safe(GetInstant, id)
+    return { id = id, count = n, name = name, link = link, quality = quality,
+        icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
+end
+
+-- sorted slots { id, count, name, link, quality, icon } matching the search.
+-- One character's bags: planned gifts (Give.lua) leave the giver and show at
+-- the receiver as their own slots { planned = giver }.
 function mod.BagSlots(who, place, search)
     search = (search or ""):lower()
+    local char = who ~= ALL and who ~= BYCHAR
+    local plans = char and place == "b" and mod.PlannedOut
     local slots = {}
     for id, n in pairs(Contents(who, place)) do
-        local name, link, quality, _, _, _, _, _, _, icon = MMT.Safe(GetInfo, id)
-        if search == "" or (name and name:lower():find(search, 1, true)) then
-            local _, _, _, _, instIcon, class, subclass = MMT.Safe(GetInstant, id)
-            slots[#slots + 1] = { id = id, count = n, name = name, link = link, quality = quality,
-                icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
+        if plans then n = n - math.min(n, mod.PlannedOut(who, id)) end
+        local s = n > 0 and NewSlotData(id, n, search)
+        if s then s.owner = who; slots[#slots + 1] = s end
+    end
+    if plans then
+        for _, p in ipairs(mod.PlannedIn(who)) do
+            local s = NewSlotData(p.id, p.n, search)
+            if s then s.owner, s.planned = who, p.from; slots[#slots + 1] = s end
         end
     end
     table.sort(slots, function(a, b)
+        if (a.planned ~= nil) ~= (b.planned ~= nil) then return a.planned ~= nil end   -- planned gifts first
         if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
         if (a.name or "") ~= (b.name or "") then return (a.name or "~") < (b.name or "~") end
         return a.id < b.id
     end)
     return slots
+end
+
+---------------------------------------------------------------------------
+-- Planning gifts: drag an item onto another character ("by character", Bags)
+---------------------------------------------------------------------------
+-- the character section under the cursor (f.bands, made by RefreshBags)
+local function KeyAtCursor(f)
+    local x, y = GetCursorPosition()
+    local s = f:GetEffectiveScale()
+    x, y = x / s, y / s
+    local left, right, top = f:GetLeft(), f:GetRight(), f:GetTop()
+    if not (left and right and top) or x < left or x > right then return nil end
+    local ly = y - top
+    for _, band in ipairs(f.bands or {}) do
+        if ly <= band.top and ly > band.bottom then return band.key end
+    end
+end
+
+-- the icon that follows the cursor while dragging
+local dragIcon
+local function DragIcon()
+    if dragIcon then return dragIcon end
+    dragIcon = CreateFrame("Frame", nil, UIParent)
+    dragIcon:SetSize(SIZE, SIZE)
+    dragIcon:SetFrameStrata("TOOLTIP")
+    dragIcon.tex = dragIcon:CreateTexture(nil, "ARTWORK")
+    dragIcon.tex:SetAllPoints()
+    dragIcon.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    dragIcon:SetScript("OnUpdate", function(self)
+        local x, y = GetCursorPosition()
+        local s = UIParent:GetEffectiveScale()
+        self:ClearAllPoints()
+        self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
+    end)
+    dragIcon:Hide()
+    return dragIcon
+end
+
+-- Shift + drop: how many (Enter = OK, Esc = cancel)
+local amountBox
+local function AskAmount(s, to)
+    if not amountBox then
+        local f = CreateFrame("Frame", "MMTTeamBagsAmount", UIParent)
+        f:SetSize(220, 64)
+        f:SetFrameStrata("FULLSCREEN_DIALOG")
+        f:EnableMouse(true)
+        UI.Fill(f, 0.05, 0.05, 0.06, 0.97)
+        UI.Border(f, 0.35, 0.35, 0.35, 1)
+        f.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f.text:SetPoint("TOPLEFT", 8, -8)
+        f.text:SetPoint("TOPRIGHT", -8, -8)
+        f.text:SetJustifyH("LEFT")
+        f.box = UI.EditBox(f, 80, "", function(text) f.accept(text) end)
+        f.box:SetPoint("BOTTOMLEFT", 8, 8)
+        f.ok = UI.Button(f, 60, "OK", function() f.accept(f.box:GetText()) end)
+        f.ok:SetPoint("LEFT", f.box, "RIGHT", 6, 0)
+        f.box:HookScript("OnEscapePressed", function() f:Hide() end)
+        f:Hide()
+        amountBox = f
+    end
+    local f = amountBox
+    f.text:SetText(("Give how many %s to %s? (up to %d)"):format(s.name or ("item " .. s.id), MMT.FullDisplay(to), s.count))
+    f.box:SetText(tostring(s.count))
+    f.accept = function(text)
+        local n = math.min(s.count, math.floor(tonumber(text) or 0))
+        f:Hide()
+        if n > 0 then
+            local cur = (((mod.Gives()[s.owner] or {})[to] or {})[s.id] or {}).n or 0
+            mod.SetGive(s.owner, to, s.id, cur + n)
+        end
+    end
+    f:ClearAllPoints()
+    local x, y = GetCursorPosition()
+    local sc = UIParent:GetEffectiveScale()
+    f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / sc + 8, y / sc + 8)
+    f:Show()
+    f.box:SetFocus()
+end
+
+-- a drop: plan the whole stack (Shift: ask how many)
+local function Drop(s, to)
+    if not to or to == s.owner then return end
+    if IsShiftKeyDown() and s.count > 1 then return AskAmount(s, to) end
+    local cur = (((mod.Gives()[s.owner] or {})[to] or {})[s.id] or {}).n or 0
+    mod.SetGive(s.owner, to, s.id, cur + s.count)
+end
+mod.DropSlot = Drop
+
+local function CanDrag(s)
+    local f = mod.bags
+    return s and s.owner and not s.planned and f and f.who == BYCHAR and f.place == "b"
 end
 
 ---------------------------------------------------------------------------
@@ -145,15 +254,58 @@ local function NewSlot(parent)
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.15)
+    -- glow of a planned gift (like the cooldown icons' glow)
+    b.glow = b:CreateTexture(nil, "OVERLAY")
+    b.glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    b.glow:SetBlendMode("ADD")
+    b.glow:SetPoint("CENTER")
+    b.glow:SetSize(SIZE * 1.8, SIZE * 1.8)
+    local pulse = b.glow:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local fade = pulse:CreateAnimation("Alpha")
+    fade:SetFromAlpha(1); fade:SetToAlpha(0.3); fade:SetDuration(0.6)
+    b.pulse = pulse
+    b.glow:Hide()
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:RegisterForDrag("LeftButton")
     b:SetScript("OnEnter", function(self)
-        if not self.slot then return end
+        local s = self.slot
+        if not s then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        pcall(GameTooltip.SetHyperlink, GameTooltip, self.slot.link or ("item:" .. self.slot.id))
+        pcall(GameTooltip.SetHyperlink, GameTooltip, s.link or ("item:" .. s.id))
+        if s.planned then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(("Planned: %s gives %d to %s."):format(MMT.FullDisplay(s.planned), s.count, MMT.FullDisplay(s.owner)), 0.3, 1, 0.3, true)
+            GameTooltip:AddLine("Goes into the trade window the next time they trade. Right-click: cancel.", 0.7, 0.7, 0.7, true)
+        elseif CanDrag(s) then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("Drag onto another character to plan a gift (Shift: how many).", 0.7, 0.7, 0.7, true)
+        end
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    b:SetScript("OnClick", function(self)
-        if self.slot and IsShiftKeyDown() then pcall(InsertLink, self.slot.link or ("item:" .. self.slot.id)) end
+    b:SetScript("OnClick", function(self, button)
+        local s = self.slot
+        if not s then return end
+        if button == "RightButton" then
+            if s.planned then mod.SetGive(s.planned, s.owner, s.id, 0) end
+        elseif IsShiftKeyDown() then
+            pcall(InsertLink, s.link or ("item:" .. s.id))
+        end
+    end)
+    b:SetScript("OnDragStart", function(self)
+        if not CanDrag(self.slot) then return end
+        local d = DragIcon()
+        d.tex:SetTexture(self.slot.icon)
+        d:Show()
+        self.dragging = self.slot
+        GameTooltip:Hide()
+    end)
+    b:SetScript("OnDragStop", function(self)
+        local s = self.dragging
+        self.dragging = nil
+        if dragIcon then dragIcon:Hide() end
+        if s and mod.bags then Drop(s, KeyAtCursor(mod.bags)) end
     end)
     return b
 end
@@ -178,12 +330,20 @@ end
 
 local OwnerText
 
--- "by character": { { name = class-coloured name, slots }, ... } in the picker's order
+-- "by character": { { name = class-coloured name, key, slots }, ... } in the picker's
+-- order; planned gifts first in their receiver's section
 function mod.ByCharacter(place, search)
     local out = {}
     for _, key in ipairs(mod.BagOwners()) do
         local slots = mod.BagSlots(key, place, search)
-        if #slots > 0 then out[#out + 1] = { name = OwnerText(key), slots = ByCategory(slots) } end
+        if #slots > 0 then
+            local planned, rest = {}, {}
+            for _, s in ipairs(slots) do
+                if s.planned then planned[#planned + 1] = s else rest[#rest + 1] = s end
+            end
+            for _, s in ipairs(ByCategory(rest)) do planned[#planned + 1] = s end
+            out[#out + 1] = { name = OwnerText(key), key = key, slots = planned }
+        end
     end
     return out
 end
@@ -305,11 +465,11 @@ function mod.RefreshBags()
     elseif M.db.categories ~= false then groups = mod.Categorize(slots)
     else groups = { { slots = slots } } end
     for _, g in ipairs(groups) do
-        if g.name then lines[#lines + 1] = { header = g.name .. "  |cff888888" .. #g.slots .. "|r" } end
+        if g.name then lines[#lines + 1] = { header = g.name .. "  |cff888888" .. #g.slots .. "|r", key = g.key } end
         for i = 1, #g.slots, COLS do
             local row = {}
             for j = i, math.min(i + COLS - 1, #g.slots) do row[#row + 1] = g.slots[j] end
-            lines[#lines + 1] = { row = row }
+            lines[#lines + 1] = { row = row, key = g.key }
         end
     end
     if #lines == 0 then lines[1] = { row = {} } end
@@ -323,9 +483,16 @@ function mod.RefreshBags()
     end
     f.offset = math.min(f.offset or 0, maxOffset)
     local y, nSlot, nHead = -TOP, 0, 0
+    -- drop zones: the y range of each character's section (by character)
+    f.bands = {}
     for li = f.offset + 1, #lines do
         local line = lines[li]
         if -TOP - y + H(line) > MAX_H then break end
+        if line.key then
+            local last = f.bands[#f.bands]
+            if last and last.key == line.key then last.bottom = y - H(line)
+            else f.bands[#f.bands + 1] = { key = line.key, top = y, bottom = y - H(line) } end
+        end
         if line.header then
             nHead = nHead + 1
             local h = f.headers[nHead] or f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -359,6 +526,11 @@ function mod.RefreshBags()
                         b.count:SetText("")
                     end
                     b.bg:SetColorTexture(r, g, bl, 1)
+                    if s and s.planned then
+                        if not b.glow:IsShown() then b.glow:Show(); b.pulse:Play() end
+                    elseif b.glow:IsShown() then
+                        b.pulse:Stop(); b.glow:Hide()
+                    end
                     b:Show()
                 end
             end
@@ -373,6 +545,7 @@ function mod.RefreshBags()
     for _, s in ipairs(slots) do total = total + s.count end
     local note = ("%d different items, %d in all"):format(#slots, total)
     if maxOffset > 0 then note = note .. "  -  mouse wheel scrolls" end
+    if who == BYCHAR and place == "b" and maxOffset == 0 then note = note .. "  -  drag items onto another character" end
     local team = who == ALL or who == BYCHAR
     local rec = not team and mod.Chars()[who]
     if rec and rec.time then note = note .. "  -  updated " .. MMT.Ago(rec.time) end
