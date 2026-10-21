@@ -170,3 +170,27 @@ print(lua.eval(r'''function(m)
   assert(state == "buff", "Battle Shout shown as " .. tostring(state))
   return "buffs with late spell data ok"
 end''')(tr))
+
+# a "Teaches ..." trainer spell's generic icon (WoW logo) counts as none: by name, or the seen buff
+lua.execute(r'''
+C_Spell = {
+  GetSpellInfo = function(x)
+    if x == 864 or x == "Seal of Righteousness" then return { name = "Seal of Righteousness", iconID = 136235, spellID = 864 } end
+  end,
+  GetSpellTexture = function(x) if x == 864 then return 136235 end if x == "Seal of Righteousness" then return KNOWS_SOR and 132325 or nil end end,
+}
+''')
+teach = new_mod(r'''function(m) m.M = { store = {} } end''')
+load('MMT_Buffs/Compat.lua', teach)
+load('MMT_Buffs/Lists.lua', teach)
+print(lua.eval(r'''function(m)
+  -- a character that doesn't know the seal: the logo until the buff was seen
+  assert(m.EntryIcon({ id = 864 }) == 136235, "generic icon as the last resort")
+  m.SeeIcon("Seal of Righteousness", 132325)
+  assert(m.EntryIcon({ id = 864 }) == 132325, "seen icon not preferred over the logo")
+  -- the paladin knows it: by name
+  m.M.store.icons = {}
+  KNOWS_SOR = true
+  assert(m.EntryIcon({ id = 864 }) == 132325, "not by name")
+  return "trainer spell icons ok"
+end''')(teach))

@@ -99,3 +99,34 @@ print(lua.eval(r'''function(m)
   assert(rawget(p.rows[1], "entry") == nil and p.rows[1].text._text:find("Nothing found", 1, true), "no-match note")
   return "search ok (" .. TICKS .. " steps)"
 end''')(mod))
+
+# bug: "Seal of Righteousness" picked spell 864, the trainer spell "Teaches Seal of
+# Righteousness" (generic WoW-logo icon): a real spell of the same name wins over it
+SPELLS2 = {864: "Seal of Righteousness", 20154: "Seal of Righteousness", 3694: "Seal of Reckoning"}
+lua.execute('SPELLS = {}; C_Spell.GetSpellName = function(id) return SPELLS[id] end')
+for k, v in SPELLS2.items():
+    lua.eval('function(k, v) SPELLS[k] = v end')(k, v)
+mod2 = lua.eval('{}')
+lua.eval(r'''function(m)
+  m.PRESETS = {}
+  m.GENERIC_ICON = 136235
+  m.SpellInfo = function(id) return SPELLS[id] end
+  m.SpellIcon = function(id) if id == 864 then return 136235 end return SPELLS[id] and 135960 end
+end''')(mod2)
+lua.eval('function(src, m) assert(loadstring(src, "Search.lua"))("x", m) end')(
+    open('MMT_Cooldowns/Search.lua', encoding='utf-8').read(), mod2)
+print(lua.eval(r'''function(m)
+  local box = { _text = "" }
+  function box:GetText() return self._text end
+  function box:SetText(v) self._text = v end
+  function box:HasFocus() return true end
+  function box:HookScript(ev, fn) self["_" .. ev] = fn end
+  function box:GetWidth() return 150 end
+  function box:GetEffectiveScale() return 1 end
+  m.AttachSearch(box, { onPick = function() end })
+  box._text = "seal of r"
+  box._OnTextChanged(box, true)       -- builds the index
+  local t, id = m.FindByName("Seal of Righteousness")
+  assert(t == "s" and id == 20154, "the trainer spell won: " .. tostring(id))
+  return "trainer spells lose ok"
+end''')(mod2))

@@ -35,13 +35,20 @@ function mod.SpellIcon(spell)
     return (select(2, mod.SpellInfo(spell)))
 end
 
+-- the generic WoW-logo icon of "Teaches <spell>" trainer spells (they share the
+-- real spell's name, e.g. 864 "Seal of Righteousness"): no real icon
+mod.GENERIC_ICON = 136235
+
 -- an icon even when the game has none for that spell ID (some ranks / variants show
--- the "?" placeholder): by the spell's name, which finds any rank the character knows
+-- the "?" placeholder, trainer spells the WoW logo): by the spell's name, which finds
+-- any rank the character knows. Returns icon, or nil and the generic one as second value
 function mod.SpellIconAny(spell)
     local icon = mod.SpellIcon(spell)
-    if icon then return icon end
+    if icon and icon ~= mod.GENERIC_ICON then return icon end
     local name = mod.SpellInfo(spell)
-    if name then return mod.SpellIcon(name) end
+    local byName = name and mod.SpellIcon(name)
+    if byName and byName ~= mod.GENERIC_ICON then return byName end
+    return nil, icon or byName
 end
 
 -- start, duration, enabled for a spell the player knows; nil if not known;

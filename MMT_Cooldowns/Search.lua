@@ -25,13 +25,24 @@ local waiting = {} -- popups to redraw when the index is done
 
 local GetName = (C_Spell and C_Spell.GetSpellName) or function(id) return (mod.SpellInfo(id)) end
 
-local function AddSpell(id)
+-- a "Teaches <spell>" trainer spell (generic WoW-logo icon) or one without an icon
+local function Generic(id)
+    local icon = mod.SpellIcon(id)
+    return icon == nil or icon == mod.GENERIC_ICON
+end
+
+-- the first spell with a name wins, except that a real spell beats a trainer spell of
+-- the same name (864 "Seal of Righteousness" teaches it); the presets' IDs always win
+local function AddSpell(id, preset)
     local ok, name = pcall(GetName, id)
     if not ok or type(name) ~= "string" or name == "" or MMT.IsSecret(name) then return end
     local key = name:lower()
-    if not index[key] then
-        index[key] = { name = name, id = id }
+    local have = index[key]
+    if not have then
+        index[key] = { name = name, id = id, preset = preset }
         names[#names + 1] = key
+    elseif not have.preset and Generic(have.id) and not Generic(id) then
+        have.id = id
     end
 end
 
@@ -42,7 +53,7 @@ local function Build()
     -- the presets' spells first: their IDs win for names that exist more than once
     for _, p in ipairs(mod.PRESETS or {}) do
         for _, e in ipairs(p.entries or {}) do
-            if e.t ~= "i" and type(e.id) == "number" then AddSpell(e.id) end
+            if e.t ~= "i" and type(e.id) == "number" then AddSpell(e.id, true) end
         end
     end
     local r, id = 1, RANGES[1][1]

@@ -50,7 +50,7 @@ function mod.EntryName(e) return (mod.SpellInfo(e.id)) or ("Spell " .. e.id) end
 -- the spell's icon, else by its name, else the icon the buff itself had when it was
 -- last seen on someone (kept account-wide), else the "?" placeholder
 function mod.EntryIcon(e)
-    local icon = mod.SpellIconAny(e.id)
+    local icon, generic = mod.SpellIconAny(e.id)
     if icon then return icon end
     local seen = mod.M.store and mod.M.store.icons
     local name = mod.SpellInfo(e.id)
@@ -58,7 +58,7 @@ function mod.EntryIcon(e)
         icon = seen[name] or seen[mod.Canonical(name)]
         if icon then return icon end
     end
-    return 134400
+    return generic or 134400
 end
 
 -- remembers the icon a buff has (from the auras scanned on group members)

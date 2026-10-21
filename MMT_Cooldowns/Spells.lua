@@ -39,7 +39,8 @@ end
 
 function mod.EntryIcon(e)
     if e.t == "s" then
-        return mod.SpellIconAny(e.id) or 134400   -- by name if the game has no icon for that ID
+        local icon, generic = mod.SpellIconAny(e.id)   -- by name if the game has no icon for that ID
+        return icon or generic or 134400
     end
     local fn = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
     local icon = fn and fn(e.id)
