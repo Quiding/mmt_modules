@@ -104,9 +104,9 @@ M.Page = function(_, page)
         status.Show_("Asked the team for their items.")
     end)
     R:Header("Team bags panel")
-    R:Cycle("BoE gear", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("boe") end, function(v) mod.SetFilter("boe", v) end)
-    R:Cycle("Soulbound", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("bound") end, function(v) mod.SetFilter("bound", v) end)
-    R:Cycle("Crafting reagents", { { value = "SHOW", text = "Show" }, { value = "HIDE", text = "Hide" }, { value = "ONLY", text = "Include" } }, function() return mod.FilterState("reagent") end, function(v) mod.SetFilter("reagent", v) end)
+    R:Check("Hide BoE gear", function() return mod.FilterState("boe") == "HIDE" end, function(v) mod.SetFilter("boe", v and "HIDE" or "SHOW") end)
+    R:Check("Hide soulbound items", function() return mod.FilterState("bound") == "HIDE" end, function(v) mod.SetFilter("bound", v and "HIDE" or "SHOW") end)
+    R:Check("Hide crafting reagents", function() return mod.FilterState("reagent") == "HIDE" end, function(v) mod.SetFilter("reagent", v and "HIDE" or "SHOW") end)
     R:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
         if mod.RefreshBags then mod.RefreshBags() end

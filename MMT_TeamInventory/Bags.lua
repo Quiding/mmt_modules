@@ -122,9 +122,8 @@ local function NewSlotData(id, n, search)
         icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
 end
 
--- Filters (window panel / settings, M.db.bagFilters): per kind of item SHOW,
--- HIDE or ONLY; they all apply at once. HIDE removes those; with ONLY on one or
--- more kinds an item must be one of them. BoE gear = weapons and armour that are
+-- Filters (window panel / settings, M.db.bagFilters): per kind of item SHOW or
+-- HIDE, all at once. BoE gear = weapons and armour that are
 -- Bind on Equip and not bound yet; soulbound = Bind on Pickup / quest items,
 -- equipped bind-on-equip ones, and what the owner's client counted as bound (s);
 -- crafting reagents = mod.IsReagent.
@@ -133,13 +132,13 @@ mod.FILTER_KINDS = {
     { key = "bound", text = "Soulbound" },
     { key = "reagent", text = "Crafting reagents" },
 }
-mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide", ONLY = "Include" }   -- ONLY: saved name, shown as "Include"
-local NEXT_STATE = { SHOW = "HIDE", HIDE = "ONLY", ONLY = "SHOW" }
+mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide" }
 
--- the filters, made from the single filter of 0.5.0 / 0.5.1 once
+-- the filters, made from the single filter of 0.5.0 / 0.5.1 once; "only" choices
+-- (0.5.0 - 0.5.4) are gone: back to Show
 local OLD_FILTER = {
     NOBOE = { boe = "HIDE" }, NOBOUND = { bound = "HIDE" }, NOBOTH = { boe = "HIDE", bound = "HIDE" },
-    BOE = { boe = "ONLY" }, BOUND = { bound = "ONLY" }, NOREAGENT = { reagent = "HIDE" }, REAGENT = { reagent = "ONLY" },
+    NOREAGENT = { reagent = "HIDE" },
 }
 function mod.Filters()
     local t = M.db.bagFilters
@@ -148,6 +147,7 @@ function mod.Filters()
         for k, v in pairs(OLD_FILTER[M.db.bagFilter or ""] or {}) do t[k] = v end
         M.db.bagFilters, M.db.bagFilter = t, nil
     end
+    for k, v in pairs(t) do if v ~= "HIDE" then t[k] = nil end end
     return t
 end
 
@@ -157,7 +157,7 @@ function mod.SetFilter(kind, state)
     if mod.bags then mod.bags.offset = 0 end
     if mod.RefreshBags then mod.RefreshBags() end
 end
-function mod.CycleFilter(kind) mod.SetFilter(kind, NEXT_STATE[mod.FilterState(kind)]) end
+function mod.ToggleFilter(kind) mod.SetFilter(kind, mod.FilterState(kind) == "HIDE" and "SHOW" or "HIDE") end
 
 -- how many filters are on (for the button)
 function mod.FiltersOn()
@@ -192,15 +192,10 @@ end
 
 local function Passes(kind, reagent)
     local is = { boe = kind == "boe", bound = kind == "bound", reagent = reagent and true or false }
-    local anyOnly, matchOnly = false, false
     for k, state in pairs(mod.Filters()) do
         if state == "HIDE" and is[k] then return false end
-        if state == "ONLY" then
-            anyOnly = true
-            if is[k] then matchOnly = true end
-        end
     end
-    return not anyOnly or matchOnly
+    return true
 end
 
 -- sorted slots { id, count, name, link, quality, icon } matching the search and the filter.
@@ -617,7 +612,7 @@ local function Build()
     end)
     f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
     UI.Tooltip(f.filter, "Filter", "Show / hide / only: Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), crafting reagents (cloth, ore, herbs, leather, ...). They all apply at once.")
-    -- the filters: one row per kind, click = Show -> Hide -> Include, right-click = Show; stays open
+    -- the filters: one row per kind, click = Show / Hide; stays open
     f.filters = CreateFrame("Frame", nil, f)
     f.filters:SetPoint("TOPRIGHT", f.filter, "BOTTOMRIGHT", 0, -2)
     f.filters:SetSize(206, 8 + #mod.FILTER_KINDS * 24 + 4)
@@ -627,13 +622,10 @@ local function Build()
     UI.Border(f.filters, 0.35, 0.35, 0.35, 1)
     f.filterRows = {}
     for i, k in ipairs(mod.FILTER_KINDS) do
-        local b = UI.Button(f.filters, 194, "", function(_, button)
-            if button == "RightButton" then mod.SetFilter(k.key, "SHOW") else mod.CycleFilter(k.key) end
-        end)
+        local b = UI.Button(f.filters, 194, "", function() mod.ToggleFilter(k.key) end)
         b:SetHeight(22)
         b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 24)
-        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        UI.Tooltip(b, k.text, "Click: Show -> Hide -> Include. Right-click: Show. Include: with one or more kinds on Include, only those kinds are shown. Hide always removes.")
+        UI.Tooltip(b, k.text, "Click: show / hide these items.")
         b.kind = k
         f.filterRows[i] = b
     end
@@ -837,7 +829,7 @@ function mod.RefreshBags()
     f.owner.label:SetText(OwnerText(who))
     local on = mod.FiltersOn()
     f.filter.label:SetText(on > 0 and ("|cffffd100Filter (" .. on .. ")|r") or "Filter")
-    local COLOR = { SHOW = "|cff999999", HIDE = "|cffff6060", ONLY = "|cff40ff40" }
+    local COLOR = { SHOW = "|cff999999", HIDE = "|cffff6060" }
     for _, b in ipairs(f.filterRows) do
         local state = mod.FilterState(b.kind.key)
         b.label:SetText(("%s:  %s%s|r"):format(b.kind.text, COLOR[state], mod.FILTER_STATES[state]))

@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.5.4)
+### MMT_TeamInventory (v0.5.5)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -246,9 +246,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
-- Filters `bagFilters` = { boe / bound / reagent = "HIDE" | "ONLY" } (`mod.Filters()`, old single `bagFilter`
-  converted once; window: `f.filter` toggles the sticky panel `f.filters` / `f.filterRows`, click cycles Show/Hide/Only,
-  right-click Show; settings: one Cycle per kind; not synced). HIDE removes; with any ONLY (shown as "Include") an item must be one of them.
+- Filters `bagFilters` = { boe / bound / reagent = "HIDE" } (`mod.Filters()`, old single `bagFilter` converted once,
+  old "ONLY" values dropped - the user chose plain Show / Hide; window: `f.filter` toggles the sticky panel `f.filters` /
+  `f.filterRows`, click toggles; settings: one "Hide ..." check per kind; not synced).
   `mod.SlotKind(id, class, count, who, place)`
   = "bound" (bind 1/4, equipped bind 2, or owner(s)' `s` covers the count) / "boe" (bind 2 weapon/armour) / nil;
   applied in `mod.BagSlots` to ordinary slots only (planned gifts always shown); NOREAGENT / REAGENT via
