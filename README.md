@@ -151,6 +151,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 
 <img src="media/teambags_trades.webp" alt="Team bags by character with planned gifts (gold glow at the receiver, dimmed at the giver) and the team / trades panel" width="640">
 
+<img src="media/teambags_filters.png" alt="Team bags filters: BoE gear and crafting reagents on Include, soulbound and quest items hidden" width="574">
+
 | | |
 | --- | --- |
 | <img src="media/teambags_team.png" alt="Team bags: the whole team in Baganator's categories" width="420"> | <img src="media/teambags_bycharacter.png" alt="Team bags: the whole team by character" width="420"> |
