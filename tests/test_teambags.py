@@ -348,7 +348,7 @@ print(lua.eval(r'''function(m)
   local tb = f.tradeButtons[1]
   assert(tb and tb:IsShown() and tb.from == "Anna-Smith" and tb.to == "Bob-Stone", "no trade button")
   function MMT.Resolve(n) if n == "Bob" then return "Bob-Stone" end end
-  function UnitName(u) if u == "party1" then return "Bob" end end
+  function MMT.SplitUnit(u) if u == "party1" then return "Bob", "Stone", "Bob-Stone" end end
   function InitiateTrade(u) TRADED = u end
   tb._click(tb)
   assert(TRADED == "party1", "trade not opened: " .. tostring(TRADED))

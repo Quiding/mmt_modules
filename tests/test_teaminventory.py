@@ -46,6 +46,13 @@ function ClickTradeButton(s) if CURSOR and not TRADE[s] then TRADE[s] = CURSOR; 
 function CursorHasItem() return CURSOR ~= nil end
 function ClearCursor() CURSOR = nil end
 function UnitFullName(u) if u == "NPC" then return PARTNER end end
+-- like the core: first, last, team key ("First-Last"); UNITS[unit] = team key
+UNITS = {}
+function MMT_SPLIT(u)
+  if u == "NPC" then return PARTNER, nil, PARTNER end
+  local k = UNITS[u]
+  if k then local f, l = k:match("^([^-]+)%-?(.*)$") return f, l ~= "" and l or nil, k end
+end
 function GetServerTime() return SERVERTIME end
 SERVERTIME = 5000
 function UnitClass() if ME == "Bob-Stone" then return "Warrior", "WARRIOR" end return "Shaman", "SHAMAN" end
@@ -62,6 +69,7 @@ function MMT.Print() end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = { msg = msg } end
 function MMT.SendAddon(msg, _, to) SENT[#SENT + 1] = { msg = msg, to = to } end
 function MMT.SendLong(text, to) SENT[#SENT + 1] = { msg = text, to = to, long = true } end
+function MMT.SplitUnit(u) return MMT_SPLIT(u) end
 function MMT.Resolve(name) if name == "Anna" then return "Anna-Smith" elseif name == "Bob" then return "Bob-Stone" end end
 function MMT.NewModule(def)
   local M = def
@@ -272,14 +280,13 @@ end""")(amod))
 print("B:", B.eval(r"""function(m)
   local traded
   function InitiateTrade(u) traded = u end
-  -- grouped: Anna is party2
-  UNITS = { party1 = "Wally", party2 = "Anna" }
-  function UnitName(u) return UNITS[u] end
+  -- grouped: Anna is party2; party1 is another "Anna" (same first name, other last name)
+  UNITS = { party1 = "Anna-Jones", party2 = "Anna-Smith" }
   SENT = {}
   DELIVER("Anna-Smith", "TIVT:Bob-Stone:Anna-Smith")
   assert(traded == "party2" and #SENT == 0, "group trade: " .. tostring(traded))
   -- not grouped: her nameplate
-  traded, UNITS = nil, { nameplate7 = "Anna" }
+  traded, UNITS = nil, { nameplate7 = "Anna-Smith" }
   C_NamePlate = { GetNamePlates = function() return { { namePlateUnitToken = "nameplate7" } } end }
   DELIVER("Anna-Smith", "TIVT:Bob-Stone:Anna-Smith")
   assert(traded == "nameplate7", "nameplate trade: " .. tostring(traded))

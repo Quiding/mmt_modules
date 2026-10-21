@@ -178,12 +178,11 @@ function mod.UnitOf(key)
             if u then units[#units + 1] = u end
         end
     end
+    -- by the full "First-Last" key (the core's SplitUnit: the last name comes in the
+    -- realm field), so characters with the same first name aren't mixed up
     for _, u in ipairs(units) do
-        local name, realm = MMT.Safe(UnitName, u)
-        if name and not MMT.IsSecret(name) then
-            local full = (realm and realm ~= "") and (name .. "-" .. realm) or name
-            if MMT.Resolve and (MMT.Resolve(full) == key or MMT.Resolve(name) == key) then return u end
-        end
+        local _, _, k = MMT.SplitUnit(u)
+        if k and not MMT.IsSecret(k) and (k == key or (MMT.Resolve and MMT.Resolve(k) == key)) then return u end
     end
 end
 
@@ -259,11 +258,8 @@ end
 -- the trade partner's team key (any way the game shows the name)
 local function Partner()
     local names = {}
-    local n, r = MMT.Safe(UnitFullName, "NPC")
-    if n then
-        if r and r ~= "" then names[#names + 1] = n .. "-" .. r end
-        names[#names + 1] = n
-    end
+    local _, _, k = MMT.SplitUnit("NPC")
+    if k then names[#names + 1] = k end
     local fs = TradeFrameRecipientNameText
     local shown = fs and fs:GetText()
     if shown and shown ~= "" then names[#names + 1] = shown end
