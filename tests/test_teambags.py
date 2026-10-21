@@ -538,3 +538,51 @@ print(lua.eval(r'''function(m)
   assert(f.team:IsShown(), "panel not back")
   return "side panel setting ok"
 end''')(mod))
+
+# filter: hide / only BoE gear and soulbound items
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  ITEMS[6948][4] = 1      -- Hearthstone: Bind on Pickup -> soulbound
+  ITEMS[5000][4] = 2      -- Sword (weapon): Bind on Equip -> BoE gear
+  local anna = m.Chars()["Anna-Smith"]
+  anna.s = { [13446] = 5 }   -- all 5 potions soulbound
+  for from in pairs(m.Gives()) do m.Gives()[from] = nil end
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  local function Ids()
+    local t = {}
+    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s then t[#t + 1] = s.id end end
+    table.sort(t)
+    return table.concat(t, ",")
+  end
+  local all = Ids()
+  local function Pick(v) f.filter._click(f.filter); LIST.pick(v) end
+  Pick("NOBOE")
+  assert(not Ids():find("5000", 1, true) and Ids():find("6948", 1, true), "hide BoE: " .. Ids())
+  Pick("BOE")
+  assert(Ids() == "5000", "only BoE: " .. Ids())
+  Pick("NOBOUND")
+  assert(not Ids():find("6948", 1, true) and not Ids():find("13446", 1, true) and Ids():find("5000", 1, true), "hide soulbound: " .. Ids())
+  Pick("BOUND")
+  assert(Ids() == "6948,13446", "only soulbound: " .. Ids())
+  Pick("NOBOTH")
+  assert(not Ids():find("5000", 1, true) and not Ids():find("6948", 1, true) and Ids():find("2589", 1, true), "hide both: " .. Ids())
+  assert(f.filter.label:GetText():find("Hide both", 1, true), "filter label")
+  -- equipped: a BoE sword there is bound
+  anna.e = { [5000] = 1 }
+  m.OpenBags("e", "Anna-Smith")
+  Pick("BOUND")
+  assert(Ids() == "5000", "equipped BoE counts as soulbound: " .. Ids())
+  -- planned gifts stay visible whatever the filter
+  m.OpenBags("b", "Anna-Smith")
+  Pick("BOE")
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
+  local planned = false
+  for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.planned then planned = true end end
+  assert(planned, "planned gift hidden by the filter")
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  Pick("ALL")
+  assert(Ids() == all, "all items again")
+  anna.s, anna.e = nil, {}
+  return "filter ok"
+end''')(mod))

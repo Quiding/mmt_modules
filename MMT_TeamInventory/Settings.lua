@@ -104,6 +104,10 @@ M.Page = function(_, page)
         status.Show_("Asked the team for their items.")
     end)
     R:Header("Team bags panel")
+    R:Cycle("Filter", function() return mod.FILTERS end, function() return M.db.bagFilter or "ALL" end, function(v)
+        M.db.bagFilter = v
+        if mod.RefreshBags then mod.RefreshBags() end
+    end)
     R:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
         if mod.RefreshBags then mod.RefreshBags() end

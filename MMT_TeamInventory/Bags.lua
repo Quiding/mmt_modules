@@ -122,7 +122,47 @@ local function NewSlotData(id, n, search)
         icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
 end
 
--- sorted slots { id, count, name, link, quality, icon } matching the search.
+-- Filter (window dropdown / setting bagFilter): BoE gear = weapons and armour that
+-- are Bind on Equip and not bound yet; soulbound = Bind on Pickup / quest items,
+-- equipped bind-on-equip ones, and what the owner's client counted as bound (s)
+mod.FILTERS = {
+    { value = "ALL", text = "All items" },
+    { value = "NOBOE", text = "Hide BoE gear" },
+    { value = "NOBOUND", text = "Hide soulbound" },
+    { value = "NOBOTH", text = "Hide both" },
+    { value = "BOE", text = "Only BoE gear" },
+    { value = "BOUND", text = "Only soulbound" },
+}
+
+-- "boe", "bound" or nil for an item of a character (who = key) or the whole team
+function mod.SlotKind(id, class, count, who, place)
+    local bind = select(14, MMT.Safe(GetInfo, id))
+    local bound = bind == 1 or bind == 4 or (place == "e" and bind == 2)
+    if not bound and place == "b" then
+        local n = 0
+        if who ~= ALL and who ~= BYCHAR then
+            local rec = mod.Chars()[who]
+            n = rec and rec.s and rec.s[id] or 0
+        else
+            for _, rec in pairs(mod.Chars()) do n = n + (rec.s and rec.s[id] or 0) end
+        end
+        bound = n >= count
+    end
+    if bound then return "bound" end
+    if bind == 2 and (class == 2 or class == 4) then return "boe" end
+end
+
+local function Passes(kind)
+    local f = M.db.bagFilter or "ALL"
+    if f == "NOBOE" then return kind ~= "boe" end
+    if f == "NOBOUND" then return kind ~= "bound" end
+    if f == "NOBOTH" then return kind == nil end
+    if f == "BOE" then return kind == "boe" end
+    if f == "BOUND" then return kind == "bound" end
+    return true
+end
+
+-- sorted slots { id, count, name, link, quality, icon } matching the search and the filter.
 -- One character's bags: planned gifts (Give.lua) leave the giver and show at
 -- the receiver as their own slots { planned = giver }.
 function mod.BagSlots(who, place, search)
@@ -133,6 +173,7 @@ function mod.BagSlots(who, place, search)
     for id, n in pairs(Contents(who, place)) do
         if plans then n = n - math.min(n, mod.PlannedOut(who, id)) end
         local s = n > 0 and NewSlotData(id, n, search)
+        if s and not Passes(mod.SlotKind(id, s.class, n, who, place)) then s = nil end
         -- the whole team added up: no owner (a drop asks / finds who has it)
         if s then s.owner = char and who or nil; slots[#slots + 1] = s end
     end
@@ -529,6 +570,16 @@ local function Build()
     end
 
     -- on the top row, between the character and the close button (clear of the tabs)
+    -- filter: BoE gear / soulbound (same as the setting)
+    f.filter = UI.Button(f, 106, "", function(self)
+        UI.OpenList(self, mod.FILTERS, M.db.bagFilter or "ALL", function(v)
+            M.db.bagFilter, f.offset = v, 0
+            mod.RefreshBags()
+        end)
+    end)
+    f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
+    UI.Tooltip(f.filter, "Filter", "Hide or show only Bind on Equip weapons and armour, or soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound).")
+
     f.search = UI.EditBox(f, 140, "Search", function(_, box) box:ClearFocus() end)
     f.search:SetPoint("TOPRIGHT", -54, -PAD)
     f.search:HookScript("OnTextChanged", function() f.offset = 0; mod.RefreshBags() end)
@@ -714,6 +765,9 @@ function mod.RefreshBags()
     if not f or not f:IsShown() then return end
     local who, place = f.who, f.place
     f.owner.label:SetText(OwnerText(who))
+    local filterText = "All items"
+    for _, c in ipairs(mod.FILTERS) do if c.value == (M.db.bagFilter or "ALL") then filterText = c.text end end
+    f.filter.label:SetText(filterText == "All items" and filterText or ("|cffffd100" .. filterText .. "|r"))
     for p, b in pairs(f.tabs) do
         if p == place then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
         else b.label:SetTextColor(0.8, 0.8, 0.8) end
