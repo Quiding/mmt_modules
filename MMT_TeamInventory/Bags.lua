@@ -133,7 +133,7 @@ mod.FILTER_KINDS = {
     { key = "bound", text = "Soulbound" },
     { key = "reagent", text = "Crafting reagents" },
 }
-mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide", ONLY = "Only" }
+mod.FILTER_STATES = { SHOW = "Show", HIDE = "Hide", ONLY = "Include" }   -- ONLY: saved name, shown as "Include"
 local NEXT_STATE = { SHOW = "HIDE", HIDE = "ONLY", ONLY = "SHOW" }
 
 -- the filters, made from the single filter of 0.5.0 / 0.5.1 once
@@ -617,7 +617,7 @@ local function Build()
     end)
     f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
     UI.Tooltip(f.filter, "Filter", "Show / hide / only: Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), crafting reagents (cloth, ore, herbs, leather, ...). They all apply at once.")
-    -- the filters: one row per kind, click = Show -> Hide -> Only, right-click = Show; stays open
+    -- the filters: one row per kind, click = Show -> Hide -> Include, right-click = Show; stays open
     f.filters = CreateFrame("Frame", nil, f)
     f.filters:SetPoint("TOPRIGHT", f.filter, "BOTTOMRIGHT", 0, -2)
     f.filters:SetSize(206, 8 + #mod.FILTER_KINDS * 24 + 4)
@@ -633,7 +633,7 @@ local function Build()
         b:SetHeight(22)
         b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 24)
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        UI.Tooltip(b, k.text, "Click: Show -> Hide -> Only. Right-click: Show.")
+        UI.Tooltip(b, k.text, "Click: Show -> Hide -> Include. Right-click: Show. Include: with one or more kinds on Include, only those kinds are shown. Hide always removes.")
         b.kind = k
         f.filterRows[i] = b
     end

@@ -545,7 +545,7 @@ print(lua.eval(r'''function(m)
   return "side panel setting ok"
 end''')(mod))
 
-# filters: BoE gear / soulbound / crafting reagents, each Show / Hide / Only, all at once
+# filters: BoE gear / soulbound / crafting reagents, each Show / Hide / Include, all at once
 print(lua.eval(r'''function(m)
   local f = m.bags
   ITEMS[6948][4] = 1        -- Hearthstone: Bind on Pickup -> soulbound
@@ -578,8 +578,9 @@ print(lua.eval(r'''function(m)
   assert(f.filters:IsShown(), "panel closed after a click")
   assert(not Ids():find("5000", 1, true) and Ids():find("6948", 1, true), "hide BoE: " .. Ids())
   assert(Row("boe").label:GetText():find("Hide", 1, true) and f.filter.label:GetText():find("(1)", 1, true), "labels")
-  Click("boe")                                   -- Hide -> Only
+  Click("boe")                                   -- Hide -> Include
   assert(Ids() == "5000", "only BoE: " .. Ids())
+  assert(Row("boe").label:GetText():find("Include", 1, true), "row label: " .. Row("boe").label:GetText())
   -- the BoE sword isn't soulbound until its owner reports it (or it's equipped)
   m.SetFilter("boe", "SHOW"); m.SetFilter("bound", "ONLY")
   assert(not Ids():find("5000", 1, true), "BoE sword counted as soulbound")
