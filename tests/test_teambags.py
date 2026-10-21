@@ -21,7 +21,12 @@ U.__index = function(t, k)
   if k == "ClearAllPoints" then return function(self) rawset(self, "_point", nil) end end
   if k == "GetPoint" then return function(self) local p = rawget(self, "_point") if p then return unpack(p) end end end
   if k == "SetSize" then return function(self, w, h) rawset(self, "_w", w); rawset(self, "_h", h) end end
-  if k == "SetScript" or k == "HookScript" then return function(self, ev, fn) rawset(self, "_" .. ev, fn) end end
+  if k == "SetScript" then return function(self, ev, fn) rawset(self, "_" .. ev, fn) end end
+  -- like the game: a hook runs after the script that is already there
+  if k == "HookScript" then return function(self, ev, fn)
+    local old = rawget(self, "_" .. ev)
+    rawset(self, "_" .. ev, old and function(...) old(...); fn(...) end or fn)
+  end end
   if k == "GetWidth" then return function() return 140 end end
   if k == "GetFrameLevel" then return function() return 1 end end
   return function() return new() end
@@ -614,4 +619,29 @@ print(lua.eval(r'''function(m)
   C_Item.GetItemInfo, ITEMS[13446][5] = get, nil
   anna.s, anna.e = nil, {}
   return "filters ok"
+end''')(mod))
+
+# bug: changing filters made the whole window jump (it was anchored by its middle / right side)
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  rawset(f, "GetLeft", function() return 300 end)
+  rawset(f, "GetTop", function() return 700 end)
+  f:Hide()
+  m.M.db.bagsPoint = { "RIGHT", "RIGHT", -60, 0 }   -- an older saved point
+  m.OpenBags("b", "Anna-Smith")
+  local p, rel, rp, x, y = f:GetPoint(1)
+  assert(p == "TOPLEFT" and rp == "BOTTOMLEFT" and x == 300 and y == 700, "not pinned by the top: " .. tostring(p))
+  local saved = m.M.db.bagsPoint
+  assert(saved[1] == "TOPLEFT" and saved[2] == "BOTTOMLEFT" and saved[3] == 300 and saved[4] == 700, "pinned point not saved")
+  local h = f._h
+  m.SetFilter("boe", "ONLY")
+  assert(f._h ~= h, "test needs a height change")
+  p, rel, rp, x, y = f:GetPoint(1)
+  assert(p == "TOPLEFT" and x == 300 and y == 700, "the top moved when filtering")
+  m.SetFilter("boe", "SHOW")
+  -- dragged somewhere else: saved by the top-left corner too
+  rawset(f, "GetLeft", function() return 120 end)
+  f._OnDragStart(f); f._OnDragStop(f)
+  assert(m.M.db.bagsPoint[1] == "TOPLEFT" and m.M.db.bagsPoint[3] == 120, "drag not saved by the top")
+  return "window stays put ok"
 end''')(mod))

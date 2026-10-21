@@ -554,8 +554,8 @@ local function Build()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        local p, _, rp, x, y = self:GetPoint(1)
-        M.db.bagsPoint = { p, rp, x, y }
+        local l, t = mod.PinTop(self)
+        if l then M.db.bagsPoint = { "TOPLEFT", "BOTTOMLEFT", l, t } end
     end)
     UI.Fill(f, 0.05, 0.05, 0.06, 0.95)
     UI.Border(f, 0.25, 0.25, 0.25, 1)
@@ -812,11 +812,22 @@ function mod.RefreshTeam(f)
     mod.PlaceTeam(f)
 end
 
+-- anchored by its top-left corner: the height follows the items (filters, search,
+-- another character), so only the bottom edge moves - the buttons stay put
+function mod.PinTop(f)
+    local l, t = f:GetLeft(), f:GetTop()
+    if not (l and t) then return nil end
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
+    return l, t
+end
+
 local function Place(f)
     f:ClearAllPoints()
     local p = M.db.bagsPoint
     if type(p) == "table" and p[1] then f:SetPoint(p[1], UIParent, p[2], p[3], p[4])
     else f:SetPoint("RIGHT", UIParent, "RIGHT", -60, 0) end
+    f.pinned = false   -- pinned by the top once it has its size (OpenBags)
 end
 
 function mod.RefreshBags()
@@ -971,6 +982,12 @@ function mod.OpenBags(place, who)
     f:Show()
     f:Raise()
     mod.RefreshBags()
+    -- an older saved point (or the default) is by the middle / right: pin it by the top now
+    if not f.pinned then
+        f.pinned = true
+        local l, t = mod.PinTop(f)
+        if l then M.db.bagsPoint = { "TOPLEFT", "BOTTOMLEFT", l, t } end
+    end
 end
 
 -- key bindings (Bindings.xml, Options > Keybindings > AddOns): toggle the window

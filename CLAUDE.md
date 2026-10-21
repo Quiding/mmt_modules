@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.5.2)
+### MMT_TeamInventory (v0.5.3)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -215,7 +215,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   below its block); fallback OnTooltipSetItem. With Syndicator (`withSyndicator`): OTHERS = only characters
   not in `mine`, total over everyone; ALL; OFF. Syndicator's own data is private (no injection into it).
 - `Bags.lua`: team bags window `MMTTeamBagsWindow` (character picker incl. `__ALL__` = summed, `__BYCHAR__` = a section per character in category order, tabs b/k/m/e,
-  search, `mod.CATEGORIES` = Baganator's default Classic order by GetItemInfoInstant classID, quality 0 = Junk
+  search, window pinned by TOPLEFT (`mod.PinTop`, saved as such: height changes only move the bottom), `mod.CATEGORIES` = Baganator's default Classic order by GetItemInfoInstant classID, quality 0 = Junk
   last; lines = headers + rows of 10; the window grows to fit, scrolls by line only past the screen height) and the own minimap button
   `MMTTeamBagsMinimapButton` (`minimapAngle`, left bags / right bank, drag). Keys: `Bindings.xml` (own header
   MMTTEAMINV) -> global `MMTTeamInventory_Toggle(place, who)`.

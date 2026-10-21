@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.5.2 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.5.3 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
