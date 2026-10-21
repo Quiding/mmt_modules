@@ -133,7 +133,8 @@ function mod.BagSlots(who, place, search)
     for id, n in pairs(Contents(who, place)) do
         if plans then n = n - math.min(n, mod.PlannedOut(who, id)) end
         local s = n > 0 and NewSlotData(id, n, search)
-        if s then s.owner = who; slots[#slots + 1] = s end
+        -- the whole team added up: no owner (a drop asks / finds who has it)
+        if s then s.owner = char and who or nil; slots[#slots + 1] = s end
     end
     if plans then
         for _, p in ipairs(mod.PlannedIn(who)) do
@@ -240,8 +241,43 @@ local function AskAmount(s, to)
 end
 
 -- a drop: plan the whole stack (Shift: ask how many)
-local function Drop(s, to)
-    if not to or to == s.owner then return end
+-- who could give an item to a character: { { key, n }, ... } (bags, minus what they already give away)
+function mod.Holders(id, to)
+    local list = {}
+    for _, key in ipairs(mod.BagOwners()) do
+        if key ~= to then
+            local rec = mod.Chars()[key]
+            local n = (rec and rec.b and rec.b[id] or 0) - mod.PlannedOut(key, id)
+            if n > 0 then list[#list + 1] = { key = key, n = n } end
+        end
+    end
+    return list
+end
+
+local Drop
+-- a drop from "Whole team": the only character who has it, or ask which one
+local function DropFromTeam(s, to)
+    local holders = mod.Holders(s.id, to)
+    if #holders == 0 then return end
+    local function From(h)
+        local one = {}
+        for k, v in pairs(s) do one[k] = v end
+        one.owner, one.count = h.key, h.n
+        Drop(one, to)
+    end
+    if #holders == 1 then return From(holders[1]) end
+    local items = { { header = true, text = ("|cffffd100Who gives it to %s?|r"):format(MMT.FirstName(to)) } }
+    for _, h in ipairs(holders) do items[#items + 1] = { value = h.key, text = ("%s  |cff888888(%d)|r"):format(MMT.FullDisplay(h.key), h.n) } end
+    local anchor = mod.bags and mod.bags.team or UIParent
+    UI.OpenList(anchor, items, nil, function(key)
+        for _, h in ipairs(holders) do if h.key == key then From(h) end end
+    end)
+end
+
+function Drop(s, to)
+    if not to then return end
+    if not s.owner then return DropFromTeam(s, to) end
+    if to == s.owner then return end
     if IsShiftKeyDown() and s.count > 1 then return AskAmount(s, to) end
     local cur = (((mod.Gives()[s.owner] or {})[to] or {})[s.id] or {}).n or 0
     mod.SetGive(s.owner, to, s.id, cur + s.count)
@@ -250,8 +286,8 @@ mod.DropSlot = Drop
 
 local function CanDrag(s)
     local f = mod.bags
-    return s and s.owner and not s.planned and not s.outgoing and f and f.place == "b"
-        and (f.who == BYCHAR or f.who == s.owner)
+    return s and not s.planned and not s.outgoing and f and f.place == "b"
+        and (f.who == BYCHAR or f.who == ALL or (s.owner and f.who == s.owner))
 end
 
 ---------------------------------------------------------------------------

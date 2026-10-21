@@ -390,3 +390,13 @@ print("A:", A.eval(r"""function(m)
   TARGET = {}
   return "receiver auto-accept ok"
 end""")(amod))
+
+# a gift "from __ALL__" saved by 0.4.1 is removed the first time the plans are read
+C, cmod = client("Cara-Sun")
+print("C:", C.eval(r"""function(m)
+  m.M.store.gives = { __ALL__ = { ["Bob-Stone"] = { [2589] = { n = 1, t = 1 } } },
+    ["Anna-Smith"] = { __BYCHAR__ = { [2589] = { n = 2, t = 1 } }, ["Bob-Stone"] = { [6948] = { n = 1, t = 1 } } } }
+  assert(#m.PlannedIn("Bob-Stone") == 1 and m.PlannedIn("Bob-Stone")[1].from == "Anna-Smith", "old view gift still there")
+  assert(m.Gives().__ALL__ == nil and m.Gives()["Anna-Smith"].__BYCHAR__ == nil, "not cleaned")
+  return "old view gifts cleaned"
+end""")(cmod))

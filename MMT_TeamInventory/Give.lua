@@ -19,9 +19,23 @@ local KEEP_DONE = 7 * 24 * 3600   -- cancelled / done entries are forgotten afte
 
 local function Now() return (GetServerTime and GetServerTime()) or time() end
 
+-- only real characters give or get ("__ALL__" etc. are views of the team bags)
+local function Real(key) return type(key) == "string" and key ~= "" and key:sub(1, 2) ~= "__" end
+local cleaned = false
+
 function mod.Gives()
     M.store.gives = M.store.gives or {}
-    return M.store.gives
+    local g = M.store.gives
+    if not cleaned then   -- 0.4.1 could store a gift "from" the whole team view
+        cleaned = true
+        for from, tos in pairs(g) do
+            if type(tos) == "table" then
+                if not Real(from) then g[from] = nil
+                else for to in pairs(tos) do if not Real(to) then tos[to] = nil end end end
+            end
+        end
+    end
+    return g
 end
 
 local function Get(from, to, id)
@@ -47,7 +61,7 @@ end
 
 -- plan (or change / cancel with n = 0) a gift and tell the team
 function mod.SetGive(from, to, id, n)
-    if not (from and to and id) or from == to then return end
+    if not (Real(from) and Real(to) and id) or from == to then return end
     n = math.max(0, math.floor(tonumber(n) or 0))
     local cur = Get(from, to, id)
     -- the same second twice (drag, then cancel at once): still the newer one
@@ -144,7 +158,7 @@ end
 ---------------------------------------------------------------------------
 M:Listen("TEAM_MESSAGE", function(key, sender, text)
     local id, n, t, from, to = text:match("^TIVG:(%d+):(%d+):(%d+):([^:]+):([^:]+)$")
-    if not id then return end
+    if not id or not (Real(from) and Real(to)) then return end
     if Store(from, to, tonumber(id), tonumber(n), tonumber(t)) and mod.RefreshBags then mod.RefreshBags() end
 end)
 

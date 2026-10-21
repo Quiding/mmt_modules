@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.4.2)
+### MMT_TeamInventory (v0.4.3)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -225,7 +225,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (its definitions are private); matching = `Syndicator.Search.CheckItem(GetBaseInfo{...}, search)`, highest
   priority wins (prio = offset + (mod.priority+1)*200, ties by order). Auto categories skipped. Any problem: nil
   -> built-in `mod.Group`. Setting `baganatorCats`.
-- `Give.lua`: planned gifts. Bags tab, one character or BYCHAR: drag a slot (`OnDragStart/Stop`; drop zones =
+- `Give.lua`: planned gifts. Bags tab, any view: drag a slot (ALL view: slots have no `owner`; a drop takes
+  `mod.Holders(id, to)`, the only one or a `UI.OpenList` "who gives it"; "__" view keys are never stored, old ones
+  cleaned in `mod.Gives()`) (`OnDragStart/Stop`; drop zones =
   the side panel `f.team` beside the window (`mod.RefreshTeam`: `f.teamButtons` = every team member, click = their
   bags, "+n" incoming; then `f.pairRows` = one block per `mod.GiftPairs` pair with Trade, "x" (`mod.CancelGifts`) and
   small item icons (right-click cancels one); `mod.PlaceTeam` flips it left at the screen edge, also while the window

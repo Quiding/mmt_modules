@@ -423,3 +423,43 @@ print(lua.eval(r'''function(m)
   assert(Has(13447) == 3, "the open window didn't show the new item")
   return "open window updates on bag changes ok"
 end''')(mod))
+
+# bug: dragging in "Whole team" planned a gift from "__ALL__"; now from whoever has it
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  local chars = m.Chars()
+  for from in pairs(m.Gives()) do m.Gives()[from] = nil end
+  chars["Cara-Sun"] = { b = { [13446] = 1 }, k = {}, m = {}, e = {} }
+  f:Hide()
+  m.OpenBags("b", "__ALL__")
+  local function Slot(id)
+    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.id == id then return b, s end end
+  end
+  local bob
+  for _, tb in ipairs(f.teamButtons) do if tb.key == "Bob-Stone" then bob = tb end end
+  rawset(bob, "IsMouseOver", function() return true end)
+  -- only Anna has Linen Cloth in her bags: it comes from her
+  local b, s = Slot(2589)
+  assert(s and s.owner == nil, "whole team slot has an owner")
+  b._OnDragStart(b)
+  assert(rawget(b, "dragging"), "can't drag in the whole team view")
+  b._OnDragStop(b)
+  assert(m.PlannedOut("Anna-Smith", 2589) == 20 and m.Gives()["__ALL__"] == nil, "not planned from Anna")
+  -- potions: Anna (5) and Cara (1) could give them to Bob: ask who
+  LIST = nil
+  b = Slot(13446)
+  b._OnDragStart(b); b._OnDragStop(b)
+  assert(LIST and LIST.items[1].header and #LIST.items == 3, "no 'who gives it' list")
+  assert(LIST.items[2].value == "Anna-Smith" and LIST.items[2].text:find("(5)", 1, true) and LIST.items[3].value == "Cara-Sun", "holders")
+  LIST.pick("Cara-Sun")
+  assert(m.PlannedOut("Cara-Sun", 13446) == 1 and m.PlannedOut("Anna-Smith", 13446) == 0, "not from the chosen one")
+  rawset(bob, "IsMouseOver", nil)
+  -- a gift from / to a view is refused
+  m.SetGive("__ALL__", "Bob-Stone", 2589, 3)
+  m.SetGive("Anna-Smith", "__BYCHAR__", 2589, 3)
+  assert(m.Gives()["__ALL__"] == nil and (m.Gives()["Anna-Smith"]["__BYCHAR__"] == nil), "view stored as a character")
+  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 0)
+  m.SetGive("Cara-Sun", "Bob-Stone", 13446, 0)
+  chars["Cara-Sun"] = nil
+  return "drag from the whole team view ok"
+end''')(mod))
