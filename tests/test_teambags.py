@@ -540,13 +540,20 @@ print(lua.eval(r'''function(m)
   return "side panel setting ok"
 end''')(mod))
 
-# filter: hide / only BoE gear and soulbound items
+# filters: BoE gear / soulbound / crafting reagents, each Show / Hide / Only, all at once
 print(lua.eval(r'''function(m)
   local f = m.bags
-  ITEMS[6948][4] = 1      -- Hearthstone: Bind on Pickup -> soulbound
-  ITEMS[5000][4] = 2      -- Sword (weapon): Bind on Equip -> BoE gear
+  ITEMS[6948][4] = 1        -- Hearthstone: Bind on Pickup -> soulbound
+  ITEMS[5000][4] = 2        -- Sword (weapon): Bind on Equip -> BoE gear (not soulbound by default)
+  ITEMS[13446][5] = true    -- the potion flagged as a crafting reagent (17th value); cloth = Trade Goods
+  local get = C_Item.GetItemInfo
+  C_Item.GetItemInfo = function(id)
+    local r = { get(id) }
+    if r[1] then r[17] = ITEMS[id][5] or false end
+    return unpack(r, 1, 17)
+  end
   local anna = m.Chars()["Anna-Smith"]
-  anna.s = { [13446] = 5 }   -- all 5 potions soulbound
+  anna.s = { [13446] = 5 }  -- all 5 potions soulbound
   for from in pairs(m.Gives()) do m.Gives()[from] = nil end
   f:Hide()
   m.OpenBags("b", "Anna-Smith")
@@ -557,61 +564,54 @@ print(lua.eval(r'''function(m)
     return table.concat(t, ",")
   end
   local all = Ids()
-  local function Pick(v) f.filter._click(f.filter); LIST.pick(v) end
-  Pick("NOBOE")
+  local function Row(kind) for _, b in ipairs(f.filterRows) do if b.kind.key == kind then return b end end end
+  -- the panel: opens with the button, stays open while clicking
+  f.filter._click(f.filter)
+  assert(f.filters:IsShown(), "filter panel not open")
+  local function Click(kind, button) local b = Row(kind); b._click(b, button or "LeftButton") end
+  Click("boe")                                   -- Show -> Hide
+  assert(f.filters:IsShown(), "panel closed after a click")
   assert(not Ids():find("5000", 1, true) and Ids():find("6948", 1, true), "hide BoE: " .. Ids())
-  Pick("BOE")
+  assert(Row("boe").label:GetText():find("Hide", 1, true) and f.filter.label:GetText():find("(1)", 1, true), "labels")
+  Click("boe")                                   -- Hide -> Only
   assert(Ids() == "5000", "only BoE: " .. Ids())
-  Pick("NOBOUND")
-  assert(not Ids():find("6948", 1, true) and not Ids():find("13446", 1, true) and Ids():find("5000", 1, true), "hide soulbound: " .. Ids())
-  Pick("BOUND")
+  -- the BoE sword isn't soulbound until its owner reports it (or it's equipped)
+  m.SetFilter("boe", "SHOW"); m.SetFilter("bound", "ONLY")
+  assert(not Ids():find("5000", 1, true), "BoE sword counted as soulbound")
   assert(Ids() == "6948,13446", "only soulbound: " .. Ids())
-  Pick("NOBOTH")
-  assert(not Ids():find("5000", 1, true) and not Ids():find("6948", 1, true) and Ids():find("2589", 1, true), "hide both: " .. Ids())
-  assert(f.filter.label:GetText():find("Hide both", 1, true), "filter label")
+  -- several at once: only reagents, hide soulbound -> the cloth, not the soulbound potions
+  m.SetFilter("bound", "HIDE"); m.SetFilter("reagent", "ONLY")
+  assert(Ids() == "2589", "only reagents + hide soulbound: " .. Ids())
+  -- only BoE + only reagents: either
+  m.SetFilter("bound", "SHOW"); m.SetFilter("boe", "ONLY")
+  assert(Ids() == "2589,5000,13446", "only BoE or reagents: " .. Ids())
+  assert(f.filter.label:GetText():find("(2)", 1, true), "count of filters on")
+  -- right-click a row: back to Show
+  Click("boe", "RightButton"); Click("reagent", "RightButton")
+  assert(Ids() == all and f.filter.label:GetText() == "Filter", "right-click didn't reset: " .. Ids())
   -- equipped: a BoE sword there is bound
   anna.e = { [5000] = 1 }
   m.OpenBags("e", "Anna-Smith")
-  Pick("BOUND")
+  m.SetFilter("bound", "ONLY")
   assert(Ids() == "5000", "equipped BoE counts as soulbound: " .. Ids())
-  -- planned gifts stay visible whatever the filter
+  m.SetFilter("bound", "SHOW")
+  -- planned gifts stay visible whatever the filters
   m.OpenBags("b", "Anna-Smith")
-  Pick("BOE")
+  m.SetFilter("boe", "ONLY")
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
   local planned = false
   for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.planned then planned = true end end
   assert(planned, "planned gift hidden by the filter")
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
-  Pick("ALL")
-  assert(Ids() == all, "all items again")
-  anna.s, anna.e = nil, {}
-  return "filter ok"
-end''')(mod))
-
-# filter: crafting reagents (the game's flag, value 17, else the Trade Goods class)
-print(lua.eval(r'''function(m)
-  local f = m.bags
-  ITEMS[13446][5] = true   -- the potion flagged as a crafting reagent (17th value)
-  local get = C_Item.GetItemInfo
-  C_Item.GetItemInfo = function(id)
-    local r = { get(id) }
-    if r[1] then r[17] = ITEMS[id][5] or false end
-    return unpack(r, 1, 17)
-  end
-  f:Hide()
-  m.OpenBags("b", "Anna-Smith")
-  local function Ids()
-    local t = {}
-    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s then t[#t + 1] = s.id end end
-    table.sort(t)
-    return table.concat(t, ",")
-  end
-  local function Pick(v) f.filter._click(f.filter); LIST.pick(v) end
-  Pick("REAGENT")
-  assert(Ids() == "2589,13446", "only reagents (cloth = trade goods, potion = flagged): " .. Ids())
-  Pick("NOREAGENT")
-  assert(not Ids():find("2589", 1, true) and not Ids():find("13446", 1, true) and Ids():find("6948", 1, true), "hide reagents: " .. Ids())
-  Pick("ALL")
+  m.SetFilter("boe", "SHOW")
+  -- the single filter of 0.5.0 / 0.5.1 becomes the new ones once
+  m.M.db.bagFilters, m.M.db.bagFilter = nil, "NOBOTH"
+  assert(m.FilterState("boe") == "HIDE" and m.FilterState("bound") == "HIDE" and m.FilterState("reagent") == "SHOW", "old filter not carried over")
+  assert(m.M.db.bagFilter == nil, "old setting left")
+  m.SetFilter("boe", "SHOW"); m.SetFilter("bound", "SHOW")
+  f.filter._click(f.filter)
+  assert(not f.filters:IsShown(), "filter panel didn't close")
   C_Item.GetItemInfo, ITEMS[13446][5] = get, nil
-  return "reagent filter ok"
+  anna.s, anna.e = nil, {}
+  return "filters ok"
 end''')(mod))

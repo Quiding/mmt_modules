@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.5.1 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.5.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
@@ -123,8 +123,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 - **Tooltip**: the team's counts under the item, per character with a total. Next to Baganator /
   Syndicator (which list the account you're on) it adds your other accounts' characters below theirs.
 - **Team bags**: a bag window for any character, the whole team added up, or the whole team by
-  character - with Bags / Bank / Mail / Equipped tabs, a search box and a **filter**: hide or show
-  only Bind on Equip weapons / armour, soulbound items, or crafting reagents.
+  character - with Bags / Bank / Mail / Equipped tabs, a search box and **filters** that work
+  together: Bind on Equip weapons / armour, soulbound items and crafting reagents, each Show / Hide / Only.
 - Grouped in **Baganator's categories** when it's on (your order, custom and hidden categories,
   priorities and dragged items, read live), else in built-in ones like Baganator's defaults.
 - **Side panel** beside the window, in every view: the team (click a name for their bags, drop an
