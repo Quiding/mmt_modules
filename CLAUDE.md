@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.5.0)
+### MMT_TeamInventory (v0.5.1)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -248,7 +248,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   "Planned items" button under TradeFrame.
 - Filter `bagFilter` (window button `f.filter` + settings, not synced): `mod.SlotKind(id, class, count, who, place)`
   = "bound" (bind 1/4, equipped bind 2, or owner(s)' `s` covers the count) / "boe" (bind 2 weapon/armour) / nil;
-  applied in `mod.BagSlots` to ordinary slots only (planned gifts always shown).
+  applied in `mod.BagSlots` to ordinary slots only (planned gifts always shown); NOREAGENT / REAGENT via
+  `mod.IsReagent` (item info value 17 "crafting reagent", else class 7 Trade Goods).
+- **`MMT.Safe` returns only 7 values**: the bind type (14th) / crafting reagent (17th) need `mod.ItemInfo(id)`
+  (own pcall, all values). The test stubs' `MMT.Safe` now match the core (7 values) so this shows up in tests.
 - Tradeable: `mod.NeverTradeable(id)` = bind type 1 / 4 (14th GetItemInfo value); `mod.Tradeable(key, id)` = bags -
   soulbound - promised. Soulbound counts per bag item = synced place `s` (`mod.SYNC_PLACES`, NOT in `mod.PLACES`, not
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.

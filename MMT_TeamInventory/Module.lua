@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.5.0"
+mod.VERSION = "0.5.1"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -48,7 +48,7 @@ local M = MMT.NewModule({
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         autoAccept = true,     -- accept a trade that holds nothing but planned gifts (both sides)
         sidePanel = true,      -- the team / trades panel beside the team bags
-        bagFilter = "ALL",     -- team bags: ALL | NOBOE | NOBOUND | NOBOTH | BOE (only BoE gear) | BOUND (only soulbound)
+        bagFilter = "ALL",     -- team bags: ALL | NOBOE | NOBOUND | NOBOTH | BOE / BOUND (only those) | NOREAGENT | REAGENT
         openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },
 })

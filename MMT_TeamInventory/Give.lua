@@ -74,10 +74,16 @@ end
 -- Tradeable or not: Bind on Pickup and quest items never are (bind type from
 -- the item info, any client); a Bind on Equip one is once its character
 -- equipped it - only that client sees it, it sends the count with its bags (s)
-local GetInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+-- every value of the item info (MMT.Safe passes only the first 7: the bind
+-- type is the 14th, "crafting reagent" the 17th); nil while not cached / secret
+function mod.ItemInfo(id)
+    local r = { pcall((C_Item and C_Item.GetItemInfo) or GetItemInfo, id) }
+    if not r[1] or r[2] == nil or MMT.IsSecret(r[2]) then return nil end
+    return unpack(r, 2, 18)
+end
 
 function mod.NeverTradeable(id)
-    local bind = select(14, MMT.Safe(GetInfo, id))
+    local bind = select(14, mod.ItemInfo(id))
     return bind == 1 or bind == 4   -- 1 Bind on Pickup, 4 quest item
 end
 

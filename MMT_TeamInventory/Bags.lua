@@ -115,14 +115,15 @@ local function Contents(who, place)
 end
 
 local function NewSlotData(id, n, search)
-    local name, link, quality, _, _, _, _, _, _, icon = MMT.Safe(GetInfo, id)
+    local name, link, quality, _, _, _, _, _, _, icon = mod.ItemInfo(id)
     if search ~= "" and not (name and name:lower():find(search, 1, true)) then return nil end
     local _, _, _, _, instIcon, class, subclass = MMT.Safe(GetInstant, id)
     return { id = id, count = n, name = name, link = link, quality = quality,
         icon = icon or instIcon or MMT.Safe(GetIcon, id) or 134400, class = class, subclass = subclass }
 end
 
--- Filter (window dropdown / setting bagFilter): BoE gear = weapons and armour that
+-- Filter (window dropdown / setting bagFilter); crafting reagents (mod.IsReagent);
+-- BoE gear = weapons and armour that
 -- are Bind on Equip and not bound yet; soulbound = Bind on Pickup / quest items,
 -- equipped bind-on-equip ones, and what the owner's client counted as bound (s)
 mod.FILTERS = {
@@ -132,11 +133,19 @@ mod.FILTERS = {
     { value = "NOBOTH", text = "Hide both" },
     { value = "BOE", text = "Only BoE gear" },
     { value = "BOUND", text = "Only soulbound" },
+    { value = "NOREAGENT", text = "Hide crafting reagents" },
+    { value = "REAGENT", text = "Only crafting reagents" },
 }
+
+-- a crafting material: the game's "crafting reagent" flag, else the Trade Goods class (cloth, ore, herbs, ...)
+function mod.IsReagent(id, class)
+    local flag = select(17, mod.ItemInfo(id))
+    return flag == true or class == 7
+end
 
 -- "boe", "bound" or nil for an item of a character (who = key) or the whole team
 function mod.SlotKind(id, class, count, who, place)
-    local bind = select(14, MMT.Safe(GetInfo, id))
+    local bind = select(14, mod.ItemInfo(id))
     local bound = bind == 1 or bind == 4 or (place == "e" and bind == 2)
     if not bound and place == "b" then
         local n = 0
@@ -152,8 +161,10 @@ function mod.SlotKind(id, class, count, who, place)
     if bind == 2 and (class == 2 or class == 4) then return "boe" end
 end
 
-local function Passes(kind)
+local function Passes(kind, reagent)
     local f = M.db.bagFilter or "ALL"
+    if f == "NOREAGENT" then return not reagent end
+    if f == "REAGENT" then return reagent end
     if f == "NOBOE" then return kind ~= "boe" end
     if f == "NOBOUND" then return kind ~= "bound" end
     if f == "NOBOTH" then return kind == nil end
@@ -173,7 +184,7 @@ function mod.BagSlots(who, place, search)
     for id, n in pairs(Contents(who, place)) do
         if plans then n = n - math.min(n, mod.PlannedOut(who, id)) end
         local s = n > 0 and NewSlotData(id, n, search)
-        if s and not Passes(mod.SlotKind(id, s.class, n, who, place)) then s = nil end
+        if s and not Passes(mod.SlotKind(id, s.class, n, who, place), mod.IsReagent(id, s.class)) then s = nil end
         -- the whole team added up: no owner (a drop asks / finds who has it)
         if s then s.owner = char and who or nil; slots[#slots + 1] = s end
     end
@@ -578,7 +589,7 @@ local function Build()
         end)
     end)
     f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
-    UI.Tooltip(f.filter, "Filter", "Hide or show only Bind on Equip weapons and armour, or soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound).")
+    UI.Tooltip(f.filter, "Filter", "Hide or show only Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), or crafting reagents (cloth, ore, herbs, leather, ...).")
 
     f.search = UI.EditBox(f, 140, "Search", function(_, box) box:ClearFocus() end)
     f.search:SetPoint("TOPRIGHT", -54, -PAD)

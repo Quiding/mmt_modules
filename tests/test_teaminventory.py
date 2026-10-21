@@ -66,7 +66,8 @@ RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 }, WARRIOR = { r = 0.
 SlashCmdList = {}
 MMT = { CopyTable = copy, UI = {}, ConfigHelpers = { COL_W = 248, COL2_X = 270, PAGE_W = 518 }, status = {} }
 function MMT.IsSecret() return false end
-function MMT.Safe(fn, ...) local r = { pcall(fn, ...) } if r[1] then return select(2, unpack(r)) end end
+-- like the core: only the first 7 values (a longer read needs its own pcall)
+function MMT.Safe(fn, ...) local ok, a, b, c, d, e, f, g = pcall(fn, ...) if ok then return a, b, c, d, e, f, g end end
 function MMT.PlayerFull() return ME end
 function MMT.IsSelf(k) return k == ME end
 function MMT.FullDisplay(k) return (k:gsub("-", " ")) end

@@ -56,7 +56,8 @@ function MMT.UI.Button(parent, w, text, onClick) local b = new(); b.label = new(
 function MMT.UI.TextButton(parent, text, onClick) local b = new(); b.label = new(); rawset(b, "_OnClick", onClick); return b end
 function MMT.UI.EditBox() local e = new(); return e end
 function MMT.IsSecret() return false end
-function MMT.Safe(fn, ...) local r = { pcall(fn, ...) } if r[1] then return select(2, unpack(r)) end end
+-- like the core: only the first 7 values (a longer read needs its own pcall)
+function MMT.Safe(fn, ...) local ok, a, b, c, d, e, f, g = pcall(fn, ...) if ok then return a, b, c, d, e, f, g end end
 function MMT.PlayerFull() return "Anna-Smith" end
 function MMT.IsSelf(k) return k == "Anna-Smith" end
 function MMT.SortedMembers() return { "Anna-Smith", "Bob-Stone" } end
@@ -585,4 +586,32 @@ print(lua.eval(r'''function(m)
   assert(Ids() == all, "all items again")
   anna.s, anna.e = nil, {}
   return "filter ok"
+end''')(mod))
+
+# filter: crafting reagents (the game's flag, value 17, else the Trade Goods class)
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  ITEMS[13446][5] = true   -- the potion flagged as a crafting reagent (17th value)
+  local get = C_Item.GetItemInfo
+  C_Item.GetItemInfo = function(id)
+    local r = { get(id) }
+    if r[1] then r[17] = ITEMS[id][5] or false end
+    return unpack(r, 1, 17)
+  end
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  local function Ids()
+    local t = {}
+    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s then t[#t + 1] = s.id end end
+    table.sort(t)
+    return table.concat(t, ",")
+  end
+  local function Pick(v) f.filter._click(f.filter); LIST.pick(v) end
+  Pick("REAGENT")
+  assert(Ids() == "2589,13446", "only reagents (cloth = trade goods, potion = flagged): " .. Ids())
+  Pick("NOREAGENT")
+  assert(not Ids():find("2589", 1, true) and not Ids():find("13446", 1, true) and Ids():find("6948", 1, true), "hide reagents: " .. Ids())
+  Pick("ALL")
+  C_Item.GetItemInfo, ITEMS[13446][5] = get, nil
+  return "reagent filter ok"
 end''')(mod))
