@@ -214,7 +214,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.6.0)
+### MMT_TeamInventory (v0.7.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -256,6 +256,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
+- Gold: `rec.gold` / `goldTime` (copper) on each character's record, NOT synced by us: own from `GetMoney` (ScanGold:
+  OnEnable, PLAYER_MONEY, PLAYER_ENTERING_WORLD), others from the core heartbeat (`status.money` in XP_RECEIVED); a
+  TIVS snapshot keeps it. `mod.Gold`, `mod.TotalGold` (shown characters), `mod.FormatGold` (coin icons).
+- `otherChars` (off): `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self) or the setting; filters BagOwners,
+  the added-up views, the panel and the total. The item tooltip still counts everyone.
 - Settings: tabs General / Team bags / Look (`SettingsKit.lua` `mod.Tabs`; own ResetButton, no ShareBar). Look keys
   `bagIconSize`, `bagColumns`, `bagSpacing` (read by `ReadLook()` into the SIZE / COLS / GAP upvalues each redraw;
   window never narrower than `MIN_W`), `bagBgTexture` (LSM) / `bagBgColor` / `bagBgAlpha` / `bagBorderColor`

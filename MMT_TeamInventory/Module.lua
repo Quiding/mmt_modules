@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.6.0"
+mod.VERSION = "0.7.0"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -48,6 +48,7 @@ local M = MMT.NewModule({
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         autoAccept = true,     -- accept a trade that holds nothing but planned gifts (both sides)
         sidePanel = true,      -- the team / trades panel beside the team bags
+        otherChars = false,    -- team bags: also characters outside the team (other profiles, old teams)
         -- team bags look (settings > Look); defaults = MMT's settings window
         bagIconSize = 36, bagColumns = 10, bagSpacing = 4, bagQuality = true,
         bagBgTexture = "FLAT", bagBgColor = { r = 0.05, g = 0.05, b = 0.06 }, bagBgAlpha = 0.94,
@@ -73,6 +74,48 @@ function mod.HasSyndicator()
     return Syndicator and Syndicator.API and Syndicator.API.GetInventoryInfoByItemID and true or false
 end
 
+-- a team member (or this character); others are only shown with "Characters outside the team"
+function mod.InTeam(key)
+    if MMT.IsSelf(key) then return true end
+    for _, k in ipairs(MMT.SortedMembers()) do if k == key then return true end end
+    return false
+end
+function mod.Shown(key) return M.db.otherChars or mod.InTeam(key) end
+
+-- known gold of a character in copper, or nil; the total of every shown character
+function mod.Gold(key)
+    local rec = mod.Chars()[key]
+    return rec and tonumber(rec.gold)
+end
+function mod.TotalGold()
+    local sum, any = 0, false
+    for key, rec in pairs(mod.Chars()) do
+        if tonumber(rec.gold) and mod.Shown(key) then sum, any = sum + rec.gold, true end
+    end
+    return any and sum or nil
+end
+
+-- "1,234g 56s" with coin icons (gold only from 1000g up)
+local GOLD = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:1:0|t"
+local SILVER = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:1:0|t"
+local COPPER = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:1:0|t"
+local function Thousands(n)
+    local s = tostring(n)
+    while true do
+        local k
+        s, k = s:gsub("^(%d+)(%d%d%d)", "%1,%2")
+        if k == 0 then return s end
+    end
+end
+function mod.FormatGold(copper)
+    copper = math.floor(tonumber(copper) or 0)
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    if g >= 1000 then return Thousands(g) .. GOLD end
+    if g > 0 then return g .. GOLD .. (s > 0 and (" " .. s .. SILVER) or "") end
+    if s > 0 then return s .. SILVER .. (c > 0 and (" " .. c .. COPPER) or "") end
+    return c .. COPPER
+end
+
 -- one character's counts of an item: total, { place = n }
 function mod.CountOf(key, itemID)
     local rec = mod.Chars()[key]
@@ -90,6 +133,7 @@ M.OnEnable = function()
     local key = MMT.PlayerFull()
     if key then mod.Mine()[key] = true end
     mod.ScanAll()
+    mod.ScanGold()
     mod.SetupMinimap()
 end
 

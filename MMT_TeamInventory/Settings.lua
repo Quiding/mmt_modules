@@ -113,6 +113,10 @@ M.Page = function(_, page)
         M.db.baganatorCats = v
         Redraw()
     end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
+    L:Check("Characters outside the team", function() return M.db.otherChars end, function(v)
+        M.db.otherChars = v
+        Redraw()
+    end, "Also characters this client knows that aren't in the current team (other MMT profiles, old teams): in the character list, the whole-team views, the panel and the total gold.")
     L:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
         Redraw()

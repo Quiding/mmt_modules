@@ -124,6 +124,18 @@ mod.ScanSoon = Soon
 M:On("BAG_UPDATE_DELAYED", Soon)
 M:On("PLAYER_ENTERING_WORLD", Soon)
 M:On("PLAYER_EQUIPMENT_CHANGED", Soon)
+
+-- this character's gold (others': the core's heartbeat, Sync.lua)
+function mod.ScanGold()
+    local rec = mod.Own()
+    local money = MMT.Safe(GetMoney)
+    if rec and money then
+        rec.gold, rec.goldTime = money, time()
+        if mod.RefreshBags then mod.RefreshBags() end
+    end
+end
+M:On("PLAYER_MONEY", mod.ScanGold)
+M:On("PLAYER_ENTERING_WORLD", mod.ScanGold)
 M:On("PLAYERBANKSLOTS_CHANGED", Soon)
 M:On("BANKFRAME_OPENED", function() bankOpen = true; Soon() end)
 -- closed: not read again (it may read as empty now), the last counts stay

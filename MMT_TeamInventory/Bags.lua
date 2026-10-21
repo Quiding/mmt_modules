@@ -137,8 +137,9 @@ function mod.BagOwners()
     for _, key in ipairs(MMT.SortedMembers()) do
         if chars[key] and not seen[key] then list[#list + 1] = key; seen[key] = true end
     end
+    -- characters outside the team (other profiles, old teams): only with the setting on
     local rest = {}
-    for key in pairs(chars) do if not seen[key] then rest[#rest + 1] = key end end
+    for key in pairs(chars) do if not seen[key] and mod.Shown(key) then rest[#rest + 1] = key end end
     table.sort(rest)
     for _, key in ipairs(rest) do list[#list + 1] = key end
     return list
@@ -151,8 +152,10 @@ local function Contents(who, place)
         return rec and rec[place] or {}
     end
     local sum = {}
-    for _, rec in pairs(mod.Chars()) do
-        for id, n in pairs(rec[place] or {}) do sum[id] = (sum[id] or 0) + n end
+    for key, rec in pairs(mod.Chars()) do
+        if mod.Shown(key) then
+            for id, n in pairs(rec[place] or {}) do sum[id] = (sum[id] or 0) + n end
+        end
     end
     return sum
 end
@@ -239,7 +242,7 @@ function mod.ItemKinds(id, class, count, who, place)
             local rec = mod.Chars()[who]
             n = rec and rec.s and rec.s[id] or 0
         else
-            for _, rec in pairs(mod.Chars()) do n = n + (rec.s and rec.s[id] or 0) end
+            for key, rec in pairs(mod.Chars()) do if mod.Shown(key) then n = n + (rec.s and rec.s[id] or 0) end end
         end
         bound = n >= count
     end
@@ -589,7 +592,8 @@ function mod.ByCharacter(place, search)
                 if s.planned or s.outgoing then planned[#planned + 1] = s else rest[#rest + 1] = s end
             end
             for _, s in ipairs(ByCategory(rest)) do planned[#planned + 1] = s end
-            out[#out + 1] = { name = OwnerText(key), key = key, slots = planned }
+            local gold = mod.Gold(key)
+            out[#out + 1] = { name = OwnerText(key) .. (gold and ("  " .. mod.FormatGold(gold)) or ""), key = key, slots = planned }
         end
     end
     return out
@@ -741,6 +745,8 @@ local function Build()
     f.team.empty:SetWidth(TEAM_W - 16)
     f.team.empty:SetText("Drag an item onto a name above to give it.")
     f.teamButtons, f.pairRows = {}, {}
+    f.team.totalLabel = UI.Label(f.team, "Total gold", "GameFontNormalSmall")
+    f.team.total = UI.Label(f.team, "", "GameFontHighlightSmall")
     -- keep the panel on screen while the window is dragged
     f:HookScript("OnDragStart", function(self) self.isMoving = true end)
     f:HookScript("OnDragStop", function(self) self.isMoving = false; mod.PlaceTeam(self) end)
@@ -823,6 +829,12 @@ function mod.RefreshTeam(f)
     local listed = false
     for _, key in ipairs(keys) do if key == own then listed = true end end
     if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
+    -- with "Characters outside the team": the others after them
+    if M.db.otherChars then
+        local inList = {}
+        for _, key in ipairs(keys) do inList[key] = true end
+        for _, key in ipairs(mod.BagOwners()) do if not inList[key] then keys[#keys + 1] = key end end
+    end
     local y = -30
     for i, key in ipairs(keys) do
         local b = f.teamButtons[i]
@@ -854,14 +866,23 @@ function mod.RefreshTeam(f)
         local selected = f.who == key
         if selected then b.bar:Show() else b.bar:Hide() end
         b.bg:SetColorTexture(1, 1, 1, selected and 0.06 or 0)
-        b.label:SetText(NameTag(key))
-        b.count:SetText(incoming > 0 and ("|cffffcc33+" .. incoming .. "|r") or "")
+        b.label:SetText(NameTag(key) .. (incoming > 0 and ("  |cffffcc33+" .. incoming .. "|r") or ""))
+        local gold = mod.Gold(key)
+        b.count:SetText(gold and ("|cffcccccc" .. mod.FormatGold(gold) .. "|r") or "")
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", 6, y)
         b:Show()
         y = y - TEAM_ROW
     end
     for i = #keys + 1, #f.teamButtons do f.teamButtons[i]:Hide() end
+    -- everyone's gold added up (the characters listed above)
+    local total = mod.TotalGold()
+    f.team.total:ClearAllPoints()
+    f.team.total:SetPoint("TOPRIGHT", -14, y - 2)
+    f.team.totalLabel:ClearAllPoints()
+    f.team.totalLabel:SetPoint("TOPLEFT", 16, y - 2)
+    f.team.total:SetText(total and mod.FormatGold(total) or "?")
+    y = y - 18
 
     y = y - 8
     f.team.tradesTitle:ClearAllPoints()
@@ -1054,8 +1075,9 @@ function mod.RefreshBags()
     for _, s in ipairs(slots) do total = total + s.count end
     local note = ("%d different items, %d in all"):format(#slots, total)
     if maxOffset > 0 then note = note .. "  -  mouse wheel scrolls" end
-    if who ~= ALL and place == "b" and maxOffset == 0 then note = note .. "  -  drag items onto a name to give" end
     local team = who == ALL or who == BYCHAR
+    local gold = team and mod.TotalGold() or (not team and mod.Gold(who))
+    if gold then note = note .. "  -  " .. mod.FormatGold(gold) end
     local rec = not team and mod.Chars()[who]
     if rec and rec.time then note = note .. "  -  updated " .. MMT.Ago(rec.time) end
     if (place == "k" or place == "m") and #slots == 0 and not team then
@@ -1073,7 +1095,7 @@ function mod.StartWho()
     if open == "BYCHAR" then return BYCHAR end
     if open == "LAST" then
         local last = M.db.lastWho
-        if last == ALL or last == BYCHAR or (last and mod.Chars()[last]) then return last end
+        if last == ALL or last == BYCHAR or (last and mod.Chars()[last] and mod.Shown(last)) then return last end
     end
     return own or ALL
 end

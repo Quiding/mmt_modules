@@ -450,3 +450,20 @@ print("A:", A.eval(r"""function(m)
   TARGET, AcceptTrade, MMT.Print = {}, real, function() end
   return "accept fallback ok"
 end""")(amod))
+
+# gold: own from GetMoney (and on PLAYER_MONEY), others from the core's heartbeat; kept when the items are re-sent
+print("A:", A.eval(r"""function(m)
+  MONEY_ME = 25000
+  GetMoney = function() return MONEY_ME end
+  FIRE("PLAYER_MONEY")
+  assert(m.Gold("Anna-Smith") == 25000, "own gold")
+  MONEY_ME = 30000
+  FIRE("PLAYER_MONEY")
+  assert(m.Gold("Anna-Smith") == 30000, "own gold after a change")
+  LISTEN.XP_RECEIVED("Bob-Stone", "Bob", { money = 777777 })
+  assert(m.Gold("Bob-Stone") == 777777, "Bob's gold from the heartbeat")
+  -- a full copy of Bob's items replaces the record: the gold stays
+  DELIVER("Bob-Stone", "TIVS:1:WARRIOR#b=2589x1")
+  assert(m.Gold("Bob-Stone") == 777777, "gold lost with a snapshot")
+  return "gold ok"
+end""")(amod))

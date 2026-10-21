@@ -106,6 +106,12 @@ end
 
 M:Listen("XP_RECEIVED", function(key, sender, status)
     if MMT.IsSelf(key) then return end
+    -- gold: the core's heartbeat has it (MMT.status money); kept for when they're offline
+    local money = tonumber(status and status.money)
+    if money and not MMT.IsSecret(money) then
+        local rec = mod.Chars()[key]
+        if rec then rec.gold, rec.goldTime = money, time() end
+    end
     local hash = tonumber(status and status.ext and status.ext.tiv)
     if not hash then return end
     local rec = mod.Chars()[key]
@@ -126,7 +132,9 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if hash then
         local rec = mod.Decode(data)
         rec.hash, rec.time = tonumber(hash), time()
-        rec.class = class ~= "" and class or (mod.Chars()[key] and mod.Chars()[key].class)
+        local old = mod.Chars()[key]
+        rec.class = class ~= "" and class or (old and old.class)
+        if old then rec.gold, rec.goldTime = old.gold, old.goldTime end   -- not part of the items
         mod.Chars()[key] = rec
         if mod.RefreshBags then mod.RefreshBags() end
         return

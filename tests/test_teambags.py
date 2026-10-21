@@ -366,7 +366,7 @@ print(lua.eval(r'''function(m)
   b._OnDragStop(b)
   rawset(bobButton, "IsMouseOver", nil)
   assert(m.PlannedOut("Anna-Smith", 2589) == 20, "drop on a name (the whole stack): " .. m.PlannedOut("Anna-Smith", 2589))
-  assert(bobButton.count:GetText():find("+1", 1, true), "incoming count on the name: " .. tostring(bobButton.count:GetText()))
+  assert(bobButton.label:GetText():find("+1", 1, true), "incoming count on the name: " .. tostring(bobButton.label:GetText()))
   -- the bank isn't tradeable: no dragging there
   m.OpenBags("k", "Anna-Smith")
   for _, x in ipairs(f.slots) do
@@ -442,6 +442,7 @@ print(lua.eval(r'''function(m)
   local chars = m.Chars()
   for from in pairs(m.Gives()) do m.Gives()[from] = nil end
   chars["Cara-Sun"] = { b = { [13446] = 1 }, k = {}, m = {}, e = {} }
+  m.M.db.otherChars = true   -- Cara isn't in the team
   f:Hide()
   m.OpenBags("b", "__ALL__")
   local function Slot(id)
@@ -473,6 +474,7 @@ print(lua.eval(r'''function(m)
   m.SetGive("Anna-Smith", "Bob-Stone", 2589, 0)
   m.SetGive("Cara-Sun", "Bob-Stone", 13446, 0)
   chars["Cara-Sun"] = nil
+  m.M.db.otherChars = false
   return "drag from the whole team view ok"
 end''')(mod))
 
@@ -710,4 +712,51 @@ print(lua.eval(r'''function(m)
   end
   db.bagBgColor, db.bagBgAlpha, db.bagBorderColor = { r = 0.05, g = 0.05, b = 0.06 }, 0.94, { r = 0.22, g = 0.22, b = 0.24 }
   return "look ok"
+end''')(mod))
+
+# gold: per character, in the panel, the by-character headers, the footer, and the total;
+# characters outside the team only with the setting on
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  local chars = m.Chars()
+  chars["Anna-Smith"].gold = 1234567            -- 123g 45s 67c
+  chars["Bob-Stone"].gold = 50000               -- 5g
+  chars["Cara-Sun"] = { b = { [2589] = 7 }, k = {}, m = {}, e = {}, gold = 12345678 }   -- 1,234g, not in the team
+  assert(m.FormatGold(12345678):find("1,234", 1, true) and m.FormatGold(1234567):find("123", 1, true)
+    and m.FormatGold(1234567):find("45", 1, true), "gold format: " .. m.FormatGold(1234567))
+  m.M.db.otherChars = false
+  f:Hide()
+  m.OpenBags("b", "__ALL__")
+  -- the team only: Cara's gold, cloth and name are left out
+  assert(m.TotalGold() == 1284567, "total: " .. tostring(m.TotalGold()))
+  assert(f.team.total:GetText():find("128", 1, true), "panel total: " .. f.team.total:GetText())
+  assert(f.info:GetText():find("128", 1, true), "footer gold: " .. f.info:GetText())
+  local names = {}
+  for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
+  assert(table.concat(names, ",") == "Anna-Smith,Bob-Stone", "panel: " .. table.concat(names, ","))
+  assert(f.teamButtons[1].count:GetText():find("123", 1, true), "row gold: " .. f.teamButtons[1].count:GetText())
+  for _, key in ipairs(m.BagOwners()) do assert(key ~= "Cara-Sun", "Cara in the picker") end
+  for _, s in ipairs(m.BagSlots("__ALL__", "b", "")) do if s.id == 2589 then assert(s.count == 20, "Cara's cloth counted") end end
+  -- by character: gold in each header
+  m.OpenBags("b", "__BYCHAR__")
+  local heads = {}
+  for _, h in ipairs(f.headers) do if h:IsShown() then heads[#heads + 1] = h:GetText() end end
+  assert(heads[1]:find("Anna", 1, true) and heads[1]:find("123", 1, true), "header gold: " .. heads[1])
+  -- one character: their gold in the footer
+  m.OpenBags("b", "Bob-Stone")
+  assert(f.info:GetText():find("5", 1, true) and m.Gold("Bob-Stone") == 50000, "Bob's gold")
+  -- with the setting: Cara everywhere, also in the total
+  m.M.db.otherChars = true
+  m.OpenBags("b", "__ALL__")
+  assert(m.TotalGold() == 1284567 + 12345678, "total with others")
+  names = {}
+  for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
+  assert(names[3] == "Cara-Sun", "Cara not after the team: " .. table.concat(names, ","))
+  local seen = false
+  for _, key in ipairs(m.BagOwners()) do if key == "Cara-Sun" then seen = true end end
+  assert(seen, "Cara not in the picker")
+  for _, s in ipairs(m.BagSlots("__ALL__", "b", "")) do if s.id == 2589 then assert(s.count == 27, "Cara's cloth not counted") end end
+  m.M.db.otherChars = false
+  chars["Cara-Sun"] = nil
+  return "gold and other characters ok"
 end''')(mod))
