@@ -89,6 +89,7 @@ function mod.ScanAll()
         rec.hash = mod.Hash(rec)
         rec.time = time()
         mod.OwnChanged()
+        if mod.RefreshBags then mod.RefreshBags() end   -- the open team bags show it at once
     end
     return changed
 end

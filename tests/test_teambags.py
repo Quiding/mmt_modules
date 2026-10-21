@@ -356,3 +356,24 @@ print(lua.eval(r'''function(m)
   assert(not f.tradeButtons[1]:IsShown(), "trade button left over")
   return "planned gifts in the team bags ok"
 end''')(mod))
+
+# bug: buying from a vendor with the window open didn't show until it was reopened
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  f:Hide()
+  m.OpenBags("b", "Anna-Smith")
+  local function Has(id)
+    for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.id == id then return s.count end end
+  end
+  assert(not Has(13446 + 1), "test item already there")
+  ITEMS[13447] = { "Bought Thing", 1, 0 }
+  -- the bag now holds what Anna had plus the new item
+  local bag = {}
+  for id, n in pairs(m.Chars()["Anna-Smith"].b) do bag[#bag + 1] = { itemID = id, stackCount = n } end
+  bag[#bag + 1] = { itemID = 13447, stackCount = 3 }
+  C_Container.GetContainerNumSlots = function(b) return b == 0 and #bag or 0 end
+  C_Container.GetContainerItemInfo = function(b, s) return b == 0 and bag[s] or nil end
+  assert(m.ScanAll(), "scan saw no change")
+  assert(Has(13447) == 3, "the open window didn't show the new item")
+  return "open window updates on bag changes ok"
+end''')(mod))

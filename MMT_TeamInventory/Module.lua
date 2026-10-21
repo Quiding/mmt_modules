@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.2"
+mod.VERSION = "0.3.3"
 mod.PLACES = { "b", "k", "m", "e" }
 mod.PLACE_NAMES = { b = "bags", k = "bank", m = "mail", e = "equipped" }
 

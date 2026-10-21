@@ -127,6 +127,7 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         rec.hash, rec.time = tonumber(hash), time()
         rec.class = class ~= "" and class or (mod.Chars()[key] and mod.Chars()[key].class)
         mod.Chars()[key] = rec
+        if mod.RefreshBags then mod.RefreshBags() end
         return
     end
     hash, data = text:match("^TIVD:(%d+)#(.*)$")
@@ -142,5 +143,6 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         rec.time = time()
         rec.hash = mod.Hash(rec)
         if rec.hash ~= tonumber(hash) then Request(key, sender) end
+        if mod.RefreshBags then mod.RefreshBags() end
     end
 end)
