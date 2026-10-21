@@ -84,13 +84,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.3) / MMT_Buffs (v0.7.2) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.4) / MMT_Buffs (v0.7.3) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
-  `mod.ItemSpell`; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled).
+  `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). Buffs `EntryIcon` also falls back to the icon the buff had when last seen (`M.store.icons`, Tracker `mod.SeeIcon`): some spell IDs have no texture on this client (Seal of Righteousness showed "?").
   Same file in MMT_Cooldowns and MMT_Buffs, keep identical.
 - **No addon messages for live data** (user's decision: would flood comms). Cooldowns:
   `UNIT_SPELLCAST_SUCCEEDED` on party/raid units (spell ID -> name) + duration from the list;

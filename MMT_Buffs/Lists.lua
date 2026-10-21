@@ -47,8 +47,26 @@ function mod.BuffName(e) return mod.Canonical((mod.SpellInfo(e.id))) end
 -- the entry's own name for lists and tooltips
 function mod.EntryName(e) return (mod.SpellInfo(e.id)) or ("Spell " .. e.id) end
 
+-- the spell's icon, else by its name, else the icon the buff itself had when it was
+-- last seen on someone (kept account-wide), else the "?" placeholder
 function mod.EntryIcon(e)
-    return mod.SpellIcon(e.id) or 134400
+    local icon = mod.SpellIconAny(e.id)
+    if icon then return icon end
+    local seen = mod.M.store and mod.M.store.icons
+    local name = mod.SpellInfo(e.id)
+    if seen and name then
+        icon = seen[name] or seen[mod.Canonical(name)]
+        if icon then return icon end
+    end
+    return 134400
+end
+
+-- remembers the icon a buff has (from the auras scanned on group members)
+function mod.SeeIcon(name, icon)
+    if not (name and icon) or MMT.IsSecret(icon) then return end
+    local M = mod.M
+    M.store.icons = M.store.icons or {}
+    M.store.icons[name] = icon
 end
 
 -- name, ID or spell link -> spell ID (or nil)

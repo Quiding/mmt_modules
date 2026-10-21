@@ -100,3 +100,27 @@ print(lua.eval(r'''function(m)
   assert(m.EntryName({ id = 21562 }) == "Prayer of Fortitude")
   return "group buff matching ok"
 end''')(lists))
+
+# bug: Seal of Righteousness showed the "?" icon while it was tracked fine: the game had no
+# texture for that spell ID. Now: by the spell's name, else the icon the buff had when seen.
+lua.execute(r'''
+C_Spell = {
+  GetSpellInfo = function(x)
+    if x == 20154 or x == "Seal of Righteousness" then return { name = "Seal of Righteousness", iconID = nil, spellID = 20154 } end
+    if x == 99999 or x == "Odd Buff" then return { name = "Odd Buff", iconID = nil, spellID = 99999 } end
+  end,
+  GetSpellTexture = function(x) if x == "Seal of Righteousness" then return 132325 end end,   -- by name only
+}
+''')
+icons = new_mod(r'''function(m) m.M = { store = {} } end''')
+load('MMT_Buffs/Compat.lua', icons)
+load('MMT_Buffs/Lists.lua', icons)
+print(lua.eval(r'''function(m)
+  assert(m.SpellIcon(20154) == nil, "test needs an ID without a texture")
+  assert(m.EntryIcon({ id = 20154 }) == 132325, "not found by name: " .. tostring(m.EntryIcon({ id = 20154 })))
+  -- nothing by ID or name: the "?" until the buff was seen on someone, then its own icon
+  assert(m.EntryIcon({ id = 99999 }) == 134400, "placeholder")
+  m.SeeIcon("Odd Buff", 136000)
+  assert(m.EntryIcon({ id = 99999 }) == 136000, "seen icon not used")
+  return "entry icons ok"
+end''')(icons))

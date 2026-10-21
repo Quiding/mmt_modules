@@ -36,10 +36,12 @@ local function ScanUnit(unit)
     if not key then return end
     local t = {}
     for i = 1, 40 do
-        local name, _, count, duration, expiration = mod.Buff(unit, i)
+        local name, icon, count, duration, expiration = mod.Buff(unit, i)
         if name == "secret" then return end   -- hidden right now: keep what we had
         if not name then break end
+        local raw = name
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
+        if index[name] and raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
         if index[name] then
             local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
             t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }

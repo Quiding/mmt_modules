@@ -35,6 +35,15 @@ function mod.SpellIcon(spell)
     return (select(2, mod.SpellInfo(spell)))
 end
 
+-- an icon even when the game has none for that spell ID (some ranks / variants show
+-- the "?" placeholder): by the spell's name, which finds any rank the character knows
+function mod.SpellIconAny(spell)
+    local icon = mod.SpellIcon(spell)
+    if icon then return icon end
+    local name = mod.SpellInfo(spell)
+    if name then return mod.SpellIcon(name) end
+end
+
 -- start, duration, enabled for a spell the player knows; nil if not known;
 -- the string "secret" when the game hides the values right now
 function mod.SpellCooldown(spell)
