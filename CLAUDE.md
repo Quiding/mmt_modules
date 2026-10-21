@@ -18,6 +18,7 @@ other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules..
 
 ## Git workflow
 After each meaningful change: `git add -A`, commit with a short clear message, `git push`.
+Changes go to the `dev` branch (since 2026-10-21, the user's choice); `main` only gets them when the user says so.
 
 Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` (link in /mmt > MODULES).
 
