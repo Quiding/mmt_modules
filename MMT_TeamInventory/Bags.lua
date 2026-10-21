@@ -24,6 +24,7 @@ local BYCHAR = "__BYCHAR__"    -- whole team, one section per character
 local TABS = { { "b", "Bags" }, { "k", "Bank" }, { "m", "Mail" }, { "e", "Equipped" } }
 
 local HEADER_H = 18
+local TRADE_W = 52   -- "Trade" button on a "Trades to do" line
 
 -- Baganator's default categories, in its Classic order: { id, name, test(slot) }
 -- (classID / subclassID from GetItemInfoInstant, known before the item's name)
@@ -459,7 +460,7 @@ local function Build()
     f.info:SetPoint("BOTTOMRIGHT", -PAD, 8)
     f.info:SetJustifyH("LEFT")
 
-    f.slots, f.headers = {}, {}
+    f.slots, f.headers, f.tradeButtons = {}, {}, {}
     f.who, f.place, f.offset = false, false, 0   -- set by OpenBags
     f:Hide()   -- new frames start shown: hidden until placed
     return f
@@ -497,7 +498,7 @@ function mod.RefreshBags()
             for _, it in ipairs(p.items) do
                 parts[#parts + 1] = it.n .. " " .. (MMT.Safe(GetInfo, it.id) or ("item " .. it.id))
             end
-            lines[#lines + 1] = { header = ("%s gives %s:  |cffdddddd%s|r"):format(NameTag(p.from), NameTag(p.to), table.concat(parts, ", ")), trade = true }
+            lines[#lines + 1] = { header = ("%s gives %s:  |cffdddddd%s|r"):format(NameTag(p.from), NameTag(p.to), table.concat(parts, ", ")), trade = p }
         end
     end
     for _, g in ipairs(groups) do
@@ -518,7 +519,7 @@ function mod.RefreshBags()
         maxOffset = maxOffset - 1
     end
     f.offset = math.min(f.offset or 0, maxOffset)
-    local y, nSlot, nHead = -TOP, 0, 0
+    local y, nSlot, nHead, nTrade = -TOP, 0, 0, 0
     -- drop zones: the y range of each character's section (by character)
     f.bands = {}
     for li = f.offset + 1, #lines do
@@ -535,7 +536,22 @@ function mod.RefreshBags()
             f.headers[nHead] = h
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", PAD + (line.trade and 8 or 0), y - 3)
-            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and 8 or 0))
+            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and (8 + TRADE_W + 6) or 0))
+            if line.trade then
+                -- "Trade": the giver's client opens the trade with the receiver
+                nTrade = nTrade + 1
+                local tb = f.tradeButtons[nTrade]
+                if not tb then
+                    tb = UI.Button(f, TRADE_W, "Trade", function(self) mod.RequestTrade(self.from, self.to) end)
+                    tb:SetHeight(HEADER_H - 2)
+                    UI.Tooltip(tb, "Trade now", "The giver's client opens the trade with the receiver and puts the planned items in. Both still click Trade to finish it. They need to be in a group, or see each other's nameplate.")
+                    f.tradeButtons[nTrade] = tb
+                end
+                tb.from, tb.to = line.trade.from, line.trade.to
+                tb:ClearAllPoints()
+                tb:SetPoint("TOPRIGHT", -PAD, y - 1)
+                tb:Show()
+            end
             h:SetJustifyH("LEFT")
             h:SetWordWrap(false)
             h:SetText(line.header)
@@ -582,6 +598,7 @@ function mod.RefreshBags()
     end
     for i = nSlot + 1, #f.slots do f.slots[i]:Hide() end
     for i = nHead + 1, #f.headers do f.headers[i]:Hide() end
+    for i = nTrade + 1, #f.tradeButtons do f.tradeButtons[i]:Hide() end
     f:SetSize(PAD * 2 + COLS * (SIZE + GAP) - GAP, -y + 26)
 
     local total = 0

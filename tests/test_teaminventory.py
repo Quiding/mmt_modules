@@ -261,3 +261,44 @@ print("A:", A.eval(r"""function(m)
   for _, s in ipairs(SENT) do assert(not s.msg:find("^TIVG:"), "whispered again") end
   return "gift sync ok"
 end""")(amod))
+
+# "Trade now": Anna asks; Bob's client (the giver) opens the trade with her
+print("A:", A.eval(r"""function(m)
+  SENT = {}
+  m.RequestTrade("Bob-Stone", "Anna-Smith")
+  assert(#SENT == 1 and SENT[1].msg == "TIVT:Bob-Stone:Anna-Smith", "trade request: " .. tostring(SENT[1] and SENT[1].msg))
+  return "trade asked"
+end""")(amod))
+print("B:", B.eval(r"""function(m)
+  local traded
+  function InitiateTrade(u) traded = u end
+  -- grouped: Anna is party2
+  UNITS = { party1 = "Wally", party2 = "Anna" }
+  function UnitName(u) return UNITS[u] end
+  SENT = {}
+  DELIVER("Anna-Smith", "TIVT:Bob-Stone:Anna-Smith")
+  assert(traded == "party2" and #SENT == 0, "group trade: " .. tostring(traded))
+  -- not grouped: her nameplate
+  traded, UNITS = nil, { nameplate7 = "Anna" }
+  C_NamePlate = { GetNamePlates = function() return { { namePlateUnitToken = "nameplate7" } } end }
+  DELIVER("Anna-Smith", "TIVT:Bob-Stone:Anna-Smith")
+  assert(traded == "nameplate7", "nameplate trade: " .. tostring(traded))
+  -- a request for another giver: not us
+  traded = nil
+  DELIVER("Anna-Smith", "TIVT:Wally-Warrior:Anna-Smith")
+  assert(traded == nil and #SENT == 0, "acted on someone else's request")
+  -- nowhere to be found: tell the one who asked
+  UNITS, C_NamePlate = {}, nil
+  DELIVER("Anna-Smith", "TIVT:Bob-Stone:Anna-Smith")
+  assert(traded == nil and #SENT == 1 and SENT[1].msg == "TIVN:Bob-Stone:Anna-Smith" and SENT[1].to == "Anna-Smith", "no not-found answer")
+  return "trade opened"
+end""")(bmod))
+print("A:", A.eval(r"""function(m)
+  local said
+  MMT.Print = function(fmt, ...) said = select("#", ...) > 0 and fmt:format(...) or fmt end
+  function MMT.FirstName(k) return (k:match("^[^-]+")) end
+  DELIVER("Bob-Stone", "TIVN:Bob-Stone:Anna-Smith")
+  assert(said and said:find("can't find Anna", 1, true), "not-found not shown: " .. tostring(said))
+  MMT.Print = function() end
+  return "not found shown"
+end""")(amod))

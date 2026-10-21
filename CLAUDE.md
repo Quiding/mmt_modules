@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.3.1)
+### MMT_TeamInventory (v0.3.2)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -231,7 +231,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   whispered to a member the first time they're seen online (XP_RECEIVED). `mod.BagSlots` (one char, "b"):
   giver's count minus `PlannedOut` plus dimmed `outgoing` slots (receiver's name), receiver gets glowing `planned`
   slots (giver's name, `b.tag`); both first in BYCHAR, right-click cancels. "Trades to do" header lines on top
-  (`mod.GiftPairs`, not a drop zone).
+  (`mod.GiftPairs`, not a drop zone), each with a "Trade" button: `TIVT:<from>:<to>` -> the giver's client
+  `InitiateTrade(unit)` (works from an addon message, user-tested with party1), unit from `mod.UnitOf`
+  (partyN / raidN names, then friendly nameplates); not found -> `TIVN` whispered back.
   Trade: TRADE_SHOW -> `mod.FillTrade` after the CORE's own Trade.lua fill (it precomputes free slots: we wait
   2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton, skips bound/locked,
   counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on

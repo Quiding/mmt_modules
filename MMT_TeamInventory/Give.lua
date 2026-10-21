@@ -157,6 +157,75 @@ M:Listen("XP_RECEIVED", function(key, sender)
 end)
 
 ---------------------------------------------------------------------------
+-- "Trade now": the giver's client opens the trade with the receiver
+--   TIVT:<from>:<to>   to the team; the client of <from> calls InitiateTrade
+--   TIVN:<from>:<to>   whispered back: <to> wasn't found (no group, no nameplate)
+-- InitiateTrade works from an addon message on this client (tested in game
+-- with party1); it needs a unit, so the receiver must be in the group (name
+-- or partyN / raidN) or have a nameplate shown (friendly nameplates).
+---------------------------------------------------------------------------
+-- the unit of a team character near us, or nil
+function mod.UnitOf(key)
+    local units = {}
+    if IsInRaid and IsInRaid() then
+        for i = 1, 40 do units[#units + 1] = "raid" .. i end
+    else
+        for i = 1, 4 do units[#units + 1] = "party" .. i end
+    end
+    if C_NamePlate and C_NamePlate.GetNamePlates then
+        for _, plate in ipairs(MMT.Safe(C_NamePlate.GetNamePlates) or {}) do
+            local u = plate.namePlateUnitToken or (plate.UnitFrame and plate.UnitFrame.unit)
+            if u then units[#units + 1] = u end
+        end
+    end
+    for _, u in ipairs(units) do
+        local name, realm = MMT.Safe(UnitName, u)
+        if name and not MMT.IsSecret(name) then
+            local full = (realm and realm ~= "") and (name .. "-" .. realm) or name
+            if MMT.Resolve and (MMT.Resolve(full) == key or MMT.Resolve(name) == key) then return u end
+        end
+    end
+end
+
+-- on the giver: open the trade; false when the receiver can't be found
+function mod.StartTrade(to)
+    local unit = mod.UnitOf(to)
+    if not unit then return false end
+    InitiateTrade(unit)
+    return true
+end
+
+local function NotFound(from, to)
+    return ("Team Inventory: %s can't find %s - put them in a group, or turn on friendly nameplates and stand next to each other."):format(
+        MMT.FirstName(from), MMT.FirstName(to))
+end
+
+-- the "Trade" button: here when we are the giver, else ask the giver's client
+function mod.RequestTrade(from, to)
+    if MMT.IsSelf(from) then
+        if not mod.StartTrade(to) then MMT.Print(NotFound(from, to)) end
+        return
+    end
+    if MMT.IsOnline and not MMT.IsOnline(from) then
+        MMT.Print("Team Inventory: %s is offline.", MMT.FirstName(from))
+        return
+    end
+    MMT.SendToTeam(("TIVT:%s:%s"):format(from, to), true)
+end
+
+M:Listen("TEAM_MESSAGE", function(key, sender, text)
+    local from, to = text:match("^TIVT:([^:]+):([^:]+)$")
+    if from then
+        if MMT.IsSelf(from) and not mod.StartTrade(to) then
+            MMT.SendAddon(("TIVN:%s:%s"):format(from, to), "WHISPER", sender)
+        end
+        return
+    end
+    from, to = text:match("^TIVN:([^:]+):([^:]+)$")
+    if from then MMT.Print(NotFound(from, to)) end
+end)
+
+---------------------------------------------------------------------------
 -- Trade window
 ---------------------------------------------------------------------------
 local C = C_Container or {}
