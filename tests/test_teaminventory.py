@@ -20,7 +20,7 @@ EQUIP = { [16] = 5000 }
 MAIL = { { 13446, 2 } }
 MAILOPEN = false
 C_Container = {
-  GetContainerNumSlots = function(bag) local b = BAGS[bag] or BANKBAGS[bag] return b and #b or 0 end,
+  GetContainerNumSlots = function(bag) local b = BAGS[bag] or BANKBAGS[bag] return NUMSLOTS[bag] or (b and #b) or 0 end,
   GetContainerItemInfo = function(bag, slot) local b = BAGS[bag] or BANKBAGS[bag] return b and b[slot] end,
 }
 function GetInventoryItemID(_, slot) return EQUIP[slot] end
@@ -42,7 +42,28 @@ TRADE, CURSOR = {}, nil
 ERR_TRADE_COMPLETE = "Trade complete."
 function GetTradePlayerItemLink(s) local t = TRADE[s] return t and ("|Hitem:" .. t.id .. ":0|h[x]|h") end
 function GetTradePlayerItemInfo(s) local t = TRADE[s] if t then return "x", 1, t.n end end
-function ClickTradeButton(s) if CURSOR and not TRADE[s] then TRADE[s] = CURSOR; CURSOR = nil end end
+NUMSLOTS = {}   -- [bag] = slots (more than items = empty slots)
+-- like the game: the cursor holds a bag slot. A trade slot takes that bag slot, so a split
+-- dropped on it puts the WHOLE stack in; a split dropped on an empty bag slot makes a new stack.
+function C_SPLIT(bag, slot, n) CURSOR = { bag = bag, slot = slot, id = BAGS[bag][slot].itemID, n = n, split = true } end
+function C_PICKUP(bag, slot)
+  local it = BAGS[bag] and BAGS[bag][slot]
+  if CURSOR and CURSOR.split and not it then
+    BAGS[bag] = BAGS[bag] or {}
+    BAGS[bag][slot] = { itemID = CURSOR.id, stackCount = CURSOR.n }
+    local src = BAGS[CURSOR.bag][CURSOR.slot]
+    src.stackCount = src.stackCount - CURSOR.n
+    CURSOR = nil
+  elseif it then
+    CURSOR = { bag = bag, slot = slot, id = it.itemID, n = it.stackCount }
+  end
+end
+function ClickTradeButton(s)
+  if CURSOR and not TRADE[s] then
+    TRADE[s] = { id = CURSOR.id, n = BAGS[CURSOR.bag][CURSOR.slot].stackCount, fromSplit = CURSOR.split }
+    CURSOR = nil
+  end
+end
 -- like this client: right after a split the cursor doesn't report the piece yet (a click still places it)
 function CursorHasItem() return CURSOR ~= nil and not CURSOR.split end
 TARGET, MONEY, TMONEY, ACCEPTED = {}, 0, 0, 0
@@ -230,10 +251,11 @@ print("B:", B.eval(r"""function(m)
   -- the core (or Bob) already put 5 linen in: only 10 more, split off the stack of 20
   PARTNER = "Anna"
   TRADE = { [1] = { id = 2589, n = 5 } }
-  C_Container.SplitContainerItem = function(bag, slot, n) CURSOR = { id = BAGS[bag][slot].itemID, n = n, split = true } end
-  C_Container.PickupContainerItem = function(bag, slot) CURSOR = { id = BAGS[bag][slot].itemID, n = BAGS[bag][slot].stackCount } end
+  C_Container.SplitContainerItem, C_Container.PickupContainerItem = C_SPLIT, C_PICKUP
+  NUMSLOTS[0] = 4   -- two free slots in the backpack
   FIRE("TRADE_SHOW")
-  assert(TRADE[2] and TRADE[2].id == 2589 and TRADE[2].n == 10 and TRADE[2].split, "not split into the trade: " .. tostring(TRADE[2] and TRADE[2].n))
+  assert(TRADE[2] and TRADE[2].id == 2589 and TRADE[2].n == 10 and not TRADE[2].fromSplit, "not split into the trade: " .. tostring(TRADE[2] and TRADE[2].n))
+  assert(BAGS[0][2].stackCount == 10 and BAGS[0][3] and BAGS[0][3].stackCount == 10, "split not made in a free bag slot")
   assert(not TRADE[3], "too much put in")
   -- the button under the trade window again: it counts what's already in, adds nothing
   assert(m.FillTrade(true) == 0 and not TRADE[3], "filled twice")
@@ -248,10 +270,11 @@ print("B:", B.eval(r"""function(m)
   TRADE = {}
   -- soulbound stacks are left alone
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 5)
-  BAGS[0][2].isBound = true
+  local function Bound(v) for _, it in pairs(BAGS[0]) do if it.itemID == 2589 then it.isBound = v end end end
+  Bound(true)   -- every linen stack (the split made a second one)
   FIRE("TRADE_SHOW")
   assert(next(TRADE) == nil, "a soulbound stack went into the trade")
-  BAGS[0][2].isBound = nil
+  Bound(nil)
   -- a cancelled trade ("Trade cancelled" is not "Trade complete") changes nothing
   FIRE("TRADE_CLOSED")
   FIRE("UI_INFO_MESSAGE", 0, "Trade cancelled.")
@@ -481,7 +504,7 @@ print("B:", B.eval(r"""function(m)
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 7)   -- part of the stack of 20
   PARTNER = "Anna"
   FIRE("TRADE_SHOW")
-  assert(TRADE[1] and TRADE[1].id == 2589 and TRADE[1].n == 7 and TRADE[1].split, "split not placed: " .. tostring(TRADE[1] and TRADE[1].n))
+  assert(TRADE[1] and TRADE[1].id == 2589 and TRADE[1].n == 7, "split not placed (the whole stack?): " .. tostring(TRADE[1] and TRADE[1].n))
   TICK(); NOW = NOW + 2; TICK()
   assert(ACCEPTED == 1, "not accepted after the split")
   FIRE("TRADE_CLOSED")
@@ -508,4 +531,29 @@ print("B:", B.eval(r"""function(m)
   TRADE, m.M.db.giveTrade, MMT.Print = {}, true, function() end
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
   return "split + accept reasons ok"
+end""")(bmod))
+
+# a split needs a free bag slot: with full bags it says so and puts nothing in (never the whole stack)
+print("B:", B.eval(r"""function(m)
+  local said = {}
+  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
+  TRADE, TARGET, ACCEPTED = {}, {}, 0
+  local saved = NUMSLOTS[0]
+  local n = 0
+  for slot in pairs(BAGS[0]) do n = math.max(n, slot) end
+  NUMSLOTS[0] = n   -- no empty slot
+  for b = 1, 4 do NUMSLOTS[b] = BAGS[b] and #BAGS[b] or 0 end
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
+  PARTNER = "Anna"
+  FIRE("TRADE_SHOW")
+  assert(next(TRADE) == nil, "something went in without a free bag slot")
+  local note = false
+  for _, t in ipairs(said) do if t:find("free bag slot", 1, true) then note = true end end
+  assert(note, "no note about the bag slot")
+  FIRE("TRADE_CLOSED")
+  NUMSLOTS[0] = saved
+  for b = 1, 4 do NUMSLOTS[b] = nil end
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  MMT.Print = function() end
+  return "full bags ok"
 end""")(bmod))

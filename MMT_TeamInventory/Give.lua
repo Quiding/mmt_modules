@@ -353,6 +353,68 @@ local function ItemName(id)
     return name or ("item " .. id)
 end
 
+-- an empty slot in the normal bags (not the keyring / reagent bag), not one already taken
+local function EmptyBagSlot(taken)
+    for _, bag in ipairs(mod.BAG_INDEXES) do
+        if bag >= 0 and bag <= 4 then
+            local num = C.GetContainerNumSlots and MMT.Safe(C.GetContainerNumSlots, bag) or 0
+            for slot = 1, num do
+                local info = C.GetContainerItemInfo and MMT.Safe(C.GetContainerItemInfo, bag, slot)
+                if not info and not taken[bag * 1000 + slot] then return bag, slot end
+            end
+        end
+    end
+end
+
+local function ClearSoon() C_Timer.After(0.2, function() if CursorHasItem() then ClearCursor() end end) end
+
+-- one stack into the trade. A trade slot holds a bag slot, not a loose item: a split
+-- dropped on it puts the WHOLE stack in. So a split goes into an empty bag slot first,
+-- and once the game made that stack, it goes into the trade. done() starts the next one.
+local function PutIn(st, mine, taken, done)
+    if mine ~= token or not tradeOpen then return end
+    local free = FreeSlot()
+    if not free then return end
+    if not st.split then
+        ClearCursor()
+        C.PickupContainerItem(st.bag, st.slot)
+        ClickTradeButton(free)
+        ClearSoon()
+        return done()
+    end
+    local bag, slot = EmptyBagSlot(taken)
+    if not bag then
+        MMT.Print("Team Inventory: a free bag slot is needed to split %s for the trade.", ItemName(st.id))
+        return done()
+    end
+    taken[bag * 1000 + slot] = true
+    ClearCursor()
+    C.SplitContainerItem(st.bag, st.slot, st.split)
+    C.PickupContainerItem(bag, slot)
+    local started = GetTime()
+    local function Wait()
+        if mine ~= token or not tradeOpen then return end
+        local info = C.GetContainerItemInfo and MMT.Safe(C.GetContainerItemInfo, bag, slot)
+        if type(info) == "table" and info.itemID == st.id and info.stackCount == st.split and not info.isLocked then
+            local f = FreeSlot()
+            if f then
+                ClearCursor()
+                C.PickupContainerItem(bag, slot)
+                ClickTradeButton(f)
+                ClearSoon()
+            end
+            return done()
+        end
+        if GetTime() - started > 3 then
+            if CursorHasItem() then ClearCursor() end
+            MMT.Print("Team Inventory: couldn't split %s for the trade - put %d in by hand.", ItemName(st.id), st.split)
+            return done()
+        end
+        C_Timer.After(0.1, Wait)
+    end
+    C_Timer.After(0.1, Wait)
+end
+
 -- puts this character's planned gifts for the partner into the trade window
 function mod.FillTrade(manual)
     if not tradeOpen then return 0 end
@@ -375,21 +437,13 @@ function mod.FillTrade(manual)
         MMT.Print("Team Inventory: %d x %s for %s isn't in your bags (or is soulbound).", n, ItemName(id), MMT.FullDisplay(partner))
     end
     token = token + 1
-    local mine = token
-    for i, st in ipairs(steps) do
-        C_Timer.After(0.3 * (i - 1), function()
-            if mine ~= token or not tradeOpen then return end
-            local free = FreeSlot()
-            if not free then return end
-            ClearCursor()
-            if st.split then C.SplitContainerItem(st.bag, st.slot, st.split)
-            else C.PickupContainerItem(st.bag, st.slot) end
-            -- drop it at once: right after a split the cursor doesn't show the item yet
-            -- (CursorHasItem is false), but the click still places it (like EllesmereUI Bags)
-            ClickTradeButton(free)
-            C_Timer.After(0.2, function() if CursorHasItem() then ClearCursor() end end)
-        end)
+    local mine, taken = token, {}
+    -- one after the other (a split waits for the game to make the new stack)
+    local function Step(i)
+        if i > #steps then return end
+        PutIn(steps[i], mine, taken, function() C_Timer.After(0.3, function() Step(i + 1) end) end)
     end
+    Step(1)
     if #steps > 0 then
         MMT.Print("Team Inventory: %d planned stack(s) for %s go into the trade.", #steps, MMT.FullDisplay(partner))
     end
