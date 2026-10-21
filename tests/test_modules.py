@@ -124,3 +124,49 @@ print(lua.eval(r'''function(m)
   assert(m.EntryIcon({ id = 99999 }) == 136000, "seen icon not used")
   return "entry icons ok"
 end''')(icons))
+
+# bug: Battle Shout showed as missing while it was on: the index of tracked buffs was built
+# at login, when the game didn't know the spell's name yet (lazy spell data), and the scan
+# only kept indexed buffs. Now the scan keeps every buff; unknown spells get their data requested.
+lua.execute(r'''
+KNOWN_NAMES = {}   -- the game's spell data: empty at login
+REQUESTED = {}
+C_Spell = {
+  GetSpellInfo = function(x) local n = KNOWN_NAMES[x] if n then return { name = n, iconID = 1, spellID = x } end end,
+  GetSpellTexture = function() return nil end,
+  RequestLoadSpellData = function(id) REQUESTED[id] = true end,
+}
+C_Timer = { After = function(_, f) f() end }
+function wipe(t) for k in pairs(t) do t[k] = nil end return t end
+function IsInRaid() return false end
+function UnitExists(u) return u == "player" end
+function GetTime() return 100 end
+MMT.SplitUnit = function(u) if u == "player" then return "Alash", "Erelia", "Alash-Erelia" end end
+MMT.Resolve = function(k) return k end
+MMT.IsSecret = function() return false end
+REDRAWS = 0
+''')
+tr = new_mod(r'''function(m)
+  local M = { db = { lists = { WARRIOR = { { id = 6673 } } } }, store = {}, enabled = true }
+  function M:On() end
+  function M:Listen() end
+  m.M = M
+  m.Buff = function(unit, i) if unit == "player" and i == 1 then return "Battle Shout", 132333, 0, 120, 200 end end
+  m.Redraw = function() REDRAWS = REDRAWS + 1 end
+end''')
+load('MMT_Buffs/Compat.lua', tr)
+load('MMT_Buffs/Lists.lua', tr)
+load('MMT_Buffs/Tracker.lua', tr)
+print(lua.eval(r'''function(m)
+  -- (Compat.lua brought its own reader: the stand-in after it)
+  m.Buff = function(unit, i) if unit == "player" and i == 1 then return "Battle Shout", 132333, 0, 120, 200 end end
+  -- login: the name isn't known yet
+  m.BuildIndex()
+  assert(REQUESTED[6673], "spell data not requested")
+  m.ScanGroup()
+  -- the data arrives: the buff that was already scanned counts
+  KNOWN_NAMES[6673] = "Battle Shout"
+  local state = m.State("Alash-Erelia", { id = 6673 })
+  assert(state == "buff", "Battle Shout shown as " .. tostring(state))
+  return "buffs with late spell data ok"
+end''')(tr))

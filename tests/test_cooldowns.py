@@ -326,3 +326,23 @@ print("A:", A.eval(r"""function(m)
   C_UnitAuras = nil
   return "debuff as the cast's buff ok"
 end""")(amod))
+
+# lazy spell data: a tracked spell unknown when the index was built still counts when a
+# group member casts it later (the index is built again)
+C, cmod = client("Anna-Smith", "Bob-Stone")
+print("C:", C.eval(r"""function(m)
+  local REQ = {}
+  C_Spell.RequestLoadSpellData = function(id) REQ[id] = true end
+  m.M.db.lists.ALL = m.M.db.lists.ALL or {}
+  table.insert(m.M.db.lists.ALL, { t = "s", id = 55555, cd = 60 })
+  m.BuildIndex()                       -- the game doesn't know spell 55555 yet
+  assert(REQ[55555], "spell data not requested")
+  SPELLS[55555] = "Late Spell"         -- now it does
+  MMT.SplitUnit = function(u) if u == "party1" then return "Bob", "Stone", "Bob-Stone" end end
+  MMT.Resolve = function(k) return k end
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "party1", "cast", 55555)
+  local found = false
+  for _ in pairs(m.cds["Bob-Stone"] or {}) do found = true end
+  assert(found, "the cast of a late-known spell wasn't tracked")
+  return "late spell data ok"
+end""")(cmod))

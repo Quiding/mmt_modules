@@ -35,7 +35,10 @@ function mod.BuildIndex()
                 index[name] = index[name] or {}
                 table.insert(index[name], e)
             else
+                -- the game loads spell data lazily (unknown right after login): ask for it;
+                -- the index is built again when a cast comes in while something was missing
                 missing = true
+                if e.t == "s" and C_Spell and C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, e.id) end
             end
         end
     end
@@ -70,7 +73,9 @@ end
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
     local spellName = mod.SpellInfo(spellID)
-    if not spellName or MMT.IsSecret(spellName) or not index[spellName] then return end
+    if not spellName or MMT.IsSecret(spellName) then return end
+    if not index[spellName] and missing then mod.BuildIndex() end   -- spell data arrived since
+    if not index[spellName] then return end
     local key = UnitKey(unit)
     if not key or MMT.IsSelf(key) then return end
     local e = EntryForMember(key, spellName)

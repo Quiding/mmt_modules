@@ -12,15 +12,24 @@ local M = mod.M
 mod.auras = {}   -- [teamKey] = { [buffName] = { start, dur, count } }, from units
 local fromUnit = {} -- [teamKey] = true while the member is read from a unit
 
-local index = {} -- [buffName] = true
+-- The game loads spell data lazily: right after login it may not know the name of a
+-- spell this character never used (Battle Shout then showed as missing while it was
+-- on, and its icon was "?"). So the scan keeps EVERY buff it sees (at most 40 a member,
+-- the window looks up the tracked ones by name), and spells still unknown get their
+-- data requested; the window redraws once it had time to arrive.
+local requested = {}
 function mod.BuildIndex()
-    wipe(index)
+    local missing = false
     for _, list in pairs(M.db.lists or {}) do
         for _, e in ipairs(list) do
-            local n = mod.BuffName(e)
-            if n then index[n] = true end
+            if not mod.BuffName(e) and not requested[e.id] then
+                requested[e.id] = true
+                missing = true
+                if C_Spell and C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, e.id) end
+            end
         end
     end
+    if missing then C_Timer.After(2, function() if M.enabled then mod.Refresh() end end) end
 end
 
 ---------------------------------------------------------------------------
@@ -41,11 +50,9 @@ local function ScanUnit(unit)
         if not name then break end
         local raw = name
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
-        if index[name] and raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
-        if index[name] then
-            local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
-            t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }
-        end
+        if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
+        local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
+        t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }
     end
     mod.auras[key] = t
     fromUnit[key] = true
