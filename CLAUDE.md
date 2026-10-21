@@ -214,7 +214,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.7.2)
+### MMT_TeamInventory (v0.7.3)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -254,7 +254,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
   `autoAccept`: the watcher calls `mod.AcceptTrade()` (AcceptTrade, else TradeFrameTradeButton:Click; works from a timer: user-tested in game; C_Timer.After(1, AcceptTrade) itself errors, wrap it in a function) when `mod.TradeIsPlanned()`: only
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
-  1.5 s; a change re-arms it. Game confirmation popups stay manual;
+  1.5 s; a change re-arms it. AcceptTrade can be ignored silently (user saw it): `Confirm` checks `TradeHighlightPlayer:IsShown()` (the accept state) after 1 s, retries every 1 s (alternating AcceptTrade / TradeFrameTradeButton:Click, 6 tries), says "accepted" only when lit, else "couldn't accept (Trade button enabled/disabled)". Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.
 - Gold: `rec.gold` / `goldTime` (copper) on each character's record, NOT synced by us: own from `GetMoney` (ScanGold:
   OnEnable, PLAYER_MONEY, PLAYER_ENTERING_WORLD), others from the core heartbeat (`status.money` in XP_RECEIVED); a

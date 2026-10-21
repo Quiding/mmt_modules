@@ -534,12 +534,14 @@ end
 -- accepts the open trade: the game's AcceptTrade, else a click on the trade
 -- window's Trade button; false (and a note, once) when neither is there / works
 local warned = false
-function mod.AcceptTrade()
+function mod.AcceptTrade(viaButton)
     local ok = false
-    if type(AcceptTrade) == "function" then
+    if type(AcceptTrade) == "function" and not viaButton then
         ok = pcall(AcceptTrade)
     elseif TradeFrameTradeButton and TradeFrameTradeButton.Click then
         ok = pcall(TradeFrameTradeButton.Click, TradeFrameTradeButton)
+    elseif type(AcceptTrade) == "function" then
+        ok = pcall(AcceptTrade)
     end
     if not ok and not warned then
         warned = true
@@ -547,6 +549,34 @@ function mod.AcceptTrade()
     end
     if M.Debug then M:Debug("AcceptTrade: %s (AcceptTrade=%s button=%s)", tostring(ok), type(AcceptTrade), tostring(TradeFrameTradeButton ~= nil)) end
     return ok
+end
+
+-- our side accepted? The game's own highlight on the trade window says so (nil: can't tell)
+function mod.TradeAccepted()
+    local h = TradeHighlightPlayer
+    if h and h.IsShown then return h:IsShown() and true or false end
+end
+
+-- an accept can be ignored without an error (the game holds the Trade button back for a
+-- moment after the trade changed): check the highlight, try again once a second (also by
+-- pressing the button), and only say "accepted" when it really is
+local TRIES = 6
+local function Confirm(try, sig)
+    if not tradeOpen or signature ~= sig then return end
+    local state = mod.TradeAccepted()
+    if state ~= false then
+        MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+        return
+    end
+    if try >= TRIES then
+        local b = TradeFrameTradeButton
+        local enabled = b and b.IsEnabled and b:IsEnabled()
+        MMT.Print("Team Inventory: couldn't accept the trade by itself (Trade button %s) - click Trade.",
+            enabled == nil and "?" or (enabled and "enabled" or "disabled"))
+        return
+    end
+    mod.AcceptTrade(try % 2 == 1)
+    C_Timer.After(1, function() Confirm(try + 1, sig) end)
 end
 
 -- what our side holds, read while the trade is open (it is empty again once
@@ -567,7 +597,8 @@ watcher:SetScript("OnUpdate", function(_, e)
         if ok then
             accepted = true
             if mod.AcceptTrade() then
-                MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+                local sig = signature
+                C_Timer.After(1, function() Confirm(1, sig) end)
             end
         elseif why and toldFor ~= signature then
             -- once per state of the trade: why it waits for you

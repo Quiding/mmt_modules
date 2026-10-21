@@ -557,3 +557,48 @@ print("B:", B.eval(r"""function(m)
   MMT.Print = function() end
   return "full bags ok"
 end""")(bmod))
+
+# bug: "accepted" was said but the game ignored the accept (Trade button held back for a
+# moment): check the game's highlight, try again (also via the button), be honest
+print("B:", B.eval(r"""function(m)
+  local said = {}
+  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
+  local lit = false
+  TradeHighlightPlayer = { IsShown = function() return lit end }
+  local ignore, calls, clicks = 2, 0, 0
+  local real = AcceptTrade
+  AcceptTrade = function() calls = calls + 1; if calls > ignore then lit = true end end
+  TradeFrameTradeButton = { Click = function() clicks = clicks + 1; AcceptTrade() end, IsEnabled = function() return calls > ignore end }
+  TRADE, TARGET, MONEY, TMONEY = {}, {}, 0, 0
+  m.M.db.autoAccept, m.M.db.giveTrade = true, true
+  NUMSLOTS[0] = 16   -- room for the split (earlier tests filled the backpack)
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 3)
+  PARTNER = "Anna"
+  FIRE("TRADE_SHOW")
+  assert(TRADE[1] and TRADE[1].n == 3, "not filled")
+  TICK(); NOW = NOW + 2; TICK()
+  assert(lit and calls == 3 and clicks >= 1, "not retried until accepted: calls " .. calls .. " clicks " .. clicks)
+  local ok, bad = 0, 0
+  for _, t in ipairs(said) do
+    if t:find("accepted (only planned", 1, true) then ok = ok + 1 end
+    if t:find("couldn't accept", 1, true) then bad = bad + 1 end
+  end
+  assert(ok == 1 and bad == 0, "messages: " .. table.concat(said, " | "))
+  FIRE("TRADE_CLOSED")
+  -- never accepted: says so (with the button state), never "accepted"
+  said, lit, calls, ignore = {}, false, 0, 99
+  TRADE = {}
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  ok, bad = 0, 0
+  for _, t in ipairs(said) do
+    if t:find("accepted (only planned", 1, true) then ok = ok + 1 end
+    if t:find("couldn't accept the trade by itself (Trade button disabled)", 1, true) then bad = bad + 1 end
+  end
+  assert(ok == 0 and bad == 1, "messages: " .. table.concat(said, " | "))
+  FIRE("TRADE_CLOSED")
+  TradeHighlightPlayer, TradeFrameTradeButton, AcceptTrade, MMT.Print = nil, nil, real, function() end
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  TRADE = {}
+  return "accept verified ok"
+end""")(bmod))
