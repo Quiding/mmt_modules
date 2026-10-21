@@ -13,6 +13,7 @@ U.__index = function(t, k)
   if k == "SetText" then return function(self, v) rawset(self, "_text", v) end end
   if k == "GetText" then return function(self) return rawget(self, "_text") or "" end end
   if k == "SetTexture" then return function(self, v) rawset(self, "_tex", v) end end
+  if k == "SetColorTexture" then return function(self, r, g, b, a) rawset(self, "_color", { r, g, b, a }) end end
   if k == "Show" then return function(self) rawset(self, "_shown", true) end end
   if k == "Hide" then return function(self) rawset(self, "_shown", false) end end
   if k == "IsShown" then return function(self) return rawget(self, "_shown") ~= false end end
@@ -297,6 +298,9 @@ print(lua.eval(r'''function(m)
   for _, x in ipairs(f.slots) do local s = rawget(x, "slot") if x:IsShown() and s and s.outgoing then ob, os_ = x, s end end
   assert(os_ and os_.owner == "Anna-Smith" and os_.outgoing == "Bob-Stone" and os_.count == 20, "no dimmed slot at Anna")
   assert(ob.tag:GetText():find("Bob", 1, true) and not ob.glow:IsShown(), "receiver's name / glow at Anna")
+  -- dimmed: the slot colour too, not only the icon (the quality colour shone through)
+  assert(ob.bg._color[1] < 0.1 and ob.bg._color[2] < 0.1, "outgoing slot colour not dimmed")
+  assert(pb.bg._color[1] >= 0.2, "incoming slot dimmed")
   -- who trades whom: in the side panel
   local pr = f.pairRows[1]
   assert(pr and pr:IsShown() and pr.label:GetText():find("Anna", 1, true) and pr.label:GetText():find("Bob", 1, true), "trade in the panel")
