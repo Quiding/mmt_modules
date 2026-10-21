@@ -332,11 +332,13 @@ local function NewSlot(parent)
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.15)
-    -- glow of a planned gift: the slot's border pulses green (over the quality
-    -- colour, under the icon; the action-button glow looked like a white box here)
+    -- glow of a planned gift: the slot's border pulses gold, 1 px wider than the
+    -- slot (over the quality colour, under the icon; green looked like an uncommon
+    -- item's border, the action-button glow like a white box)
     b.glow = b:CreateTexture(nil, "BACKGROUND", nil, 1)
-    b.glow:SetAllPoints()
-    b.glow:SetColorTexture(0.25, 1, 0.35, 1)
+    b.glow:SetPoint("TOPLEFT", -1, 1)
+    b.glow:SetPoint("BOTTOMRIGHT", 1, -1)
+    b.glow:SetColorTexture(1, 0.8, 0.1, 1)
     local pulse = b.glow:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
     local fade = pulse:CreateAnimation("Alpha")

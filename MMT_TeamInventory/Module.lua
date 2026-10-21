@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.4.5"
+mod.VERSION = "0.4.6"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
