@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.4.7)
+### MMT_TeamInventory (v0.4.8)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -242,7 +242,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   2.2 s when `MMT.db.trade.enabled`, read only), Split/PickupContainerItem + ClickTradeButton, skips bound/locked,
   counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on
   UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
-  `autoAccept`: the watcher calls `AcceptTrade` (works from a timer, per the user) when `mod.TradeIsPlanned()`: only
+  `autoAccept`: the watcher calls `mod.AcceptTrade()` (AcceptTrade, else TradeFrameTradeButton:Click; NOT yet confirmed from a timer: the user's test line failed) when `mod.TradeIsPlanned()`: only
   planned items each side (<= plan), giver has nothing left to add (`Steps` empty), no gold, slot 7 empty, unchanged
   1.5 s; a change re-arms it. Game confirmation popups stay manual;
   "Planned items" button under TradeFrame.

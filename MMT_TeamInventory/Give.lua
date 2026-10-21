@@ -453,6 +453,24 @@ function mod.TradeIsPlanned()
     return true
 end
 
+-- accepts the open trade: the game's AcceptTrade, else a click on the trade
+-- window's Trade button; false (and a note, once) when neither is there / works
+local warned = false
+function mod.AcceptTrade()
+    local ok = false
+    if type(AcceptTrade) == "function" then
+        ok = pcall(AcceptTrade)
+    elseif TradeFrameTradeButton and TradeFrameTradeButton.Click then
+        ok = pcall(TradeFrameTradeButton.Click, TradeFrameTradeButton)
+    end
+    if not ok and not warned then
+        warned = true
+        MMT.Print("Team Inventory: couldn't accept the trade by itself on this client - click Trade. (/mmt debug dump says more)")
+    end
+    if M.Debug then M:Debug("AcceptTrade: %s (AcceptTrade=%s button=%s)", tostring(ok), type(AcceptTrade), tostring(TradeFrameTradeButton ~= nil)) end
+    return ok
+end
+
 -- what our side holds, read while the trade is open (it is empty again once
 -- it completed), and the auto-accept check
 local watcher = CreateFrame("Frame")
@@ -468,8 +486,9 @@ watcher:SetScript("OnUpdate", function(_, e)
     if sig ~= signature then signature, changedAt, accepted = sig, GetTime(), false end
     if M.db.autoAccept and not accepted and GetTime() - changedAt >= STEADY and mod.TradeIsPlanned() then
         accepted = true
-        MMT.Safe(AcceptTrade)
-        MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+        if mod.AcceptTrade() then
+            MMT.Print("Team Inventory: trade with %s accepted (only planned items).", MMT.FullDisplay(partner))
+        end
     end
 end)
 

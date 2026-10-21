@@ -422,3 +422,30 @@ print("A:", A.eval(r"""function(m)
   assert(copy.s[13446] == 1 and copy.b[13446] == rec.b[13446], "soulbound not in the snapshot")
   return "soulbound shared"
 end""")(amod))
+
+# AcceptTrade missing on the client: the Trade button instead; neither: one note, never "accepted"
+print("A:", A.eval(r"""function(m)
+  local said = {}
+  MMT.Print = function(fmt, ...) said[#said + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
+  local real = AcceptTrade
+  AcceptTrade = nil
+  local clicked = 0
+  TradeFrameTradeButton = { Click = function() clicked = clicked + 1 end }
+  assert(m.AcceptTrade() == true and clicked == 1, "button not clicked")
+  TradeFrameTradeButton = nil
+  assert(m.AcceptTrade() == false and m.AcceptTrade() == false, "accepted without a way to")
+  local notes = 0
+  for _, t in ipairs(said) do if t:find("couldn't accept", 1, true) then notes = notes + 1 end end
+  assert(notes == 1, "note not shown once: " .. notes)
+  -- the watcher: no "accepted" message when it didn't work
+  said = {}
+  PARTNER, TARGET = "Bob", { [1] = { id = 2589, n = 10 } }
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 10)
+  FIRE("TRADE_SHOW")
+  TICK(); NOW = NOW + 2; TICK()
+  for _, t in ipairs(said) do assert(not t:find("accepted", 1, true), "said accepted: " .. t) end
+  FIRE("TRADE_CLOSED")
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 0)
+  TARGET, AcceptTrade, MMT.Print = {}, real, function() end
+  return "accept fallback ok"
+end""")(amod))
