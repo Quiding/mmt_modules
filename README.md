@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.4.1 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.4.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.3 |
 
 ## Install
@@ -126,15 +126,16 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   character - with Bags / Bank / Mail / Equipped tabs and a search box.
 - Grouped in **Baganator's categories** when it's on (your order, custom and hidden categories,
   priorities and dragged items, read live), else in built-in ones like Baganator's defaults.
-- **Team list** beside the window, always there: click a name for their bags, drop an item on a
-  name to give it to them.
+- **Side panel** beside the window, in every view: the team (click a name for their bags, drop an
+  item on a name to give it to them) and the **trades** to do - who gives whom, the items, a
+  **Trade** button and an "x" to cancel. It moves to the other side at the screen edge.
 - **Planned gifts**: on the Bags tab (one character or "by character"), drag an item onto a name in
   the team list or onto another character's section (Shift: choose how many). It glows at the receiver with the giver's name on it, stays dimmed at the
-  giver with the receiver's name, and "Trades to do" at the top lists who gives whom what. The next time those two trade, the giver's
+  giver with the receiver's name. The next time those two trade, the giver's
   client puts it into the trade window, and both accept by themselves when the trade holds nothing
   but those gifts (no gold, nothing else; a soulbound warning is still a click; setting). Right-click a glowing item
-  to cancel. A "Planned items" button under the trade window fills it by hand. **Trade** on a
-  "Trades to do" line (the "x" cancels that line) makes the giver open the trade itself (they need to be grouped, or see each
+  to cancel. A "Planned items" button under the trade window fills it by hand. **Trade** in the
+  panel makes the giver open the trade itself (they need to be grouped, or see each
   other's nameplate with friendly nameplates on).
 - Open it from the minimap button (left-click bags, right-click bank) or a key (Keybindings >
   AddOns > MMT - Team Inventory).

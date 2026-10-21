@@ -204,7 +204,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
 
-### MMT_TeamInventory (v0.4.1)
+### MMT_TeamInventory (v0.4.2)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -226,14 +226,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   priority wins (prio = offset + (mod.priority+1)*200, ties by order). Auto categories skipped. Any problem: nil
   -> built-in `mod.Group`. Setting `baganatorCats`.
 - `Give.lua`: planned gifts. Bags tab, one character or BYCHAR: drag a slot (`OnDragStart/Stop`; drop zones =
-  the team list `f.team` / `f.teamButtons` beside the window (RefreshTeam: every team member, click = their bags,
-  "+n" incoming; flips to the left at the screen edge), then `f.bands` per character section; Shift = amount box
-  `MMTTeamBagsAmount`); "Trades to do" lines have Trade + "x" (`mod.CancelGifts`); `M.store.gives[from][to][id] = {n, t}`
+  the side panel `f.team` beside the window (`mod.RefreshTeam`: `f.teamButtons` = every team member, click = their
+  bags, "+n" incoming; then `f.pairRows` = one block per `mod.GiftPairs` pair with Trade, "x" (`mod.CancelGifts`) and
+  small item icons (right-click cancels one); `mod.PlaceTeam` flips it left at the screen edge, also while the window
+  is dragged (OnUpdate while `isMoving`)), then `f.bands` per character section; Shift = amount box `MMTTeamBagsAmount`); `M.store.gives[from][to][id] = {n, t}`
   (t = GetServerTime, newest wins, n = 0 kept a week as tombstone). `TIVG:<id>:<n>:<t>:<from>:<to>` to the team,
   whispered to a member the first time they're seen online (XP_RECEIVED). `mod.BagSlots` (one char, "b"):
   giver's count minus `PlannedOut` plus dimmed `outgoing` slots (receiver's name), receiver gets glowing `planned`
-  slots (giver's name, `b.tag`); both first in BYCHAR, right-click cancels. "Trades to do" header lines on top
-  (`mod.GiftPairs`, not a drop zone), each with a "Trade" button: `TIVT:<from>:<to>` -> the giver's client
+  slots (giver's name, `b.tag`); both first in BYCHAR, right-click cancels. The panel's "Trade" button: `TIVT:<from>:<to>` -> the giver's client
   `InitiateTrade(unit)` (works from an addon message, user-tested with party1), unit from `mod.UnitOf`
   (partyN / raidN, then friendly nameplates, matched by `MMT.SplitUnit` key: same first names!); not found -> `TIVN` whispered back.
   Trade: TRADE_SHOW -> `mod.FillTrade` after the CORE's own Trade.lua fill (it precomputes free slots: we wait

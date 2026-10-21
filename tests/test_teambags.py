@@ -296,11 +296,13 @@ print(lua.eval(r'''function(m)
   for _, x in ipairs(f.slots) do local s = rawget(x, "slot") if x:IsShown() and s and s.outgoing then ob, os_ = x, s end end
   assert(os_ and os_.owner == "Anna-Smith" and os_.outgoing == "Bob-Stone" and os_.count == 20, "no dimmed slot at Anna")
   assert(ob.tag:GetText():find("Bob", 1, true) and not ob.glow:IsShown(), "receiver's name / glow at Anna")
-  -- who trades whom, at the top
+  -- who trades whom: in the side panel
+  local pr = f.pairRows[1]
+  assert(pr and pr:IsShown() and pr.label:GetText():find("Anna", 1, true) and pr.label:GetText():find("Bob", 1, true), "trade in the panel")
+  assert(pr.icons[1]:IsShown() and pr.icons[1].id == 2589 and pr.icons[1].n == 20, "trade item icon")
   local heads = {}
   for _, h in ipairs(f.headers) do if h:IsShown() then heads[#heads + 1] = h:GetText() end end
-  assert(heads[1] == "Trades to do" and heads[2]:find("Anna", 1, true) and heads[2]:find("gives", 1, true)
-    and heads[2]:find("Bob", 1, true) and heads[2]:find("20 Linen Cloth", 1, true), "trades list: " .. tostring(heads[2]))
+  assert(not heads[1]:find("Trades", 1, true), "trades still in the main view")
   -- dragging the dimmed one does nothing; right-clicking it cancels too
   ob._OnDragStart(ob)
   assert(not rawget(ob, "dragging"), "dragged an outgoing gift")
@@ -318,7 +320,7 @@ print(lua.eval(r'''function(m)
   -- right-click cancels it: back at Anna, no glow left
   pb._OnClick(pb, "RightButton")
   assert(Button("Anna-Smith", 2589) and not Button("Bob-Stone", 2589, true), "not cancelled")
-  for _, h in ipairs(f.headers) do assert(not (h:IsShown() and h:GetText() == "Trades to do"), "trades list left over") end
+  assert(not f.pairRows[1]:IsShown() and f.team.empty:IsShown(), "trade left over in the panel")
   for _, x in ipairs(f.slots) do if x:IsShown() then assert(not x.glow:IsShown(), "glow left over") end end
   -- Shift + drop: how many
   SHIFT = true
@@ -365,27 +367,39 @@ print(lua.eval(r'''function(m)
   bobButton._click(bobButton)
   assert(f.who == "Bob-Stone", "name click didn't switch")
   assert(bobButton.label:GetText():find(">", 1, true), "current character not marked")
-  -- the "x" on a Trades to do line cancels that pair's gifts
+  -- the trades are in the panel in every view: here one character's bags
   m.SetGive("Anna-Smith", "Bob-Stone", 13446, 2)
-  m.OpenBags("b", "__BYCHAR__")
-  local cb = f.cancelButtons[1]
-  assert(cb and cb:IsShown() and cb.from == "Anna-Smith" and cb.to == "Bob-Stone", "no cancel x")
-  cb._OnClick(cb)
-  assert(m.PlannedOut("Anna-Smith", 2589) == 0 and m.PlannedOut("Anna-Smith", 13446) == 0, "x didn't cancel the pair")
-  assert(not f.cancelButtons[1]:IsShown() and not f.tradeButtons[1]:IsShown(), "line buttons left over")
-  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 20)
-  m.OpenBags("b", "__BYCHAR__")
-  -- "Trade" on the "Trades to do" line: Anna is the giver, so this client opens it with Bob
-  m.OpenBags("b", "__BYCHAR__")
-  local tb = f.tradeButtons[1]
-  assert(tb and tb:IsShown() and tb.from == "Anna-Smith" and tb.to == "Bob-Stone", "no trade button")
+  m.OpenBags("b", "Anna-Smith")
+  pr = f.pairRows[1]
+  assert(pr:IsShown() and pr.from == "Anna-Smith" and pr.to == "Bob-Stone", "trade not in the panel of a single view")
+  assert(pr.icons[2]:IsShown() and pr.icons[2].id == 13446, "second item")
+  -- right-click one item icon: only that one
+  pr.icons[2]._OnClick(pr.icons[2], "RightButton")
+  assert(m.PlannedOut("Anna-Smith", 13446) == 0 and m.PlannedOut("Anna-Smith", 2589) == 20, "item cancel")
+  -- "Trade": Anna is the giver, so this client opens it with Bob
   function MMT.Resolve(n) if n == "Bob" then return "Bob-Stone" end end
   function MMT.SplitUnit(u) if u == "party1" then return "Bob", "Stone", "Bob-Stone" end end
   function InitiateTrade(u) TRADED = u end
-  tb._click(tb)
+  pr.trade._click(pr.trade)
   assert(TRADED == "party1", "trade not opened: " .. tostring(TRADED))
-  m.SetGive("Anna-Smith", "Bob-Stone", 2589, 0)
-  assert(not f.tradeButtons[1]:IsShown(), "trade button left over")
+  -- the "x" cancels the whole trade
+  m.SetGive("Anna-Smith", "Bob-Stone", 13446, 2)
+  pr.cancel._OnClick(pr.cancel)
+  assert(m.PlannedOut("Anna-Smith", 2589) == 0 and m.PlannedOut("Anna-Smith", 13446) == 0, "x didn't cancel the pair")
+  assert(not f.pairRows[1]:IsShown(), "trade left over")
+  -- the panel flips to the left at the right edge of the screen, also while the window moves
+  rawset(UIParent, "GetRight", function() return 1000 end)
+  rawset(f, "GetRight", function() return 500 end)
+  m.PlaceTeam(f)
+  assert(f.team:GetPoint(1) == "TOPLEFT", "panel not on the right")
+  rawset(f, "GetRight", function() return 950 end)
+  f._OnDragStart(f)
+  f._OnUpdate(f)
+  assert(f.team:GetPoint(1) == "TOPRIGHT", "panel didn't flip while moving")
+  f._OnDragStop(f)
+  rawset(f, "GetRight", function() return 500 end)
+  m.PlaceTeam(f)
+  assert(f.team:GetPoint(1) == "TOPLEFT", "panel didn't flip back")
   return "planned gifts in the team bags ok"
 end''')(mod))
 

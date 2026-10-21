@@ -24,9 +24,10 @@ local BYCHAR = "__BYCHAR__"    -- whole team, one section per character
 local TABS = { { "b", "Bags" }, { "k", "Bank" }, { "m", "Mail" }, { "e", "Equipped" } }
 
 local HEADER_H = 18
-local TRADE_W = 52   -- "Trade" button on a "Trades to do" line
-local CANCEL_W = 16  -- the "x" next to it: cancels that pair's gifts
-local TEAM_W, TEAM_ROW = 120, 24   -- the team list beside the window
+-- the side panel: the team (drop targets) and the trades to do
+local TEAM_W, TEAM_ROW = 200, 22
+local TRADE_W, CANCEL_W, MINI = 50, 16, 20   -- Trade button, "x", item icons of a trade
+local MINI_COLS = math.floor((TEAM_W - 16 + 2) / (MINI + 2))
 
 -- Baganator's default categories, in its Classic order: { id, name, test(slot) }
 -- (classID / subclassID from GetItemInfoInstant, known before the item's name)
@@ -303,7 +304,7 @@ local function NewSlot(parent)
             GameTooltip:AddLine(("%s trades %s: it goes into the trade window by itself. Right-click: cancel."):format(MMT.FirstName(from), MMT.FirstName(to)), 0.7, 0.7, 0.7, true)
         elseif CanDrag(s) then
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("Drag onto a name on the right (or another character's section) to plan a gift. Shift: how many.", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine("Drag onto a name in the team list (or another character's section) to plan a gift. Shift: how many.", 0.7, 0.7, 0.7, true)
         end
         GameTooltip:Show()
     end)
@@ -468,10 +469,10 @@ local function Build()
     f.info:SetPoint("BOTTOMRIGHT", -PAD, 8)
     f.info:SetJustifyH("LEFT")
 
-    f.slots, f.headers, f.tradeButtons, f.cancelButtons = {}, {}, {}, {}
+    f.slots, f.headers = {}, {}
 
-    -- the team beside the window, always there: click = that character's bags,
-    -- drop an item on a name = plan a gift for them
+    -- the side panel, in every view: the team (click = their bags, drop an
+    -- item on a name = a planned gift) and the trades to do
     f.team = CreateFrame("Frame", nil, f)
     f.team:SetWidth(TEAM_W)
     UI.Fill(f.team, 0.05, 0.05, 0.06, 0.95)
@@ -480,20 +481,93 @@ local function Build()
     f.team.title = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     f.team.title:SetPoint("TOPLEFT", 8, -8)
     f.team.title:SetText("Team")
-    f.teamButtons = {}
+    f.team.tradesTitle = f.team:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.team.tradesTitle:SetText("Trades")
+    f.team.empty = f.team:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.team.empty:SetJustifyH("LEFT")
+    f.team.empty:SetWidth(TEAM_W - 16)
+    f.team.empty:SetText("Drag an item onto a name above to give it.")
+    f.teamButtons, f.pairRows = {}, {}
+    -- keep the panel on screen while the window is dragged
+    f:HookScript("OnDragStart", function(self) self.isMoving = true end)
+    f:HookScript("OnDragStop", function(self) self.isMoving = false; mod.PlaceTeam(self) end)
+    f:HookScript("OnUpdate", function(self)
+        if self.isMoving then mod.PlaceTeam(self) end
+    end)
     f.who, f.place, f.offset = false, false, 0   -- set by OpenBags
     f:Hide()   -- new frames start shown: hidden until placed
     return f
 end
 
--- the team list: every team member, in team order (gifts can go to anyone)
-local function RefreshTeam(f)
+-- the side panel: right of the window, or left of it when the screen ends there
+function mod.PlaceTeam(f)
+    if not f.team then return end
+    local right, es = tonumber(f:GetRight()), tonumber(f:GetEffectiveScale())
+    local screen, ues = tonumber(UIParent:GetRight()), tonumber(UIParent:GetEffectiveScale())
+    local left = (right and es and screen and ues and (right + TEAM_W + 2) * es > screen * ues) or false
+    if left == f.team.left and f.team.placed then return end
+    f.team.left, f.team.placed = left, true
+    f.team:ClearAllPoints()
+    if left then f.team:SetPoint("TOPRIGHT", f, "TOPLEFT", -2, 0)
+    else f.team:SetPoint("TOPLEFT", f, "TOPRIGHT", 2, 0) end
+end
+
+local function MiniIcon(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(MINI, MINI)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b.count = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.count:SetPoint("BOTTOMRIGHT", 1, -1)
+    MMT.ApplyFont(b.count, nil, 9, "OUTLINE")
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. self.id)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(("%s gives %d to %s. Right-click: cancel."):format(MMT.FirstName(self.from), self.n, MMT.FirstName(self.to)), 0.3, 1, 0.3, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then mod.SetGive(self.from, self.to, self.id, 0) end
+    end)
+    return b
+end
+
+-- one trade: "Giver > Receiver   [Trade] x", then its items as small icons
+local function PairRow(f, i)
+    local r = f.pairRows[i]
+    if r then return r end
+    r = CreateFrame("Frame", nil, f.team)
+    r:SetWidth(TEAM_W - 12)
+    r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    r.label:SetPoint("TOPLEFT", 2, -4)
+    r.label:SetWidth(TEAM_W - 12 - TRADE_W - CANCEL_W - 8)
+    r.label:SetJustifyH("LEFT")
+    r.label:SetWordWrap(false)
+    r.cancel = UI.TextButton(r, "x", function() mod.CancelGifts(r.from, r.to) end, CANCEL_W)
+    r.cancel:SetPoint("TOPRIGHT", 0, 0)
+    UI.Tooltip(r.cancel, "Cancel", "Cancels these planned gifts: the items go back to the giver.")
+    r.trade = UI.Button(r, TRADE_W, "Trade", function() mod.RequestTrade(r.from, r.to) end)
+    r.trade:SetHeight(TEAM_ROW - 4)
+    r.trade:SetPoint("TOPRIGHT", -CANCEL_W - 2, 0)
+    UI.Tooltip(r.trade, "Trade now", "The giver's client opens the trade with the receiver and puts the planned items in; with 'Accept trades of planned gifts' on, both accept by themselves. They need to be in a group, or see each other's nameplate.")
+    r.icons = {}
+    f.pairRows[i] = r
+    return r
+end
+
+-- the side panel: the team (names) and the trades to do (one block per pair)
+function mod.RefreshTeam(f)
     local keys = {}
     for _, key in ipairs(MMT.SortedMembers()) do keys[#keys + 1] = key end
     local own = MMT.PlayerFull()
     local listed = false
     for _, key in ipairs(keys) do if key == own then listed = true end end
     if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
+    local y = -24
     for i, key in ipairs(keys) do
         local b = f.teamButtons[i]
         if not b then
@@ -502,26 +576,58 @@ local function RefreshTeam(f)
                 M.db.lastWho = self.key
                 mod.RefreshBags()
             end)
-            b:SetHeight(TEAM_ROW - 4)
-            b:SetPoint("TOPLEFT", 6, -24 - (i - 1) * TEAM_ROW)
-            UI.Tooltip(b, "Team", "Click: this character's bags. Drop an item here: give it to them (planned gift, Shift: how many).")
+            b:SetHeight(TEAM_ROW - 2)
+            UI.Tooltip(b, "Team", "Click: this character's bags. Drop an item here: give it to them (Shift: how many).")
             f.teamButtons[i] = b
         end
         b.key = key
         local incoming = #mod.PlannedIn(key)
         b.label:SetText((f.who == key and "|cffffd100>|r " or "") .. NameTag(key)
             .. (incoming > 0 and ("  |cff33ff33+" .. incoming .. "|r") or ""))
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 6, y)
         b:Show()
+        y = y - TEAM_ROW
     end
     for i = #keys + 1, #f.teamButtons do f.teamButtons[i]:Hide() end
-    f.team:SetHeight(24 + #keys * TEAM_ROW + 4)
-    -- right of the window, or left of it when the screen ends there
-    local right, es = tonumber(f:GetRight()), tonumber(f:GetEffectiveScale())
-    local screen, ues = tonumber(UIParent:GetRight()), tonumber(UIParent:GetEffectiveScale())
-    local left = right and es and screen and ues and (right + TEAM_W + 2) * es > screen * ues
-    f.team:ClearAllPoints()
-    if left then f.team:SetPoint("TOPRIGHT", f, "TOPLEFT", -2, 0)
-    else f.team:SetPoint("TOPLEFT", f, "TOPRIGHT", 2, 0) end
+
+    y = y - 8
+    f.team.tradesTitle:ClearAllPoints()
+    f.team.tradesTitle:SetPoint("TOPLEFT", 8, y)
+    y = y - 16
+    local trades = mod.GiftPairs()
+    f.team.empty:SetShown(#trades == 0)
+    if #trades == 0 then
+        f.team.empty:ClearAllPoints()
+        f.team.empty:SetPoint("TOPLEFT", 8, y)
+        y = y - 28
+    end
+    for i, p in ipairs(trades) do
+        local r = PairRow(f, i)
+        r.from, r.to = p.from, p.to
+        r.label:SetText(NameTag(p.from) .. " |cff888888>|r " .. NameTag(p.to))
+        for j, it in ipairs(p.items) do
+            local ic = r.icons[j] or MiniIcon(r)
+            r.icons[j] = ic
+            ic.from, ic.to, ic.id, ic.n = p.from, p.to, it.id, it.n
+            local _, _, _, _, instIcon = MMT.Safe(GetInstant, it.id)
+            ic.icon:SetTexture(MMT.Safe(GetIcon, it.id) or instIcon or 134400)
+            ic.count:SetText(it.n > 1 and it.n or "")
+            ic:ClearAllPoints()
+            ic:SetPoint("TOPLEFT", 2 + ((j - 1) % MINI_COLS) * (MINI + 2), -TEAM_ROW - math.floor((j - 1) / MINI_COLS) * (MINI + 2))
+            ic:Show()
+        end
+        for j = #p.items + 1, #r.icons do r.icons[j]:Hide() end
+        local h = TEAM_ROW + math.ceil(#p.items / MINI_COLS) * (MINI + 2) + 6
+        r:SetHeight(h)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 6, y)
+        r:Show()
+        y = y - h
+    end
+    for i = #trades + 1, #f.pairRows do f.pairRows[i]:Hide() end
+    f.team:SetHeight(-y + 6)
+    mod.PlaceTeam(f)
 end
 
 local function Place(f)
@@ -547,18 +653,6 @@ function mod.RefreshBags()
     if who == BYCHAR then groups = mod.ByCharacter(place, f.search:GetText())
     elseif M.db.categories ~= false then groups = mod.Categorize(slots)
     else groups = { { slots = slots } } end
-    -- by character: who has to trade whom, one line per pair
-    if who == BYCHAR and place == "b" then
-        local gifts = mod.GiftPairs()
-        if #gifts > 0 then lines[1] = { header = "Trades to do" } end
-        for _, p in ipairs(gifts) do
-            local parts = {}
-            for _, it in ipairs(p.items) do
-                parts[#parts + 1] = it.n .. " " .. (MMT.Safe(GetInfo, it.id) or ("item " .. it.id))
-            end
-            lines[#lines + 1] = { header = ("%s gives %s:  |cffdddddd%s|r"):format(NameTag(p.from), NameTag(p.to), table.concat(parts, ", ")), trade = p }
-        end
-    end
     for _, g in ipairs(groups) do
         if g.name then lines[#lines + 1] = { header = g.name .. "  |cff888888" .. #g.slots .. "|r", key = g.key } end
         for i = 1, #g.slots, COLS do
@@ -577,7 +671,7 @@ function mod.RefreshBags()
         maxOffset = maxOffset - 1
     end
     f.offset = math.min(f.offset or 0, maxOffset)
-    local y, nSlot, nHead, nTrade = -TOP, 0, 0, 0
+    local y, nSlot, nHead = -TOP, 0, 0
     -- drop zones: the y range of each character's section (by character)
     f.bands = {}
     for li = f.offset + 1, #lines do
@@ -593,34 +687,8 @@ function mod.RefreshBags()
             local h = f.headers[nHead] or f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             f.headers[nHead] = h
             h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", PAD + (line.trade and 8 or 0), y - 3)
-            h:SetWidth(COLS * (SIZE + GAP) - GAP - (line.trade and (8 + TRADE_W + CANCEL_W + 10) or 0))
-            if line.trade then
-                -- "Trade": the giver's client opens the trade with the receiver
-                nTrade = nTrade + 1
-                local tb = f.tradeButtons[nTrade]
-                if not tb then
-                    tb = UI.Button(f, TRADE_W, "Trade", function(self) mod.RequestTrade(self.from, self.to) end)
-                    tb:SetHeight(HEADER_H - 2)
-                    UI.Tooltip(tb, "Trade now", "The giver's client opens the trade with the receiver and puts the planned items in; with 'Accept trades of planned gifts' on, both accept by themselves. They need to be in a group, or see each other's nameplate.")
-                    f.tradeButtons[nTrade] = tb
-                end
-                tb.from, tb.to = line.trade.from, line.trade.to
-                tb:ClearAllPoints()
-                tb:SetPoint("TOPRIGHT", -PAD - CANCEL_W - 4, y - 1)
-                tb:Show()
-                -- "x": cancel every gift of this pair
-                local cb = f.cancelButtons[nTrade]
-                if not cb then
-                    cb = UI.TextButton(f, "x", function(self) mod.CancelGifts(self.from, self.to) end, CANCEL_W)
-                    UI.Tooltip(cb, "Cancel", "Cancels these planned gifts: the items go back to the giver.")
-                    f.cancelButtons[nTrade] = cb
-                end
-                cb.from, cb.to = line.trade.from, line.trade.to
-                cb:ClearAllPoints()
-                cb:SetPoint("TOPRIGHT", -PAD, y)
-                cb:Show()
-            end
+            h:SetPoint("TOPLEFT", PAD, y - 3)
+            h:SetWidth(COLS * (SIZE + GAP) - GAP)
             h:SetJustifyH("LEFT")
             h:SetWordWrap(false)
             h:SetText(line.header)
@@ -667,8 +735,6 @@ function mod.RefreshBags()
     end
     for i = nSlot + 1, #f.slots do f.slots[i]:Hide() end
     for i = nHead + 1, #f.headers do f.headers[i]:Hide() end
-    for i = nTrade + 1, #f.tradeButtons do f.tradeButtons[i]:Hide() end
-    for i = nTrade + 1, #f.cancelButtons do f.cancelButtons[i]:Hide() end
     f:SetSize(PAD * 2 + COLS * (SIZE + GAP) - GAP, -y + 26)
 
     local total = 0
@@ -683,7 +749,7 @@ function mod.RefreshBags()
         note = place == "k" and "Nothing known: open the bank once on that character." or "Nothing known: open the mailbox once on that character."
     end
     f.info:SetText(note)
-    RefreshTeam(f)
+    mod.RefreshTeam(f)
 end
 
 -- whose items the window opens on ("Open on" setting)
