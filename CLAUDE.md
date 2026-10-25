@@ -20,15 +20,12 @@ other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules..
 After each meaningful change: `git add -A`, commit with a short clear message, `git push`.
 Changes go to the `dev` branch (since 2026-10-21, the user's choice); `main` only gets them when the user says so.
 
-## Two game folders (since 2026-10-21)
-WoW: Forever now runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`** (the user's new home for
-addons); the old `_classic_beta_\Interface\AddOns` is kept up to date too. Both are clones of this repo.
-- `.git/hooks/post-commit` + `post-merge` in EACH clone (not versioned - recreate them if a clone is new) fast-forward
-  the other clone to the same commit from the local folder: same branch only, never over uncommitted work there; they
-  print "sync: ..." after a commit. Edit in either folder; uncommitted edits are only in the folder you edit.
+## Game folder
+WoW: Forever runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`** (this clone). The old
+`_classic_beta_` folder is retired (since 2026-10-25): no sync hooks any more, don't update or use it.
 - The friend's MMT core + modules (`MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`) are NTFS
-  **junctions** in BOTH AddOns folders to `D:\Games\MMT-src\<name>` (a clone of github.com/bnetworking/MMT): a
-  `git -C D:/Games/MMT-src pull` lands in both games at once. Never edit them there either.
+  **junctions** to `D:\Games\MMT-src\<name>` (a clone of github.com/bnetworking/MMT): update them with
+  `git -C D:/Games/MMT-src pull`. Never edit them there either.
 
 Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` (link in /mmt > MODULES).
 
