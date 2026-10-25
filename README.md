@@ -22,7 +22,7 @@ MODULES, with its own settings page.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
 
-Cooldowns and Buffs have a **Preview** (Bars tab, or `/mmtcd preview [mixed]` / `/mmtbf preview`): every team
+Cooldowns and Buffs have a **Preview** (Bars tab, or `/mmtcd preview` / `/mmtbf preview`): every team
 member gets a row with made-up states, to set up the look and position without the team around -
 with the team's real classes, or **mixed classes** (`/mmtcd preview mixed`: warrior, paladin, priest, ...).
 
