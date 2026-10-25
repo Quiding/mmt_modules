@@ -28,6 +28,11 @@ end
 ---------------------------------------------------------------------------
 local filterPopup
 
+-- closes the popup (another list, tab or page, the list changed)
+function mod.CloseFilter()
+    if filterPopup then filterPopup:Hide() end
+end
+
 local function Ticked(e, kind, k)
     return e.only and e.only[kind] and e.only[kind][k] and true or false
 end
@@ -264,11 +269,18 @@ M.Page = function(_, page)
 
     -- Buffs (lists) -------------------------------------------------------------
     local lp = panels.lists
+    -- another tab, another settings page or the window closed: the popup goes too
+    lp:HookScript("OnHide", mod.CloseFilter)
+    page:HookScript("OnHide", mod.CloseFilter)
     local LS = UI.Column(lp, 0, 0, COL_W)
     local class = select(2, UnitClass("player")) or "ALL"
     LS:Header("Tracked buffs")
     local list
-    LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    LS:Cycle("List", mod.ListChoices, function() return class end, function(v)
+        class = v
+        mod.CloseFilter()
+        list:Render(M.db.lists[class] or {})
+    end)
 
     local function Changed()
         mod.BuildIndex()
@@ -280,6 +292,7 @@ M.Page = function(_, page)
         local l = M.db.lists[class]
         local j = index + delta
         if not l or j < 1 or j > #l then return end
+        mod.CloseFilter()
         l[index], l[j] = l[j], l[index]
         Changed()
     end
@@ -291,7 +304,7 @@ M.Page = function(_, page)
         row.icon:SetSize(18, 18)
         row.icon:SetPoint("LEFT", 2, 0)
         row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        row.del = UI.TextButton(row, "x", function() table.remove(M.db.lists[class], row.index); Changed() end, 16)
+        row.del = UI.TextButton(row, "x", function() mod.CloseFilter(); table.remove(M.db.lists[class], row.index); Changed() end, 16)
         row.del:SetPoint("RIGHT", -2, 0)
         row.down = UI.TextButton(row, "v", function() Move(row.index, 1) end, 16)
         row.down:SetPoint("RIGHT", row.del, "LEFT", -2, 0)
