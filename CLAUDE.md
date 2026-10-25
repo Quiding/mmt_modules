@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.8) / MMT_Buffs (v0.8.5) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.9) / MMT_Buffs (v0.8.6) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -137,7 +137,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
   bump VERSION on change (now 11: v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
-- Preview (`mod.preview` = nil | "REAL" | "MIXED", session only, `mod.SetPreview`, Bars tab Cycle, `/mmtcd|mmtbf preview [mixed]`;
+- All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
+  corner; Buffs AllRow sets it to how many have the buff (2+) from `allCount` (corner | "OFF"), `allCountSize`,
+  `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with
+  test_settings' stubs).
+- Preview (`mod.preview` = nil | "REAL" | "MIXED" | "ALL" (shared ListKeys `mod.PreviewMembers()` = nine made-up
+  "<Name>-Preview" keys, one per class; Members() returns them; rows get `color` = `mod.PreviewColor`), session only, `mod.SetPreview`, Bars tab Cycle, `/mmtcd|mmtbf preview [mixed]`;
   MIXED: shared ListKeys `mod.ClassOf` returns `mod.PreviewClass(key)` = warrior, paladin, priest, ... by team order,
   you first; Buffs `ClassesHere` = the classes the preview shows (whole team counts as present)): `Members()`
   takes every team member (+ self), `mod.State` returns made-up states from a hash of key + entry (stable between

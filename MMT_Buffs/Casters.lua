@@ -54,9 +54,7 @@ function mod.ClassesHere()
     -- preview: the whole team counts as here, with the classes the preview shows
     if mod.preview then
         local t = {}
-        local own = MMT.PlayerFull()
-        if own then t[mod.ClassOf(own) or ""] = true end
-        for _, key in ipairs(MMT.SortedMembers()) do t[mod.ClassOf(key) or ""] = true end
+        for _, key in ipairs(mod.PreviewTeam()) do t[mod.ClassOf(key) or ""] = true end
         return t
     end
     if here and GetTime() - hereTime < 0.5 then return here end

@@ -6,6 +6,7 @@ local M = mod.M
 
 -- members with a row, in team order
 function mod.Members()
+    if mod.preview == "ALL" then return mod.PreviewMembers() end   -- made-up characters (ListKeys.lua)
     local list = {}
     local cfg = M.db
     for _, key in ipairs(MMT.SortedMembers()) do
@@ -47,7 +48,7 @@ local function Rows()
                 icons[#icons + 1] = icon
             end
         end
-        rows[#rows + 1] = { key = key, icons = icons }
+        rows[#rows + 1] = { key = key, icons = icons, color = mod.preview and mod.PreviewColor(key) or nil }
     end
     return rows
 end

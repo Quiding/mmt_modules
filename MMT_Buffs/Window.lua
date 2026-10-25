@@ -13,6 +13,7 @@ local M = mod.M
 local CD_WINDOW = "MMTCooldowns"
 
 function mod.Members()
+    if mod.preview == "ALL" then return mod.PreviewMembers() end   -- made-up characters (ListKeys.lua)
     local list = {}
     local cfg = M.db
     for _, key in ipairs(MMT.SortedMembers()) do
@@ -84,7 +85,7 @@ local function AllRow()
             for _, key in ipairs(members) do if mod.Applies(e, key) then forThem[#forThem + 1] = key end end
         end
         if #forThem > 0 then
-        local missingBy, noData = {}, 0
+        local missingBy, noData, have = {}, 0, 0
         local minStart, minDur, minLeft
         for _, key in ipairs(forThem) do
             local state, start, dur = mod.State(key, e)
@@ -92,7 +93,10 @@ local function AllRow()
                 noData = noData + 1
             elseif state == "missing" then
                 missingBy[#missingBy + 1] = MMTIconBars.MemberName(key, cfg.fullNames)
-            elseif start and dur then
+            elseif state == "buff" then
+                have = have + 1
+            end
+            if state == "buff" and start and dur then
                 local left = start + dur - GetTime()
                 if not minLeft or left < minLeft then minStart, minDur, minLeft = start, dur, left end
             end
@@ -109,6 +113,12 @@ local function AllRow()
         local only = mod.FilterText(e)
         if only then i.tip = i.tip .. "\nOnly for: " .. only end
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
+        -- how many have it, in its own corner (Look > All bar counter)
+        if cfg.allCount and cfg.allCount ~= "OFF" and have > 1 then
+            i.tally, i.tallyPos, i.tallySize, i.tallyColor = have, cfg.allCount, cfg.allCountSize, cfg.allCountColor
+            i.count = nil
+            i.tip = i.tip .. ("\n%d have it."):format(have)
+        end
         icons[#icons + 1] = Look(i)
         end
     end
@@ -125,7 +135,9 @@ mod.window = MMTIconBars.NewWindow({
             if #all.icons > 0 then rows[1] = all end
         end
         if not mod.Attached() then
-            for _, key in ipairs(mod.Members()) do rows[#rows + 1] = { key = key, icons = Icons(key) } end
+            for _, key in ipairs(mod.Members()) do
+                rows[#rows + 1] = { key = key, icons = Icons(key), color = mod.preview and mod.PreviewColor(key) or nil }
+            end
         end
         return rows
     end,

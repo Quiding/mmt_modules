@@ -132,6 +132,7 @@ lua.eval('''function(m)
   m.Canonical = function(n) return n == "Prayer of Fortitude" and "Power Word: Fortitude" or n end
   m.BuffName = function(e) local n = SPELLS[e.id] return n and m.Canonical(n) end
   m.M.db.hideNoCaster = true
+  m.PreviewTeam = function() return MMT.SortedMembers() end   -- ListKeys.lua in the game
 end''')(mod)
 lua.eval('function(src, m) assert(loadstring(src, "Casters.lua"))("x", m) end')(
     open('MMT_Buffs/Casters.lua', encoding='utf-8').read(), mod)

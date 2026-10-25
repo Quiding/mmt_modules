@@ -34,6 +34,8 @@ local M = MMT.NewModule({
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows
         allMissingLook = "RED",    -- missing buffs: PLAIN (normal icon) | RED | GREY, all at missingAlpha
         allExclude = {},           -- [teamKey] = true: not counted in the All classes row
+        allCount = "BOTTOMLEFT",   -- All bar: how many have the buff (2+), in this corner | "OFF"
+        allCountSize = 12, allCountColor = { r = 1, g = 1, b = 1 },
         hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
         playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,
@@ -65,10 +67,11 @@ SLASH_MMTBUFFS1 = "/mmtbf"
 SlashCmdList.MMTBUFFS = function(msg)
     msg = (msg or ""):lower()
     if not M.enabled then MMT.Print("Buffs is switched off (/mmt modules).") return end
-    if msg == "preview" or msg == "preview mixed" then
-        local want = msg == "preview mixed" and "MIXED" or "REAL"
+    if msg == "preview" or msg == "preview mixed" or msg == "preview all" then
+        local want = msg == "preview mixed" and "MIXED" or msg == "preview all" and "ALL" or "REAL"
         mod.SetPreview(mod.preview ~= want and want or nil)
-        MMT.Print("%s: preview %s.", M.title, mod.preview == "MIXED" and "on, mixed classes (warrior, paladin, priest, ...)"
+        MMT.Print("%s: preview %s.", M.title, mod.preview == "ALL" and "on, one made-up character of every class"
+            or mod.preview == "MIXED" and "on, mixed classes (warrior, paladin, priest, ...)"
             or mod.preview and "on - every team member as if in your group, made-up states" or "off")
         if MMT.RefreshConfig then MMT.RefreshConfig() end
     elseif msg == "test" then
@@ -83,6 +86,6 @@ SlashCmdList.MMTBUFFS = function(msg)
         M.db.locked = not M.db.locked
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf preview [mixed], /mmtbf export. Settings: /mmt > MODULES > Buffs.")
+        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf preview [mixed|all], /mmtbf export. Settings: /mmt > MODULES > Buffs.")
     end
 end

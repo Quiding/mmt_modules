@@ -199,5 +199,5 @@ function mod.LookTab(panel, Opt, apply)
     local gr, sr = Opt("rowAlpha")
     R:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
     R:Note("Textures come from LibSharedMedia (other addons such as Details bring many).")
-    return L
+    return L, R
 end

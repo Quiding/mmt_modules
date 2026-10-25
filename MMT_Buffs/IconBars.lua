@@ -15,6 +15,8 @@
 --   w:SetShown(on)
 --
 -- icon = { texture, state, start, duration, count, spell, item, tip,
+--          tally, tallyPos (corner, e.g. "BOTTOMLEFT"), tallySize, tallyColor {r,g,b}  (v12: a
+--          second number in its own corner, e.g. how many members have a buff),
 --          missingAlpha, glowMissing, activeAlpha (override the window's cfg for
 --          "missing" / "buff"),
 --          tint = { r, g, b }, desaturate = true,
@@ -36,7 +38,7 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 
-local VERSION = 11
+local VERSION = 12
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -157,6 +159,7 @@ local function NewIcon(parent)
     b.timer:SetPoint("CENTER", 0, 0)
     b.count = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.count:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.tally = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b:SetScript("OnEnter", function(self)
         local i = self.data
         if not i then return end
@@ -233,6 +236,19 @@ local function Setup(b, i, key, c)
     MMT.ApplyFont(b.timer, c.font, c.timerSize or 13, "OUTLINE")
     MMT.ApplyFont(b.count, c.font, math.max(8, math.floor((c.timerSize or 13) * 0.8)), "OUTLINE")
     b.count:SetText((i.count and i.count > 1) and i.count or "")
+    if i.tally then
+        local pos = i.tallyPos or "BOTTOMLEFT"
+        b.tally:ClearAllPoints()
+        b.tally:SetPoint(pos, pos:find("LEFT") and 1 or -1, pos:find("TOP") and -1 or 1)
+        MMT.ApplyFont(b.tally, c.font, i.tallySize or 12, "OUTLINE")
+        local tc = i.tallyColor
+        b.tally:SetTextColor(tc and tc.r or 1, tc and tc.g or 1, tc and tc.b or 1)
+        b.tally:SetText(i.tally)
+        b.tally:Show()
+    else
+        b.tally:SetText("")
+        b.tally:Hide()
+    end
     if (i.state == "cd" or i.state == "buff") and Remaining(i) then
         b.cd:SetCooldown(i.start, i.duration)
         b.cd:Show()

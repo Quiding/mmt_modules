@@ -58,7 +58,7 @@ local function SetLists(data)
     return n > 0, n == 0 and "no class lists" or nil
 end
 
-local ALLROW = { "allBar", "allMissingLook" }
+local ALLROW = { "allBar", "allMissingLook", "allCount", "allCountSize", "allCountColor" }
 
 local function GetAllRow()
     local t = GetKeys(ALLROW)

@@ -52,6 +52,7 @@ M.Page = function(_, page)
         { value = "OFF", text = "Off" },
         { value = "REAL", text = "The team as it is" },
         { value = "MIXED", text = "Mixed classes" },
+        { value = "ALL", text = "All classes (made-up names)" },
     }, function() return mod.preview or "OFF" end, function(v) mod.SetPreview(v ~= "OFF" and v or nil) end)
     L:Cycle("Names", {
         { value = "OFF", text = "Off" },

@@ -24,7 +24,8 @@ MODULES, with its own settings page.
 
 Cooldowns and Buffs have a **Preview** (Bars tab, or `/mmtcd preview` / `/mmtbf preview`): every team
 member gets a row with made-up states, to set up the look and position without the team around -
-with the team's real classes, or **mixed classes** (`/mmtcd preview mixed`: warrior, paladin, priest, ...).
+with the team's real classes, **mixed classes** (`/mmtcd preview mixed`: warrior, paladin, priest, ...), or
+**all classes** (`/mmtcd preview all`: nine made-up characters, one of every class).
 
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
 **Reset to defaults** (click twice). Cooldowns, Buffs and Totems also have **Import / Export** as a
@@ -48,7 +49,7 @@ important spells, trinkets and potions.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
   you carry; shift-click a spell or item works too.
 
-`/mmtcd` · `/mmtcd test` · `/mmtcd preview [mixed]` · `/mmtcd export`
+`/mmtcd` · `/mmtcd test` · `/mmtcd preview [mixed|all]` · `/mmtcd export`
 
 ![Cooldowns bar](media/cooldowns.gif)
 
@@ -66,6 +67,8 @@ tracked for them, with exact timers.
   that class is in your group or online in your team (switchable).
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
+- All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and
+  colour in Look.
 - Presets (raid buffs, world buffs, flasks & elixirs, per class) and the same name search as Cooldowns.
 - **Only for...** (the cog of each buff in the All bar): limit a buff to player roles (Tank / Healer / Melee / Ranged /
   Caster), classes and / or MMT roles - e.g. Blessing of Might only for Melee and Tank. Members it isn't
@@ -73,7 +76,7 @@ tracked for them, with exact timers.
   most points (shared with the team, also right after a respec or dual spec swap), else the class; set
   them by hand on the Roles tab.
 
-`/mmtbf` · `/mmtbf test` · `/mmtbf preview [mixed]` · `/mmtbf export`
+`/mmtbf` · `/mmtbf test` · `/mmtbf preview [mixed|all]` · `/mmtbf export`
 
 ![Buffs bar](media/buffs.gif)
 

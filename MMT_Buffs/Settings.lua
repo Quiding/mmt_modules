@@ -133,6 +133,7 @@ M.Page = function(_, page)
         { value = "OFF", text = "Off" },
         { value = "REAL", text = "The team as it is" },
         { value = "MIXED", text = "Mixed classes" },
+        { value = "ALL", text = "All classes (made-up names)" },
     }, function() return mod.preview or "OFF" end, function(v) mod.SetPreview(v ~= "OFF" and v or nil) end)
     L:Cycle("Names", {
         { value = "OFF", text = "Off" },
@@ -188,7 +189,22 @@ M.Page = function(_, page)
 
 
     -- Look ------------------------------------------------------------------
-    local LL = mod.LookTab(panels.look, Opt, Apply)
+    local LL, LR = mod.LookTab(panels.look, Opt, Apply)
+    LR:Header("All bar counter")
+    local gcp, scp = Opt("allCount")
+    LR:Cycle("How many have it", {
+        { value = "OFF", text = "Off" },
+        { value = "BOTTOMLEFT", text = "Bottom left" },
+        { value = "BOTTOMRIGHT", text = "Bottom right" },
+        { value = "TOPLEFT", text = "Top left" },
+        { value = "TOPRIGHT", text = "Top right" },
+    }, gcp, scp)
+    local gcs, scs = Opt("allCountSize")
+    LR:Slider("Counter size", 8, 24, 1, gcs, scs)
+    LR:Color("Counter colour", function() return M.db.allCountColor end, function(c)
+        M.db.allCountColor = { r = c.r, g = c.g, b = c.b }
+        Apply()
+    end)
     LL:Header("Buffs")
     LL:Cycle("Missing buffs", {
         { value = "PLAIN", text = "Normal icon" },
@@ -243,6 +259,8 @@ M.Page = function(_, page)
     RR:Note("A buff's cog (Buffs tab) can limit it to player roles, classes or MMT roles: members it isn't for don't count as missing it - e.g. Blessing of Might only for Melee and Tank.")
     RR:Note("Auto: a druid's form right now (Cat Melee, Bear Tank, Moonkin Caster, Tree of Life Healer), else the talent tree with the most points (each client tells the team, also right after a respec or dual spec swap), else the class.")
     RR:Note("Set a role here to override it for that character.")
+    RR:Header("Why?")
+    RR:Note("One character can play two specs: a druid who is feral in one fight and balance in the next. With Blessing of Might \"Only for: Melee, Tank\" it's tracked while they're feral (cat or bear form, or feral talents) and left alone while they're a boomkin - nothing to swap by hand. Class or MMT-role lists can't tell the two apart: it's the same character.")
 
     -- Buffs (lists) -------------------------------------------------------------
     local lp = panels.lists

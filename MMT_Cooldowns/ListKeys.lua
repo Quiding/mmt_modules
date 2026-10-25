@@ -39,7 +39,36 @@ function mod.PreviewClass(key)
     return MIXED[(i - 1) % #MIXED + 1]
 end
 
+-- "All classes" preview (mod.preview == "ALL"): made-up characters instead of the
+-- team, one of every class
+local FAKE = { { "Brakka", "WARRIOR" }, { "Seraphine", "PALADIN" }, { "Tamsin", "HUNTER" }, { "Vex", "ROGUE" },
+    { "Lirael", "PRIEST" }, { "Orrin", "SHAMAN" }, { "Kaelyn", "MAGE" }, { "Morwen", "WARLOCK" }, { "Thandril", "DRUID" } }
+local fakeClass = {}
+for _, f in ipairs(FAKE) do fakeClass[f[1] .. "-Preview"] = f[2] end
+function mod.PreviewMembers()
+    local t = {}
+    for i, f in ipairs(FAKE) do t[i] = f[1] .. "-Preview" end
+    return t
+end
+
+-- the team for a preview: the made-up characters, or the real team (+ you)
+function mod.PreviewTeam()
+    if mod.preview == "ALL" then return mod.PreviewMembers() end
+    local t = {}
+    local own = MMT.PlayerFull and MMT.PlayerFull()
+    if own then t[1] = own end
+    for _, key in ipairs(MMT.SortedMembers()) do if key ~= own then t[#t + 1] = key end end
+    return t
+end
+
+-- name colour of a member in the preview (their previewed class)
+function mod.PreviewColor(key)
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[mod.ClassOf(key) or ""]
+    return c and { c.r, c.g, c.b } or nil
+end
+
 function mod.ClassOf(key)
+    if mod.preview == "ALL" then return fakeClass[key] end
     if mod.preview == "MIXED" then return mod.PreviewClass(key) end
     if MMT.IsSelf(key) then return select(2, UnitClass("player")) end
     local m = MMT.db.team[key]

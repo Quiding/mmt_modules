@@ -66,10 +66,11 @@ SLASH_MMTCOOLDOWNS1 = "/mmtcd"
 SlashCmdList.MMTCOOLDOWNS = function(msg)
     msg = (msg or ""):lower()
     if not M.enabled then MMT.Print("Cooldowns is switched off (/mmt modules).") return end
-    if msg == "preview" or msg == "preview mixed" then
-        local want = msg == "preview mixed" and "MIXED" or "REAL"
+    if msg == "preview" or msg == "preview mixed" or msg == "preview all" then
+        local want = msg == "preview mixed" and "MIXED" or msg == "preview all" and "ALL" or "REAL"
         mod.SetPreview(mod.preview ~= want and want or nil)
-        MMT.Print("%s: preview %s.", M.title, mod.preview == "MIXED" and "on, mixed classes (warrior, paladin, priest, ...)"
+        MMT.Print("%s: preview %s.", M.title, mod.preview == "ALL" and "on, one made-up character of every class"
+            or mod.preview == "MIXED" and "on, mixed classes (warrior, paladin, priest, ...)"
             or mod.preview and "on - every team member as if in your group, made-up states" or "off")
         if MMT.RefreshConfig then MMT.RefreshConfig() end
     elseif msg == "test" then
@@ -84,6 +85,6 @@ SlashCmdList.MMTCOOLDOWNS = function(msg)
         M.db.locked = not M.db.locked
         MMT.Print("Cooldowns window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtcd = show/hide, /mmtcd lock, /mmtcd test, /mmtcd preview [mixed], /mmtcd export. Settings: /mmt > MODULES > Cooldowns.")
+        MMT.Print("/mmtcd = show/hide, /mmtcd lock, /mmtcd test, /mmtcd preview [mixed|all], /mmtcd export. Settings: /mmt > MODULES > Cooldowns.")
     end
 end
