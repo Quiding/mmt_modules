@@ -31,7 +31,19 @@ end
 
 -- class, ALL (unless the All classes row has them), their roles, the character
 local function EntriesFor(key)
-    return mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
+    local list = mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
+    if not M.db.allBar then return list end
+    -- a buff the All bar shows stays out of the member's row, even when a class list has it too
+    local inAll = {}
+    for _, e in ipairs(M.db.lists.ALL or {}) do
+        local name = not e.off and (mod.BuffName(e) or mod.EntryKey(e))
+        if name then inAll[name] = true end
+    end
+    local out = {}
+    for _, e in ipairs(list) do
+        if not inAll[mod.BuffName(e) or mod.EntryKey(e) or ""] then out[#out + 1] = e end
+    end
+    return out
 end
 
 -- look of a buff icon (missing: normal / red / grey, glow; active: opacity),

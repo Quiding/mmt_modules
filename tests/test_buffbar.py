@@ -213,3 +213,22 @@ print(lua.eval(r"""function(m)
   assert(totems and m.CasterClass(totems.entries[1]) == "SHAMAN", "totem preset")
   return "weapon enchants ok"
 end""")(mod))
+
+# a buff in the All bar and in a class list: only in the All row
+print(lua.eval(r"""function(m)
+  m.State = function() return "buff", 100, 300, 1 end
+  local oldInfo = m.SpellInfo
+  m.SpellInfo = function(id) return ({ [6673] = "Battle Shout", [324] = "Lightning Shield" })[id] end
+  m.M.db.allBar, m.M.db.hideNoCaster = true, false
+  m.M.db.lists.ALL = { { id = 6673 } }
+  m.M.db.lists.SHAMAN = { { id = 6673 }, { id = 324 } }
+  for _, row in ipairs(m.window.def.rows()) do
+    if row.key == "Anna-Smith" then
+      for _, i in ipairs(row.icons) do assert(i.spell ~= 6673, "Battle Shout twice") end
+      assert(#row.icons == 1, "Lightning Shield stays: " .. #row.icons)
+    end
+  end
+  m.State = ORIG_STATE
+  m.SpellInfo = oldInfo
+  return "All bar buffs out of member rows ok"
+end""")(mod))
