@@ -10,10 +10,33 @@ local _, mod = ...
 
 local function B(id) return { id = id } end
 local function O(id) return { id = id, off = true } end
+-- for only some members ("Only for", Roles.lua): roles = player roles, classes
+local function F(id, roles, classes)
+    local only = {}
+    if roles then only.roles = {} for _, r in ipairs(roles) do only.roles[r] = true end end
+    if classes then only.classes = {} for _, c in ipairs(classes) do only.classes[c] = true end end
+    return { id = id, only = only }
+end
+local MANA = { "HEALER", "CASTER" }                 -- player roles that run on mana
+local MANA_CLASSES = { "HUNTER", "PALADIN" }        -- melee / ranged classes that use mana too
+
+-- the party buffs (cast on others, no auras): the All bar's default and the "Raid buffs" preset
+local function PartyBuffs()
+    return {
+        B(1243), B(1126), B(20217),                                -- Fortitude, Mark of the Wild, Kings
+        B(976),                                                    -- Shadow Protection
+        F(1459, MANA, MANA_CLASSES), F(19742, MANA, MANA_CLASSES), -- Arcane Intellect, Wisdom: mana users
+        F(14752, MANA),                                            -- Divine Spirit: healers / casters
+        F(19740, { "MELEE", "TANK" }),                             -- Might
+        F(6673, { "MELEE", "TANK" }),                              -- Battle Shout
+        F(1038, { "HEALER", "CASTER", "MELEE", "RANGED" }),        -- Salvation: everyone but tanks
+    }
+end
 
 mod.PRESETS = {
     -- every member ------------------------------------------------------------
-    { key = "ALL:RAID", group = "ALL", name = "Raid buffs (Fortitude, Mark, Kings on)", entries = {
+    { key = "ALL:RAID", group = "ALL", name = "Raid buffs (party buffs, no auras)", entries = PartyBuffs() },
+    { key = "ALL:RAIDAURAS", group = "ALL", name = "Raid buffs + auras (Fortitude, Mark, Kings on)", entries = {
         B(1243), B(1126), B(20217),                       -- Fortitude, Mark of the Wild, Kings
         O(1459), O(14752), O(976),                        -- Arcane Intellect, Divine Spirit, Shadow Protection
         O(19740), O(19742), O(1038),                      -- Might, Wisdom, Salvation
@@ -42,9 +65,10 @@ mod.PRESETS = {
     { key = "ROGUE:REC", group = "ROGUE", name = "Rogue: Battle Shout", entries = { B(6673) } },
 }
 
--- default lists of a new profile: Fortitude + Mark for everyone, the first
--- preset of each class (with Arcane Intellect for mana users)
-mod.DEFAULT_LISTS = { ALL = { B(1243), B(1126) } }
+-- default lists of a new profile: the party buffs in the All bar (each "Only for"
+-- whom it helps; "Hide buffs nobody here can cast" leaves out the ones nobody casts),
+-- the first preset of each class
+mod.DEFAULT_LISTS = { ALL = PartyBuffs() }
 for _, p in ipairs(mod.PRESETS) do
     if p.group ~= "ALL" and not mod.DEFAULT_LISTS[p.group] then
         local list = {}

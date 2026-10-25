@@ -74,7 +74,10 @@ tracked for them, with exact timers.
   shortest time left); members can be left out of it.
 - All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and
   colour in Look.
-- Presets (raid buffs, world buffs, flasks & elixirs, per class) and the same name search as Cooldowns.
+- The All bar starts with the party buffs (no auras), each "Only for" whom it helps (Might for melee and
+  tanks, Wisdom / Arcane Intellect for mana users, Salvation for everyone but tanks).
+- Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, per class; and
+  the same name search as Cooldown Timers.
 - **Only for...** (the cog of each buff in the All bar): limit a buff to player roles (Tank / Healer / Melee / Ranged /
   Caster), classes and / or MMT roles - e.g. Blessing of Might only for Melee and Tank. Members it isn't
   for don't count as missing it. Player roles are automatic: a druid's form, else the talent tree with the

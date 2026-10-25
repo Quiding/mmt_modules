@@ -225,7 +225,7 @@ function mod.AddPreset(listKey, preset, id)
     for _, e in ipairs(preset or {}) do
         if not have[id(e)] then
             local c = {}
-            for k, v in pairs(e) do c[k] = v end
+            for k, v in pairs(e) do c[k] = type(v) == "table" and MMT.CopyTable(v) or v end
             list[#list + 1] = c
             n = n + 1
         end

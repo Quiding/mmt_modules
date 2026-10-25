@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.10.0) / MMT_BuffTimers (v0.9.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.10.0) / MMT_BuffTimers (v0.9.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -156,6 +156,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   you first; Buffs `ClassesHere` = the classes the preview shows (whole team counts as present)): `Members()`
   takes every team member (+ self), `mod.State` returns made-up states from a hash of key + entry (stable between
   redraws; Buffs: 1 in 4 missing, else 10/20/30 min buffs; Cooldowns: 1 in 3 ready, else somewhere in its cd).
+- Buff presets: `PartyBuffs()` in Presets.lua (no auras; F(id, roles, classes) sets `only`) = DEFAULT_LISTS.ALL and
+  "ALL:RAID"; "ALL:RAIDAURAS" = the old mix incl. Trueshot / LotP / Moonkin. Shared `AddPreset` deep-copies table
+  fields (the filter) so lists never share a preset's tables.
 - Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`
   (default on) `mod.Castable(e)` hides a buff whose class isn't in the group (units) or online in the team
   (`mod.ClassesHere`, cached 0.5 s); buffs not in the table always show.
