@@ -6,18 +6,22 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldowns](#cooldowns) | Bars with every member's important cooldowns | 0.8.6 |
-| [Buffs](#buffs) | Who has, and who misses, the buffs you track | 0.7.5 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.11.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.11.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 
+> **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
+> (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
+> settings are taken over automatically.
+
 ## Install
 
 1. Copy the `MMT_*` folders next to the `MMT` folder in
-   `World of Warcraft/_classic_beta_/Interface/AddOns/` on every client.
+   `World of Warcraft/_forever_/Interface/AddOns/` on every client.
 2. `/reload` (or log in) and switch the modules on under `/mmt` > MODULES if needed.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
@@ -27,11 +31,8 @@ member gets a row with made-up states, to set up the look and position without t
 with the team's real classes, **mixed classes** (`/mmtct preview mixed`: warrior, paladin, priest, ...), or
 **all classes** (`/mmtct preview all`: nine made-up characters, one of every class).
 
-Cooldown Timers and Buff Timers were called Cooldowns and Buffs until October 2026 (folders `MMT_Cooldowns` /
-`MMT_Buffs`): delete those old folders when you update; the settings are taken over by themselves.
-
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
-**Reset to defaults** (click twice). Cooldowns, Buffs and Totems also have **Import / Export** as a
+**Reset to defaults** (click twice). Cooldown Timers, Buff Timers and Totems also have **Import / Export** as a
 text string, a growth direction (top > down, down > top, left > right, right > left) and
 background / border / font options.
 
@@ -68,7 +69,7 @@ tracked for them, with exact timers.
 - Any rank counts, and group versions too (Prayer of Fortitude, Greater Blessings, ...).
 - **Name patterns**: add `Seal of *` (a `*` = any text) and one icon shows whichever seal is up, with its own
   icon and timer. The paladin presets track any seal this way, the hunter presets any aspect (`Aspect of the *`).
-- Own window, or attached to the Cooldowns bars.
+- Own window, or attached to the Cooldown Timers bars.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
 - Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of
   that class is in your group or online in your team (switchable).
