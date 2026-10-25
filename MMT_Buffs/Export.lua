@@ -47,7 +47,9 @@ local function SetLists(data)
         if mod.ValidListKey(class) and type(list) == "table" then
             local clean = {}
             for _, e in ipairs(list) do
-                if type(e) == "table" and type(e.id) == "number" then clean[#clean + 1] = { id = e.id, off = (e.off == true) or nil } end
+                if type(e) == "table" and type(e.id) == "number" then
+                    clean[#clean + 1] = { id = e.id, off = (e.off == true) or nil, only = mod.CleanFilter and mod.CleanFilter(e.only) or nil }
+                end
             end
             M.db.lists[class] = clean
             n = n + 1

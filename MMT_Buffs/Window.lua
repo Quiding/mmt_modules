@@ -50,7 +50,8 @@ end
 local function Icons(key)
     local icons = {}
     for _, e in ipairs(EntriesFor(key)) do
-        local state, start, dur, count = mod.State(key, e)
+        local state, start, dur, count
+        if mod.Applies(e, key) then state, start, dur, count = mod.State(key, e) end   -- "Only for" (Roles.lua)
         if state then
             icons[#icons + 1] = Look({ texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id })
@@ -76,11 +77,15 @@ local function AllRow()
     local icons = {}
     local members = mod.AllMembers()
     for _, e in ipairs(cfg.lists.ALL or {}) do
-        if e.off then e = nil end
-        if e then
+        -- only the members this buff is for ("Only for", Roles.lua)
+        local forThem = {}
+        if not e.off then
+            for _, key in ipairs(members) do if mod.Applies(e, key) then forThem[#forThem + 1] = key end end
+        end
+        if #forThem > 0 then
         local missingBy, noData = {}, 0
         local minStart, minDur, minLeft
-        for _, key in ipairs(members) do
+        for _, key in ipairs(forThem) do
             local state, start, dur = mod.State(key, e)
             if state == nil then
                 noData = noData + 1
@@ -92,7 +97,7 @@ local function AllRow()
             end
         end
         local i = { texture = mod.EntryIcon(e), spell = e.id }
-        if #missingBy > 0 or noData == #members then
+        if #missingBy > 0 or noData == #forThem then
             i.state = "missing"
             i.count = #missingBy
             i.tip = #missingBy > 0 and ("Missing: " .. table.concat(missingBy, ", ")) or "Nobody in your group to check."
@@ -100,6 +105,8 @@ local function AllRow()
             i.state, i.start, i.duration = "buff", minStart, minDur
             i.tip = "Everyone has it" .. (minLeft and ", shortest time left shown." or ".")
         end
+        local only = mod.FilterText(e)
+        if only then i.tip = i.tip .. "\nOnly for: " .. only end
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
         icons[#icons + 1] = Look(i)
         end

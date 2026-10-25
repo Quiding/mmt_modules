@@ -1,6 +1,7 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
 -- Tabs: Bars (what is shown) / Look (sizes, text, background, border,
--- missing buffs) / Buffs (the tracked lists, the All classes row, sharing).
+-- missing buffs) / Buffs (the tracked lists, the All classes row, sharing) /
+-- Roles (each member's player role for "Only for", Roles.lua).
 
 local _, mod = ...
 local MMT = MMT
@@ -22,11 +23,84 @@ local function Check(col, text, key, tip)
     col:Check(text, g, s, tip)
 end
 
+---------------------------------------------------------------------------
+-- "Only for" popup (the cog of a buff in the list editor)
+---------------------------------------------------------------------------
+local filterPopup
+
+local function Ticked(e, kind, k)
+    return e.only and e.only[kind] and e.only[kind][k] and true or false
+end
+
+local function Tick(e, kind, k, on)
+    e.only = e.only or {}
+    e.only[kind] = e.only[kind] or {}
+    e.only[kind][k] = on or nil
+    if not next(e.only[kind]) then e.only[kind] = nil end
+    if not next(e.only) then e.only = nil end
+end
+
+-- e = the list entry (changed in place); changed() redraws the list and the bars
+function mod.OpenFilter(e, owner, changed)
+    local UI = MMT.UI
+    if filterPopup then filterPopup:Hide() end
+    local f = CreateFrame("Frame", nil, UIParent)
+    filterPopup = f
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+    UI.Fill(f, 0.07, 0.07, 0.08, 0.98)
+    UI.Border(f, UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3], 0.5)
+    UI.CloseOnEscape(f)
+    local W = 160
+    local title = UI.Label(f, "Only for: " .. mod.EntryName(e), "GameFontNormal")
+    title:SetPoint("TOPLEFT", 10, -10)
+    local note = UI.Label(f, "Nothing ticked: everyone. Ticked: members matching any of them; the others don't count as missing it.")
+    note:SetPoint("TOPLEFT", 10, -28)
+    note:SetWidth(3 * W + 20)
+    note:SetJustifyH("LEFT")
+    note:SetTextColor(0.6, 0.6, 0.6)
+    local close = UI.TextButton(f, "x", function() f:Hide() end, 22)
+    close:SetPoint("TOPRIGHT", -4, -4)
+    local function Column(x, header, items, kind)
+        local h = UI.Label(f, header, "GameFontNormal")
+        h:SetPoint("TOPLEFT", x, -58)
+        local y = -78
+        for _, it in ipairs(items) do
+            local c = UI.Check(f, W - 10, it[2], function() return Ticked(e, kind, it[1]) end, function(v)
+                Tick(e, kind, it[1], v)
+                if changed then changed() end
+            end)
+            c:SetPoint("TOPLEFT", x, y)
+            c.Refresh()
+            y = y - 20
+        end
+        return y
+    end
+    local classes = {}
+    for _, c in ipairs(mod.CLASSES) do if c ~= "ALL" then classes[#classes + 1] = { c, mod.ListLabel(c) } end end
+    local roles = {}
+    for _, r in ipairs(MMT.SortedRoleNames and MMT.SortedRoleNames() or {}) do roles[#roles + 1] = { r, r } end
+    local y1 = Column(10, "Player roles", mod.PLAYER_ROLES, "roles")
+    local y2 = Column(10 + W, "Classes", classes, "classes")
+    local y3 = Column(10 + 2 * W, "MMT roles", roles, "mmt")
+    if #roles == 0 then
+        local none = UI.Label(f, "None yet: /mmt > Roles.")
+        none:SetPoint("TOPLEFT", 10 + 2 * W, -78)
+        none:SetTextColor(0.6, 0.6, 0.6)
+    end
+    f:SetSize(3 * W + 20, -math.min(y1, y2, y3) + 10)
+    f:ClearAllPoints()
+    f:SetPoint("TOPLEFT", owner, "BOTTOMRIGHT", 4, 0)
+    f:Show()
+    return f
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "roles", "Roles" } })
     mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------
@@ -129,6 +203,41 @@ M.Page = function(_, page)
     local gm, sm = Opt("missingAlpha")
     LL:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
 
+    -- Roles -----------------------------------------------------------------------
+    local rp = panels.roles
+    local RL = UI.Column(rp, 0, 0, COL_W)
+    RL:Header("Player roles")
+    local function Who()
+        local t, seen = {}, {}
+        local own = MMT.PlayerFull()
+        if own then t[1] = own; seen[own] = true end
+        for _, key in ipairs(MMT.SortedMembers()) do if not seen[key] then t[#t + 1] = key end end
+        return t
+    end
+    local SOURCE = { form = "form", talents = "talents", class = "class" }
+    for i, key in ipairs(Who()) do
+        if i > 12 then break end
+        RL:Cycle(MMT.FullDisplay(key), function()
+            local auto
+            local saved = M.db.playerRoles[key]
+            M.db.playerRoles[key] = nil
+            local role, src = mod.PlayerRole(key)
+            M.db.playerRoles[key] = saved
+            auto = role and ("Auto: " .. mod.ROLE_NAME[role] .. " (" .. (SOURCE[src] or src) .. ")") or "Auto"
+            local c = { { value = "AUTO", text = auto } }
+            for _, r in ipairs(mod.PLAYER_ROLES) do c[#c + 1] = { value = r[1], text = r[2] } end
+            return c
+        end, function() return M.db.playerRoles[key] or "AUTO" end, function(v)
+            M.db.playerRoles[key] = (v ~= "AUTO") and v or nil
+            Apply()
+        end)
+    end
+    local RR = UI.Column(rp, COL2_X, 0, COL_W)
+    RR:Header("How roles work")
+    RR:Note("A buff's cog (Buffs tab) can limit it to player roles, classes or MMT roles: members it isn't for don't count as missing it - e.g. Blessing of Might only for Melee and Tank.")
+    RR:Note("Auto: a druid's form right now (Cat Melee, Bear Tank, Moonkin Caster, Tree of Life Healer), else the talent tree with the most points (each client tells the team, also right after a respec or dual spec swap), else the class.")
+    RR:Note("Set a role here to override it for that character.")
+
     -- Buffs (lists) -------------------------------------------------------------
     local lp = panels.lists
     local LS = UI.Column(lp, 0, 0, COL_W)
@@ -171,9 +280,29 @@ M.Page = function(_, page)
         end, 26)
         row.toggle:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
         UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
+        -- cog: who this buff is for (player roles, classes, MMT roles)
+        row.cog = CreateFrame("Button", nil, row)
+        row.cog:SetSize(14, 14)
+        row.cog:SetPoint("RIGHT", row.toggle, "LEFT", -2, 0)
+        row.cog.tex = row.cog:CreateTexture(nil, "ARTWORK")
+        row.cog.tex:SetAllPoints()
+        row.cog.tex:SetTexture("Interface\\Icons\\Trade_Engineering")
+        row.cog.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        row.cog:SetScript("OnClick", function(self)
+            local e = M.db.lists[class] and M.db.lists[class][row.index]
+            if e then mod.OpenFilter(e, self, Changed) end
+        end)
+        row.cog:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Only for...")
+            local e = row.entry
+            GameTooltip:AddLine(e and mod.FilterText(e) or "Everyone. Click to limit it to player roles, classes or MMT roles.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        row.cog:SetScript("OnLeave", function() GameTooltip:Hide() end)
         row.name = UI.Label(row, "")
         row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-        row.name:SetPoint("RIGHT", row.toggle, "LEFT", -4, 0)
+        row.name:SetPoint("RIGHT", row.cog, "LEFT", -4, 0)
         row.name:SetJustifyH("LEFT")
         row.name:SetWordWrap(false)
         row:EnableMouse(true)
@@ -192,6 +321,10 @@ M.Page = function(_, page)
         row.toggle.label:SetText(e.off and "|cff777777off|r" or "|cff55ff55on|r")
         row.icon:SetDesaturated(e.off and true or false)
         row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
+        -- the cog lights up while the buff is only for some
+        local limited = mod.HasFilter(e)
+        row.cog.tex:SetDesaturated(not limited)
+        row.cog.tex:SetAlpha(limited and 1 or 0.45)
     end)
     LS:Add(list, 14 * 22 + 6)
 

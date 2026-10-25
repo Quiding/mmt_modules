@@ -34,6 +34,7 @@ local M = MMT.NewModule({
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows
         allMissingLook = "RED",    -- missing buffs: PLAIN (normal icon) | RED | GREY, all at missingAlpha
         allExclude = {},           -- [teamKey] = true: not counted in the All classes row
+        playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,
     },
 })
@@ -42,6 +43,7 @@ mod.M = M
 mod.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_Buffs", "Version") or "?"
 
 M.OnEnable = function()
+    if mod.OwnRoleSent then mod.OwnRoleSent() end
     mod.BuildIndex()
     mod.ScanGroup()
     mod.Apply()

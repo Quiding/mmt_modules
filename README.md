@@ -61,6 +61,11 @@ tracked for them, with exact timers.
 - "All classes" row: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
 - Presets (raid buffs, world buffs, flasks & elixirs, per class) and the same name search as Cooldowns.
+- **Only for...** (the cog of each buff): limit a buff to player roles (Tank / Healer / Melee / Ranged /
+  Caster), classes and / or MMT roles - e.g. Blessing of Might only for Melee and Tank. Members it isn't
+  for don't count as missing it. Player roles are automatic: a druid's form, else the talent tree with the
+  most points (shared with the team, also right after a respec or dual spec swap), else the class; set
+  them by hand on the Roles tab.
 
 `/mmtbf` · `/mmtbf test` · `/mmtbf export`
 
