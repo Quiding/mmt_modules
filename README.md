@@ -6,8 +6,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.11.0 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.12.3 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.12.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.13.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
@@ -30,6 +30,12 @@ Cooldown Timers and Buff Timers have a **Preview** (Bars tab, or `/mmtct preview
 member gets a row with made-up states, to set up the look and position without the team around -
 with the team's real classes, **mixed classes** (`/mmtct preview mixed`: warrior, paladin, priest, ...), or
 **all classes** (`/mmtct preview all`: nine made-up characters, one of every class).
+
+**Spec lists** (Cooldown Timers and Buff Timers, lists tab, "Use spec lists"): a member whose talent spec is known
+tracks their spec's list (Paladin: Holy, Paladin: Retribution, ...) instead of their class list, so a Holy and a
+Retribution paladin track different things. Each spec list starts as that spec's preset. The spec is the talent tree
+with the most points, shared over MMT's heartbeat and once on a respec; a feral druid counts as the bear tank spec
+while their role is Tank. Members below talent level or on an older version keep the class list.
 
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
 **Reset to defaults** (click twice). Cooldown Timers, Buff Timers and Totems also have **Import / Export** as a

@@ -37,6 +37,9 @@ mod = lua.eval('''function()
   m.Refresh = function() REFRESHED = (REFRESHED or 0) + 1 end
   return m
 end''')()
+# the talent reader (Specs.lua) first: Roles' heartbeat / listener stand-ins win
+lua.eval('function(src, m) assert(loadstring(src, "Specs.lua"))("x", m) end')(
+    open('MMT_BuffTimers/Specs.lua', encoding='utf-8').read(), mod)
 lua.eval('function(src, m) assert(loadstring(src, "Roles.lua"))("x", m) end')(
     open('MMT_BuffTimers/Roles.lua', encoding='utf-8').read(), mod)
 

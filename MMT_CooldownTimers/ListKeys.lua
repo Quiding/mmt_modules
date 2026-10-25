@@ -2,12 +2,14 @@
 --   a class token ("MAGE") or "ALL",
 --   "RACE:<race token>" ("RACE:Troll", "RACE:Scourge", ...),
 --   "ROLE:<role name>" (MMT roles, /mmt > Roles),
---   "CHAR:<team key>" (one character).
+--   "CHAR:<team key>" (one character),
+--   "SPEC:<CLASS>:<SPEC>" (a talent spec, used instead of the class list while
+--   "Use spec lists" is on and the member's spec is known: Specs.lua).
 -- An entry with off = true stays in its list but isn't tracked.
 -- Races: your own from the game; other members' from the MMT heartbeat
 -- ("race=<token>", sent by MMT_Cooldowns), remembered in M.store.races.
--- MMT_Cooldowns and MMT_Buffs ship the same copy of this file (KEEP BOTH
--- IDENTICAL). It needs mod.CLASSES and mod.M.
+-- MMT_CooldownTimers and MMT_BuffTimers ship the same copy of this file (KEEP BOTH
+-- IDENTICAL). It needs mod.CLASSES and mod.M (and Specs.lua for spec lists).
 
 local _, mod = ...
 local MMT = MMT
@@ -24,6 +26,7 @@ end
 function mod.ValidListKey(k)
     if type(k) ~= "string" then return false end
     return IsClass(k) or (k:match("^RACE:%w+$") ~= nil) or (k:match("^ROLE:.+") ~= nil) or (k:match("^CHAR:.+") ~= nil)
+        or (k:match("^SPEC:%u+:%u+$") ~= nil)
 end
 
 -- "Mixed classes" preview (mod.preview == "MIXED"): every member gets a different
@@ -95,11 +98,17 @@ function mod.RaceOf(key)
     return store and store.races and store.races[key]
 end
 
--- list keys for a member, in order: class, [ALL], race, roles, character
+-- list keys for a member, in order: class (or spec), [ALL], race, roles, character
 function mod.ListKeysFor(key, withAll)
     local keys = {}
     local class = mod.ClassOf(key)
-    if class then keys[#keys + 1] = class end
+    local spec = class and mod.M.db.specLists and mod.SpecOf and mod.SpecOf(key)
+    if spec then
+        mod.EnsureSpecLists()
+        keys[#keys + 1] = "SPEC:" .. spec
+    elseif class then
+        keys[#keys + 1] = class
+    end
     if withAll then keys[#keys + 1] = "ALL" end
     local race = mod.RaceOf(key)
     if race then keys[#keys + 1] = "RACE:" .. race end
@@ -127,6 +136,11 @@ function mod.ListLabel(k)
     if role then return "Role: " .. role end
     local char = k:match("^CHAR:(.+)$")
     if char then return MMT.FullDisplay(char) end
+    local spec = k:match("^SPEC:(.+)$")
+    if spec then
+        local p = mod.PresetByKey(spec)
+        return p and p.name or spec
+    end
     if k == "ALL" and mod.ALL_LABEL then return mod.ALL_LABEL end   -- Buffs: "All bar"
     return CLASS_NAMES[k] or (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[k]) or k
 end
@@ -160,6 +174,13 @@ function mod.ListChoices()
     end
     local t = { { header = true, text = "Classes" } }
     for _, c in ipairs(mod.CLASSES) do t[#t + 1] = Item(c) end
+    if mod.M.db.specLists and mod.SpecsOf then
+        mod.EnsureSpecLists()
+        t[#t + 1] = { header = true, text = "Specs (instead of the class list)" }
+        for _, c in ipairs(mod.CLASSES) do
+            for _, s in ipairs(mod.SpecsOf(c)) do t[#t + 1] = Item("SPEC:" .. c .. ":" .. s) end
+        end
+    end
     t[#t + 1] = { header = true, text = "Races" }
     for _, r in ipairs(AllRaces()) do t[#t + 1] = Item("RACE:" .. r) end
     local roles = MMT.SortedRoleNames()
@@ -176,12 +197,15 @@ end
 -- first (its class, races for a race list, "every member" for ALL), then the rest
 function mod.PresetChoices(listKey)
     local group
+    local spec = listKey and listKey:match("^SPEC:(.+)$")
     if listKey == "ALL" or IsClass(listKey) then group = listKey
+    elseif spec then group = spec:match("^(%u+):")
     elseif listKey and listKey:match("^RACE:") then group = "RACE" end
     local fit, other = {}, {}
     for _, p in ipairs(mod.PRESETS or {}) do
         local item = { value = p.key, text = p.name }
-        if p.group == group or (group == "RACE" and p.race and listKey == "RACE:" .. p.race) then fit[#fit + 1] = item
+        if p.key == spec then table.insert(fit, 1, item)   -- a spec list: its own spec's preset first
+        elseif p.group == group or (group == "RACE" and p.race and listKey == "RACE:" .. p.race) then fit[#fit + 1] = item
         else other[#other + 1] = item end
     end
     local t = {}

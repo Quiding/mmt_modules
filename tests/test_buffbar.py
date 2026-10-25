@@ -258,3 +258,33 @@ print(lua.eval(r"""function(m)
   assert(m.M.db.lists.ALL[1].icon == 8836, "icon filled in: " .. tostring(m.M.db.lists.ALL[1].icon))
   return "old totem entries get icons ok"
 end""")(mod))
+
+# spec lists: a member with a known spec uses their spec's list instead of the class list
+print(lua.eval(r"""function(m)
+  m.preview = nil
+  assert(m.ListKeysFor("Anna-Smith", false)[1] == "SHAMAN", "class list while the option is off")
+  m.M.db.specLists = true
+  m.TreePoints = function() return { 0, 31, 5 } end          -- Enhancement
+  local keys = m.ListKeysFor("Anna-Smith", false)
+  assert(keys[1] == "SPEC:SHAMAN:ENH", "own spec: " .. tostring(keys[1]))
+  local enh = {} for _, e in ipairs(m.M.db.lists["SPEC:SHAMAN:ENH"]) do enh[m.EntryKey(e)] = true end
+  assert(enh["weapon:MH"], "spec list starts as the spec preset")
+  MMT.db.team["Bob-Stone"] = { class = "PALADIN" }
+  MMT.db.team["Cid-Ray"] = { class = "PALADIN" }
+  local oldStatus = MMT.status
+  MMT.status = { ["Bob-Stone"] = { ext = { cts = "1" } } }
+  assert(m.SpecOf("Bob-Stone") == "PALADIN:HOLY", "heartbeat spec")
+  TEAM_MESSAGE("Bob-Stone", "MSPC:3")
+  assert(m.SpecOf("Bob-Stone") == "PALADIN:RET", "respec message")
+  assert(m.ListKeysFor("Cid-Ray", false)[1] == "PALADIN", "spec unknown: class list")
+  assert(m.ListLabel("SPEC:PALADIN:RET") == "Paladin: Retribution", "label")
+  local found
+  for _, c in ipairs(m.ListChoices()) do if c.value == "SPEC:DRUID:BEAR" then found = true end end
+  assert(found, "spec lists in the List menu")
+  assert(m.PresetChoices("SPEC:PALADIN:RET")[2].value == "PALADIN:RET", "own preset first")
+  assert(m.ValidListKey("SPEC:PALADIN:RET") and not m.ValidListKey("SPEC:x"), "valid keys")
+  m.M.db.specLists = false
+  MMT.status = oldStatus
+  MMT.db.team["Bob-Stone"], MMT.db.team["Cid-Ray"] = nil, nil
+  return "spec lists ok"
+end""")(mod))
