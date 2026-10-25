@@ -10,26 +10,13 @@ local _, mod = ...
 
 local function B(id) return { id = id } end
 local function O(id) return { id = id, off = true } end
--- for only some members ("Only for", Roles.lua): roles = player roles, classes
-local function F(id, roles, classes)
-    local only = {}
-    if roles then only.roles = {} for _, r in ipairs(roles) do only.roles[r] = true end end
-    if classes then only.classes = {} for _, c in ipairs(classes) do only.classes[c] = true end end
-    return { id = id, only = only }
-end
-local MANA = { "HEALER", "CASTER" }                 -- player roles that run on mana
-local MANA_CLASSES = { "HUNTER", "PALADIN" }        -- melee / ranged classes that use mana too
-
 -- the party buffs (cast on others, no auras): the All bar's default and the "Raid buffs" preset
 local function PartyBuffs()
     return {
-        B(1243), B(1126), B(20217),                                -- Fortitude, Mark of the Wild, Kings
-        B(976),                                                    -- Shadow Protection
-        F(1459, MANA, MANA_CLASSES), F(19742, MANA, MANA_CLASSES), -- Arcane Intellect, Wisdom: mana users
-        F(14752, MANA),                                            -- Divine Spirit: healers / casters
-        F(19740, { "MELEE", "TANK" }),                             -- Might
-        F(6673, { "MELEE", "TANK" }),                              -- Battle Shout
-        F(1038, { "HEALER", "CASTER", "MELEE", "RANGED" }),        -- Salvation: everyone but tanks
+        B(1243), B(1126), B(20217),            -- Fortitude, Mark of the Wild, Kings
+        B(976), B(14752), B(1459),             -- Shadow Protection, Divine Spirit, Arcane Intellect
+        B(19740), B(19742), B(1038),           -- Might, Wisdom, Salvation
+        B(6673),                               -- Battle Shout
     }
 end
 
@@ -65,8 +52,8 @@ mod.PRESETS = {
     { key = "ROGUE:REC", group = "ROGUE", name = "Rogue: Battle Shout", entries = { B(6673) } },
 }
 
--- default lists of a new profile: the party buffs in the All bar (each "Only for"
--- whom it helps; "Hide buffs nobody here can cast" leaves out the ones nobody casts),
+-- default lists of a new profile: the party buffs in the All bar (for everyone: set
+-- "Only for" with the cog; "Hide buffs nobody here can cast" leaves out the ones nobody casts),
 -- the first preset of each class
 mod.DEFAULT_LISTS = { ALL = PartyBuffs() }
 for _, p in ipairs(mod.PRESETS) do

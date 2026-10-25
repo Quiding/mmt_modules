@@ -83,20 +83,21 @@ print(lua.eval(r"""function(m)
   local function Ids(list) local t = {} for _, e in ipairs(list) do t[e.id] = e end return t end
   local def = Ids(m.DEFAULT_LISTS.ALL)
   assert(def[1243] and def[1126] and def[20217] and not def[1243].only, "Fortitude / Mark / Kings for everyone")
-  assert(def[19740] and def[19740].only.roles.MELEE and def[19740].only.roles.TANK and not def[19740].only.roles.CASTER, "Might only for melee / tank")
-  assert(def[1459].only.roles.CASTER and def[1459].only.classes.PALADIN, "Arcane Intellect for mana users")
-  assert(def[1038].only.roles.HEALER and not def[1038].only.roles.TANK, "Salvation not for tanks")
+  for _, e in ipairs(m.DEFAULT_LISTS.ALL) do assert(not e.only, "a default buff has Only for: " .. e.id) end
+  assert(def[19740] and def[19742] and def[1459] and def[1038] and def[6673], "party buffs missing")
   assert(not def[19506] and not def[17007] and not def[24907], "auras in the default")
   local raid, auras = m.PresetByKey("ALL:RAID"), m.PresetByKey("ALL:RAIDAURAS")
   assert(raid and auras, "raid presets")
   local r, a = Ids(raid.entries), Ids(auras.entries)
   assert(not r[19506] and a[19506] and a[17007] and a[24907], "auras only in the + auras preset")
-  -- a preset's filter is copied into the list, not shared with the preset
+  -- a preset's tables are copied into the list, not shared with the preset
+  r[19740].only = { roles = { MELEE = true } }
   m.M.db.lists.ALL = {}
   m.ApplyPreset("ALL", "ALL:RAID", true, function(e) return e.id end)
   local might
   for _, e in ipairs(m.M.db.lists.ALL) do if e.id == 19740 then might = e end end
   might.only.roles.CASTER = true
   assert(not r[19740].only.roles.CASTER, "the preset changed with the list")
+  r[19740].only = nil
   return "party buff presets ok"
 end""")(mod))

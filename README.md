@@ -74,8 +74,7 @@ tracked for them, with exact timers.
   shortest time left); members can be left out of it.
 - All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and
   colour in Look.
-- The All bar starts with the party buffs (no auras), each "Only for" whom it helps (Might for melee and
-  tanks, Wisdom / Arcane Intellect for mana users, Salvation for everyone but tanks).
+- The All bar starts with the party buffs (no auras), for everyone; limit them with the cog.
 - Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, per class; and
   the same name search as Cooldown Timers.
 - **Only for...** (the cog of each buff in the All bar): limit a buff to player roles (Tank / Healer / Melee / Ranged /
