@@ -1,4 +1,4 @@
-"""MMT_Buffs: the All bar's counter (how many members have a buff, in its own
+"""MMT_BuffTimers: the All bar's counter (how many members have a buff, in its own
 corner) - the whole module loaded with test_settings' stand-in API."""
 import os, sys
 from lupa.lua51 import LuaRuntime
@@ -10,7 +10,7 @@ STUBS = src.split("STUBS = r'''", 1)[1].split("'''", 1)[0]
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(STUBS)
 mod = lua.eval('{}')
-folder = 'MMT_Buffs'
+folder = 'MMT_BuffTimers'
 for f in [l.strip() for l in open(os.path.join(folder, folder + '.toc'), encoding='utf-8') if l.strip().endswith('.lua')]:
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(
         open(os.path.join(folder, f), encoding='utf-8').read(), folder + '/' + f, mod)

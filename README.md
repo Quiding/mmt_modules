@@ -22,10 +22,13 @@ MODULES, with its own settings page.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
 
-Cooldowns and Buffs have a **Preview** (Bars tab, or `/mmtcd preview` / `/mmtbf preview`): every team
+Cooldown Timers and Buff Timers have a **Preview** (Bars tab, or `/mmtct preview` / `/mmtbt preview`): every team
 member gets a row with made-up states, to set up the look and position without the team around -
-with the team's real classes, **mixed classes** (`/mmtcd preview mixed`: warrior, paladin, priest, ...), or
-**all classes** (`/mmtcd preview all`: nine made-up characters, one of every class).
+with the team's real classes, **mixed classes** (`/mmtct preview mixed`: warrior, paladin, priest, ...), or
+**all classes** (`/mmtct preview all`: nine made-up characters, one of every class).
+
+Cooldown Timers and Buff Timers were called Cooldowns and Buffs until October 2026 (folders `MMT_Cooldowns` /
+`MMT_Buffs`): delete those old folders when you update; the settings are taken over by themselves.
 
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
 **Reset to defaults** (click twice). Cooldowns, Buffs and Totems also have **Import / Export** as a
@@ -34,7 +37,7 @@ background / border / font options.
 
 ---
 
-## Cooldowns
+## Cooldown Timers
 
 Port of [EMA Cooldowns](https://github.com/Quiding/ema_cooldowns): one row per member with their
 important spells, trinkets and potions.
@@ -51,13 +54,13 @@ important spells, trinkets and potions.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
   you carry; shift-click a spell or item works too.
 
-`/mmtcd` · `/mmtcd test` · `/mmtcd preview [mixed|all]` · `/mmtcd export`
+`/mmtct` · `/mmtct test` · `/mmtct preview [mixed|all]` · `/mmtct export`
 
 ![Cooldowns bar](media/cooldowns.gif)
 
 <img src="media/cooldowns_lists.png" alt="Cooldowns: tracked spells and presets" width="600">
 
-## Buffs
+## Buff Timers
 
 Port of [EMA Buffs](https://github.com/Quiding/ema_buffs): which group members have or miss the buffs
 tracked for them, with exact timers.
@@ -78,7 +81,7 @@ tracked for them, with exact timers.
   most points (shared with the team, also right after a respec or dual spec swap), else the class; set
   them by hand on the Roles tab.
 
-`/mmtbf` · `/mmtbf test` · `/mmtbf preview [mixed|all]` · `/mmtbf export`
+`/mmtbt` · `/mmtbt test` · `/mmtbt preview [mixed|all]` · `/mmtbt export`
 
 ![Buffs bar](media/buffs.gif)
 

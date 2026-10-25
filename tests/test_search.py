@@ -49,7 +49,7 @@ lua.execute(r'''function SETUP(m)
 end''')
 lua.eval('SETUP')(mod)
 lua.eval('function(src, m) assert(loadstring(src, "Search.lua"))("x", m) end')(
-    open('MMT_Cooldowns/Search.lua', encoding='utf-8').read(), mod)
+    open('MMT_CooldownTimers/Search.lua', encoding='utf-8').read(), mod)
 
 print(lua.eval(r'''function(m)
   -- nothing before the index is built (only own items)
@@ -114,7 +114,7 @@ lua.eval(r'''function(m)
   m.SpellIcon = function(id) if id == 864 then return 136235 end return SPELLS[id] and 135960 end
 end''')(mod2)
 lua.eval('function(src, m) assert(loadstring(src, "Search.lua"))("x", m) end')(
-    open('MMT_Cooldowns/Search.lua', encoding='utf-8').read(), mod2)
+    open('MMT_CooldownTimers/Search.lua', encoding='utf-8').read(), mod2)
 print(lua.eval(r'''function(m)
   local box = { _text = "" }
   function box:GetText() return self._text end

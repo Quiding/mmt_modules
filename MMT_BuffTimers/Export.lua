@@ -90,7 +90,7 @@ end
 -- everything this module can export / import (the import / export dialog)
 function mod.TransferDef()
     return {
-        title = "Buffs",
+        title = "Buff Timers",
         prefix = "MMTBF1",
         sections = {
             { id = "lists", label = "Tracked buffs", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },

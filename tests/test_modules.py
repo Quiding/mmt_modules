@@ -13,7 +13,7 @@ function same(a, b)
   return true
 end
 ''')
-lua.execute(open('MMT_Cooldowns/Transfer.lua', encoding='utf-8').read())
+lua.execute(open('MMT_CooldownTimers/Transfer.lua', encoding='utf-8').read())
 captured = lua.execute('local c; MMTTransfer.Open = function(d) c = d end; return function() return c end')
 
 def load(path, mod):
@@ -61,8 +61,8 @@ cd = new_mod(r'''function(m)
   m.BuildIndex = function() end
   m.window = { Refresh = function() end }
 end''')
-load('MMT_Cooldowns/ListKeys.lua', cd)
-load('MMT_Cooldowns/Export.lua', cd)
+load('MMT_CooldownTimers/ListKeys.lua', cd)
+load('MMT_CooldownTimers/Export.lua', cd)
 print(lua.eval(TEST)(cd, 'MMTCD1', captured, True))
 
 bf = new_mod(r'''function(m)
@@ -73,8 +73,8 @@ bf = new_mod(r'''function(m)
                  point = {"CENTER","CENTER",-200,0} } }
   m.BuildIndex = function() end; m.ScanGroup = function() end; m.Apply = function() end
 end''')
-load('MMT_Buffs/ListKeys.lua', bf)
-load('MMT_Buffs/Export.lua', bf)
+load('MMT_BuffTimers/ListKeys.lua', bf)
+load('MMT_BuffTimers/Export.lua', bf)
 print(lua.eval(TEST)(bf, 'MMTBF1', captured, False))
 
 # group buffs: Prayer of Fortitude on a unit counts for a tracked Power Word: Fortitude
@@ -87,7 +87,7 @@ lists = new_mod(r'''function(m)
   m.SpellInfo = function(id) return NAMES[id] end
   m.SpellIcon = function() return 1 end
 end''')
-load('MMT_Buffs/Lists.lua', lists)
+load('MMT_BuffTimers/Lists.lua', lists)
 print(lua.eval(r'''function(m)
   assert(m.Canonical("Prayer of Fortitude") == "Power Word: Fortitude")
   assert(m.Canonical("Power Word: Fortitude") == "Power Word: Fortitude")
@@ -113,8 +113,8 @@ C_Spell = {
 }
 ''')
 icons = new_mod(r'''function(m) m.M = { store = {} } end''')
-load('MMT_Buffs/Compat.lua', icons)
-load('MMT_Buffs/Lists.lua', icons)
+load('MMT_BuffTimers/Compat.lua', icons)
+load('MMT_BuffTimers/Lists.lua', icons)
 print(lua.eval(r'''function(m)
   assert(m.SpellIcon(20154) == nil, "test needs an ID without a texture")
   assert(m.EntryIcon({ id = 20154 }) == 132325, "not found by name: " .. tostring(m.EntryIcon({ id = 20154 })))
@@ -154,9 +154,9 @@ tr = new_mod(r'''function(m)
   m.Buff = function(unit, i) if unit == "player" and i == 1 then return "Battle Shout", 132333, 0, 120, 200 end end
   m.Redraw = function() REDRAWS = REDRAWS + 1 end
 end''')
-load('MMT_Buffs/Compat.lua', tr)
-load('MMT_Buffs/Lists.lua', tr)
-load('MMT_Buffs/Tracker.lua', tr)
+load('MMT_BuffTimers/Compat.lua', tr)
+load('MMT_BuffTimers/Lists.lua', tr)
+load('MMT_BuffTimers/Tracker.lua', tr)
 print(lua.eval(r'''function(m)
   -- (Compat.lua brought its own reader: the stand-in after it)
   m.Buff = function(unit, i) if unit == "player" and i == 1 then return "Battle Shout", 132333, 0, 120, 200 end end
@@ -181,8 +181,8 @@ C_Spell = {
 }
 ''')
 teach = new_mod(r'''function(m) m.M = { store = {} } end''')
-load('MMT_Buffs/Compat.lua', teach)
-load('MMT_Buffs/Lists.lua', teach)
+load('MMT_BuffTimers/Compat.lua', teach)
+load('MMT_BuffTimers/Lists.lua', teach)
 print(lua.eval(r'''function(m)
   -- a character that doesn't know the seal: the logo until the buff was seen
   assert(m.EntryIcon({ id = 864 }) == 136235, "generic icon as the last resort")

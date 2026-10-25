@@ -7,7 +7,7 @@ Run:         python tests/run_all.py        (from Interface/AddOns)
 import glob, os, subprocess, sys
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ours = ["MMT_PawnCompare", "MMT_Cooldowns", "MMT_Buffs", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory"]
+ours = ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory"]
 
 from luaparser import ast
 bad = 0
@@ -30,8 +30,8 @@ for d in ours:
                 bad += 1
                 print("LINT %s:%d two values from 'x and f()' - only the first survives" % (f, n))
 
-shared = [("IconBars", ["MMT_Cooldowns", "MMT_Buffs"]), ("ListKeys", ["MMT_Cooldowns", "MMT_Buffs"]), ("SettingsKit", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems", "MMT_TeamInventory"]),
-          ("Compat", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"]), ("Search", ["MMT_Cooldowns", "MMT_Buffs"]), ("Transfer", ["MMT_Cooldowns", "MMT_Buffs", "MMT_Totems"])]
+shared = [("IconBars", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("ListKeys", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("SettingsKit", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_TeamInventory"]),
+          ("Compat", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems"]), ("Search", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("Transfer", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems"])]
 for name, dirs in shared:
     texts = {open(os.path.join(root, d, name + ".lua"), encoding="utf-8").read() for d in dirs}
     print("shared %s.lua: %s" % (name, "identical" if len(texts) == 1 else "DIFFERS"))

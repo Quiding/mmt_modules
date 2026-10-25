@@ -33,12 +33,12 @@ def load(path, mod):
     f("x", mod)
 
 for folder, entry_id, lists_src in [
-    ('MMT_Cooldowns', 'function(e) return e.t .. e.id end',
+    ('MMT_CooldownTimers', 'function(e) return e.t .. e.id end',
      r'''{ PRIEST = { {t="s",id=10060,cd=180} }, ALL = { {t="i",id=19950,cd=120} },
           ["ROLE:Healer"] = { {t="s",id=10060,cd=180}, {t="s",id=724,cd=600} },
           ["ROLE:Raid Lead|x"] = { {t="s",id=1,cd=5} },
           ["CHAR:Anna-Smith"] = { {t="s",id=586,cd=30} } }'''),
-    ('MMT_Buffs', 'function(e) return "b" .. e.id end',
+    ('MMT_BuffTimers', 'function(e) return "b" .. e.id end',
      r'''{ PRIEST = { {id=1459} }, ALL = { {id=1243} },
           ["ROLE:Healer"] = { {id=1459}, {id=14752} },
           ["ROLE:Raid Lead|x"] = { {id=6673} },
@@ -48,7 +48,7 @@ for folder, entry_id, lists_src in [
                    'Listen = function(_, ev, fn) LISTENERS[ev] = fn end } return m end')(lua.eval(lists_src))
     lua.eval('function(m, id) m.EntryKey = id; m.BuffName = id; m.BuildIndex = function() end; '
              'm.Refresh = function() end; m.ScanGroup = function() end; m.ShareCheck = function() end; m.RequestRunning = function() end end')(mod, lua.eval(entry_id))
-    load('MMT_Cooldowns/ListKeys.lua', mod)
+    load('MMT_CooldownTimers/ListKeys.lua', mod)
     print(lua.eval(r'''function(m, idf, folder)
       -- which lists apply
       local keys = table.concat(m.ListKeysFor("Anna-Smith", true), ",")

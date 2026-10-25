@@ -1,13 +1,13 @@
 ## Interface: 16001
-## Title: MMT - Cooldowns
+## Title: MMT - Cooldown Timers
 ## Notes: MMT module: team cooldown bars (spells, trinkets, potions). Port of EMA Cooldowns.
-## Version: 0.9.0
+## Version: 0.10.0
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## X-MMT-Module: 1
-## X-MMT-Title: Cooldowns
+## X-MMT-Title: Cooldown Timers
 ## IconTexture: Interface\Icons\Spell_Nature_TimeStop
 
 IconBars.lua

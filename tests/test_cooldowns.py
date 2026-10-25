@@ -2,7 +2,7 @@ import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
 
-toc = [l.strip() for l in open('MMT_Cooldowns/MMT_Cooldowns.toc', encoding='utf-8') if l.strip().endswith('.lua')]
+toc = [l.strip() for l in open('MMT_CooldownTimers/MMT_CooldownTimers.toc', encoding='utf-8') if l.strip().endswith('.lua')]
 
 STUBS = r'''
 local function noop() end
@@ -181,8 +181,8 @@ def client(me, other):
     lua.execute(STUBS)
     mod = lua.eval('{}')
     for f in toc:
-        src = open('MMT_Cooldowns/' + f, encoding='utf-8').read()
-        lua.eval('function(src, name, m) assert(loadstring(src, name))("MMT_Cooldowns", m) end')(src, f, mod)
+        src = open('MMT_CooldownTimers/' + f, encoding='utf-8').read()
+        lua.eval('function(src, name, m) assert(loadstring(src, name))("MMT_CooldownTimers", m) end')(src, f, mod)
     lua.eval('function(m) m.M.enabled = true; m.M.OnEnable() end')(mod)
     return lua, mod
 
@@ -449,3 +449,25 @@ print("A:", A.eval(r"""function(m)
   assert(#LONG == 1 and not LONG[1].msg:find("11958", 1, true), "learned spell still sent as unlearned")
   return "MCDKQ + learning ok"
 end""")(amod))
+
+# renamed module (was "Cooldowns"): once per profile its settings and storage are taken over
+print("B:", B.eval(r"""function(m)
+  local db = m.M.db
+  db.takenFrom = nil
+  db.iconSize = 28
+  MMT.db.modules = { Cooldowns = { iconSize = 51, lists = { MAGE = { { t = "s", id = 12042, cd = 180 } } } } }
+  MMTDB = { moduleData = { Cooldowns = { races = { ["Old-Char"] = "Orc" } } } }
+  m.M.store.takenFrom = nil
+  m.TakeOver()
+  assert(m.M.db == db, "settings table replaced (the core holds it)")
+  assert(db.iconSize == 51 and #db.lists.MAGE == 1 and db.takenFrom == "Cooldowns", "not taken over")
+  assert(db.scale ~= nil, "defaults missing after the takeover")
+  assert(m.M.store.races["Old-Char"] == "Orc" and m.M.store.takenFrom == "Cooldowns", "storage not taken over")
+  -- only once: later changes stay
+  db.iconSize = 30
+  m.TakeOver()
+  assert(db.iconSize == 30, "taken over twice")
+  MMT.db.modules = nil
+  MMTDB = nil
+  return "takeover ok"
+end""")(bmod))

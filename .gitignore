@@ -8,8 +8,8 @@
 
 # --- our modules (add one line per new module) ---
 !/MMT_PawnCompare/
-!/MMT_Cooldowns/
-!/MMT_Buffs/
+!/MMT_CooldownTimers/
+!/MMT_BuffTimers/
 !/MMT_Totems/
 !/MMT_Whispers/
 !/MMT_TeamGear/

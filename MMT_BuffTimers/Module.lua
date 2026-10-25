@@ -15,8 +15,9 @@ local _, mod = ...
 local MMT = MMT
 
 local M = MMT.NewModule({
-    name = "Buffs",
-    title = "Buffs",
+    name = "BuffTimers",
+    title = "Buff Timers",
+    syncExclude = { "takenFrom" },   -- see TakeOver
     description = "Team buff bars: who has, and who misses, the buffs you track.",
     sync = true,               -- the core's "Sync to team" sends M.db (lists, look, position)
     defaults = {
@@ -43,9 +44,39 @@ local M = MMT.NewModule({
 })
 mod.M = M
 
-mod.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_Buffs", "Version") or "?"
+mod.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata)("MMT_BuffTimers", "Version") or "?"
+
+
+-- Until 0.9 this module was called "Buffs" (MMT keeps a module's settings under
+-- its name). Once per profile, and once for the account-wide storage, the settings
+-- of the old name are copied over. MMT's own data is only READ here; only our own
+-- M.db / M.store are written. takenFrom stays on this client (syncExclude).
+local OLD = "Buffs"
+local function TakeOver()
+    if not M.db.takenFrom then
+        local old = MMT.db and MMT.db.modules and MMT.db.modules[OLD]
+        if type(old) == "table" and next(old) then
+            for k in pairs(M.db) do M.db[k] = nil end
+            for k, v in pairs(old) do M.db[k] = MMT.CopyTable(v) end
+            for k, v in pairs(M.defaults or {}) do
+                if M.db[k] == nil then M.db[k] = MMT.CopyTable(v) end
+            end
+            MMT.Print("%s: settings taken over from the old \"%s\" module.", M.title, OLD)
+        end
+        M.db.takenFrom = OLD
+    end
+    local store = MMTDB and MMTDB.moduleData and MMTDB.moduleData[OLD]
+    if M.store and not M.store.takenFrom and type(store) == "table" then
+        for k, v in pairs(store) do
+            if M.store[k] == nil then M.store[k] = MMT.CopyTable(v) end
+        end
+    end
+    if M.store then M.store.takenFrom = OLD end
+end
+mod.TakeOver = TakeOver
 
 M.OnEnable = function()
+    TakeOver()
     if mod.OwnRoleSent then mod.OwnRoleSent() end
     mod.BuildIndex()
     mod.ScanGroup()
@@ -59,14 +90,15 @@ M.OnDisable = function()
 end
 
 M.OnProfileChanged = function()
+    TakeOver()
     mod.BuildIndex()
     mod.Apply()
 end
 
-SLASH_MMTBUFFS1 = "/mmtbf"
-SlashCmdList.MMTBUFFS = function(msg)
+SLASH_MMTBUFFTIMERS1 = "/mmtbt"
+SlashCmdList.MMTBUFFTIMERS = function(msg)
     msg = (msg or ""):lower()
-    if not M.enabled then MMT.Print("Buffs is switched off (/mmt modules).") return end
+    if not M.enabled then MMT.Print("Buff Timers is switched off (/mmt modules).") return end
     if msg == "preview" or msg == "preview mixed" or msg == "preview all" then
         local want = msg == "preview mixed" and "MIXED" or msg == "preview all" and "ALL" or "REAL"
         mod.SetPreview(mod.preview ~= want and want or nil)
@@ -76,7 +108,7 @@ SlashCmdList.MMTBUFFS = function(msg)
         if MMT.RefreshConfig then MMT.RefreshConfig() end
     elseif msg == "test" then
         mod.Test()
-        MMT.Print("Buffs: 10 second test on every icon.")
+        MMT.Print("Buff Timers: 10 second test on every icon.")
     elseif msg == "show" or msg == "hide" or msg == "" then
         M.db.shown = (msg == "show") or (msg == "" and not M.db.shown)
         mod.Apply()
@@ -86,6 +118,6 @@ SlashCmdList.MMTBUFFS = function(msg)
         M.db.locked = not M.db.locked
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf preview [mixed|all], /mmtbf export. Settings: /mmt > MODULES > Buffs.")
+        MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
     end
 end

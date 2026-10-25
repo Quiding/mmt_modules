@@ -67,7 +67,7 @@ end
 -- everything this module can export / import (the import / export dialog)
 function mod.TransferDef()
     return {
-        title = "Cooldowns",
+        title = "Cooldown Timers",
         prefix = "MMTCD1",
         sections = {
             { id = "lists", label = "Tracked lists", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },

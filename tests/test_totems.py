@@ -512,7 +512,7 @@ print("A:", A.eval(r"""function(m)
 end""")(amod))
 
 # --- growth direction: shared bars (IconBars) and the totem frame ---------------
-A.eval('function(src) assert(loadstring(src, "IconBars.lua"))() end')(open('MMT_Cooldowns/IconBars.lua', encoding='utf-8').read())
+A.eval('function(src) assert(loadstring(src, "IconBars.lua"))() end')(open('MMT_CooldownTimers/IconBars.lua', encoding='utf-8').read())
 print("A:", A.eval(r"""function(m)
   local cfg = { shown = true, iconSize = 20, spacing = 0, rowGap = 0, showNames = false, point = { "CENTER", "CENTER", 0, 0 } }
   local w = MMTIconBars.NewWindow({ name = "TestBars", cfg = function() return cfg end,

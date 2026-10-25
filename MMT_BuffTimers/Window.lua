@@ -149,7 +149,7 @@ mod.window = MMTIconBars.NewWindow({
 -- Own window or attached to Cooldowns
 ---------------------------------------------------------------------------
 local function CooldownsActive()
-    return MMT.ModuleActive and MMT.ModuleActive("Cooldowns") and MMTIconBars.windows[CD_WINDOW] ~= nil
+    return MMT.ModuleActive and MMT.ModuleActive("CooldownTimers") and MMTIconBars.windows[CD_WINDOW] ~= nil
 end
 
 function mod.Attached()

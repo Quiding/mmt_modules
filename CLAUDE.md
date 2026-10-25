@@ -81,7 +81,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.9.0) / MMT_Buffs (v0.8.7) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.10.0) / MMT_BuffTimers (v0.9.0) – ports of ema_cooldowns / ema_buffs
+- Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
+  "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
+  Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
+  `MMTDB.moduleData[OLD]` into M.store once (`takenFrom`, in syncExclude). Comm tags (MCD*, MBF*), heartbeat keys,
+  export prefixes (MMTCD1 / MMTBF1) and frame names (MMTCooldowns / MMTBuffs) are unchanged.
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -91,7 +96,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   GetSpellInfo can be nil for spells the character never used (Battle Shout showed "missing" while on). Buffs' scan keeps
   EVERY buff (no index filter), `BuildIndex` requests unknown spells (C_Spell.RequestLoadSpellData); Cooldowns rebuilds
   its index when a cast comes in while something was missing. Buffs `EntryIcon` also falls back to the icon the buff had when last seen (`M.store.icons`, Tracker `mod.SeeIcon`): some spell IDs have no texture on this client (Seal of Righteousness showed "?").
-  Same file in MMT_Cooldowns and MMT_Buffs, keep identical.
+  Same file in MMT_CooldownTimers and MMT_BuffTimers, keep identical.
 - **No addon messages for live data** (user's decision: would flood comms). Cooldowns:
   `UNIT_SPELLCAST_SUCCEEDED` on party/raid units (spell ID -> name) + duration from the list;
   "after buff" spells (NS, EM, PoM, Inner Focus) start when the buff is gone (`UNIT_AURA` +
@@ -146,7 +151,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with
   test_settings' stubs).
 - Preview (`mod.preview` = nil | "REAL" | "MIXED" | "ALL" (shared ListKeys `mod.PreviewMembers()` = nine made-up
-  "<Name>-Preview" keys, one per class; Members() returns them; rows get `color` = `mod.PreviewColor`), session only, `mod.SetPreview`, Bars tab Cycle, `/mmtcd|mmtbf preview [mixed]`;
+  "<Name>-Preview" keys, one per class; Members() returns them; rows get `color` = `mod.PreviewColor`), session only, `mod.SetPreview`, Bars tab Cycle, `/mmtct|mmtbf preview [mixed]`;
   MIXED: shared ListKeys `mod.ClassOf` returns `mod.PreviewClass(key)` = warrior, paladin, priest, ... by team order,
   you first; Buffs `ClassesHere` = the classes the preview shows (whole team counts as present)): `Members()`
   takes every team member (+ self), `mod.State` returns made-up states from a hash of key + entry (stable between

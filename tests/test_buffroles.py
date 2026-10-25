@@ -1,4 +1,4 @@
-"""MMT_Buffs/Roles.lua: who a buff is for ("Only for": player roles, classes, MMT
+"""MMT_BuffTimers/Roles.lua: who a buff is for ("Only for": player roles, classes, MMT
 roles) and each member's player role (set by hand > druid form > a fresh BPR
 message > heartbeat > own talents (classic tabs or Forever's trait bands) > class)."""
 import os, sys
@@ -38,7 +38,7 @@ mod = lua.eval('''function()
   return m
 end''')()
 lua.eval('function(src, m) assert(loadstring(src, "Roles.lua"))("x", m) end')(
-    open('MMT_Buffs/Roles.lua', encoding='utf-8').read(), mod)
+    open('MMT_BuffTimers/Roles.lua', encoding='utf-8').read(), mod)
 
 print(lua.eval(r'''function(m)
   -- own talents, classic tabs (name, icon, points): Feral has the most
@@ -135,7 +135,7 @@ lua.eval('''function(m)
   m.PreviewTeam = function() return MMT.SortedMembers() end   -- ListKeys.lua in the game
 end''')(mod)
 lua.eval('function(src, m) assert(loadstring(src, "Casters.lua"))("x", m) end')(
-    open('MMT_Buffs/Casters.lua', encoding='utf-8').read(), mod)
+    open('MMT_BuffTimers/Casters.lua', encoding='utf-8').read(), mod)
 print(lua.eval(r'''function(m)
   CLASS = "WARRIOR"; TEAM["Me-Self"].class = "WARRIOR"
   local fort, motw, ony, ai = { id = 1243 }, { id = 1126 }, { id = 22888 }, { id = 1459 }
