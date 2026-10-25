@@ -22,7 +22,7 @@ function mod.BuildIndex()
     local missing = false
     for _, list in pairs(M.db.lists or {}) do
         for _, e in ipairs(list) do
-            if not mod.BuffName(e) and not requested[e.id] then
+            if e.id and not mod.BuffName(e) and not requested[e.id] then
                 requested[e.id] = true
                 missing = true
                 if C_Spell and C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, e.id) end
@@ -52,7 +52,8 @@ local function ScanUnit(unit)
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
         if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
         local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
-        t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count }
+        t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count,
+            icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw }
     end
     mod.auras[key] = t
     fromUnit[key] = true
@@ -111,11 +112,12 @@ function mod.SetPreview(mode)
     mod.Refresh()
 end
 
--- returns "buff", start, duration, count  or  "missing"  or nil (member not in the group)
+-- returns "buff", start, duration, count[, matched name, icon (patterns)]  or
+-- "missing"  or nil (member not in the group)
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
     if mod.preview then
-        local h = Hash(key .. ":" .. e.id)
+        local h = Hash(key .. ":" .. (e.id or e.name or ""))
         if h % 4 == 0 then return "missing" end
         local dur = (h % 3 + 1) * 600                    -- 10, 20 or 30 minutes
         local left = 60 + h % (dur - 60)                 -- some time left, different per icon
@@ -125,7 +127,20 @@ function mod.State(key, e)
     local name = mod.BuffName(e)
     if not name then return nil end
     if fromUnit[key] then
-        local a = mod.auras[key] and mod.auras[key][name]
+        local auras = mod.auras[key] or {}
+        if mod.IsPattern(e) then
+            -- any matching buff; the one with the most time left, else any
+            local best, bestName
+            for n, a in pairs(auras) do
+                if mod.Matches(e, a.raw or n) or mod.Matches(e, n) then
+                    local left = a.start and a.dur and (a.start + a.dur) or math.huge
+                    if not best or left > best[1] then best, bestName = { left, a }, a.raw or n end
+                end
+            end
+            if best then local a = best[2] return "buff", a.start, a.dur, a.count, bestName, a.icon end
+            return "missing"
+        end
+        local a = auras[name]
         if a then return "buff", a.start, a.dur, a.count end
         return "missing"
     end

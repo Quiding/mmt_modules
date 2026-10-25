@@ -80,7 +80,7 @@ end""")(mod))
 
 # the All bar's default and the raid presets: party buffs (no auras), with "Only for"
 print(lua.eval(r"""function(m)
-  local function Ids(list) local t = {} for _, e in ipairs(list) do t[e.id] = e end return t end
+  local function Ids(list) local t = {} for _, e in ipairs(list) do t[e.id or e.name] = e end return t end
   local def = Ids(m.DEFAULT_LISTS.ALL)
   assert(def[1243] and def[1126] and def[20217] and not def[1243].only, "Fortitude / Mark / Kings for everyone")
   for _, e in ipairs(m.DEFAULT_LISTS.ALL) do assert(not e.only, "a default buff has Only for: " .. e.id) end
@@ -107,15 +107,47 @@ print(lua.eval(r"""function(m)
   local ret = m.PresetByKey("PALADIN:RET")
   assert(ret and ret.name == "Paladin: Retribution", "ret buff preset")
   local ids = {}
-  for _, e in ipairs(ret.entries) do ids[e.id] = e end
-  assert(ids[20375] and not ids[20375].off and ids[20050] and ids[21082].off, "ret buffs")
+  for _, e in ipairs(ret.entries) do ids[e.id or e.name] = e end
+  assert(ids["Seal of *"] and not ids["Seal of *"].off and ids[20050] and not ids[20375], "ret buffs: any seal")
   local function Default(class)
-    local t = {} for _, e in ipairs(m.DEFAULT_LISTS[class]) do t[e.id] = e end return t
+    local t = {} for _, e in ipairs(m.DEFAULT_LISTS[class]) do t[e.id or e.name] = e end return t
   end
   local pal, rogue, priest = Default("PALADIN"), Default("ROGUE"), Default("PRIEST")
-  assert(pal[20375] and pal[20375].off, "a ret-only seal on for every paladin")
+  assert(pal["Seal of *"] and not pal["Seal of *"].off, "any seal on for every paladin")
+  assert(Default("HUNTER")["Aspect of the *"], "any aspect for hunters")
   assert(rogue[5171] and not rogue[5171].off, "Slice and Dice off for rogues")
   assert(priest[588] and not priest[588].off and priest[15473].off, "priest defaults")
   for _, p in ipairs(m.PRESETS) do assert(not p.key:find(":REC$"), "old class preset " .. p.key) end
   return "buff spec presets ok"
+end""")(mod))
+
+# name patterns: "Seal of *" counts any seal, shows the one that's up
+print(lua.eval(r"""function(m)
+  assert(m.ParsePattern("  Seal of *  ") == "Seal of *" and not m.ParsePattern("Seal of Light") and not m.ParsePattern(" * "), "ParsePattern")
+  local e = { name = "Seal of *" }
+  assert(m.IsPattern(e) and m.Matches(e, "Seal of Command") and m.Matches(e, "seal of the crusader"), "matches")
+  assert(not m.Matches(e, "Blessing of Might") and not m.Matches(e, "Greater Seal of X"), "no match")
+  assert(m.Matches({ name = "A.b (x) *" }, "A.b (x) y") and not m.Matches({ name = "A.b *" }, "Axb y"), "magic characters")
+  local buffs = {}
+  local oldBuff = m.Buff
+  m.Buff = function(unit, i) local b = unit == "player" and buffs[i] if b then return b[1], b[2], 1, b[3], b[4] end end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" end
+  IsInRaid = IsInRaid or function() return false end
+  local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  buffs = { { "Blessing of Might", 111, 300, GetTime() + 200 }, { "Seal of Command", 132347, 30, GetTime() + 20 } }
+  m.ScanGroup()
+  local key = next(m.auras)
+  assert(key == "Me-Realm", "player scanned")
+  local state, start, dur, count, matched, icon = m.State(key, e)
+  assert(state == "buff" and dur == 30 and matched == "Seal of Command" and icon == 132347, "seal found: " .. tostring(state) .. tostring(matched))
+  buffs = { { "Blessing of Might", 111, 300, GetTime() + 200 } }
+  m.ScanGroup()
+  assert(m.State(key, e) == "missing", "no seal = missing")
+  assert(m.EntryName(e) == "Seal of *" and m.BuffName(e) == "Seal of *", "names")
+  m.Buff, MMT.SplitUnit, MMT.Resolve = oldBuff, oldSplit, oldResolve
+  m.ScanGroup()
+  return "name patterns ok"
 end""")(mod))

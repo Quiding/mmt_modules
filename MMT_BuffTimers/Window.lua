@@ -51,12 +51,13 @@ end
 local function Icons(key)
     local icons = {}
     for _, e in ipairs(EntriesFor(key)) do
-        local state, start, dur, count
+        local state, start, dur, count, matched, micon
         -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
-        if mod.Applies(e, key) and mod.Castable(e) then state, start, dur, count = mod.State(key, e) end
+        if mod.Applies(e, key) and mod.Castable(e) then state, start, dur, count, matched, micon = mod.State(key, e) end
         if state then
-            icons[#icons + 1] = Look({ texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
-                count = count, spell = e.id })
+            icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
+                count = count, spell = e.id,
+                tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")") or ("None of " .. e.name)) or nil })
         end
     end
     return icons
@@ -102,6 +103,7 @@ local function AllRow()
             end
         end
         local i = { texture = mod.EntryIcon(e), spell = e.id }
+        if mod.IsPattern(e) then i.tip = e.name end
         if #missingBy > 0 or noData == #forThem then
             i.state = "missing"
             i.count = #missingBy

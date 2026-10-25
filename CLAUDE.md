@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.10.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.11.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -178,6 +178,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Buffs: group buffs count as the single one (`GROUP` in Lists.lua: Prayer of Fortitude ->
   Fortitude, Gift of the Wild, Arcane Brilliance, Prayers, Greater Blessings); `mod.Canonical(name)`
   on every scanned buff and in `BuffName`; `EntryName` keeps the entry's own name.
+- Name pattern entries `{ name = "Seal of *" }` (no id; Lists.lua `IsPattern`, `Matches` = `*` -> any text, case
+  ignored, anchored; `ParsePattern` for the add box / import). `State` returns the matching aura with the most time
+  left + its name and icon (ScanUnit keeps `icon`, `raw`); the window uses that icon, `tip` instead of `spell`.
+  Everything keyed by entry uses `e.id or e.name` (presets, PresetBox, preview hash). Presets `P(name)`: paladin
+  specs "Seal of *" on, hunters "Aspect of the *". Casters: patterns always count as castable.
 - Buffs missing look `allMissingLook` (PLAIN/RED/GREY) + `glowMissing` apply to ALL buff icons
   (`Look()` in Window.lua). "All classes" row (`allBar`, `allExclude`): ALL-list buffs aggregated
   over the team, removed from member rows; stays in the Buffs window even when attached.

@@ -66,6 +66,8 @@ Port of [EMA Buffs](https://github.com/Quiding/ema_buffs): which group members h
 tracked for them, with exact timers.
 
 - Any rank counts, and group versions too (Prayer of Fortitude, Greater Blessings, ...).
+- **Name patterns**: add `Seal of *` (a `*` = any text) and one icon shows whichever seal is up, with its own
+  icon and timer. The paladin presets track any seal this way, the hunter presets any aspect (`Aspect of the *`).
 - Own window, or attached to the Cooldowns bars.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
 - Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of

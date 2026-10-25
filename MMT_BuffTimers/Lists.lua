@@ -45,14 +45,50 @@ function mod.Canonical(name)
     return Aliases()[name] or name
 end
 
-function mod.BuffName(e) return mod.Canonical((mod.SpellInfo(e.id))) end
+-- A name pattern entry { name = "Seal of *" } (a "*" anywhere, any text there,
+-- case ignored) counts ANY buff whose name matches: the icon shows the one that
+-- is up. Ordinary entries are { id = spellID }.
+function mod.IsPattern(e)
+    return type(e.name) == "string" and e.name:find("*", 1, true) ~= nil
+end
+
+local compiled = {}
+local function Compile(text)
+    local p = compiled[text]
+    if not p then
+        p = "^" .. text:lower():gsub("[%^%$%(%)%%%.%[%]%+%-%?]", "%%%0"):gsub("%*", ".*") .. "$"
+        compiled[text] = p
+    end
+    return p
+end
+
+-- does buff name `name` match pattern entry e?
+function mod.Matches(e, name)
+    return type(name) == "string" and name:lower():find(Compile(e.name)) ~= nil
+end
+
+function mod.BuffName(e)
+    if mod.IsPattern(e) then return e.name end
+    return mod.Canonical((mod.SpellInfo(e.id)))
+end
 
 -- the entry's own name for lists and tooltips
-function mod.EntryName(e) return (mod.SpellInfo(e.id)) or ("Spell " .. e.id) end
+function mod.EntryName(e)
+    if mod.IsPattern(e) then return e.name end
+    return (mod.SpellInfo(e.id)) or ("Spell " .. e.id)
+end
 
 -- the spell's icon, else by its name, else the icon the buff itself had when it was
 -- last seen on someone (kept account-wide), else the "?" placeholder
 function mod.EntryIcon(e)
+    if mod.IsPattern(e) then
+        -- the icon of a matching buff seen before (alphabetically first, so it stays put)
+        local best
+        for name, icon in pairs(mod.M.store and mod.M.store.icons or {}) do
+            if mod.Matches(e, name) and (not best or name < best[1]) then best = { name, icon } end
+        end
+        return best and best[2] or 134400
+    end
     local icon, generic = mod.SpellIconAny(e.id)
     if icon then return icon end
     local seen = mod.M.store and mod.M.store.icons
@@ -70,6 +106,13 @@ function mod.SeeIcon(name, icon)
     local M = mod.M
     M.store.icons = M.store.icons or {}
     M.store.icons[name] = icon
+end
+
+-- "Seal of *" -> the pattern (trimmed), or nil when text has no "*"
+function mod.ParsePattern(text)
+    text = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if not text:find("*", 1, true) or text:gsub("[%*%s]", "") == "" or #text > 60 then return nil end
+    return text
 end
 
 -- name, ID or spell link -> spell ID (or nil)

@@ -346,7 +346,12 @@ M.Page = function(_, page)
         row:SetScript("OnEnter", function(self)
             if not self.entry then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetSpellByID(self.entry.id)
+            if mod.IsPattern(self.entry) then
+                GameTooltip:SetText(self.entry.name)
+                GameTooltip:AddLine("Any buff whose name matches (* = any text): the icon shows the one that's up.", 1, 1, 1, true)
+            else
+                GameTooltip:SetSpellByID(self.entry.id)
+            end
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -376,17 +381,18 @@ M.Page = function(_, page)
         return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
     end
     local function Add()
-        local id = Parse()
-        if not id then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook.", true) return end
+        local pattern = mod.ParsePattern(box:GetText())
+        local id = not pattern and Parse()
+        if not id and not pattern then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *).", true) return end
         M.db.lists[class] = M.db.lists[class] or {}
-        table.insert(M.db.lists[class], { id = id })
+        table.insert(M.db.lists[class], pattern and { name = pattern } or { id = id })
         box.picked = nil
         box:SetText("")
         box:ClearFocus()
-        status.Show_(("Added %s."):format(mod.EntryName({ id = id })))
+        status.Show_(("Added %s."):format(mod.EntryName(pattern and { name = pattern } or { id = id })))
         Changed()
     end
-    box = UI.EditBox(lp, COL_W - 58, "Buff name, ID or shift-click", function() Add() end)
+    box = UI.EditBox(lp, COL_W - 58, "Buff name, ID, shift-click or Seal of *", function() Add() end)
     mod.AcceptSpellLinks(box)
     mod.AttachSearch(box, { items = false })
     LS:Add(box, 0)
@@ -396,7 +402,7 @@ M.Page = function(_, page)
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
-    mod.PresetBox(RS, lp, function() return class end, function(e) return e.id end, Changed, status)
+    mod.PresetBox(RS, lp, function() return class end, function(e) return e.id or e.name end, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)

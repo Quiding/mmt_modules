@@ -10,6 +10,7 @@ local _, mod = ...
 
 local function B(id) return { id = id } end
 local function O(id) return { id = id, off = true } end
+local function P(name, off) return { name = name, off = off or nil } end   -- a name pattern (Lists.lua)
 -- the party buffs (cast on others, no auras): the All bar's default and the "Raid buffs" preset
 local function PartyBuffs()
     return {
@@ -49,16 +50,16 @@ local SPECS = {
         { "PROT", "Protection", { B(6673) } },
     },
     PALADIN = {
-        { "HOLY", "Holy", { B(19746), O(20357), O(20349), O(10293) } },  -- Concentration Aura, Seals of Wisdom / Light, Devotion
-        { "PROT", "Protection", { B(25780), B(10293), B(20928), B(20423), O(10301) } },
-            -- Righteous Fury, Devotion Aura, Holy Shield, Seal of Fury, Retribution Aura
-        { "RET", "Retribution", { B(20375), B(20050), B(20218), O(21082), O(21084), O(10301) } },
-            -- Seal of Command, Vengeance, Sanctity Aura, Seals of the Crusader / Righteousness, Retribution Aura
+        { "HOLY", "Holy", { B(19746), P("Seal of *"), O(10293) } },  -- Concentration Aura, any seal, Devotion
+        { "PROT", "Protection", { B(25780), B(10293), B(20928), P("Seal of *"), O(10301) } },
+            -- Righteous Fury, Devotion Aura, Holy Shield, any seal (Seal of Fury), Retribution Aura
+        { "RET", "Retribution", { P("Seal of *"), B(20050), B(20218), O(10301) } },
+            -- any seal (Command / Crusader / Righteousness, swapped with Twist of Light), Vengeance, Sanctity Aura, Retribution Aura
     },
     HUNTER = {
-        { "BM", "Beast Mastery", { B(13165), O(20043) } },               -- Aspect of the Hawk, of the Wild
-        { "MM", "Marksmanship", { B(13165), B(19506), O(20043) } },      -- + Trueshot Aura
-        { "SURV", "Survival", { B(13165), O(13163), O(20043) } },        -- + Aspect of the Monkey
+        { "BM", "Beast Mastery", { P("Aspect of the *") } },             -- any aspect (Hawk, Monkey, Wild, ...)
+        { "MM", "Marksmanship", { P("Aspect of the *"), B(19506) } },    -- + Trueshot Aura
+        { "SURV", "Survival", { P("Aspect of the *") } },
     },
     ROGUE = {
         { "ASSA", "Assassination", { B(5171) } },                        -- Slice and Dice
@@ -110,12 +111,13 @@ for class, specs in pairs(SPECS) do
     local list, at, onIn = {}, {}, {}
     for _, sp in ipairs(specs) do
         for _, e in ipairs(sp[3]) do
-            if not at[e.id] then list[#list + 1] = { id = e.id }; at[e.id] = #list end
-            if not e.off then onIn[e.id] = (onIn[e.id] or 0) + 1 end
+            local k = e.id or e.name
+            if not at[k] then list[#list + 1] = { id = e.id, name = e.name }; at[k] = #list end
+            if not e.off then onIn[k] = (onIn[k] or 0) + 1 end
         end
     end
     for _, e in ipairs(list) do
-        if (onIn[e.id] or 0) < #specs then e.off = true end
+        if (onIn[e.id or e.name] or 0) < #specs then e.off = true end
     end
     mod.DEFAULT_LISTS[class] = list
 end
