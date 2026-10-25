@@ -26,7 +26,21 @@ function mod.ValidListKey(k)
     return IsClass(k) or (k:match("^RACE:%w+$") ~= nil) or (k:match("^ROLE:.+") ~= nil) or (k:match("^CHAR:.+") ~= nil)
 end
 
+-- "Mixed classes" preview (mod.preview == "MIXED"): every member gets a different
+-- class in this order, you first, to see the bars with other classes' lists
+local MIXED = { "WARRIOR", "PALADIN", "PRIEST", "MAGE", "DRUID", "HUNTER", "ROGUE", "SHAMAN", "WARLOCK" }
+function mod.PreviewClass(key)
+    local i = 1
+    if not MMT.IsSelf(key) then
+        for n, k in ipairs(MMT.SortedMembers()) do
+            if k == key then i = n + 1 break end
+        end
+    end
+    return MIXED[(i - 1) % #MIXED + 1]
+end
+
 function mod.ClassOf(key)
+    if mod.preview == "MIXED" then return mod.PreviewClass(key) end
     if MMT.IsSelf(key) then return select(2, UnitClass("player")) end
     local m = MMT.db.team[key]
     return m and m.class

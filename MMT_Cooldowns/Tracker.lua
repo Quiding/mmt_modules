@@ -237,8 +237,11 @@ local function Hash(s)
 end
 mod.PreviewHash = Hash
 
-function mod.SetPreview(on)
-    mod.preview = on and true or nil
+-- mode: nil / false = off, "REAL" = the team as it is, "MIXED" = made-up classes (ListKeys.lua)
+function mod.SetPreview(mode)
+    if mode == true then mode = "REAL" end
+    mod.preview = (mode == "REAL" or mode == "MIXED") and mode or nil
+    if mod.BuildIndex then mod.BuildIndex() end
     mod.Refresh()
 end
 

@@ -372,3 +372,22 @@ print("A:", A.eval(r"""function(m)
   MMT.IsOnline = old
   return "preview ok"
 end""")(amod))
+
+# preview with mixed classes: you a warrior, the next a paladin, ... and their class lists
+print("A:", A.eval(r"""function(m)
+  m.SetPreview("MIXED")
+  local own = MMT.PlayerFull()
+  assert(m.ClassOf(own) == "WARRIOR", "own preview class " .. tostring(m.ClassOf(own)))
+  local others = {}
+  for _, key in ipairs(MMT.SortedMembers()) do if not MMT.IsSelf(key) then others[#others + 1] = m.ClassOf(key) end end
+  assert(#others > 0 and others[1] ~= "WARRIOR", "members all warriors")
+  local warrior = 0
+  for _, e in ipairs(m.EntriesFor(own)) do if e.t == "s" and e.id == 1719 then warrior = warrior + 1 end end
+  assert(warrior == 1, "warrior list (Recklessness) not used for the preview warrior")
+  m.SetPreview(nil)
+  assert(m.ClassOf(own) ~= "WARRIOR" or select(2, UnitClass("player")) == "WARRIOR", "class still made up after the preview")
+  m.SetPreview(true)
+  assert(m.preview == "REAL", "true = the team as it is")
+  m.SetPreview(nil)
+  return "mixed preview ok"
+end""")(amod))

@@ -74,7 +74,7 @@ end
 
 -- false when the option is on and nobody here can cast e
 function mod.Castable(e)
-    if not M.db.hideNoCaster then return true end
+    if not M.db.hideNoCaster or mod.preview then return true end
     local class = mod.CasterClass(e)
     if not class then return true end
     return mod.ClassesHere()[class] == true

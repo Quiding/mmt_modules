@@ -65,9 +65,11 @@ SLASH_MMTBUFFS1 = "/mmtbf"
 SlashCmdList.MMTBUFFS = function(msg)
     msg = (msg or ""):lower()
     if not M.enabled then MMT.Print("Buffs is switched off (/mmt modules).") return end
-    if msg == "preview" then
-        mod.SetPreview(not mod.preview)
-        MMT.Print("%s: preview %s.", M.title, mod.preview and "on - every team member as if in your group, made-up states (until /mmtbf preview or /reload)" or "off")
+    if msg == "preview" or msg == "preview mixed" then
+        local want = msg == "preview mixed" and "MIXED" or "REAL"
+        mod.SetPreview(mod.preview ~= want and want or nil)
+        MMT.Print("%s: preview %s.", M.title, mod.preview == "MIXED" and "on, mixed classes (warrior, paladin, priest, ...)"
+            or mod.preview and "on - every team member as if in your group, made-up states" or "off")
         if MMT.RefreshConfig then MMT.RefreshConfig() end
     elseif msg == "test" then
         mod.Test()
@@ -81,6 +83,6 @@ SlashCmdList.MMTBUFFS = function(msg)
         M.db.locked = not M.db.locked
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
     else
-        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf preview, /mmtbf export. Settings: /mmt > MODULES > Buffs.")
+        MMT.Print("/mmtbf = show/hide, /mmtbf lock, /mmtbf test, /mmtbf preview [mixed], /mmtbf export. Settings: /mmt > MODULES > Buffs.")
     end
 end
