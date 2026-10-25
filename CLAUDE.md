@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.8) / MMT_Buffs (v0.8.4) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.8) / MMT_Buffs (v0.8.5) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -139,7 +139,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   bump VERSION on change (now 11: v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Preview (`mod.preview` = nil | "REAL" | "MIXED", session only, `mod.SetPreview`, Bars tab Cycle, `/mmtcd|mmtbf preview [mixed]`;
   MIXED: shared ListKeys `mod.ClassOf` returns `mod.PreviewClass(key)` = warrior, paladin, priest, ... by team order,
-  you first; Buffs `Castable` ignores hideNoCaster while previewing): `Members()`
+  you first; Buffs `ClassesHere` = the classes the preview shows (whole team counts as present)): `Members()`
   takes every team member (+ self), `mod.State` returns made-up states from a hash of key + entry (stable between
   redraws; Buffs: 1 in 4 missing, else 10/20/30 min buffs; Cooldowns: 1 in 3 ready, else somewhere in its cd).
 - Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`

@@ -153,6 +153,14 @@ print(lua.eval(r'''function(m)
   assert(m.Castable(motw) and not m.Castable(fort), "online druid of the team")
   -- the mage of the team offline: no Arcane Intellect
   assert(not m.Castable(ai), "offline mage counted")
+  -- preview: the team's classes (real or mixed) count as here
+  m.preview = "REAL"
+  assert(not m.Castable(fort), "preview: priest buff without a priest in the team")
+  m.ClassOf = function(key) return key == "Me-Self" and "WARRIOR" or "PRIEST" end   -- as the mixed preview would
+  m.preview = "MIXED"
+  assert(m.Castable(fort), "mixed preview: the made-up priest doesn't count")
+  m.ClassOf = function(key) return TEAM[key] and TEAM[key].class end
+  m.preview = nil
   -- option off: everything shows
   m.M.db.hideNoCaster = false
   assert(m.Castable(fort) and m.Castable(ai), "option off")

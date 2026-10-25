@@ -51,6 +51,14 @@ end
 -- once per redraw: kept for half a second)
 local here, hereTime
 function mod.ClassesHere()
+    -- preview: the whole team counts as here, with the classes the preview shows
+    if mod.preview then
+        local t = {}
+        local own = MMT.PlayerFull()
+        if own then t[mod.ClassOf(own) or ""] = true end
+        for _, key in ipairs(MMT.SortedMembers()) do t[mod.ClassOf(key) or ""] = true end
+        return t
+    end
     if here and GetTime() - hereTime < 0.5 then return here end
     local t = {}
     local units = { "player" }
@@ -74,7 +82,7 @@ end
 
 -- false when the option is on and nobody here can cast e
 function mod.Castable(e)
-    if not M.db.hideNoCaster or mod.preview then return true end
+    if not M.db.hideNoCaster then return true end
     local class = mod.CasterClass(e)
     if not class then return true end
     return mod.ClassesHere()[class] == true
