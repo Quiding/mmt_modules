@@ -232,3 +232,21 @@ print(lua.eval(r"""function(m)
   m.SpellInfo = oldInfo
   return "All bar buffs out of member rows ok"
 end""")(mod))
+
+# totem preset in the preview: the shaman's made-up states, preset icons
+print(lua.eval(r"""function(m)
+  local oldIcon = m.SpellIconAny
+  m.SpellIconAny = function(id) if id == 8076 then return 136023 end end
+  local soe = m.PresetByKey("ALL:TOTEMS").entries[1]
+  assert(soe.icon == 8076 and m.EntryIcon(soe) == 136023, "totem icon before it was seen")
+  m.M.db.lists.ALL = { { name = soe.name, caster = "SHAMAN", icon = 8076 } }
+  m.SetPreview("ALL")
+  local found
+  for _, row in ipairs(m.window.def.rows()) do
+    if row.label == "All" then found = row.icons[1] end
+  end
+  assert(found and found.texture == 136023 and not found.tip:find("None of", 1, true), "totem in the preview All bar")
+  m.SetPreview(nil)
+  m.SpellIconAny = oldIcon
+  return "totem preview ok"
+end""")(mod))

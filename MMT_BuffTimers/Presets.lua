@@ -13,8 +13,8 @@ local function O(id) return { id = id, off = true } end
 local function P(name, off) return { name = name, off = off or nil } end   -- a name pattern (Lists.lua)
 local function W(slot, off) return { weapon = slot, off = off or nil } end  -- weapon enchant (Weapons.lua)
 -- a totem's buff (pattern: the buff is "Strength of Earth", the totem "... Totem"),
--- shown only while a shaman is around (Casters.lua)
-local function T(name, off) return { name = name, caster = "SHAMAN", off = off or nil } end
+-- shown only while a shaman is around (Casters.lua); icon = a spell whose icon it shows until the buff was seen
+local function T(name, icon, off) return { name = name, caster = "SHAMAN", icon = icon, off = off or nil } end
 -- the party buffs (cast on others, no auras): the All bar's default and the "Raid buffs" preset
 local function PartyBuffs()
     return {
@@ -35,9 +35,9 @@ mod.PRESETS = {
         O(6673), O(19506), O(17007), O(24907),            -- Battle Shout, Trueshot Aura, Leader of the Pack, Moonkin Aura
     } },
     { key = "ALL:TOTEMS", group = "ALL", name = "Shaman totems (only in the shaman's party)", entries = {
-        T("Strength of Earth*"), T("Grace of Air*"), T("Windfury Totem*"),   -- melee: set "Only for" with the cog
-        T("Mana Spring*"), T("Flametongue Totem*", true),
-        T("Stoneskin*", true), T("Tranquil Air*", true),
+        T("Strength of Earth*", 8076), T("Grace of Air*", 8836), T("Windfury Totem*", 8512),   -- melee: "Only for" (cog)
+        T("Mana Spring*", 5677), T("Flametongue Totem*", 8227, true),
+        T("Stoneskin*", 8072, true), T("Tranquil Air*", 25909, true),
     } },
     { key = "ALL:WEAPONS", group = "ALL", name = "Weapon enchants (oils, stones, poisons, imbues)", entries = {
         W("MH"), W("OH", true),

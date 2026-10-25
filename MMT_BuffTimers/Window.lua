@@ -69,7 +69,8 @@ local function Icons(key)
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id,
-                tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")") or ("None of " .. e.name))
+                tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")")
+                        or state == "missing" and ("None of " .. e.name) or e.name)
                     or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
                         or state == "missing" and ("No " .. mod.EntryName(e):lower()) or mod.EntryName(e)) or nil })
         end

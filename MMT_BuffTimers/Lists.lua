@@ -100,7 +100,9 @@ function mod.EntryIcon(e)
         for name, icon in pairs(mod.M.store and mod.M.store.icons or {}) do
             if mod.Matches(e, name) and (not best or name < best[1]) then best = { name, icon } end
         end
-        return best and best[2] or 134400
+        if best then return best[2] end
+        -- not seen yet: the icon of the spell the preset names (totems), else "?"
+        return type(e.icon) == "number" and (mod.SpellIconAny(e.icon)) or 134400
     end
     local icon, generic = mod.SpellIconAny(e.id)
     if icon then return icon end
