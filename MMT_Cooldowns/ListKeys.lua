@@ -84,6 +84,7 @@ function mod.ListLabel(k)
     if role then return "Role: " .. role end
     local char = k:match("^CHAR:(.+)$")
     if char then return MMT.FullDisplay(char) end
+    if k == "ALL" and mod.ALL_LABEL then return mod.ALL_LABEL end   -- Buffs: "All bar"
     return CLASS_NAMES[k] or (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[k]) or k
 end
 

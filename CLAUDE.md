@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.7) / MMT_Buffs (v0.8.1) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.7) / MMT_Buffs (v0.8.2) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -146,7 +146,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.auras` (Cat M, Bear/Dire Bear T, Moonkin C, Tree H; only while in it) > a `BPR:<letter>` message < 40 s old >
   heartbeat `bpr=<T|H|M|R|C>` > class default. Own talents: `GetTalentTabInfo` tabs or Forever's trait tree split
   into three column bands (most points wins), `BPR` sent once on PLAYER_TALENT_UPDATE / TRAIT_CONFIG_UPDATED / ...
-  (own frame, pcall RegisterEvent). Cog per list row -> `mod.OpenFilter` popup (Settings.lua); export keeps
+  (own frame, pcall RegisterEvent). Cog per row of the ALL list ("All bar", `mod.ALL_LABEL`; other lists only while a filter is set) -> `mod.OpenFilter` popup (Settings.lua); export keeps
   `only` via `mod.CleanFilter`. Test: test_buffroles.py.
 - Buffs: group buffs count as the single one (`GROUP` in Lists.lua: Prayer of Fortitude ->
   Fortitude, Gift of the Wild, Arcane Brilliance, Prayers, Greater Blessings); `mod.Canonical(name)`

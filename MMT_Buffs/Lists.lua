@@ -4,6 +4,9 @@
 
 local _, mod = ...
 
+-- the ALL list is the "All bar" here (ListKeys.lua names it)
+mod.ALL_LABEL = "All bar"
+
 mod.CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "ALL" }
 
 -- the presets and the default lists are in Presets.lua

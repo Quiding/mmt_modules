@@ -96,7 +96,7 @@ function mod.TransferDef()
             { id = "lists", label = "Tracked buffs", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },
             { id = "look", label = "Window & look", get = function() return GetKeys(LOOK) end,
               set = function(d) return SetKeys(LOOK, d) end },
-            { id = "allrow", label = "All classes row", get = GetAllRow, set = SetAllRow },
+            { id = "allrow", label = "All bar", get = GetAllRow, set = SetAllRow },
             { id = "position", label = "Position", get = function() return MMT.CopyTable(M.db.point) end,
               set = SetPosition },
         },

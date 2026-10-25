@@ -1,6 +1,6 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
 -- Tabs: Bars (what is shown) / Look (sizes, text, background, border,
--- missing buffs) / Buffs (the tracked lists, the All classes row, sharing) /
+-- missing buffs) / Buffs (the tracked lists, the All bar, sharing) /
 -- Roles (each member's player role for "Only for", Roles.lua).
 
 local _, mod = ...
@@ -153,9 +153,9 @@ M.Page = function(_, page)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
 
     local R = UI.Column(p, COL2_X, 0, COL_W)
-    R:Header("All classes buffs")
-    R:Cycle("Show them", {
-        { value = "ROW", text = "In one All row" },
+    R:Header("All bar")
+    R:Cycle("Show its buffs", {
+        { value = "ROW", text = "In one All bar" },
         { value = "MEMBERS", text = "In each member's row" },
     }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
        function(v) M.db.allBar = (v == "ROW"); Apply() end)
@@ -163,7 +163,7 @@ M.Page = function(_, page)
     local function WhoText()
         local n = 0
         for _ in pairs(M.db.allExclude) do n = n + 1 end
-        return n == 0 and "All row members: everyone" or ("All row members: %d left out"):format(n)
+        return n == 0 and "All bar members: everyone" or ("All bar members: %d left out"):format(n)
     end
     who = UI.Button(p, COL_W, WhoText(), function(self)
         local items = {}
@@ -177,9 +177,9 @@ M.Page = function(_, page)
             Apply()
         end)
     end)
-    UI.Tooltip(who, "All classes row members", "Click a name to leave it out of (or add it back to) the All classes row.")
+    UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
     R:Add(who, UI.ROW + 2)
-    R:Note("The All row turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
+    R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
 
 
     -- Look ------------------------------------------------------------------
@@ -324,6 +324,9 @@ M.Page = function(_, page)
         row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
         -- the cog lights up while the buff is only for some
         local limited = mod.HasFilter(e)
+        -- only in the All bar (class / race / role / character lists are specific already); elsewhere
+        -- only while it still has a filter (set before), so it can be cleared
+        row.cog:SetShown(class == "ALL" or limited)
         row.cog.tex:SetDesaturated(not limited)
         row.cog.tex:SetAlpha(limited and 1 or 0.45)
     end)
@@ -356,7 +359,7 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
     mod.PresetBox(RS, lp, function() return class end, function(e) return e.id end, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
