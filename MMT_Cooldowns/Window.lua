@@ -11,8 +11,8 @@ function mod.Members()
     for _, key in ipairs(MMT.SortedMembers()) do
         if not cfg.hidden[key] then
             if MMT.IsSelf(key) then
-                if cfg.includeSelf then list[#list + 1] = key end
-            elseif not cfg.onlyOnline or MMT.IsOnline(key)
+                if cfg.includeSelf or mod.preview then list[#list + 1] = key end
+            elseif mod.preview or not cfg.onlyOnline or MMT.IsOnline(key)
                 or UnitInParty(MMT.FirstName(key)) or UnitInRaid(MMT.FirstName(key)) then
                 list[#list + 1] = key
             end

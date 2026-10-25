@@ -226,8 +226,31 @@ end
 -- returns state ("ready" | "cd" | "active") or nil when the entry isn't shown for this member
 mod.OwnState = OwnState
 
+
+-- Preview (mod.preview, this session only): every team member as if in your
+-- group, with made-up states that stay the same between redraws - to set up
+-- the look and position without the team around.
+local function Hash(s)
+    local h = 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 2147483647 end
+    return h
+end
+mod.PreviewHash = Hash
+
+function mod.SetPreview(on)
+    mod.preview = on and true or nil
+    mod.Refresh()
+end
+
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "cd", mod.testUntil - 10, 10 end
+    if mod.preview then
+        local h = Hash(key .. ":" .. mod.EntryKey(e))
+        local dur = e.cd and e.cd > 0 and e.cd or 120
+        if h % 3 == 0 then return "ready" end
+        local left = 1 + h % dur                         -- somewhere in its cooldown
+        return "cd", GetTime() - (dur - left), dur
+    end
     if MMT.IsSelf(key) then return OwnState(e) end
     local ek = mod.EntryKey(e)
     if e.t == "i" and M.db.hideUnseenItems then

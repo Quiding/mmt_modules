@@ -22,6 +22,9 @@ MODULES, with its own settings page.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
 
+Cooldowns and Buffs have a **Preview** (Bars tab, or `/mmtcd preview` / `/mmtbf preview`): every team
+member gets a row with made-up states, to set up the look and position without the team around.
+
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
 **Reset to defaults** (click twice). Cooldowns, Buffs and Totems also have **Import / Export** as a
 text string, a growth direction (top > down, down > top, left > right, right > left) and
@@ -44,7 +47,7 @@ important spells, trinkets and potions.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
   you carry; shift-click a spell or item works too.
 
-`/mmtcd` · `/mmtcd test` · `/mmtcd export`
+`/mmtcd` · `/mmtcd test` · `/mmtcd preview` · `/mmtcd export`
 
 ![Cooldowns bar](media/cooldowns.gif)
 
@@ -67,7 +70,7 @@ tracked for them, with exact timers.
   most points (shared with the team, also right after a respec or dual spec swap), else the class; set
   them by hand on the Roles tab.
 
-`/mmtbf` · `/mmtbf test` · `/mmtbf export`
+`/mmtbf` · `/mmtbf test` · `/mmtbf preview` · `/mmtbf export`
 
 ![Buffs bar](media/buffs.gif)
 

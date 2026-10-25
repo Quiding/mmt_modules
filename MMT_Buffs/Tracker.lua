@@ -91,9 +91,33 @@ M:Listen("TEAM_CHANGED", function() mod.ScanGroup() mod.Refresh() end)
 ---------------------------------------------------------------------------
 -- State of one tracked buff on one member
 ---------------------------------------------------------------------------
+
+-- Preview (mod.preview, this session only): every team member as if in your
+-- group, with made-up states that stay the same between redraws - to set up
+-- the look and position without the team around.
+local function Hash(s)
+    local h = 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 2147483647 end
+    return h
+end
+mod.PreviewHash = Hash
+
+function mod.SetPreview(on)
+    mod.preview = on and true or nil
+    mod.Refresh()
+end
+
 -- returns "buff", start, duration, count  or  "missing"  or nil (member not in the group)
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
+    if mod.preview then
+        local h = Hash(key .. ":" .. e.id)
+        if h % 4 == 0 then return "missing" end
+        local dur = (h % 3 + 1) * 600                    -- 10, 20 or 30 minutes
+        local left = 60 + h % (dur - 60)                 -- some time left, different per icon
+        local now = GetTime()
+        return "buff", now - (dur - left), dur, 1
+    end
     local name = mod.BuffName(e)
     if not name then return nil end
     if fromUnit[key] then

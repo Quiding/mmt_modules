@@ -346,3 +346,29 @@ print("C:", C.eval(r"""function(m)
   assert(found, "the cast of a late-known spell wasn't tracked")
   return "late spell data ok"
 end""")(cmod))
+
+# preview: every team member gets a row, made-up states that stay the same between redraws
+print("A:", A.eval(r"""function(m)
+  local old = MMT.IsOnline
+  MMT.IsOnline = function() return false end
+  m.M.db.onlyOnline = true
+  local before = #m.Members()
+  m.SetPreview(true)
+  local members = m.Members()
+  assert(#members >= 2 and #members > before - 1, "preview rows: " .. #members)
+  local seen = {}
+  for _, key in ipairs(members) do
+    for _, e in ipairs(m.EntriesFor(key)) do
+      local s1, st1 = m.State(key, e)
+      local s2, st2 = m.State(key, e)
+      assert(s1 == s2 and st1 == st2, "preview state changed between redraws")
+      assert(s1 == "ready" or s1 == "cd", "preview state " .. tostring(s1))
+      seen[s1] = true
+    end
+  end
+  assert(seen.ready and seen.cd, "preview shows only one kind of state")
+  m.SetPreview(false)
+  assert(#m.Members() == before, "preview not switched off")
+  MMT.IsOnline = old
+  return "preview ok"
+end""")(amod))
