@@ -3,7 +3,7 @@
 -- Aura, Leader of the Pack, Moonkin Aura, the totems; Salvation is its own buff).
 -- Pick one in the list editor and add it to a list or replace the list with it.
 --   mod.PRESETS = { { key, group = class token | "ALL", name, entries }, ... }
--- An entry is { id, off = true|nil }; buffs match by NAME (any rank, and group
+-- An entry is { id, off = true|nil } (or a name pattern / weapon, Lists.lua); buffs match by NAME (any rank, and group
 -- versions like Prayer of Fortitude count, see Lists.lua).
 
 local _, mod = ...
@@ -11,6 +11,10 @@ local _, mod = ...
 local function B(id) return { id = id } end
 local function O(id) return { id = id, off = true } end
 local function P(name, off) return { name = name, off = off or nil } end   -- a name pattern (Lists.lua)
+local function W(slot, off) return { weapon = slot, off = off or nil } end  -- weapon enchant (Weapons.lua)
+-- a totem's buff (pattern: the buff is "Strength of Earth", the totem "... Totem"),
+-- shown only while a shaman is around (Casters.lua)
+local function T(name, off) return { name = name, caster = "SHAMAN", off = off or nil } end
 -- the party buffs (cast on others, no auras): the All bar's default and the "Raid buffs" preset
 local function PartyBuffs()
     return {
@@ -29,6 +33,14 @@ mod.PRESETS = {
         O(1459), O(14752), O(976),                        -- Arcane Intellect, Divine Spirit, Shadow Protection
         O(19740), O(19742), O(1038),                      -- Might, Wisdom, Salvation
         O(6673), O(19506), O(17007), O(24907),            -- Battle Shout, Trueshot Aura, Leader of the Pack, Moonkin Aura
+    } },
+    { key = "ALL:TOTEMS", group = "ALL", name = "Shaman totems (only in the shaman's party)", entries = {
+        T("Strength of Earth*"), T("Grace of Air*"), T("Windfury Totem*"),   -- melee: set "Only for" with the cog
+        T("Mana Spring*"), T("Flametongue Totem*", true),
+        T("Stoneskin*", true), T("Tranquil Air*", true),
+    } },
+    { key = "ALL:WEAPONS", group = "ALL", name = "Weapon enchants (oils, stones, poisons, imbues)", entries = {
+        W("MH"), W("OH", true),
     } },
     { key = "ALL:WORLD", group = "ALL", name = "World buffs", entries = {
         B(22888), B(24425), B(16609), B(15366),           -- Rallying Cry, Spirit of Zandalar, Warchief's Blessing, Songflower
@@ -62,9 +74,9 @@ local SPECS = {
         { "SURV", "Survival", { P("Aspect of the *") } },
     },
     ROGUE = {
-        { "ASSA", "Assassination", { B(5171) } },                        -- Slice and Dice
-        { "COMBAT", "Combat", { B(5171) } },
-        { "SUB", "Subtlety", { B(5171) } },
+        { "ASSA", "Assassination", { B(5171), W("MH"), W("OH") } },      -- Slice and Dice, poisons
+        { "COMBAT", "Combat", { B(5171), W("MH"), W("OH") } },
+        { "SUB", "Subtlety", { B(5171), W("MH"), W("OH") } },
     },
     PRIEST = {
         { "DISC", "Discipline", { B(588), O(6346) } },                   -- Inner Fire, Fear Ward
@@ -72,9 +84,11 @@ local SPECS = {
         { "SHADOW", "Shadow", { B(15473), B(588), O(6346) } },           -- Shadowform
     },
     SHAMAN = {
-        { "ELE", "Elemental", { B(408510), O(324) } },                   -- Water Shield, Lightning Shield
-        { "ENH", "Enhancement", { B(324), O(408510) } },
-        { "RESTO", "Restoration", { B(408510), O(324) } },
+        { "ELE", "Elemental", { B(408510), O(324), W("MH", true) } },    -- Water Shield, Lightning Shield, imbue
+        { "ENH", "Enhancement", { B(324), O(408510), W("MH"), W("OH") } },
+            -- weapon imbue: Windfury Weapon (stacks with Flametongue Totem) or Flametongue Weapon (stacks
+            -- with Windfury Totem) - any counts; the off hand only shows with a weapon there (dual wield)
+        { "RESTO", "Restoration", { B(408510), O(324), W("MH", true) } },
     },
     MAGE = {
         { "ARCANE", "Arcane", { B(6117), O(7302) } },                    -- Mage Armor, Ice Armor
@@ -111,13 +125,16 @@ for class, specs in pairs(SPECS) do
     local list, at, onIn = {}, {}, {}
     for _, sp in ipairs(specs) do
         for _, e in ipairs(sp[3]) do
-            local k = e.id or e.name
-            if not at[k] then list[#list + 1] = { id = e.id, name = e.name }; at[k] = #list end
+            local k = mod.EntryKey(e)
+            if not at[k] then
+                local c = {} for f, v in pairs(e) do if f ~= "off" then c[f] = v end end
+                list[#list + 1] = c; at[k] = #list
+            end
             if not e.off then onIn[k] = (onIn[k] or 0) + 1 end
         end
     end
     for _, e in ipairs(list) do
-        if (onIn[e.id or e.name] or 0) < #specs then e.off = true end
+        if (onIn[mod.EntryKey(e)] or 0) < #specs then e.off = true end
     end
     mod.DEFAULT_LISTS[class] = list
 end

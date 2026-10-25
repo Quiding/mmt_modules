@@ -45,6 +45,10 @@ function mod.Canonical(name)
     return Aliases()[name] or name
 end
 
+-- weapon enchant entries { weapon = "MH" | "OH" } (Weapons.lua)
+function mod.IsWeapon(e) return e.weapon == "MH" or e.weapon == "OH" end
+mod.WEAPON_NAMES = { MH = "Main-hand enchant", OH = "Off-hand enchant" }
+
 -- A name pattern entry { name = "Seal of *" } (a "*" anywhere, any text there,
 -- case ignored) counts ANY buff whose name matches: the icon shows the one that
 -- is up. Ordinary entries are { id = spellID }.
@@ -67,20 +71,29 @@ function mod.Matches(e, name)
     return type(name) == "string" and name:lower():find(Compile(e.name)) ~= nil
 end
 
+-- what an entry is known by in a list (presets, de-dup): spell ID, pattern or weapon
+function mod.EntryKey(e) return e.id or e.name or (e.weapon and ("weapon:" .. e.weapon)) end
+
 function mod.BuffName(e)
     if mod.IsPattern(e) then return e.name end
+    if mod.IsWeapon(e) then return mod.WEAPON_NAMES[e.weapon] end
     return mod.Canonical((mod.SpellInfo(e.id)))
 end
 
 -- the entry's own name for lists and tooltips
 function mod.EntryName(e)
     if mod.IsPattern(e) then return e.name end
+    if mod.IsWeapon(e) then return mod.WEAPON_NAMES[e.weapon] end
     return (mod.SpellInfo(e.id)) or ("Spell " .. e.id)
 end
 
 -- the spell's icon, else by its name, else the icon the buff itself had when it was
 -- last seen on someone (kept account-wide), else the "?" placeholder
 function mod.EntryIcon(e)
+    if mod.IsWeapon(e) then
+        -- the own weapon, else a sword / dagger
+        return GetInventoryItemTexture("player", e.weapon == "MH" and 16 or 17) or (e.weapon == "MH" and 135274 or 135650)
+    end
     if mod.IsPattern(e) then
         -- the icon of a matching buff seen before (alphabetically first, so it stays put)
         local best

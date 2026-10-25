@@ -51,7 +51,10 @@ local function SetLists(data)
                 if type(e) == "table" and type(e.id) == "number" then
                     clean[#clean + 1] = { id = e.id, off = (e.off == true) or nil, only = only }
                 elseif type(e) == "table" and mod.ParsePattern and mod.ParsePattern(e.name) then
-                    clean[#clean + 1] = { name = mod.ParsePattern(e.name), off = (e.off == true) or nil, only = only }
+                    clean[#clean + 1] = { name = mod.ParsePattern(e.name), off = (e.off == true) or nil, only = only,
+                        caster = type(e.caster) == "string" and e.caster:match("^%u+$") or nil }
+                elseif type(e) == "table" and (e.weapon == "MH" or e.weapon == "OH") then
+                    clean[#clean + 1] = { weapon = e.weapon, off = (e.off == true) or nil, only = only }
                 end
             end
             M.db.lists[class] = clean

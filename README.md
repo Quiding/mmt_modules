@@ -7,7 +7,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.11.0 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.11.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.12.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
@@ -69,6 +69,12 @@ tracked for them, with exact timers.
 - Any rank counts, and group versions too (Prayer of Fortitude, Greater Blessings, ...).
 - **Name patterns**: add `Seal of *` (a `*` = any text) and one icon shows whichever seal is up, with its own
   icon and timer. The paladin presets track any seal this way, the hunter presets any aspect (`Aspect of the *`).
+- **Weapon enchants**: add `main hand` / `off hand` - any enchant on that weapon counts (shaman imbues, rogue
+  poisons, oils, sharpening stones), with its time left. Other members' clients send theirs once when it
+  changes (they need Buff Timers 0.12+). In the rogue and Enhancement presets, and as an All bar preset.
+- **Shaman totems** preset for the All bar (Strength of Earth, Grace of Air, Windfury Totem, Mana Spring, ...):
+  on Forever these are buffs on the members, shown only while a shaman is in the group or online. A totem only
+  reaches the shaman's own party.
 - Own window, or attached to the Cooldown Timers bars.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
 - Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of

@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.11.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.12.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -182,7 +182,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   ignored, anchored; `ParsePattern` for the add box / import). `State` returns the matching aura with the most time
   left + its name and icon (ScanUnit keeps `icon`, `raw`); the window uses that icon, `tip` instead of `spell`.
   Everything keyed by entry uses `e.id or e.name` (presets, PresetBox, preview hash). Presets `P(name)`: paladin
-  specs "Seal of *" on, hunters "Aspect of the *". Casters: patterns always count as castable.
+  specs "Seal of *" on, hunters "Aspect of the *". Casters: patterns always count as castable, unless they carry
+  `caster = "<CLASS>"` (preset `T(name)` = totem buffs, "ALL:TOTEMS": buff "Strength of Earth" / totem "... Totem").
+- Weapon enchants (`Weapons.lua`): entries `{ weapon = "MH" | "OH" }` = any enchant on that weapon. Own via
+  `C_Item.GetWeaponEnchantInfo(Enum.WeaponSlot.X)` (Forever: imbue type beside temporary; imbue wins) else old
+  `GetWeaponEnchantInfo`; events WEAPON_ENCHANT_CHANGED / WEAPON_SLOT_CHANGED (pcall) + a 5 s re-read. Others:
+  ONE `MBW:<MH>;<OH>` per change (part "0" none | "x" no weapon | "rem/dur/icon/name", name from the weapon's
+  tooltip line "X (30 min)"), `MBWQ` at enable -> whispered answer (user agreed, like MCDU). `mod.weapons[key]`;
+  never heard -> nil (nothing shown). `mod.EntryKey(e)` = id | name | "weapon:MH" everywhere entries are keyed.
 - Buffs missing look `allMissingLook` (PLAIN/RED/GREY) + `glowMissing` apply to ALL buff icons
   (`Look()` in Window.lua). "All classes" row (`allBar`, `allExclude`): ALL-list buffs aggregated
   over the team, removed from member rows; stays in the Buffs window even when attached.

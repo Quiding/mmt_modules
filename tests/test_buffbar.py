@@ -9,6 +9,22 @@ STUBS = src.split("STUBS = r'''", 1)[1].split("'''", 1)[0]
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(STUBS)
+# team messages: listeners kept, sent messages recorded
+lua.execute('''
+local nm = MMT.NewModule
+LISTEN = {}
+MMT.NewModule = function(def)
+  local M = nm(def)
+  function M:Listen(ev, fn) LISTEN[#LISTEN + 1] = { ev, fn } end
+  return M
+end
+SENT = {}
+MMT.SendToTeam = function(msg) SENT[#SENT + 1] = msg end
+MMT.SendAddon = function(msg, ch, to) SENT[#SENT + 1] = ch .. ":" .. to .. ":" .. msg end
+function TEAM_MESSAGE(key, text)
+  for _, l in ipairs(LISTEN) do if l[1] == "TEAM_MESSAGE" then l[2](key, key, text) end end
+end
+''')
 mod = lua.eval('{}')
 folder = 'MMT_BuffTimers'
 for f in [l.strip() for l in open(os.path.join(folder, folder + '.toc'), encoding='utf-8') if l.strip().endswith('.lua')]:
@@ -80,7 +96,7 @@ end""")(mod))
 
 # the All bar's default and the raid presets: party buffs (no auras), with "Only for"
 print(lua.eval(r"""function(m)
-  local function Ids(list) local t = {} for _, e in ipairs(list) do t[e.id or e.name] = e end return t end
+  local function Ids(list) local t = {} for _, e in ipairs(list) do t[m.EntryKey(e)] = e end return t end
   local def = Ids(m.DEFAULT_LISTS.ALL)
   assert(def[1243] and def[1126] and def[20217] and not def[1243].only, "Fortitude / Mark / Kings for everyone")
   for _, e in ipairs(m.DEFAULT_LISTS.ALL) do assert(not e.only, "a default buff has Only for: " .. e.id) end
@@ -107,10 +123,10 @@ print(lua.eval(r"""function(m)
   local ret = m.PresetByKey("PALADIN:RET")
   assert(ret and ret.name == "Paladin: Retribution", "ret buff preset")
   local ids = {}
-  for _, e in ipairs(ret.entries) do ids[e.id or e.name] = e end
+  for _, e in ipairs(ret.entries) do ids[m.EntryKey(e)] = e end
   assert(ids["Seal of *"] and not ids["Seal of *"].off and ids[20050] and not ids[20375], "ret buffs: any seal")
   local function Default(class)
-    local t = {} for _, e in ipairs(m.DEFAULT_LISTS[class]) do t[e.id or e.name] = e end return t
+    local t = {} for _, e in ipairs(m.DEFAULT_LISTS[class]) do t[m.EntryKey(e)] = e end return t
   end
   local pal, rogue, priest = Default("PALADIN"), Default("ROGUE"), Default("PRIEST")
   assert(pal["Seal of *"] and not pal["Seal of *"].off, "any seal on for every paladin")
@@ -150,4 +166,50 @@ print(lua.eval(r"""function(m)
   m.Buff, MMT.SplitUnit, MMT.Resolve = oldBuff, oldSplit, oldResolve
   m.ScanGroup()
   return "name patterns ok"
+end""")(mod))
+
+# weapon enchants: own from C_Item.GetWeaponEnchantInfo, others from MBW messages
+print(lua.eval(r"""function(m)
+  m.preview, m.testUntil = nil, nil
+  Enum = { WeaponSlot = { MainHand = 1, OffHand = 2 }, ItemEnchantType = { Temporary = 0, Imbue = 1 } }
+  local items = { [16] = 1001 }                 -- a main-hand weapon, nothing in the off hand
+  GetInventoryItemID = function(_, inv) return items[inv] end
+  GetItemInfoInstant = function() return 1001, "Weapon", "", "", 1, 2, 0 end
+  GetInventoryItemTexture = function() return 777 end
+  local list = { { hasEnchant = true, enchantType = 1, timeLeft = 1800000, enchantID = 5, enchantIconID = 136018 } }
+  C_Item = { GetWeaponEnchantInfo = function(ws) if ws == 1 then return list end return {} end }
+  local MH, OH = { weapon = "MH" }, { weapon = "OH" }
+  assert(m.ParseWeapon("Main hand") == "MH" and m.ParseWeapon("off-hand") == "OH" and not m.ParseWeapon("Fortitude"), "ParseWeapon")
+  m.ScanWeapons(true)
+  local state, start, dur, _, _, icon = m.State("Anna-Smith", MH)
+  assert(state == "buff" and dur == 1800 and start == 1000 and icon == 136018, "own imbue: " .. tostring(state))
+  assert(m.State("Anna-Smith", OH) == nil, "no off-hand weapon: nothing shown")
+  assert(m.OwnWeaponMessage() == "MBW:1800/1800/136018/;x", m.OwnWeaponMessage())
+  -- an oil on the same weapon: the imbue still wins
+  list[2] = { hasEnchant = true, enchantType = 0, timeLeft = 3600000, enchantID = 9 }
+  m.ScanWeapons(true)
+  assert(select(6, m.State("Anna-Smith", MH)) == 136018, "imbue before oil")
+  -- gone
+  list = {}
+  m.ScanWeapons(true)
+  assert(m.State("Anna-Smith", MH) == "missing", "own imbue gone")
+  -- another member tells us theirs
+  TEAM_MESSAGE("Bob-Stone", "MBW:600/1800/135000/Instant Poison VI;0")
+  state, start, dur, _, matched, icon = m.State("Bob-Stone", MH)
+  assert(state == "buff" and dur == 1800 and start == 1000 + 600 - 1800 and matched == "Instant Poison VI" and icon == 135000, "Bob's poison")
+  assert(m.State("Bob-Stone", OH) == "missing", "Bob's off hand empty")
+  assert(m.State("Cid-Ray", MH) == nil, "never heard from Cid: nothing")
+  -- asked for ours: whispered back
+  SENT = {}
+  TEAM_MESSAGE("Bob-Stone", "MBWQ")
+  assert(SENT[1] == "WHISPER:Bob-Stone:MBW:0;x", tostring(SENT[1]))
+  assert(m.EntryKey(MH) == "weapon:MH" and m.EntryName(OH) == "Off-hand enchant", "names")
+  -- presets: rogues track both hands, enhancement the main hand, totems need a shaman
+  local enh = {} for _, e in ipairs(m.PresetByKey("SHAMAN:ENH").entries) do enh[m.EntryKey(e)] = e end
+  assert(enh["weapon:MH"] and not enh["weapon:MH"].off, "enhancement imbue")
+  local rogue = {} for _, e in ipairs(m.DEFAULT_LISTS.ROGUE) do rogue[m.EntryKey(e)] = e end
+  assert(rogue["weapon:MH"] and not rogue["weapon:MH"].off and rogue["weapon:OH"], "rogue poisons")
+  local totems = m.PresetByKey("ALL:TOTEMS")
+  assert(totems and m.CasterClass(totems.entries[1]) == "SHAMAN", "totem preset")
+  return "weapon enchants ok"
 end""")(mod))

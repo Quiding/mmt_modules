@@ -43,6 +43,7 @@ end
 
 -- the class that casts buff entry e, or nil (anyone / unknown)
 function mod.CasterClass(e)
+    if type(e.caster) == "string" then return e.caster end   -- a pattern's class (totem presets)
     local name = mod.BuffName(e)
     return name and Names()[name] or nil
 end

@@ -117,13 +117,14 @@ end
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
     if mod.preview then
-        local h = Hash(key .. ":" .. (e.id or e.name or ""))
+        local h = Hash(key .. ":" .. (mod.EntryKey(e) or ""))
         if h % 4 == 0 then return "missing" end
         local dur = (h % 3 + 1) * 600                    -- 10, 20 or 30 minutes
         local left = 60 + h % (dur - 60)                 -- some time left, different per icon
         local now = GetTime()
         return "buff", now - (dur - left), dur, 1
     end
+    if mod.IsWeapon(e) then return mod.WeaponState(key, e) end
     local name = mod.BuffName(e)
     if not name then return nil end
     if fromUnit[key] then

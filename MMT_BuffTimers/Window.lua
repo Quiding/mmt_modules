@@ -57,7 +57,9 @@ local function Icons(key)
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id,
-                tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")") or ("None of " .. e.name)) or nil })
+                tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")") or ("None of " .. e.name))
+                    or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
+                        or state == "missing" and ("No " .. mod.EntryName(e):lower()) or mod.EntryName(e)) or nil })
         end
     end
     return icons
@@ -103,7 +105,7 @@ local function AllRow()
             end
         end
         local i = { texture = mod.EntryIcon(e), spell = e.id }
-        if mod.IsPattern(e) then i.tip = e.name end
+        if mod.IsPattern(e) or mod.IsWeapon(e) then i.tip = mod.EntryName(e) end
         if #missingBy > 0 or noData == #forThem then
             i.state = "missing"
             i.count = #missingBy

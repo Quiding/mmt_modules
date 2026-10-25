@@ -349,6 +349,9 @@ M.Page = function(_, page)
             if mod.IsPattern(self.entry) then
                 GameTooltip:SetText(self.entry.name)
                 GameTooltip:AddLine("Any buff whose name matches (* = any text): the icon shows the one that's up.", 1, 1, 1, true)
+            elseif mod.IsWeapon(self.entry) then
+                GameTooltip:SetText(mod.EntryName(self.entry))
+                GameTooltip:AddLine("Any enchant on that weapon: shaman imbues, poisons, oils, sharpening stones. Members send theirs when it changes (they need this version).", 1, 1, 1, true)
             else
                 GameTooltip:SetSpellByID(self.entry.id)
             end
@@ -381,15 +384,17 @@ M.Page = function(_, page)
         return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
     end
     local function Add()
-        local pattern = mod.ParsePattern(box:GetText())
-        local id = not pattern and Parse()
-        if not id and not pattern then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *).", true) return end
+        local weapon = mod.ParseWeapon(box:GetText())
+        local pattern = not weapon and mod.ParsePattern(box:GetText())
+        local id = not weapon and not pattern and Parse()
+        if not id and not pattern and not weapon then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *), or main hand / off hand.", true) return end
+        local entry = weapon and { weapon = weapon } or pattern and { name = pattern } or { id = id }
         M.db.lists[class] = M.db.lists[class] or {}
-        table.insert(M.db.lists[class], pattern and { name = pattern } or { id = id })
+        table.insert(M.db.lists[class], entry)
         box.picked = nil
         box:SetText("")
         box:ClearFocus()
-        status.Show_(("Added %s."):format(mod.EntryName(pattern and { name = pattern } or { id = id })))
+        status.Show_(("Added %s."):format(mod.EntryName(entry)))
         Changed()
     end
     box = UI.EditBox(lp, COL_W - 58, "Buff name, ID, shift-click or Seal of *", function() Add() end)
@@ -401,8 +406,8 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count.")
-    mod.PresetBox(RS, lp, function() return class end, function(e) return e.id or e.name end, Changed, status)
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil).")
+    mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)

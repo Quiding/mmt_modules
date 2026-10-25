@@ -6,6 +6,7 @@
 --   Lists.lua     tracked lists (per class + ALL)
 --   Tracker.lua   group members' auras from their unit (exact timers).
 --                 Nothing is sent between the clients for this.
+--   Weapons.lua   weapon enchants (imbues, poisons, oils): own read, ONE message per change
 --   Window.lua    own window, or icons attached to the Cooldowns window
 --                 (MMTIconBars extras, IconBars.lua shared with MMT_Cooldowns)
 --   Export.lua    import / export strings; the core's "Sync to team" sends M.db
@@ -80,11 +81,13 @@ M.OnEnable = function()
     if mod.OwnRoleSent then mod.OwnRoleSent() end
     mod.BuildIndex()
     mod.ScanGroup()
+    mod.StartWeapons()
     mod.Apply()
     C_Timer.After(1, function() if M.enabled then mod.Apply() end end) -- Cooldowns starts after us
 end
 
 M.OnDisable = function()
+    mod.StopWeapons()
     mod.Detach()
     mod.window:Hide()
 end
