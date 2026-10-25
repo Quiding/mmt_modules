@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.13.0) / MMT_BuffTimers (v0.14.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.13.1) / MMT_BuffTimers (v0.14.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -118,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `after` = the cooldown.
 - Lists in `M.db.lists[key]`, key = class token | "ALL" | "RACE:<race token>" | "ROLE:<MMT role>" | "CHAR:<team key>"
   (`ListKeys.lua`, identical in both: `ListKeysFor`, `CollectEntries` with de-dup, `ListChoices`,
-  `ValidListKey`, `RaceOf`, `AddPreset`). Cooldowns entry `{t="s"|"i", id, cd, off}`, Buffs `{id, off}`;
+  `ValidListKey`, `RaceOf`, `AddPreset`; `ListsInUse` = lists that apply to the team now, shown green in `ListChoices`). Cooldowns entry `{t="s"|"i", id, cd, off}`, Buffs `{id, off}`;
   `off` = in the list but not tracked. Races: own `UnitRace`, others from the heartbeat `race=<token>`
   (registered by Cooldowns only), cached in `M.store.races`. `DEFAULT_LISTS` = the presets
   (Cooldowns: class extras + `RACE:*` racials all `off`). Sync / export carry `off` ("-" suffix).

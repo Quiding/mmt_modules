@@ -322,3 +322,16 @@ print(lua.eval(r"""function(m)
   MMT.db.team["Bob-Stone"] = nil
   return "specs set by hand ok"
 end""")(mod))
+
+# the List menu shows who each list applies to right now
+print(lua.eval(r"""function(m)
+  MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone" } end
+  MMT.db.team["Bob-Stone"] = { class = "WARRIOR" }
+  local text = {}
+  for _, c in ipairs(m.ListChoices()) do if c.value then text[c.value] = c.text end end
+  assert(text.SHAMAN:find("Anna", 1, true) and text.WARRIOR:find("Bob", 1, true), "class lists in use: " .. text.SHAMAN)
+  assert(not text.MAGE:find("|cff55dd55", 1, true), "mage list not in use")
+  assert(text.ALL:find("everyone", 1, true), "All bar in use")
+  MMT.db.team["Bob-Stone"] = nil
+  return "lists in use ok"
+end""")(mod))

@@ -163,14 +163,38 @@ local function AllRaces()
 end
 
 -- dropdown choices: classes, races, roles, characters (with the number of entries)
+-- which lists apply to the team right now: [list key] = { first names }
+function mod.ListsInUse()
+    local used, team, seen = {}, {}, {}
+    local own = MMT.PlayerFull and MMT.PlayerFull()
+    if own then team[1] = own; seen[own] = true end
+    for _, key in ipairs(MMT.SortedMembers()) do if not seen[key] then team[#team + 1] = key end end
+    for _, key in ipairs(team) do
+        for _, lk in ipairs(mod.ListKeysFor(key, true)) do
+            used[lk] = used[lk] or {}
+            table.insert(used[lk], MMT.FirstName and MMT.FirstName(key) or key:match("^[^-]+") or key)
+        end
+    end
+    return used
+end
+
 function mod.ListChoices()
     local lists = mod.M.db.lists
+    local used = mod.ListsInUse()
     local function Item(k)
         local n, on = 0, 0
         for _, e in ipairs(lists[k] or {}) do n = n + 1; if not e.off then on = on + 1 end end
         local count = (n == 0) and "" or (on == n and ("  |cff888888(" .. n .. ")|r")
             or ("  |cff888888(" .. on .. "/" .. n .. " on)|r"))
-        return { value = k, text = mod.ListLabel(k) .. count }
+        -- in use: who it applies to right now, in green
+        local who = used[k]
+        local names = ""
+        if who then
+            names = k == "ALL" and "everyone" or table.concat(who, ", ", 1, math.min(#who, 3))
+            if k ~= "ALL" and #who > 3 then names = names .. " +" .. (#who - 3) end
+            names = "  |cff55dd55" .. names .. "|r"
+        end
+        return { value = k, text = mod.ListLabel(k) .. count .. names }
     end
     local t = { { header = true, text = "Classes" } }
     for _, c in ipairs(mod.CLASSES) do t[#t + 1] = Item(c) end
