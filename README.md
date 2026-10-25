@@ -6,8 +6,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.13.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.14.1 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.13.2 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.15.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
@@ -95,7 +95,7 @@ tracked for them, with exact timers.
 - Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, and per spec (the
   buffs that spec keeps up on itself: seals, aspects, armors, forms, Slice and Dice, ...); and
   the same name search as Cooldown Timers.
-- **Only for...** (the cog of each buff in the All bar): limit a buff to player roles (Tank / Healer / Melee / Ranged /
+- **Only for...** (the cog of each buff in the All bar): limit a buff to specs (Paladin: Retribution, ...), player roles (Tank / Healer / Melee / Ranged /
   Caster), classes and / or MMT roles - e.g. Blessing of Might only for Melee and Tank. Members it isn't
   for don't count as missing it. Player roles are automatic: a druid's form, else the talent tree with the
   most points (shared with the team, also right after a respec or dual spec swap), else the class; set

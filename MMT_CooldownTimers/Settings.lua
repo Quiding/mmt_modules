@@ -104,7 +104,7 @@ M.Page = function(_, page)
     -- Spells & items ----------------------------------------------------------
     local lp = panels.lists
     local LS = UI.Column(lp, 0, 0, COL_W)
-    local class = select(2, UnitClass("player")) or "ALL"
+    local class = mod.OwnListKey()
     LS:Header("Tracked spells & items")
     local list
     LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)

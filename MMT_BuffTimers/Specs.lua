@@ -38,6 +38,18 @@ function mod.SpecsOf(class)
     return t
 end
 
+-- every spec in class order: { { "PALADIN:RET", "Paladin: Retribution" }, ... }
+function mod.AllSpecs()
+    local t = {}
+    for _, class in ipairs(mod.CLASSES) do
+        for _, s in ipairs(mod.SpecsOf(class)) do
+            local p = mod.PresetByKey and mod.PresetByKey(class .. ":" .. s)
+            t[#t + 1] = { class .. ":" .. s, p and p.name or (class .. ": " .. s) }
+        end
+    end
+    return t
+end
+
 ---------------------------------------------------------------------------
 -- This character's talents
 ---------------------------------------------------------------------------

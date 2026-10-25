@@ -1,8 +1,9 @@
 -- MMT Buffs: who a buff is for.
 --
 -- Every tracked buff can be limited ("Only for", the cog in the list editor) to
--- player roles, classes and / or MMT roles: e.only = { roles = { MELEE = true },
--- classes = { WARRIOR = true }, mmt = { Healer = true } }. Nothing ticked = for
+-- player roles, classes, specs and / or MMT roles: e.only = { roles = { MELEE = true },
+-- classes = { WARRIOR = true }, specs = { ["PALADIN:RET"] = true }, mmt = { Healer = true } }
+-- (specs: Specs.lua - set by hand, else the talents). Nothing ticked = for
 -- everyone; otherwise a member counts when they match ANY ticked one. Members it
 -- isn't for don't count as missing it.
 --
@@ -168,7 +169,7 @@ local function Any(t) return type(t) == "table" and next(t) ~= nil end
 
 function mod.HasFilter(e)
     local o = e.only
-    return type(o) == "table" and (Any(o.roles) or Any(o.classes) or Any(o.mmt))
+    return type(o) == "table" and (Any(o.roles) or Any(o.classes) or Any(o.specs) or Any(o.mmt))
 end
 
 -- does buff entry e count for member key?
@@ -177,6 +178,10 @@ function mod.Applies(e, key)
     local o = e.only
     local class = mod.ClassOf(key)
     if class and o.classes and o.classes[class] then return true end
+    if o.specs and mod.SpecOf then
+        local spec = mod.SpecOf(key)
+        if spec and o.specs[spec] then return true end
+    end
     if o.mmt then
         for _, r in ipairs(MMT.MemberRoleList(key)) do if o.mmt[r] then return true end end
     end
@@ -194,6 +199,9 @@ function mod.FilterText(e)
     for _, r in ipairs(mod.PLAYER_ROLES) do if e.only.roles and e.only.roles[r[1]] then t[#t + 1] = r[2] end end
     for _, c in ipairs(mod.CLASSES) do
         if c ~= "ALL" and e.only.classes and e.only.classes[c] then t[#t + 1] = mod.ListLabel(c) end
+    end
+    for _, sp in ipairs(mod.AllSpecs and mod.AllSpecs() or {}) do
+        if e.only.specs and e.only.specs[sp[1]] then t[#t + 1] = sp[2] end
     end
     local mmt = {}
     for r in pairs(e.only.mmt or {}) do mmt[#mmt + 1] = r end
@@ -216,7 +224,8 @@ function mod.CleanFilter(o)
     end
     out.roles = Copy(o.roles, function(k) return ROLE_NAME[k] ~= nil end)
     out.classes = Copy(o.classes, function(k) return TREES[k] ~= nil end)
+    out.specs = Copy(o.specs, function(k) return k:match("^%u+:%u+$") ~= nil end)
     out.mmt = Copy(o.mmt, function(k) return k ~= "" end)
-    if not (out.roles or out.classes or out.mmt) then return nil end
+    if not (out.roles or out.classes or out.specs or out.mmt) then return nil end
     return out
 end

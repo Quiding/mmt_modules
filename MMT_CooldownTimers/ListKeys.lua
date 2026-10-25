@@ -162,7 +162,15 @@ local function AllRaces()
     return t
 end
 
--- dropdown choices: classes, races, roles, characters (with the number of entries)
+-- the list the editor starts on: your spec's list (spec lists on), else your class's
+function mod.OwnListKey()
+    local own = MMT.PlayerFull and MMT.PlayerFull()
+    local spec = mod.M.db.specLists and mod.SpecOf and own and mod.SpecOf(own)
+    if spec then return "SPEC:" .. spec end
+    return select(2, UnitClass("player")) or "ALL"
+end
+
+-- dropdown choices: classes (or specs), races, roles, characters (with the number of entries)
 -- which lists apply to the team right now: [list key] = { first names }
 function mod.ListsInUse()
     local used, team, seen = {}, {}, {}
@@ -196,11 +204,19 @@ function mod.ListChoices()
         end
         return { value = k, text = mod.ListLabel(k) .. count .. names }
     end
-    local t = { { header = true, text = "Classes" } }
-    for _, c in ipairs(mod.CLASSES) do t[#t + 1] = Item(c) end
-    if mod.M.db.specLists and mod.SpecsOf then
+    local t = {}
+    local specs = mod.M.db.specLists and mod.SpecsOf
+    if specs then
+        -- spec lists on: the class lists are left out of the menu (only the All list stays);
+        -- a member whose spec isn't known still uses theirs
+        t[#t + 1] = Item("ALL")
+    else
+        t[#t + 1] = { header = true, text = "Classes" }
+        for _, c in ipairs(mod.CLASSES) do t[#t + 1] = Item(c) end
+    end
+    if specs then
         mod.EnsureSpecLists()
-        t[#t + 1] = { header = true, text = "Specs (instead of the class list)" }
+        t[#t + 1] = { header = true, text = "Specs" }
         for _, c in ipairs(mod.CLASSES) do
             for _, s in ipairs(mod.SpecsOf(c)) do t[#t + 1] = Item("SPEC:" .. c .. ":" .. s) end
         end

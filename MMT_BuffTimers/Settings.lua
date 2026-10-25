@@ -60,7 +60,7 @@ function mod.OpenFilter(e, owner, changed)
     local W = 160
     local title = UI.Label(f, "Only for: " .. mod.EntryName(e), "GameFontNormal")
     title:SetPoint("TOPLEFT", 10, -10)
-    local note = UI.Label(f, "Nothing ticked: everyone. Ticked: members matching any of them; the others don't count as missing it.")
+    local note = UI.Label(f, "Nothing ticked: everyone. Ticked: members matching any of them; the others don't count as missing it. Specs: set on the Specs tab, else from the talents.")
     note:SetPoint("TOPLEFT", 10, -28)
     note:SetWidth(3 * W + 20)
     note:SetJustifyH("LEFT")
@@ -94,7 +94,24 @@ function mod.OpenFilter(e, owner, changed)
         none:SetPoint("TOPLEFT", 10 + 2 * W, -78)
         none:SetTextColor(0.6, 0.6, 0.6)
     end
-    f:SetSize(3 * W + 20, -math.min(y1, y2, y3) + 10)
+    -- specs (set by hand on the Specs tab, else the talents), three columns below
+    local top = math.min(y1, y2, y3) - 8
+    local sh = UI.Label(f, "Specs", "GameFontNormal")
+    sh:SetPoint("TOPLEFT", 10, top)
+    local specs = mod.AllSpecs()
+    local per = math.ceil(#specs / 3)
+    local y4 = top
+    for i, sp in ipairs(specs) do
+        local col, row = math.floor((i - 1) / per), (i - 1) % per
+        local c = UI.Check(f, W - 10, sp[2], function() return Ticked(e, "specs", sp[1]) end, function(v)
+            Tick(e, "specs", sp[1], v)
+            if changed then changed() end
+        end)
+        c:SetPoint("TOPLEFT", 10 + col * W, top - 20 - row * 20)
+        c.Refresh()
+        y4 = math.min(y4, top - 20 - (row + 1) * 20)
+    end
+    f:SetSize(3 * W + 20, -y4 + 10)
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", owner, "BOTTOMRIGHT", 4, 0)
     f:Show()
@@ -276,7 +293,7 @@ M.Page = function(_, page)
     lp:HookScript("OnHide", mod.CloseFilter)
     page:HookScript("OnHide", mod.CloseFilter)
     local LS = UI.Column(lp, 0, 0, COL_W)
-    local class = select(2, UnitClass("player")) or "ALL"
+    local class = mod.OwnListKey()
     LS:Header("Tracked buffs")
     local list
     LS:Cycle("List", mod.ListChoices, function() return class end, function(v)

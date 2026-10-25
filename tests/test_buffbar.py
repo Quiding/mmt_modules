@@ -335,3 +335,26 @@ print(lua.eval(r"""function(m)
   MMT.db.team["Bob-Stone"] = nil
   return "lists in use ok"
 end""")(mod))
+
+# "Only for" specs; the List menu without class lists while spec lists are on
+print(lua.eval(r"""function(m)
+  MMT.db.team["Bob-Stone"] = { class = "PALADIN" }
+  MMT.db.team["Cid-Ray"] = { class = "PALADIN" }
+  m.M.db.specSet = { ["Bob-Stone"] = "RET", ["Cid-Ray"] = "HOLY" }
+  local e = { id = 19740, only = { specs = { ["PALADIN:RET"] = true } } }
+  assert(m.HasFilter(e) and m.Applies(e, "Bob-Stone") and not m.Applies(e, "Cid-Ray"), "only for Retribution")
+  assert(m.FilterText(e) == "Paladin: Retribution", tostring(m.FilterText(e)))
+  local clean = m.CleanFilter({ specs = { ["PALADIN:RET"] = true, bad = true } })
+  assert(clean.specs["PALADIN:RET"] and not clean.specs.bad, "export keeps specs")
+  m.M.db.specLists = true
+  local values = {}
+  for _, c in ipairs(m.ListChoices()) do if c.value then values[c.value] = true end end
+  assert(values.ALL and values["SPEC:PALADIN:RET"] and not values.PALADIN and not values.WARRIOR, "class lists hidden")
+  m.M.db.specLists = false
+  values = {}
+  for _, c in ipairs(m.ListChoices()) do if c.value then values[c.value] = true end end
+  assert(values.PALADIN and not values["SPEC:PALADIN:RET"], "class lists back")
+  m.M.db.specSet = {}
+  MMT.db.team["Bob-Stone"], MMT.db.team["Cid-Ray"] = nil, nil
+  return "spec filter and menu ok"
+end""")(mod))
