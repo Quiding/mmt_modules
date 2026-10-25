@@ -167,3 +167,16 @@ print(lua.eval(r'''function(m)
   assert(m.Castable(fort) and m.Castable(ai), "option off")
   return "casters ok"
 end''')(mod))
+
+# a survival hunter counts as melee (Forever's Survival tree is a melee tree)
+print(lua.eval(r'''function(m)
+  CLASS = "HUNTER"
+  GetNumTalentTabs = function() return 3 end
+  GetTalentTabInfo = function(t) return "Tree" .. t, "icon", ({ 5, 10, 31 })[t] end
+  NOW = NOW + 20
+  assert(m.OwnTalentRole() == "MELEE", "survival hunter: " .. tostring(m.OwnTalentRole()))
+  GetTalentTabInfo = function(t) return "Tree" .. t, "icon", ({ 5, 31, 10 })[t] end
+  NOW = NOW + 20
+  assert(m.OwnTalentRole() == "RANGED", "marksmanship hunter")
+  return "survival ok"
+end''')(mod))
