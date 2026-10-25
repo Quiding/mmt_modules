@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.9) / MMT_Buffs (v0.8.7) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.9.0) / MMT_Buffs (v0.8.7) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -100,6 +100,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Exception agreed with the user: Cooldowns `Share.lua` sends ONE message per use of a tracked
   cooldown (`MCDU:<s|i><id>:<rem>/<dur>` or `:a` for after-buff spells), from own state changes
   on SPELL/BAG_UPDATE_COOLDOWN, + `:b<rem>/<dur>` for the buff the use gave. Never periodic.
+- `Known.lua`: own tracked spells not learned (`mod.OwnUnlearned`: SpellName known and SpellCooldown nil) ->
+  `MCDK:<id>,<id>` via `MMT.SendLong` when it changes (`mod.KnownCheck`: login, SPELLS_CHANGED, list change, sync,
+  profile), heartbeat `cdk=<hash>`, mismatch -> whispered `MCDKQ` (60 s). Stored `M.store.unlearned[key]`; `State`
+  hides them for others when `hideUnknown`. Spells only (user's choice); never sent -> everything shows.
 - Share.lua also sends `MCDU:<ek>:r` when an own cooldown becomes ready > 1.5 s early (Cold Snap,
   Preparation); a newly tracked running cooldown is announced (lists changed: `mod.ShareCheck()`);
   `MCDQ` = "send me your running cooldowns" (after taking over lists), answered by whisper.

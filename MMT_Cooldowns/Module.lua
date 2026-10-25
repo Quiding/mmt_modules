@@ -60,6 +60,7 @@ end
 M.OnProfileChanged = function()
     mod.BuildIndex()
     mod.window:Refresh()
+    if mod.KnownCheck then mod.KnownCheck() end
 end
 
 SLASH_MMTCOOLDOWNS1 = "/mmtcd"

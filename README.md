@@ -43,6 +43,8 @@ important spells, trinkets and potions.
   left), so members outside the group are tracked too; group members are also seen directly.
 - While a spell's buff is up (Berserking, Evasion, Death Wish, trinkets, ...) its icon glows with
   the buff's time left.
+- "Hide what you don't have": spells a character hasn't learned yet are hidden on every client's bars
+  (each client tells the team which tracked spells it hasn't learned), and items you don't carry on your own row.
 - Lists per class, race, MMT role or character; entries can be switched off without deleting them.
 - **Presets** from Wowhead's WoW: Forever data: per class (recommended / major only / everything),
   racials per race, potions & runes.

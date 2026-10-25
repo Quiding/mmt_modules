@@ -91,4 +91,5 @@ function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
 M.OnSyncReceived = function()
     mod.ShareCheck()       -- our running cooldowns that just became tracked
     mod.RequestRunning()   -- and the team's
+    mod.KnownCheck()       -- which tracked spells we haven't learned
 end

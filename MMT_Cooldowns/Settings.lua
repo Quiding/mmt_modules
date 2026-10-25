@@ -82,7 +82,7 @@ M.Page = function(_, page)
     Check(R, "Glow while waiting for the buff", "glowActive", "Nature's Swiftness, Presence of Mind, ...: their cooldown starts when the buff is used.")
     Check(R, "Glow while the spell's buff is up", "showBuffs", "Berserking, Evasion, trinkets, ...: the icon glows with the buff's time left, then shows the cooldown.")
     Check(R, "Hide cooldowns that are ready", "hideReady", "Icons only appear while on cooldown.")
-    Check(R, "Hide what you don't have", "hideUnknown", "Your own spells you haven't learned yet and items you don't carry.")
+    Check(R, "Hide what you don't have", "hideUnknown", "Spells a character hasn't learned yet - yours and, as their clients tell us, the team's - and items you don't carry (your own row).")
     Check(R, "Others' items only after first use", "hideUnseenItems", "Trinkets and potions of other members show up once you have seen them used.")
     R:Note("Each client sends one short message when its character uses a tracked cooldown (needs Cooldowns on that client too). Group members are also seen directly.")
 
@@ -107,6 +107,7 @@ M.Page = function(_, page)
         mod.BuildIndex()
         Apply()
         mod.ShareCheck()   -- our running cooldowns that just became tracked
+        mod.KnownCheck()   -- which of the tracked spells we haven't learned (Known.lua)
         list:Render(M.db.lists[class] or {})
     end
     local function Move(index, delta)

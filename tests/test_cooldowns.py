@@ -127,6 +127,8 @@ function MMT.Resolve(k) return MMT.db.team[k] and k end
 function MMT.SplitUnit() return nil end
 function MMT.SendToTeam(msg) SENT[#SENT + 1] = msg end
 function MMT.SendAddon(msg, channel, target) WHISPERS[#WHISPERS + 1] = { msg = msg, to = target } end
+LONG = {}
+function MMT.SendLong(text, target) LONG[#LONG + 1] = { msg = text, to = target } end
 function MMT.Print() end
 OPENED = {}
 function MMT.ToggleConfig(k) OPENED[#OPENED + 1] = k end
@@ -142,6 +144,7 @@ function UnitRace() return "Night Elf", "NightElf" end
 SPELLCD = {}
 C_Spell.GetSpellCooldown = function(name)
   if type(name) ~= "string" then return nil end
+  if UNLEARNED and UNLEARNED[name] then return nil end   -- not learned by this character
   local c = SPELLCD[name]
   if c then return { startTime = c.start, duration = c.dur, isEnabled = true } end
   return { startTime = 0, duration = 0, isEnabled = true }
@@ -390,4 +393,59 @@ print("A:", A.eval(r"""function(m)
   assert(m.preview == "REAL", "true = the team as it is")
   m.SetPreview(nil)
   return "mixed preview ok"
+end""")(amod))
+
+
+# "Hide what you don't have" across clients: Anna hasn't learned Ice Block; Bob's bar hides it on her row
+print("A:", A.eval(r"""function(m)
+  UNLEARNED = { ["Ice Block"] = true }
+  m.M.db.lists.MAGE = m.M.db.lists.MAGE or {}
+  local has
+  for _, e in ipairs(m.M.db.lists.MAGE) do if e.id == 11958 then has = true; e.off = nil end end
+  if not has then table.insert(m.M.db.lists.MAGE, { t = "s", id = 11958, cd = 300 }) end
+  LONG = {}
+  m.KnownCheck()
+  assert(#LONG == 1 and LONG[1].msg:find("^MCDK:") and LONG[1].msg:find("11958", 1, true), "unlearned list: " .. tostring(LONG[1] and LONG[1].msg))
+  m.KnownCheck()
+  assert(#LONG == 1, "sent again without a change")
+  HB = HEARTBEATS.cdk()
+  assert(type(HB) == "number", "heartbeat hash")
+  return "unlearned sent"
+end""")(amod))
+msgs = take(A, "LONG")
+hb = A.eval('function() return HB end')()
+deliver("Anna-Smith", msgs, B)
+print("B:", B.eval(r"""function(m, hb)
+  m.M.db.lists.MAGE = m.M.db.lists.MAGE or {}
+  local iceblock
+  for _, e in ipairs(m.M.db.lists.MAGE) do if e.id == 11958 then iceblock = e end end
+  if not iceblock then iceblock = { t = "s", id = 11958, cd = 300 }; table.insert(m.M.db.lists.MAGE, iceblock) end
+  iceblock.off = nil
+  m.M.db.hideUnknown = true
+  assert(m.State("Anna-Smith", iceblock) == nil, "Ice Block shown for Anna who hasn't learned it")
+  m.M.db.hideUnknown = false
+  assert(m.State("Anna-Smith", iceblock) ~= nil, "hidden with the option off")
+  m.M.db.hideUnknown = true
+  -- the heartbeat hash matches what we have: no question
+  WHISPERS = {}
+  for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = tostring(hb) } }) end
+  assert(#WHISPERS == 0, "asked although the list matches")
+  -- a different hash (she learned something meanwhile): ask once
+  for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = "12345" } }) end
+  for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = "12345" } }) end
+  assert(#WHISPERS == 1 and WHISPERS[1].msg == "MCDKQ", "no / repeated question")
+  -- someone who never sent a list: everything shows
+  assert(m.Unlearned("Carl-Nobody", iceblock) == false, "unknown member")
+  return "unlearned hidden on other clients"
+end""")(bmod, hb))
+print("A:", A.eval(r"""function(m)
+  LONG = {}
+  DELIVER("Bob-Stone", "MCDKQ")
+  assert(#LONG == 1 and LONG[1].to == "Bob-Stone" and LONG[1].msg:find("^MCDK:"), "no answer to MCDKQ")
+  -- she learns it: the next check sends the shorter list
+  UNLEARNED = {}
+  LONG = {}
+  m.KnownCheck()
+  assert(#LONG == 1 and not LONG[1].msg:find("11958", 1, true), "learned spell still sent as unlearned")
+  return "MCDKQ + learning ok"
 end""")(amod))

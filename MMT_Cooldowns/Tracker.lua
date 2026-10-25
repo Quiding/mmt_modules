@@ -256,6 +256,8 @@ function mod.State(key, e)
         return "cd", GetTime() - (dur - left), dur
     end
     if MMT.IsSelf(key) then return OwnState(e) end
+    -- a spell this member hasn't learned yet (their client told us, Known.lua)
+    if M.db.hideUnknown and mod.Unlearned and mod.Unlearned(key, e) then return nil end
     local ek = mod.EntryKey(e)
     if e.t == "i" and M.db.hideUnseenItems then
         local seen = M.store.seen and M.store.seen[key]
