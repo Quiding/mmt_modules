@@ -9,21 +9,23 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
+-- only buffs cast on OTHERS: a self-buff (Inner Fire, Righteous Fury, Aspect of the
+-- Hawk, armors, forms) is always "castable" by whoever has it, so it isn't listed
 local CASTERS = {
-    PRIEST = { 1243, 21562, 14752, 27681, 976, 27683, 6346, 588, 15473, 10060 },
+    PRIEST = { 1243, 21562, 14752, 27681, 976, 27683, 6346, 10060 },
         -- Fortitude, Prayer of Fortitude, Divine Spirit, Prayer of Spirit, Shadow Protection,
-        -- Prayer of Shadow Protection, Fear Ward, Inner Fire, Shadowform, Power Infusion
-    DRUID = { 1126, 21849, 467, 16864, 17007, 24907, 24858 },
-        -- Mark / Gift of the Wild, Thorns, Omen of Clarity, Leader of the Pack, Moonkin Aura / Form
-    MAGE = { 1459, 23028, 7302, 6117, 168, 604, 1008 },
-        -- Arcane Intellect / Brilliance, Ice / Mage / Frost Armor, Dampen / Amplify Magic
+        -- Prayer of Shadow Protection, Fear Ward, Power Infusion
+    DRUID = { 1126, 21849, 467, 17007, 24907 },
+        -- Mark / Gift of the Wild, Thorns, Leader of the Pack, Moonkin Aura
+    MAGE = { 1459, 23028, 604, 1008 },
+        -- Arcane Intellect / Brilliance, Dampen / Amplify Magic
     PALADIN = { 19740, 25782, 19742, 25894, 20217, 25898, 1038, 25895, 19977, 25890, 20911, 25899,
-        465, 7294, 19746, 19876, 19888, 19891, 20218, 25780 },
+        465, 7294, 19746, 19876, 19888, 19891, 20218 },
         -- Blessings and Greater Blessings (Might, Wisdom, Kings, Salvation, Light, Sanctuary),
-        -- Devotion / Retribution / Concentration / Shadow / Frost / Fire Resistance Aura, Sanctity Aura, Righteous Fury
+        -- Devotion / Retribution / Concentration / Shadow / Frost / Fire Resistance Aura, Sanctity Aura
     WARRIOR = { 6673 },               -- Battle Shout
-    HUNTER = { 19506, 20043, 13165 }, -- Trueshot Aura, Aspect of the Wild / Hawk
-    WARLOCK = { 706, 687, 6307 },     -- Demon Armor / Skin, Blood Pact
+    HUNTER = { 19506, 20043 },        -- Trueshot Aura, Aspect of the Wild
+    WARLOCK = { 6307 },               -- Blood Pact (imp)
 }
 
 local byName, complete   -- [buff name] = class
