@@ -51,7 +51,8 @@ local function Icons(key)
     local icons = {}
     for _, e in ipairs(EntriesFor(key)) do
         local state, start, dur, count
-        if mod.Applies(e, key) then state, start, dur, count = mod.State(key, e) end   -- "Only for" (Roles.lua)
+        -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
+        if mod.Applies(e, key) and mod.Castable(e) then state, start, dur, count = mod.State(key, e) end
         if state then
             icons[#icons + 1] = Look({ texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id })
@@ -79,7 +80,7 @@ local function AllRow()
     for _, e in ipairs(cfg.lists.ALL or {}) do
         -- only the members this buff is for ("Only for", Roles.lua)
         local forThem = {}
-        if not e.off then
+        if not e.off and mod.Castable(e) then
             for _, key in ipairs(members) do if mod.Applies(e, key) then forThem[#forThem + 1] = key end end
         end
         if #forThem > 0 then

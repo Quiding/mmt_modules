@@ -34,6 +34,7 @@ local M = MMT.NewModule({
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows
         allMissingLook = "RED",    -- missing buffs: PLAIN (normal icon) | RED | GREY, all at missingAlpha
         allExclude = {},           -- [teamKey] = true: not counted in the All classes row
+        hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
         playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,
     },

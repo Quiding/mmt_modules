@@ -115,3 +115,46 @@ print(lua.eval(r'''function(m)
   assert(m.CleanFilter({ roles = {} }) == nil and m.CleanFilter("x") == nil, "empty filter")
   return "buff roles ok"
 end''')(mod))
+
+# "Hide buffs nobody here can cast" (Casters.lua)
+lua.execute(r'''
+SPELLS[1243] = "Power Word: Fortitude"; SPELLS[21562] = "Prayer of Fortitude"; SPELLS[1126] = "Mark of the Wild"
+SPELLS[22888] = "Rallying Cry of the Dragonslayer"; SPELLS[1459] = "Arcane Intellect"
+GROUP = {}   -- unit -> class
+function IsInRaid() return false end
+function UnitExists(u) return u == "player" or GROUP[u] ~= nil end
+function UnitClass(u) if u == "player" then return "x", CLASS end return "x", GROUP[u] end
+ONLINE = {}
+function MMT.IsOnline(k) return ONLINE[k] == true end
+function MMT.SortedMembers() return { "Me-Self", "Bob-Stone", "Cid-Ray", "Dee-Kay" } end
+''')
+lua.eval('''function(m)
+  m.Canonical = function(n) return n == "Prayer of Fortitude" and "Power Word: Fortitude" or n end
+  m.BuffName = function(e) local n = SPELLS[e.id] return n and m.Canonical(n) end
+  m.M.db.hideNoCaster = true
+end''')(mod)
+lua.eval('function(src, m) assert(loadstring(src, "Casters.lua"))("x", m) end')(
+    open('MMT_Buffs/Casters.lua', encoding='utf-8').read(), mod)
+print(lua.eval(r'''function(m)
+  CLASS = "WARRIOR"; TEAM["Me-Self"].class = "WARRIOR"
+  local fort, motw, ony, ai = { id = 1243 }, { id = 1126 }, { id = 22888 }, { id = 1459 }
+  assert(m.CasterClass(fort) == "PRIEST" and m.CasterClass(motw) == "DRUID" and m.CasterClass(ony) == nil, "caster classes")
+  assert(not m.Castable(fort) and not m.Castable(motw), "shown without a priest / druid")
+  assert(m.Castable(ony), "a world buff hidden")
+  -- a priest joins the group: Fortitude shows (also as Prayer of Fortitude)
+  GROUP.party1 = "PRIEST"
+  NOW = NOW + 1
+  assert(m.Castable(fort) and m.Castable({ id = 21562 }), "priest in the group")
+  assert(not m.Castable(motw), "Mark without a druid")
+  -- a druid of the team online (not grouped)
+  GROUP.party1 = nil
+  ONLINE["Cid-Ray"] = true
+  NOW = NOW + 1
+  assert(m.Castable(motw) and not m.Castable(fort), "online druid of the team")
+  -- the mage of the team offline: no Arcane Intellect
+  assert(not m.Castable(ai), "offline mage counted")
+  -- option off: everything shows
+  m.M.db.hideNoCaster = false
+  assert(m.Castable(fort) and m.Castable(ai), "option off")
+  return "casters ok"
+end''')(mod))

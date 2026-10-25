@@ -61,6 +61,8 @@ tracked for them, with exact timers.
 - Any rank counts, and group versions too (Prayer of Fortitude, Greater Blessings, ...).
 - Own window, or attached to the Cooldowns bars.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
+- Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of
+  that class is in your group or online in your team (switchable).
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
 - Presets (raid buffs, world buffs, flasks & elixirs, per class) and the same name search as Cooldowns.

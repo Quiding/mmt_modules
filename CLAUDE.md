@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_Cooldowns (v0.8.7) / MMT_Buffs (v0.8.2) – ports of ema_cooldowns / ema_buffs
+### MMT_Cooldowns (v0.8.7) / MMT_Buffs (v0.8.3) – ports of ema_cooldowns / ema_buffs
 - **This client forbids `COMBAT_LOG_EVENT_UNFILTERED`** (WoW: Forever runs on the modern client:
   registering it raises ADDON_ACTION_FORBIDDEN, blamed on MMT). Never register it. Values can be
   "secret" (`MMT.IsSecret`), guard unit/aura/spell data with it.
@@ -140,6 +140,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Preview (`mod.preview`, session only, `mod.SetPreview`, Bars tab checkbox, `/mmtcd|mmtbf preview`): `Members()`
   takes every team member (+ self), `mod.State` returns made-up states from a hash of key + entry (stable between
   redraws; Buffs: 1 in 4 missing, else 10/20/30 min buffs; Cooldowns: 1 in 3 ready, else somewhere in its cd).
+- Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`
+  (default on) `mod.Castable(e)` hides a buff whose class isn't in the group (units) or online in the team
+  (`mod.ClassesHere`, cached 0.5 s); buffs not in the table always show.
 - Buffs "Only for" (`Roles.lua`): `e.only = { roles = {MELEE=true}, classes = {...}, mmt = {...} }`, nothing = everyone,
   else ANY match (`mod.Applies(e, key)`, used in Window `Icons` and the All classes row: members it isn't for aren't
   counted). Player role (`mod.PlayerRole` -> role, source): `M.db.playerRoles[key]` (Roles tab) > druid form from

@@ -128,6 +128,7 @@ M.Page = function(_, page)
     end)
     Check(L, "Include your own character", "includeSelf")
     Check(L, "Only online or grouped members", "onlyOnline")
+    Check(L, "Hide buffs nobody here can cast", "hideNoCaster", "A class buff (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only shows when someone of that class is in your group or online in your team. World buffs, flasks and food always show.")
     L:Check("Preview: the whole team", function() return mod.preview end, function(v) mod.SetPreview(v) end, "Every team member gets a row as if in your group, with made-up states (some missing / on cooldown, others running) - to set up the look and position without the team around. Only until you switch it off or /reload.")
     L:Cycle("Names", {
         { value = "OFF", text = "Off" },
