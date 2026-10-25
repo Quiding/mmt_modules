@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.12.0) / MMT_BuffTimers (v0.13.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.12.0) / MMT_BuffTimers (v0.13.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -197,7 +197,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   never heard -> nil (nothing shown). `mod.EntryKey(e)` = id | name | "weapon:MH" everywhere entries are keyed.
 - Buffs missing look `allMissingLook` (PLAIN/RED/GREY) + `glowMissing` apply to ALL buff icons
   (`Look()` in Window.lua). "All classes" row (`allBar`, `allExclude`): ALL-list buffs aggregated
-  over the team, removed from member rows; stays in the Buffs window even when attached.
+  over the team, removed from member rows; stays in the Buffs window even when attached. A member row with no icons is left out (own window).
 - Growth direction `growth` (DOWN/UP/RIGHT/LEFT; older profiles: `vertical`): `MMTIconBars.Growth(c)`,
   reversed member order for UP/LEFT, frame pinned at `ANCHOR[growth]` (`lib.PointAt`), also in Totems.
 - Settings sync = the CORE's (`sync = true` in NewModule; Totems `syncExclude = { "keybind" }`):

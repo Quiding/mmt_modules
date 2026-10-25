@@ -75,8 +75,9 @@ print(lua.eval(r"""function(m)
   for _, c in ipairs({ "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }) do
     RAID_CLASS_COLORS[c] = { r = #c / 10, g = 0.5, b = 0.5 }
   end
-  m.M.db.lists.WARRIOR = { { id = 6673 } }
-  m.M.db.lists.PRIEST = { { id = 588 } }
+  for _, c in ipairs({ "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }) do
+    m.M.db.lists[c] = { { id = 6673 } }   -- something tracked for every class, else no row
+  end
   m.SetPreview("ALL")
   local rows, byKey = m.window.def.rows(), {}
   for _, r in ipairs(rows) do if r.key then byKey[r.key] = r end end
@@ -287,4 +288,19 @@ print(lua.eval(r"""function(m)
   MMT.status = oldStatus
   MMT.db.team["Bob-Stone"], MMT.db.team["Cid-Ray"] = nil, nil
   return "spec lists ok"
+end""")(mod))
+
+# a member with nothing tracked gets no row
+print(lua.eval(r"""function(m)
+  local oldState = m.State
+  m.M.db.allBar = true
+  m.M.db.lists.ALL = {}
+  m.M.db.lists.SHAMAN = { { id = 324 } }
+  m.State = function(key) if key == "Anna-Smith" then return "buff", 100, 300, 1 end end
+  MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone" } end
+  local keys = {}
+  for _, row in ipairs(m.window.def.rows()) do if row.key then keys[#keys + 1] = row.key end end
+  assert(#keys == 1 and keys[1] == "Anna-Smith", "empty row: " .. table.concat(keys, ","))
+  m.State = oldState
+  return "empty rows hidden ok"
 end""")(mod))

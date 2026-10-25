@@ -153,7 +153,11 @@ mod.window = MMTIconBars.NewWindow({
         end
         if not mod.Attached() then
             for _, key in ipairs(mod.Members()) do
-                rows[#rows + 1] = { key = key, icons = Icons(key), color = mod.preview and mod.PreviewColor(key) or nil }
+                -- a member with nothing tracked (or nothing readable) gets no empty row
+                local icons = Icons(key)
+                if #icons > 0 then
+                    rows[#rows + 1] = { key = key, icons = icons, color = mod.preview and mod.PreviewColor(key) or nil }
+                end
             end
         end
         return rows
