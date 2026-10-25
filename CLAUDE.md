@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.10.0) / MMT_BuffTimers (v0.9.2) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.10.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -138,6 +138,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.FindByName` for typed exact names; a "Teaches X" trainer spell (generic icon `mod.GENERIC_ICON` 136235, e.g. 864 Seal of Righteousness) loses to a real spell of the same name, and its icon counts as none in `SpellIconAny`. Items: bags + equipped only. Test: test_search.py.
 - Spell links: this client inserts shift-clicked links via `ChatFrameUtil.InsertLink`;
   `ChatEdit_InsertLink` is only a fallback. Hook through `mod.AcceptSpellLinks`.
+- Spec presets (2026-10-25, replaced the class ones): `SPECS[class] = { {key, name, on, off} }` in each Presets.lua,
+  key "<CLASS>:<SPEC>" (DRUID: BALANCE / FERAL / BEAR / RESTO). Data: Wowhead Forever "<spec> abilities" guide pages
+  (spell links = max-rank IDs) + nether.wowhead.com/forever/tooltip/spell/<id> for cooldowns; talent cooldowns the
+  pages miss added by hand (verify in the tooltip: Last Stand is 3 min on Forever). Cooldown class default = all specs'
+  entries, on when on in ANY spec (hideUnknown now defaults ON); buff class default = on only when on in EVERY spec.
 - Presets: `Presets.lua` in each (`mod.PRESETS` {key, group = class | "RACE" | "ALL", race, name,
   entries}; `mod.DEFAULT_LISTS` built from them). Data from Wowhead Forever (nether.wowhead.com
   tooltips; 40xxxx IDs that aren't talents are Season of Discovery runes, leave them out).

@@ -101,3 +101,21 @@ print(lua.eval(r"""function(m)
   r[19740].only = nil
   return "party buff presets ok"
 end""")(mod))
+
+# buff spec presets: per class, defaults on only when every spec keeps them up
+print(lua.eval(r"""function(m)
+  local ret = m.PresetByKey("PALADIN:RET")
+  assert(ret and ret.name == "Paladin: Retribution", "ret buff preset")
+  local ids = {}
+  for _, e in ipairs(ret.entries) do ids[e.id] = e end
+  assert(ids[20375] and not ids[20375].off and ids[20050] and ids[21082].off, "ret buffs")
+  local function Default(class)
+    local t = {} for _, e in ipairs(m.DEFAULT_LISTS[class]) do t[e.id] = e end return t
+  end
+  local pal, rogue, priest = Default("PALADIN"), Default("ROGUE"), Default("PRIEST")
+  assert(pal[20375] and pal[20375].off, "a ret-only seal on for every paladin")
+  assert(rogue[5171] and not rogue[5171].off, "Slice and Dice off for rogues")
+  assert(priest[588] and not priest[588].off and priest[15473].off, "priest defaults")
+  for _, p in ipairs(m.PRESETS) do assert(not p.key:find(":REC$"), "old class preset " .. p.key) end
+  return "buff spec presets ok"
+end""")(mod))

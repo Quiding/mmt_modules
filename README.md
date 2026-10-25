@@ -49,8 +49,8 @@ important spells, trinkets and potions.
 - "Hide what you don't have": spells a character hasn't learned yet are hidden on every client's bars
   (each client tells the team which tracked spells it hasn't learned), and items you don't carry on your own row.
 - Lists per class, race, MMT role or character; entries can be switched off without deleting them.
-- **Presets** from Wowhead's WoW: Forever data: per class (recommended / major only / everything),
-  racials per race, potions & runes.
+- **Presets per spec** (all 28, Feral split into cat and bear) from Wowhead's WoW: Forever class guides: big
+  cooldowns, defensives and control on, the rotation in the list but off; racials per race, potions & runes.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
   you carry; shift-click a spell or item works too.
 
@@ -75,7 +75,8 @@ tracked for them, with exact timers.
 - All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and
   colour in Look.
 - The All bar starts with the party buffs (no auras), for everyone; limit them with the cog.
-- Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, per class; and
+- Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, and per spec (the
+  buffs that spec keeps up on itself: seals, aspects, armors, forms, Slice and Dice, ...); and
   the same name search as Cooldown Timers.
 - **Only for...** (the cog of each buff in the All bar): limit a buff to player roles (Tank / Healer / Melee / Ranged /
   Caster), classes and / or MMT roles - e.g. Blessing of Might only for Melee and Tank. Members it isn't

@@ -37,29 +37,85 @@ mod.PRESETS = {
         B(17626), B(17628), B(17627),                     -- Flask of the Titans / Supreme Power / Distilled Wisdom
         B(17538), B(11405), B(17539), B(3593),            -- Mongoose, Giants, Greater Arcane, Fortitude
     } },
-    -- per class (the buffs that member keeps up on themselves) ---------------
-    { key = "WARRIOR:REC", group = "WARRIOR", name = "Warrior: Battle Shout", entries = { B(6673) } },
-    { key = "PALADIN:REC", group = "PALADIN", name = "Paladin: tank (Righteous Fury)", entries = { B(25780) } },
-    { key = "PALADIN:AURAS", group = "PALADIN", name = "Paladin: auras (pick one on)", entries = { O(465), O(7294), O(19746) } },
-    { key = "HUNTER:REC", group = "HUNTER", name = "Hunter: Aspect of the Hawk, Trueshot Aura", entries = { B(13165), O(19506), O(20043) } },
-    { key = "PRIEST:REC", group = "PRIEST", name = "Priest: Inner Fire (Shadowform, Fear Ward off)", entries = { B(588), O(15473), O(6346), B(1459) } },
-    { key = "MAGE:ICE", group = "MAGE", name = "Mage: Ice Armor", entries = { B(7302), B(1459) } },
-    { key = "MAGE:MAGE", group = "MAGE", name = "Mage: Mage Armor", entries = { B(6117), B(1459) } },
-    { key = "WARLOCK:REC", group = "WARLOCK", name = "Warlock: Demon Armor", entries = { B(706), O(687), B(1459) } },
-    { key = "DRUID:REC", group = "DRUID", name = "Druid: Omen of Clarity (Thorns off)", entries = { B(16864), O(467), B(1459) } },
-    { key = "DRUID:MOONKIN", group = "DRUID", name = "Druid: Moonkin", entries = { B(24858), B(24907), B(1459) } },
-    { key = "SHAMAN:REC", group = "SHAMAN", name = "Shaman: Water Shield (Lightning Shield off)", entries = { B(408510), O(324), B(1459) } },
-    { key = "ROGUE:REC", group = "ROGUE", name = "Rogue: Battle Shout", entries = { B(6673) } },
 }
 
--- default lists of a new profile: the party buffs in the All bar (for everyone: set
--- "Only for" with the cog; "Hide buffs nobody here can cast" leaves out the ones nobody casts),
--- the first preset of each class
-mod.DEFAULT_LISTS = { ALL = PartyBuffs() }
-for _, p in ipairs(mod.PRESETS) do
-    if p.group ~= "ALL" and not mod.DEFAULT_LISTS[p.group] then
-        local list = {}
-        for _, e in ipairs(p.entries) do list[#list + 1] = { id = e.id, off = e.off } end
-        mod.DEFAULT_LISTS[p.group] = list
+-- per spec: the buffs that member keeps up on themselves (Wowhead Forever's
+-- class guides, October 2026). Spec-only ones (another spec's seal, form, aura)
+-- off in the class default; party buffs (Fortitude, Blessings, ...) are the All bar's.
+local SPECS = {
+    WARRIOR = {
+        { "ARMS", "Arms", { B(6673), O(12319) } },                       -- Battle Shout, Flurry
+        { "FURY", "Fury", { B(6673), B(12319) } },
+        { "PROT", "Protection", { B(6673) } },
+    },
+    PALADIN = {
+        { "HOLY", "Holy", { B(19746), O(20357), O(20349), O(10293) } },  -- Concentration Aura, Seals of Wisdom / Light, Devotion
+        { "PROT", "Protection", { B(25780), B(10293), B(20928), B(20423), O(10301) } },
+            -- Righteous Fury, Devotion Aura, Holy Shield, Seal of Fury, Retribution Aura
+        { "RET", "Retribution", { B(20375), B(20050), B(20218), O(21082), O(21084), O(10301) } },
+            -- Seal of Command, Vengeance, Sanctity Aura, Seals of the Crusader / Righteousness, Retribution Aura
+    },
+    HUNTER = {
+        { "BM", "Beast Mastery", { B(13165), O(20043) } },               -- Aspect of the Hawk, of the Wild
+        { "MM", "Marksmanship", { B(13165), B(19506), O(20043) } },      -- + Trueshot Aura
+        { "SURV", "Survival", { B(13165), O(13163), O(20043) } },        -- + Aspect of the Monkey
+    },
+    ROGUE = {
+        { "ASSA", "Assassination", { B(5171) } },                        -- Slice and Dice
+        { "COMBAT", "Combat", { B(5171) } },
+        { "SUB", "Subtlety", { B(5171) } },
+    },
+    PRIEST = {
+        { "DISC", "Discipline", { B(588), O(6346) } },                   -- Inner Fire, Fear Ward
+        { "HOLY", "Holy", { B(588), O(6346) } },
+        { "SHADOW", "Shadow", { B(15473), B(588), O(6346) } },           -- Shadowform
+    },
+    SHAMAN = {
+        { "ELE", "Elemental", { B(408510), O(324) } },                   -- Water Shield, Lightning Shield
+        { "ENH", "Enhancement", { B(324), O(408510) } },
+        { "RESTO", "Restoration", { B(408510), O(324) } },
+    },
+    MAGE = {
+        { "ARCANE", "Arcane", { B(6117), O(7302) } },                    -- Mage Armor, Ice Armor
+        { "FIRE", "Fire", { B(6117), O(7302) } },
+        { "FROST", "Frost", { B(7302), B(11426), O(6117) } },            -- + Ice Barrier
+    },
+    WARLOCK = {
+        { "AFF", "Affliction", { B(706) } },                             -- Demon Armor
+        { "DEMO", "Demonology", { B(706), B(19028) } },                  -- + Soul Link
+        { "DESTRO", "Destruction", { B(706) } },
+    },
+    DRUID = {
+        { "BALANCE", "Balance", { B(24858), B(16864), O(467) } },        -- Moonkin Form, Omen of Clarity, Thorns
+        { "FERAL", "Feral (cat)", { B(16864), B(17007), O(467) } },      -- + Leader of the Pack
+        { "BEAR", "Feral (bear tank)", { B(16864), B(17007), B(467) } },
+        { "RESTO", "Restoration", { B(16864), O(467) } },
+    },
+}
+local CLASS_NAMES = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue", PRIEST = "Priest",
+    SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid" }
+for _, class in ipairs(mod.CLASSES) do
+    for _, sp in ipairs(SPECS[class] or {}) do
+        table.insert(mod.PRESETS, { key = class .. ":" .. sp[1], group = class,
+            name = CLASS_NAMES[class] .. ": " .. sp[2], entries = sp[3] })
     end
+end
+
+-- default lists of a new profile: the party buffs in the All bar (for everyone: set
+-- "Only for" with the cog; "Hide buffs nobody here can cast" leaves out the ones nobody casts);
+-- per class every spec's buffs once, on only when on in every spec (a seal or form
+-- of one spec stays off)
+mod.DEFAULT_LISTS = { ALL = PartyBuffs() }
+for class, specs in pairs(SPECS) do
+    local list, at, onIn = {}, {}, {}
+    for _, sp in ipairs(specs) do
+        for _, e in ipairs(sp[3]) do
+            if not at[e.id] then list[#list + 1] = { id = e.id }; at[e.id] = #list end
+            if not e.off then onIn[e.id] = (onIn[e.id] or 0) + 1 end
+        end
+    end
+    for _, e in ipairs(list) do
+        if (onIn[e.id] or 0) < #specs then e.off = true end
+    end
+    mod.DEFAULT_LISTS[class] = list
 end

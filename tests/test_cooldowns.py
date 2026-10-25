@@ -471,3 +471,31 @@ print("B:", B.eval(r"""function(m)
   MMTDB = nil
   return "takeover ok"
 end""")(bmod))
+
+# spec presets (Wowhead Forever guides): every class has its specs, no old class presets;
+# the class default = every spec's entries, on when on in any spec
+print("A:", A.eval(r"""function(m)
+  local specs = {}
+  for _, p in ipairs(m.PRESETS) do
+    if p.group ~= "RACE" and p.group ~= "ALL" then
+      specs[p.group] = (specs[p.group] or 0) + 1
+      assert(not p.key:find(":REC$") and not p.key:find(":MAJOR$"), "old class preset " .. p.key)
+    end
+  end
+  for _, c in ipairs({ "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK" }) do
+    assert(specs[c] == 3, c .. " specs: " .. tostring(specs[c]))
+  end
+  assert(specs.DRUID == 4, "druid: balance, cat, bear, resto")
+  local ret = m.PresetByKey("PALADIN:RET")
+  assert(ret and ret.name == "Paladin: Retribution", "ret preset")
+  local on, off = {}, {}
+  for _, e in ipairs(ret.entries) do if e.off then off[e.id] = e.cd else on[e.id] = e.cd end end
+  assert(on[10310] == 1200 and on[1020] == 300 and on[20066] == 60 and off[10333] == 10 and off[20271] == 10, "ret entries")
+  local def = {}
+  for _, e in ipairs(m.DEFAULT_LISTS.PALADIN) do assert(not def[e.id], "double " .. e.id); def[e.id] = e end
+  assert(def[20216] and not def[20216].off, "Divine Favor (holy) on in the class default")
+  assert(def[10333] and def[10333].off, "Holy Strike on in the class default")
+  assert(m.PresetByKey("WARRIOR:PROT") and select(2, (function()
+    for _, e in ipairs(m.PresetByKey("WARRIOR:PROT").entries) do if e.id == 12975 then return true, e.cd end end end)()) == 180, "Last Stand 3 min")
+  return "spec presets ok"
+end""")(amod))
