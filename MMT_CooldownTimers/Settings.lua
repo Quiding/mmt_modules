@@ -26,8 +26,14 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" }, { "specs", "Specs" } })
     mod.ShareBar(page, status)
+    mod.SpecsTab(panels.specs, status, function()
+        mod.BuildIndex()
+        Apply()
+        mod.ShareCheck()
+        mod.KnownCheck()
+    end)
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
@@ -211,12 +217,6 @@ M.Page = function(_, page)
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them.")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
-    RS:Check("Use spec lists", function() return M.db.specLists end, function(v)
-        M.db.specLists = v and true or false
-        if v then mod.EnsureSpecLists() end
-        status.Show_(v and "Spec lists on: pick \"Paladin: Holy\", ... in the List menu." or "Spec lists off: class lists again.")
-        Changed()
-    end, "A member whose talent spec is known (Holy, Retribution, ...) tracks their spec's list instead of their class list. Each spec list starts as that spec's preset. Members below talent level or on an older version keep the class list.")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
         M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
         status.Show_("Lists reset.")

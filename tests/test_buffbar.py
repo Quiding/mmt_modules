@@ -304,3 +304,21 @@ print(lua.eval(r"""function(m)
   m.State = oldState
   return "empty rows hidden ok"
 end""")(mod))
+
+# a spec set by hand (Specs tab) wins over the talents, if it fits the class
+print(lua.eval(r"""function(m)
+  m.M.db.specLists = true
+  MMT.db.team["Bob-Stone"] = { class = "WARRIOR" }
+  m.M.db.specSet = { ["Bob-Stone"] = "FURY", ["Anna-Smith"] = "RET" }   -- RET doesn't fit a shaman
+  assert(m.SpecOf("Bob-Stone") == "WARRIOR:FURY", "set by hand: " .. tostring(m.SpecOf("Bob-Stone")))
+  assert(m.ListKeysFor("Bob-Stone", false)[1] == "SPEC:WARRIOR:FURY", "fury list")
+  assert(m.SpecOf("Anna-Smith") ~= "SHAMAN:RET", "a spec of another class is ignored")
+  -- one set in Cooldown Timers counts here too
+  m.M.db.specSet = {}
+  MMT.db.modules = { CooldownTimers = { specSet = { ["Bob-Stone"] = "ARMS" } } }
+  assert(m.SpecOf("Bob-Stone") == "WARRIOR:ARMS", "set in the other module")
+  MMT.db.modules = nil
+  m.M.db.specLists = false
+  MMT.db.team["Bob-Stone"] = nil
+  return "specs set by hand ok"
+end""")(mod))

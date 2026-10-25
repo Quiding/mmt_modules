@@ -5,7 +5,9 @@
 -- talent level, older client) -> the class list. A spec list starts as that spec's
 -- preset (Presets.lua, same keys).
 --
--- The spec = the talent tree with the most points: each client reads its own and
+-- A spec set by hand on the Specs tab (M.db.specSet[key] = "FURY") wins; one set in
+-- the other module (Cooldown Timers / Buff Timers) counts too (read only).
+-- Otherwise the spec = the talent tree with the most points: each client reads its own and
 -- tells the team on MMT's heartbeat ("cts=<tree>" from Cooldown Timers, "bts=<tree>"
 -- from Buff Timers while Cooldown Timers is off), plus ONE message "MSPC:<tree>"
 -- right when it changes (respec, dual spec swap) - never periodic. A druid in the
@@ -172,9 +174,22 @@ function mod.TreeOf(key)
     return (tree and tree >= 1 and tree <= 3) and tree or nil
 end
 
+-- the spec set by hand for a member (this module, else the other one), if it fits their class
+local OTHER = (M.name == "CooldownTimers") and "BuffTimers" or "CooldownTimers"
+function mod.SetSpec(key, class)
+    local own = M.db.specSet and M.db.specSet[key]
+    local other = MMT.db and MMT.db.modules and MMT.db.modules[OTHER]
+    local spec = own or (type(other) == "table" and type(other.specSet) == "table" and other.specSet[key]) or nil
+    if type(spec) ~= "string" then return nil end
+    for _, s in ipairs(mod.SpecsOf(class or "")) do if s == spec then return spec end end
+    return nil
+end
+
 -- "PALADIN:HOLY" for a member, or nil (spec unknown)
 function mod.SpecOf(key)
     local class = mod.ClassOf(key)
+    local set = class and mod.SetSpec(key, class)
+    if set then return class .. ":" .. set end
     local trees = class and mod.SPEC_TREES[class]
     local tree = trees and mod.TreeOf(key)
     if not tree then return nil end
@@ -195,4 +210,54 @@ function mod.EnsureSpecLists()
             end
         end
     end
+end
+
+---------------------------------------------------------------------------
+-- Settings: the Specs tab (the same in both modules)
+---------------------------------------------------------------------------
+local function SpecName(class, spec)
+    local p = mod.PresetByKey(class .. ":" .. spec)
+    return p and (p.name:match("^[^:]+: (.+)$") or p.name) or spec
+end
+
+-- changed() = the module's redraw after a change
+function mod.SpecsTab(panel, status, changed)
+    local function Sets() M.db.specSet = M.db.specSet or {} return M.db.specSet end   -- older profiles: not there yet
+    local UI, H = MMT.UI, MMT.ConfigHelpers
+    local L = UI.Column(panel, 0, 0, H.COL_W)
+    L:Header("Spec lists")
+    L:Check("Use spec lists", function() return M.db.specLists end, function(v)
+        M.db.specLists = v and true or false
+        if v then mod.EnsureSpecLists() end
+        status.Show_(v and "Spec lists on: pick \"Paladin: Holy\", ... in the List menu." or "Spec lists off: class lists again.")
+        changed()
+    end, "A member whose spec is known (set below, or from their talents) tracks their spec's list instead of their class list. Each spec list starts as that spec's preset.")
+    L:Header("Specs")
+    local who, seen = {}, {}
+    local own = MMT.PlayerFull()
+    if own then who[1] = own; seen[own] = true end
+    for _, key in ipairs(MMT.SortedMembers()) do if not seen[key] then who[#who + 1] = key end end
+    for i, key in ipairs(who) do
+        if i > 10 then break end
+        L:Cycle(MMT.FullDisplay(key), function()
+            local class = mod.ClassOf(key)
+            local sets = Sets()
+            local saved = sets[key]
+            sets[key] = nil
+            local auto = not mod.SetSpec(key, class) and mod.SpecOf(key)
+            sets[key] = saved
+            local c = { { value = "AUTO", text = auto and ("Auto: " .. SpecName(class, auto:match(":(.+)$")) .. " (talents)")
+                or "Auto (class list until known)" } }
+            for _, s in ipairs(mod.SpecsOf(class or "")) do c[#c + 1] = { value = s, text = SpecName(class, s) } end
+            return c
+        end, function() return Sets()[key] or "AUTO" end, function(v)
+            Sets()[key] = (v ~= "AUTO") and v or nil
+            changed()
+        end)
+    end
+    local R = UI.Column(panel, H.COL2_X, 0, H.COL_W)
+    R:Header("How specs work")
+    R:Note("Auto: the talent tree with the most points. Each client tells the team, also right after a respec or dual spec swap. A feral druid counts as the bear tank spec while their player role is Tank.")
+    R:Note("Set a spec here to choose it by hand: for a character without talents yet, or to see a spec's list in the preview. A spec set in Cooldown Timers counts in Buff Timers too, and the other way round.")
+    R:Note("Edit the spec lists in the List menu of the lists tab, under \"Specs\".")
 end

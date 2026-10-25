@@ -24,6 +24,7 @@ local M = MMT.NewModule({
     defaults = {
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,
+        specSet = {},              -- [teamKey] = spec key set by hand (Specs tab)
         specLists = false,         -- a member with a known spec uses their spec's list instead of the class list (Specs.lua)
         iconSize = 28, iconZoom = 8, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
         bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,

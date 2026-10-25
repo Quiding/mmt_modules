@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.12.0) / MMT_BuffTimers (v0.13.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.13.0) / MMT_BuffTimers (v0.14.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -143,6 +143,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   fills missing spec lists from the presets. Spec = tree with most points (`mod.TreePoints`, moved here from Roles.lua;
   `mod.OwnTree`), heartbeat `cts` (Cooldowns) / `bts` (Buffs, only while Cooldowns is off) + `MSPC:<tree>` once on
   change; druid Feral + `mod.PlayerRole` TANK (Buffs only) = BEAR. Preview ALL/MIXED: made-up tree from a hash.
+  Set by hand: `M.db.specSet[key]` (Specs tab = `mod.SpecsTab(panel, status, changed)` in Specs.lua, both modules;
+  holds the "Use spec lists" check), else the OTHER module's `MMT.db.modules[OTHER].specSet` (read only); must fit
+  `mod.SpecsOf(class)`.
 - Spec presets (2026-10-25, replaced the class ones): `SPECS[class] = { {key, name, on, off} }` in each Presets.lua,
   key "<CLASS>:<SPEC>" (DRUID: BALANCE / FERAL / BEAR / RESTO). Data: Wowhead Forever "<spec> abilities" guide pages
   (spell links = max-rank IDs) + nether.wowhead.com/forever/tooltip/spell/<id> for cooldowns; talent cooldowns the

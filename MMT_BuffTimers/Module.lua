@@ -24,6 +24,7 @@ local M = MMT.NewModule({
     defaults = {
         shown = true, locked = false, clickThrough = false, vertical = false,
         includeSelf = true, onlyOnline = true,
+        specSet = {},              -- [teamKey] = spec key set by hand (Specs tab)
         specLists = false,         -- a member with a known spec uses their spec's list instead of the class list (Specs.lua)
         attach = "OFF",            -- OFF: own window | LEFT / RIGHT: on the Cooldowns rows
         iconSize = 28, iconZoom = 8, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
