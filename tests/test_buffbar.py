@@ -250,3 +250,11 @@ print(lua.eval(r"""function(m)
   m.SpellIconAny = oldIcon
   return "totem preview ok"
 end""")(mod))
+
+# a totem pattern added before presets had icons gets the preset's icon
+print(lua.eval(r"""function(m)
+  m.M.db.lists.ALL = { { name = "Grace of Air*", caster = "SHAMAN" } }
+  m.BuildIndex()
+  assert(m.M.db.lists.ALL[1].icon == 8836, "icon filled in: " .. tostring(m.M.db.lists.ALL[1].icon))
+  return "old totem entries get icons ok"
+end""")(mod))

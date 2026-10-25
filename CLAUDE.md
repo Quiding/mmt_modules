@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.12.2) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.11.0) / MMT_BuffTimers (v0.12.3) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -183,7 +183,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   left + its name and icon (ScanUnit keeps `icon`, `raw`); the window uses that icon, `tip` instead of `spell`.
   Everything keyed by entry uses `e.id or e.name` (presets, PresetBox, preview hash). Presets `P(name)`: paladin
   specs "Seal of *" on, hunters "Aspect of the *". Casters: patterns always count as castable, unless they carry
-  `caster = "<CLASS>"` (preset `T(name, iconSpell)` = totem buffs, "ALL:TOTEMS"; `e.icon` = spell whose icon a never-seen pattern shows: buff "Strength of Earth" / totem "... Totem").
+  `caster = "<CLASS>"` (preset `T(name, iconSpell)` = totem buffs, "ALL:TOTEMS"; `e.icon` = spell whose icon a never-seen pattern shows (BuildIndex fills it into older list entries from the presets): buff "Strength of Earth" / totem "... Totem").
 - Weapon enchants (`Weapons.lua`): entries `{ weapon = "MH" | "OH" }` = any enchant on that weapon. Own via
   `C_Item.GetWeaponEnchantInfo(Enum.WeaponSlot.X)` (Forever: imbue type beside temporary; imbue wins) else old
   `GetWeaponEnchantInfo`; events WEAPON_ENCHANT_CHANGED / WEAPON_SLOT_CHANGED (pcall) + a 5 s re-read. Others:

@@ -18,10 +18,26 @@ local fromUnit = {} -- [teamKey] = true while the member is read from a unit
 -- the window looks up the tracked ones by name), and spells still unknown get their
 -- data requested; the window redraws once it had time to arrive.
 local requested = {}
+local presetIcons   -- [pattern] = spell ID of its icon, from the presets (totems)
 function mod.BuildIndex()
+    if not presetIcons then
+        presetIcons = {}
+        for _, p in ipairs(mod.PRESETS or {}) do
+            for _, e in ipairs(p.entries) do
+                if mod.IsPattern(e) and e.icon then presetIcons[e.name] = e.icon end
+            end
+        end
+    end
     local missing = false
     for _, list in pairs(M.db.lists or {}) do
         for _, e in ipairs(list) do
+            -- a pattern taken from a preset before presets had icons: the preset's icon
+            if mod.IsPattern(e) and not e.icon and presetIcons[e.name] then e.icon = presetIcons[e.name] end
+            if e.icon and not requested[e.icon] then
+                requested[e.icon] = true
+                missing = true
+                if C_Spell and C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, e.icon) end
+            end
             if e.id and not mod.BuffName(e) and not requested[e.id] then
                 requested[e.id] = true
                 missing = true
