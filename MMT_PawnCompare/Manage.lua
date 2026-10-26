@@ -1,16 +1,20 @@
 -- MMT Pawn Compare: manage Pawn scales across the team.
 --
--- A window lists every Pawn scale on this character (Pawn's own list,
+-- A window lists the Pawn scales on this character (Pawn's own list,
 -- PawnGetAllScalesEx) together with the scales the team shares (M.store.scales),
--- and who has each one. Ticked scales are deleted here with Pawn's own
--- PawnDeleteScale, and on the team with a message:
---   PCMP_DEL:<name>~<name>...   (names escaped like the scale sync)
--- The alts delete the same scales by name (asking first while askDelete is on),
--- then their changed scales reach the team through the usual pcs / PCMP_S sync.
--- Members offline at that moment get it whispered when they are next seen
--- online (M.store.pendingDel[key] = { names = { [name] = true }, time }).
--- Pawn's built-in scales (from a scale provider) are read only: they can only
--- be hidden in Pawn, never deleted.
+-- and who has each one. Ticked scales get their action, here and on the team:
+--   del   own (custom) scales are deleted, PawnDeleteScale       PCMP_DEL:<names>
+--   hide  Pawn's built-in scales (read only, can't be deleted)
+--         are hidden for the character, PawnSetScaleVisible      PCMP_HIDE:<names>
+--   show  hidden ones (with "Show hidden") are shown again       PCMP_SHOW:<names>
+-- Names are escaped like the scale sync and joined by "~". The alts find a
+-- scale by its name or its display name (the team shares display names) and
+-- ask first while askDelete is on; their changed scales then reach the team
+-- through the usual pcs / PCMP_S sync. Members offline at that moment get it
+-- whispered when they are next seen online
+-- (M.store.pendingDel[key] = { del = {[name]=true}, hide = {...}, show = {...}, time }).
+-- Visibility is per character in Pawn (the scales themselves are account-wide);
+-- on Forever Pawn has no automatic spec mode, so a hidden scale stays hidden.
 
 local _, mod = ...
 local MMT = MMT
@@ -18,6 +22,14 @@ local M = mod.M
 
 local MAX_MSG = 240
 local PENDING_DAYS = 14
+
+local ACTIONS = {
+    del = { tag = "PCMP_DEL", verb = "Delete", past = "deleted" },
+    hide = { tag = "PCMP_HIDE", verb = "Hide", past = "hid" },
+    show = { tag = "PCMP_SHOW", verb = "Show again", past = "showed" },
+}
+local ORDER = { "del", "hide", "show" }
+local OPPOSITE = { hide = "show", show = "hide" }
 
 ---------------------------------------------------------------------------
 -- Pawn's scales on this character
@@ -35,6 +47,16 @@ function mod.PawnScales()
     return t
 end
 
+-- this character's scale with that name or display name
+function mod.FindScale(name)
+    local byLabel
+    for _, s in ipairs(mod.PawnScales() or {}) do
+        if s.name == name then return s end
+        if s.label == name then byLabel = byLabel or s end
+    end
+    return byLabel
+end
+
 -- a scale this character has that Pawn lets us delete
 function mod.CanDelete(name)
     if not (mod.PawnReady() and PawnDoesScaleExist and PawnDeleteScale) then return false end
@@ -43,17 +65,28 @@ function mod.CanDelete(name)
     return not (PawnScaleIsReadOnly and PawnScaleIsReadOnly(name))
 end
 
--- rows for the window: { name, label, own = Pawn info | nil, holders = { team keys }, deletable }
+-- the scale the action would change here ({ name, label }), or nil
+function mod.Target(action, name)
+    if action == "del" then return mod.CanDelete(name) and { name = name } or nil end
+    if not PawnSetScaleVisible then return nil end
+    local s = mod.FindScale(name)
+    if s and s.visible == (action == "hide") then return s end
+end
+
+-- rows for the window: { name, label, own = Pawn info | nil, holders = { team keys }, builtin, action }
 -- own scales that are shown in Pawn (with showHidden also the hidden ones,
--- custom and built-in), then what only the team has (always shown there). A team scale is built-in when it has the name of
--- one of Pawn's built-in scales here (every Pawn has the same ones; the team
--- only shares display names). Sorted: deletable first, then own, then by name.
+-- custom and built-in), then what only the team has (always shown there). A
+-- team scale is built-in when it has the name of one of Pawn's built-in scales
+-- here (every Pawn has the same ones; the team only shares display names).
+-- action: del for own scales, hide for built-in ones, show for hidden built-in ones.
+-- Sorted: own (custom) scales first, then built-in ones; this character's before the team's, then by name.
 function mod.ScaleRows(showHidden)
     local rows, byName, byLabel, builtin = {}, {}, {}, {}
     for _, s in ipairs(mod.PawnScales() or {}) do
         if s.provider then builtin[s.name] = true; builtin[s.label] = true end
         if s.visible or showHidden then
-            local r = { name = s.name, label = s.label, own = s, holders = {}, deletable = not s.provider }
+            local r = { name = s.name, label = s.label, own = s, holders = {}, builtin = s.provider,
+                action = not s.provider and "del" or (s.visible and "hide" or "show") }
             rows[#rows + 1] = r
             byName[s.name] = r
             byLabel[s.label] = byLabel[s.label] or r
@@ -62,10 +95,10 @@ function mod.ScaleRows(showHidden)
     for _, key in ipairs(MMT.SortedMembers()) do
         local rec = not MMT.IsSelf(key) and mod.ScalesOf(key)
         for _, sc in ipairs(rec and rec.scales or {}) do
-            -- the team shares Pawn's display name: the same as the name for own scales
             local r = byName[sc.name] or byLabel[sc.name]
             if not r then
-                r = { name = sc.name, label = sc.name, holders = {}, deletable = not builtin[sc.name] }
+                local b = builtin[sc.name] or false
+                r = { name = sc.name, label = sc.name, holders = {}, builtin = b, action = b and "hide" or "del" }
                 rows[#rows + 1] = r
                 byName[sc.name] = r
             end
@@ -73,7 +106,7 @@ function mod.ScaleRows(showHidden)
         end
     end
     table.sort(rows, function(a, b)
-        if a.deletable ~= b.deletable then return a.deletable end
+        if a.builtin ~= b.builtin then return not a.builtin end
         if (a.own ~= nil) ~= (b.own ~= nil) then return a.own ~= nil end
         return a.label:lower() < b.label:lower()
     end)
@@ -81,7 +114,7 @@ function mod.ScaleRows(showHidden)
 end
 
 ---------------------------------------------------------------------------
--- Deleting
+-- Changing scales here
 ---------------------------------------------------------------------------
 local function RefreshPawn(deleted)
     if PawnUICurrentScale and deleted[PawnUICurrentScale] then PawnUICurrentScale = nil end   -- as Pawn's own Delete does
@@ -91,53 +124,67 @@ local function RefreshPawn(deleted)
     end
 end
 
--- deletes the scales (names) here; returns the list of deleted names
-function mod.DeleteLocal(names)
-    local done, set = {}, {}
+-- runs the action on the scales (names or display names) here; returns the changed names
+function mod.ApplyLocal(action, names)
+    local done, deleted = {}, {}
     for _, name in ipairs(names) do
-        if mod.CanDelete(name) then
-            local ok, res = pcall(PawnDeleteScale, name)
-            if ok and res then done[#done + 1] = name; set[name] = true end
+        local s = mod.Target(action, name)
+        if s then
+            local ok, res
+            if action == "del" then
+                ok, res = pcall(PawnDeleteScale, s.name)
+                if ok and res then deleted[s.name] = true end
+            else
+                ok, res = pcall(PawnSetScaleVisible, s.name, action == "show")
+            end
+            if ok and res then done[#done + 1] = s.label or s.name end
         end
     end
     if #done > 0 then
-        RefreshPawn(set)
-        M:Debug("deleted %d scale(s): %s", #done, table.concat(done, ", "))
+        RefreshPawn(deleted)
+        M:Debug("%s %d scale(s): %s", ACTIONS[action].past, #done, table.concat(done, ", "))
         mod.UpdateOwn(true)   -- the team gets the new scales through the usual sync
         MMT.Fire("PAWN_SCALES_CHANGED", MMT.PlayerFull())
     end
     return done
 end
 
--- PCMP_DEL messages for the names, each below the message limit
-local function Messages(names)
+function mod.DeleteLocal(names) return mod.ApplyLocal("del", names) end
+
+---------------------------------------------------------------------------
+-- Sending
+---------------------------------------------------------------------------
+-- messages for the names, each below the message limit
+local function Messages(action, names)
+    local tag = ACTIONS[action].tag .. ":"
     local msgs, cur = {}, nil
     for _, name in ipairs(names) do
         local e = mod.Escape(name)
-        if #"PCMP_DEL:" + #e <= MAX_MSG then
+        if #tag + #e <= MAX_MSG then
             if cur and #cur + 1 + #e <= MAX_MSG then
                 cur = cur .. "~" .. e
             else
                 if cur then msgs[#msgs + 1] = cur end
-                cur = "PCMP_DEL:" .. e
+                cur = tag .. e
             end
         end
     end
     if cur then msgs[#msgs + 1] = cur end
     return msgs
 end
-mod.DeleteMessages = Messages
+mod.ActionMessages = Messages
+function mod.DeleteMessages(names) return Messages("del", names) end
 
 local function Pending()
     M.store.pendingDel = M.store.pendingDel or {}
     return M.store.pendingDel
 end
 
--- asks the team to delete the scales; members offline now get it later.
+-- asks the team to do the action; members offline now get it later.
 -- Returns how many members were asked now and how many later.
-function mod.SendDelete(names)
+function mod.SendAction(action, names)
     if #names == 0 then return 0, 0 end
-    for i, msg in ipairs(Messages(names)) do
+    for i, msg in ipairs(Messages(action, names)) do
         C_Timer.After((i - 1) * 0.2, function() MMT.SendToTeam(msg, true) end)
     end
     local now, later = 0, 0
@@ -147,16 +194,22 @@ function mod.SendDelete(names)
                 now = now + 1
             else
                 later = later + 1
-                local p = Pending()[key] or { names = {} }
-                for _, n in ipairs(names) do p.names[n] = true end
+                local p = Pending()[key] or {}
+                p[action] = p[action] or {}
+                for _, n in ipairs(names) do
+                    p[action][n] = true
+                    if OPPOSITE[action] and p[OPPOSITE[action]] then p[OPPOSITE[action]][n] = nil end
+                end
                 p.time = time()
                 Pending()[key] = p
             end
         end
     end
-    M:Debug("delete sent: %s (%d now, %d later)", table.concat(names, ", "), now, later)
+    M:Debug("%s sent: %s (%d now, %d later)", action, table.concat(names, ", "), now, later)
     return now, later
 end
+
+function mod.SendDelete(names) return mod.SendAction("del", names) end
 
 -- a member offline at the time came online: whisper what they missed
 local function SendPending(key, sender)
@@ -164,13 +217,18 @@ local function SendPending(key, sender)
     if not p then return end
     Pending()[key] = nil
     if time() - (p.time or 0) > PENDING_DAYS * 86400 then return end
-    local names = {}
-    for n in pairs(p.names) do names[#names + 1] = n end
-    table.sort(names)
-    for i, msg in ipairs(Messages(names)) do
+    if p.names then p.del = p.names end   -- 0.4.0 format
+    local msgs = {}
+    for _, action in ipairs(ORDER) do
+        local names = {}
+        for n in pairs(p[action] or {}) do names[#names + 1] = n end
+        table.sort(names)
+        for _, msg in ipairs(Messages(action, names)) do msgs[#msgs + 1] = msg end
+    end
+    for i, msg in ipairs(msgs) do
         C_Timer.After((i - 1) * 0.2, function() MMT.SendAddon(msg, "WHISPER", sender) end)
     end
-    M:Debug("pending delete whispered to %s", MMT.Repr(sender))
+    M:Debug("pending scale changes whispered to %s", MMT.Repr(sender))
 end
 
 M:Listen("XP_RECEIVED", function(key, sender)
@@ -182,58 +240,92 @@ end)
 ---------------------------------------------------------------------------
 local queue, showing = {}, nil
 
-local function Apply(from, names)
-    local done = mod.DeleteLocal(names)
-    if #done > 0 then
-        MMT.Print("Pawn Compare: deleted the Pawn scale(s) %s, as %s did.", table.concat(done, ", "), MMT.FirstName(from))
+local function Apply(from, ops)
+    local parts = {}
+    for _, action in ipairs(ORDER) do
+        local done = ops[action] and mod.ApplyLocal(action, ops[action]) or {}
+        if #done > 0 then parts[#parts + 1] = ACTIONS[action].past .. " " .. table.concat(done, ", ") end
     end
+    if #parts > 0 then
+        MMT.Print("Pawn Compare: %s, as %s did.", table.concat(parts, "; "), MMT.FirstName(from))
+    end
+end
+
+-- what of ops can still be done here (names that went away are left out), and how many
+local function Doable(ops)
+    local t, n = {}, 0
+    for _, action in ipairs(ORDER) do
+        for _, name in ipairs(ops[action] or {}) do
+            if mod.Target(action, name) then
+                t[action] = t[action] or {}
+                table.insert(t[action], name)
+                n = n + 1
+            end
+        end
+    end
+    return t, n
 end
 
 local function ShowNext()
     if showing or #queue == 0 then return end
     local q = table.remove(queue, 1)
-    -- what still exists by now
-    local names = {}
-    for _, n in ipairs(q.names) do if mod.CanDelete(n) then names[#names + 1] = n end end
-    if #names == 0 then return ShowNext() end
+    local ops, n = Doable(q.ops)
+    if n == 0 then return ShowNext() end
     showing = q
     local function done()
         showing = nil
         C_Timer.After(0, ShowNext)
     end
-    MMT.UI.Confirm(("%s deleted these Pawn scales and asks you to delete them too:\n\n%s"):format(
-        MMT.FullDisplay(q.from), table.concat(names, ", ")), "Delete", function()
-        Apply(q.from, names)
+    local lines = {}
+    for _, action in ipairs(ORDER) do
+        if ops[action] then
+            local labels = {}
+            for _, name in ipairs(ops[action]) do
+                local s = mod.FindScale(name)
+                labels[#labels + 1] = s and s.label or name
+            end
+            lines[#lines + 1] = ACTIONS[action].verb .. ": " .. table.concat(labels, ", ")
+        end
+    end
+    MMT.UI.Confirm(("%s changed these Pawn scales and asks you to do the same:\n\n%s"):format(
+        MMT.FullDisplay(q.from), table.concat(lines, "\n")), "Do it", function()
+        Apply(q.from, ops)
         done()
-    end, "Keep", done)
+    end, "Keep mine", done)
 end
 
-function mod.ReceiveDelete(from, names)
-    local mine = {}
-    for _, n in ipairs(names) do if mod.CanDelete(n) then mine[#mine + 1] = n end end
-    if #mine == 0 then
-        M:Debug("delete from %s: none of %s here", MMT.Repr(from), table.concat(names, ", "))
+function mod.Receive(from, action, names)
+    local ops, n = Doable({ [action] = names })
+    if n == 0 then
+        M:Debug("%s from %s: none of %s here", action, MMT.Repr(from), table.concat(names, ", "))
         return
     end
-    if not M.db.askDelete then return Apply(from, mine) end
+    if not M.db.askDelete then return Apply(from, ops) end
     for _, q in ipairs(queue) do
         if q.from == from then
-            for _, n in ipairs(mine) do q.names[#q.names + 1] = n end
+            q.ops[action] = q.ops[action] or {}
+            for _, name in ipairs(ops[action]) do table.insert(q.ops[action], name) end
             return
         end
     end
-    queue[#queue + 1] = { from = from, names = mine }
+    queue[#queue + 1] = { from = from, ops = ops }
     ShowNext()
 end
 
+function mod.ReceiveDelete(from, names) return mod.Receive(from, "del", names) end
+
 function mod.DeleteWaiting() return #queue + (showing and 1 or 0) end
 
+local BY_TAG = {}
+for action, a in pairs(ACTIONS) do BY_TAG[a.tag] = action end
+
 M:Listen("TEAM_MESSAGE", function(key, sender, text)
-    local body = text:match("^PCMP_DEL:(.+)$")
-    if not body or MMT.IsSelf(key) then return end
+    local tag, body = text:match("^(PCMP_[A-Z]+):(.+)$")
+    local action = tag and BY_TAG[tag]
+    if not action or MMT.IsSelf(key) then return end
     local names = {}
     for part in body:gmatch("[^~]+") do names[#names + 1] = mod.Unescape(part) end
-    mod.ReceiveDelete(key, names)
+    mod.Receive(key, action, names)
 end)
 
 ---------------------------------------------------------------------------
@@ -246,12 +338,35 @@ local win
 local selected = {}
 local showHidden = false   -- this session only
 
-local function Selected(onlyOwn)
-    local t = {}
+-- ticked rows as { action = { names } }, how many, how many of them are here
+local function Selected()
+    local ops, n, own = {}, 0, 0
     for _, r in ipairs(mod.ScaleRows(showHidden)) do
-        if selected[r.name] and r.deletable and (not onlyOwn or r.own) then t[#t + 1] = r.name end
+        if selected[r.name] then
+            ops[r.action] = ops[r.action] or {}
+            table.insert(ops[r.action], r.name)
+            n = n + 1
+            if r.own then own = own + 1 end
+        end
     end
-    return t
+    return ops, n, own
+end
+
+local SUFFIX = { hide = " |cff888888(built-in: hide)|r", show = " |cff888888(hidden: show again)|r" }
+
+-- runs the ticked actions here (and asks the team); returns a status line
+local function Run(team)
+    local ops = Selected()
+    local here, now, later = 0, 0, 0
+    for _, action in ipairs(ORDER) do
+        if ops[action] then
+            here = here + #mod.ApplyLocal(action, ops[action])
+            if team then now, later = mod.SendAction(action, ops[action]) end
+        end
+    end
+    wipe(selected)
+    if not team then return ("Changed %d scale(s) here."):format(here) end
+    return ("Changed %d here; asked %d online member(s), %d more when they come online."):format(here, now, later)
 end
 
 local function Holders(r)
@@ -294,8 +409,8 @@ local function Build()
     f.list = H.List(f, W - 24, ROWS, ROW_H, function(list, i)
         local row = CreateFrame("Frame", nil, list)
         H.RowBackground(row, i)
-        row.check = UI.Check(row, 230, "", function() return row.r and selected[row.r.name] end, function(v)
-            if row.r and row.r.deletable then selected[row.r.name] = v or nil end
+        row.check = UI.Check(row, 250, "", function() return row.r and selected[row.r.name] end, function(v)
+            if row.r then selected[row.r.name] = v or nil end
             f.Refresh()
         end)
         row.check:SetPoint("LEFT", 2, 0)
@@ -311,8 +426,12 @@ local function Build()
             GameTooltip:SetText(r.label)
             if r.name ~= r.label then GameTooltip:AddLine(r.name, 0.6, 0.6, 0.6) end
             GameTooltip:AddLine("Has it: " .. Holders(r), 1, 1, 1, true)
-            if not r.deletable then
-                GameTooltip:AddLine("One of Pawn's built-in scales: it can't be deleted, only hidden in Pawn.", 1, 0.5, 0.3, true)
+            if r.action == "hide" then
+                GameTooltip:AddLine("One of Pawn's built-in scales: it can't be deleted, so ticked it is hidden in Pawn (for the character).", 1, 0.82, 0, true)
+            elseif r.action == "show" then
+                GameTooltip:AddLine("Hidden in Pawn on this character: ticked it is shown again.", 1, 0.82, 0, true)
+            else
+                GameTooltip:AddLine("Ticked it is deleted.", 1, 0.82, 0, true)
             end
             GameTooltip:Show()
         end)
@@ -320,12 +439,9 @@ local function Build()
         return row
     end, function(row, r)
         row.r = r
-        local colour = r.deletable and "|cffffffff" or "|cff888888"
-        row.check.label:SetText(colour .. r.label .. "|r" .. (r.deletable and "" or " |cff888888(built-in)|r"))
+        local colour = r.builtin and "|cffbbbbbb" or "|cffffffff"
+        row.check.label:SetText(colour .. r.label .. "|r" .. (SUFFIX[r.action] or ""))
         row.check.Refresh()
-        -- built-in scales can't be ticked (the tooltip still shows on hover)
-        row.check:SetEnabled(r.deletable)
-        row.check:SetAlpha(r.deletable and 1 or 0.45)
         row.who:SetText("|cff999999" .. Holders(r) .. "|r")
     end)
     f.list:SetPoint("TOPLEFT", 12, -62)
@@ -334,26 +450,19 @@ local function Build()
     f.status:SetPoint("BOTTOMLEFT", 12, 40)
     f.status:SetPoint("BOTTOMRIGHT", -12, 40)
 
-    f.here = H.ConfirmButton(f, 140, "Delete here", function()
-        local names = Selected(true)
-        local done = mod.DeleteLocal(names)
-        wipe(selected)
-        f.status.Show_(#done > 0 and ("Deleted here: " .. table.concat(done, ", ")) or "Nothing deleted.", #done == 0)
+    f.here = H.ConfirmButton(f, 140, "Apply here", function()
+        f.status.Show_(Run(false))
         f.Refresh()
     end)
     f.here:SetPoint("BOTTOMLEFT", 12, 12)
-    UI.Tooltip(f.here, "Delete here", "Deletes the ticked scales in Pawn on this character only. Click twice.")
+    UI.Tooltip(f.here, "Apply here", "On this character only: deletes the ticked own scales, hides the ticked built-in ones, shows the ticked hidden ones again. Click twice.")
 
-    f.team = H.ConfirmButton(f, 200, "Delete here and on the team", function()
-        local names = Selected(false)
-        local done = mod.DeleteLocal(names)
-        local now, later = mod.SendDelete(names)
-        wipe(selected)
-        f.status.Show_(("Deleted %d here; asked %d online member(s), %d more when they come online."):format(#done, now, later))
+    f.team = H.ConfirmButton(f, 200, "Apply here and on the team", function()
+        f.status.Show_(Run(true))
         f.Refresh()
     end)
     f.team:SetPoint("LEFT", f.here, "RIGHT", 8, 0)
-    UI.Tooltip(f.team, "Delete here and on the team", "Deletes the ticked scales here and asks every team member to delete the scales with the same names (they are asked first unless they switched that off). Members offline now are asked when they come online. Click twice.")
+    UI.Tooltip(f.team, "Apply here and on the team", "Does the same here and asks every team member to do it to the scales with the same names (they are asked first unless they switched that off). Members offline now are asked when they come online. Click twice.")
 
     local none = UI.Button(f, 80, "Untick all", function() wipe(selected); f.Refresh() end)
     none:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -362,11 +471,11 @@ local function Build()
         if not f:IsShown() then return end
         local rows = mod.ScaleRows(showHidden)
         local pawn = mod.PawnReady() and "" or (mod.PawnInstalled()
-            and "|cffff5555Pawn is still loading.|r " or "|cffff5555Pawn is not loaded on this character:|r only the team's scales can be deleted, on the team. ")
-        f.info:SetText(pawn .. "|cff999999Tick scales to delete them in Pawn. Scroll with the mouse wheel. The team's scales are the ones visible in their Pawn.|r")
+            and "|cffff5555Pawn is still loading.|r " or "|cffff5555Pawn is not loaded on this character:|r only the team's scales, changed on the team. ")
+        f.info:SetText(pawn .. "|cff999999Ticked: own scales are deleted, Pawn's built-in ones hidden. Scroll with the mouse wheel. The team's scales are the ones visible in their Pawn.|r")
         if #rows == 0 then f.status.Show_("No Pawn scales here or on the team.") end
         f.list:Render(rows)
-        local n, own = #Selected(false), #Selected(true)
+        local _, n, own = Selected()
         f.here:SetEnabled(own > 0)
         f.here:SetAlpha(own > 0 and 1 or 0.4)
         f.team:SetEnabled(n > 0)

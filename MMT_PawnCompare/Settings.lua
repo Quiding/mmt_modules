@@ -64,7 +64,7 @@ M.Page = function(_, page)
     local gg, sg = Opt("greetOnLogin")
     L:Check("Message in chat on login", gg, sg)
     local gd, sd = Opt("askDelete")
-    L:Check("Ask before deleting the team's scales", gd, sd, "When a team member deletes Pawn scales here and on the team, ask before deleting them on this character. Off: they are deleted right away.")
+    L:Check("Ask before changing scales for the team", gd, sd, "When a team member deletes or hides Pawn scales here and on the team, ask before doing the same on this character. Off: it is done right away.")
     L:Space(4)
     status = H.StatusLine(page)
     status:SetWidth(COL_W)
@@ -161,8 +161,10 @@ M.Report = function(_, add)
     end
     for key, p in pairs(M.store.pendingDel or {}) do
         local t = {}
-        for n in pairs(p.names) do t[#t + 1] = n end
-        add(("delete waiting for %s: %s"):format(MMT.Repr(key), table.concat(t, ", ")))
+        for _, action in ipairs({ "names", "del", "hide", "show" }) do
+            for n in pairs(p[action] or {}) do t[#t + 1] = action .. " " .. n end
+        end
+        add(("scale changes waiting for %s: %s"):format(MMT.Repr(key), table.concat(t, ", ")))
     end
-    if mod.DeleteWaiting() > 0 then add(("delete dialogs waiting: %d"):format(mod.DeleteWaiting())) end
+    if mod.DeleteWaiting() > 0 then add(("scale change dialogs waiting: %d"):format(mod.DeleteWaiting())) end
 end

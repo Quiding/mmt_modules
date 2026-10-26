@@ -68,6 +68,12 @@ function PawnDoesScaleExist(name) return PawnCommon.Scales[name] ~= nil end
 function PawnScaleIsReadOnly(name) local s = PawnCommon.Scales[name]; return s and s.Provider ~= nil end
 RESETS = 0
 function PawnResetTooltips() RESETS = RESETS + 1 end
+function PawnSetScaleVisible(name, v)
+  local s = PawnCommon.Scales[name]
+  if not s then return nil end
+  s.visible = v and true or false
+  return true
+end
 function PawnDeleteScale(name)
   assert(not PawnScaleIsReadOnly(name), "read-only scale deleted")
   if not PawnCommon.Scales[name] then return false end
@@ -111,22 +117,22 @@ print("A:", A.eval(r'''function(m)
   assert(m.M.db.askDelete == true, "askDelete default")
   local rows, by = m.ScaleRows(), {}
   for _, r in ipairs(rows) do by[r.label] = r end
-  assert(by.Tank and by.Tank.own and by.Tank.deletable and by.Tank.holders[1] == "Bob-Stone", "own + team row")
-  assert(by["Built-in Arms"] and not by["Built-in Arms"].deletable, "built-in scale deletable")
+  assert(by.Tank and by.Tank.own and by.Tank.action == "del" and by.Tank.holders[1] == "Bob-Stone", "own + team row")
+  assert(by["Built-in Arms"] and by["Built-in Arms"].builtin and by["Built-in Arms"].action == "hide", "built-in scale not hide")
   assert(by["Built-in Arms"].holders[1] == "Bob-Stone", "the team's built-in (shared by display name) not merged")
   assert(not by.Hidden, "hidden own scale listed without showHidden")
   local all = {}
   for _, r in ipairs(m.ScaleRows(true)) do all[r.label] = r end
-  assert(all.Hidden and all.Hidden.own and not all.Hidden.own.visible and all.Hidden.deletable, "showHidden: hidden own scale missing")
-  assert(all["Built-in Hunt"].own and not all["Built-in Hunt"].deletable and all["Built-in Hunt"].holders[1] == "Bob-Stone", "showHidden: hidden built-in")
+  assert(all.Hidden and all.Hidden.own and not all.Hidden.own.visible and all.Hidden.action == "del", "showHidden: hidden own scale missing")
+  assert(all["Built-in Hunt"].own and all["Built-in Hunt"].action == "show" and all["Built-in Hunt"].holders[1] == "Bob-Stone", "showHidden: hidden built-in")
   local bob = by["Bob's ~ scale: 1"]
-  assert(bob and not bob.own and bob.deletable, "team-only scale")
+  assert(bob and not bob.own and bob.action == "del", "team-only scale")
   -- a built-in scale only the team shows (hidden here) is still built-in
   local hunt = by["Built-in Hunt"]
-  assert(hunt and not hunt.own and not hunt.deletable and hunt.holders[1] == "Bob-Stone", "team's built-in deletable")
-  assert(not rows[#rows].deletable, "built-in rows come last")
+  assert(hunt and not hunt.own and hunt.builtin and hunt.action == "hide" and hunt.holders[1] == "Bob-Stone", "team's built-in deletable")
+  assert(rows[#rows].builtin, "built-in rows come last")
   local lastDel
-  for i, r in ipairs(rows) do if r.deletable then lastDel = r end end
+  for i, r in ipairs(rows) do if not r.builtin then lastDel = r end end
   assert(lastDel == bob, "team-only rows after own ones")
   return #rows .. " rows ok"
 end''')(amod))
@@ -139,7 +145,7 @@ print("A:", A.eval(r'''function(m)
   assert(PawnCommon.Scales.Arms, "read-only scale gone")
   local now, later = m.SendDelete(names)
   assert(now == 1 and later == 1, "online / offline " .. now .. "/" .. later)
-  assert(m.M.store.pendingDel["Carl-Hill"].names.Old, "Carl's pending")
+  assert(m.M.store.pendingDel["Carl-Hill"].del.Old, "Carl's pending")
   return "deleted here"
 end''')(amod))
 msgs = take(A)
@@ -191,12 +197,40 @@ print("B:", B.eval(r'''function(m)
 end''')(bmod))
 take(B)
 
+# built-in scales: hidden here and on the team by display name, shown again
+print("A:", A.eval(r'''function(m)
+  assert(#m.ApplyLocal("hide", { "Arms" }) == 1 and not PawnCommon.Scales.Arms.visible, "hide here")
+  assert(#m.ApplyLocal("hide", { "Arms" }) == 0, "hidden twice")
+  -- the team shares display names: send what the row has
+  m.SendAction("hide", { "Built-in Arms" })
+  return "hidden here"
+end''')(amod))
+msgs = take(A)
+assert any(m.startswith("PCMP_HIDE:") for m, _ in msgs), msgs
+deliver(msgs, B, "Anna-Smith")
+print("B:", B.eval(r'''function(m)
+  assert(DIALOG and DIALOG.text:find("Hide: Built-in Arms", 1, true), "hide dialog: " .. tostring(DIALOG and DIALOG.text))
+  ACCEPT()
+  assert(PawnCommon.Scales.Arms and not PawnCommon.Scales.Arms.visible, "not hidden on the alt")
+  DELIVER("Anna-Smith", "PCMP_HIDE:Arms")
+  assert(not DIALOG, "asked to hide a hidden scale")
+  DELIVER("Anna-Smith", "PCMP_SHOW:Built-in Arms~Tank")
+  assert(DIALOG and DIALOG.text:find("Show again: Built-in Arms", 1, true) and not DIALOG.text:find("Tank", 1, true), "show dialog")
+  ACCEPT()
+  assert(PawnCommon.Scales.Arms.visible, "not shown again")
+  return "hide / show on the alt ok"
+end''')(bmod))
+take(B)
+
 # Carl comes online: the pending delete is whispered once
 print("A:", A.eval(r'''function(m)
   MMT.Fire("XP_RECEIVED", "Carl-Hill", "Carl Hill", { ext = {} })
   local found
   for _, s in ipairs(SENT) do if s.msg:find("^PCMP_DEL:") then found = s end end
   assert(found and found.to == "Carl Hill" and found.msg:find("Old", 1, true), "pending not whispered")
+  local hide
+  for _, s in ipairs(SENT) do if s.msg:find("^PCMP_HIDE:") then hide = s end end
+  assert(hide and hide.to == "Carl Hill", "pending hide not whispered")
   assert(not m.M.store.pendingDel["Carl-Hill"], "pending kept")
   SENT = {}
   MMT.Fire("XP_RECEIVED", "Carl-Hill", "Carl Hill", { ext = {} })
