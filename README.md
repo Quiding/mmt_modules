@@ -7,7 +7,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.13.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.15.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
@@ -87,6 +87,9 @@ tracked for them, with exact timers.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
 - Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of
   that class is in your group or online in your team (switchable).
+- **Hide buffs not learned yet** (on by default): a class buff a character hasn't learned yet (Inner Fire, a seal,
+  an armor) leaves their row, and a buff cast on others only shows while someone here has learned it. Each client
+  tells the team once what it hasn't learned, like Cooldown Timers' "Hide what you don't have".
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
 - All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and

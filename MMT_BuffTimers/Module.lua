@@ -40,6 +40,7 @@ local M = MMT.NewModule({
         allExclude = {},           -- [teamKey] = true: not counted in the All classes row
         allCount = "BOTTOMLEFT",   -- All bar: how many have the buff (2+), in this corner | "OFF"
         allCountSize = 12, allCountColor = { r = 1, g = 1, b = 1 },
+        hideUnlearned = true,      -- hide buffs not learned yet: own row, and casters who haven't (Known.lua)
         hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
         playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,
@@ -99,6 +100,7 @@ M.OnProfileChanged = function()
     TakeOver()
     mod.BuildIndex()
     mod.Apply()
+    mod.KnownCheck()
 end
 
 SLASH_MMTBUFFTIMERS1 = "/mmtbt"

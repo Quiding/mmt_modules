@@ -28,6 +28,8 @@ local CASTERS = {
     WARLOCK = { 6307 },               -- Blood Pact (imp)
 }
 
+mod.CASTERS = CASTERS
+
 local byName, complete   -- [buff name] = class
 local function Names()
     if complete then return byName end
@@ -49,40 +51,68 @@ function mod.CasterClass(e)
 end
 
 -- classes present: your group, plus team members who are online (worked out
--- once per redraw: kept for half a second)
-local here, hereTime
+-- once per redraw: kept for half a second). who[class] = { team keys, stranger =
+-- true when someone of that class who isn't in the team is in the group }
+local here, who, hereTime
 function mod.ClassesHere()
     -- preview: the whole team counts as here, with the classes the preview shows
     if mod.preview then
         local t = {}
         for _, key in ipairs(mod.PreviewTeam()) do t[mod.ClassOf(key) or ""] = true end
-        return t
+        return t, {}
     end
-    if here and GetTime() - hereTime < 0.5 then return here end
-    local t = {}
+    if here and GetTime() - hereTime < 0.5 then return here, who end
+    local t, w = {}, {}
+    local function Add(class, key)
+        t[class] = true
+        w[class] = w[class] or {}
+        if key then
+            for _, k in ipairs(w[class]) do if k == key then return end end
+            table.insert(w[class], key)
+        else
+            w[class].stranger = true
+        end
+    end
+    local inTeam = {}
+    for _, key in ipairs(MMT.SortedMembers()) do inTeam[key] = true end
+    local own = MMT.PlayerFull and MMT.PlayerFull()
+    if own then inTeam[own] = true end
     local units = { "player" }
     if IsInRaid() then for i = 1, 40 do units[#units + 1] = "raid" .. i end
     else for i = 1, 4 do units[#units + 1] = "party" .. i end end
     for _, u in ipairs(units) do
         if UnitExists(u) then
             local _, class = MMT.Safe(UnitClass, u)
-            if class then t[class] = true end
+            if class then
+                local key = (u == "player") and own or (MMT.SplitUnit and select(3, MMT.SplitUnit(u)))
+                key = key and MMT.Resolve and MMT.Resolve(key) or key
+                Add(class, (key and inTeam[key]) and key or nil)
+            end
         end
     end
     for _, key in ipairs(MMT.SortedMembers()) do
         if MMT.IsSelf(key) or MMT.IsOnline(key) then
             local class = mod.ClassOf(key)
-            if class then t[class] = true end
+            if class then Add(class, key) end
         end
     end
-    here, hereTime = t, GetTime()
-    return t
+    here, who, hereTime = t, w, GetTime()
+    return t, w
 end
 
--- false when the option is on and nobody here can cast e
+-- false when nobody here can cast e: no one of its class (hideNoCaster), or only ones
+-- who haven't learned it (hideUnlearned, Known.lua; someone outside the team counts as able)
 function mod.Castable(e)
-    if not M.db.hideNoCaster then return true end
+    if not (M.db.hideNoCaster or M.db.hideUnlearned) then return true end
     local class = mod.CasterClass(e)
     if not class then return true end
-    return mod.ClassesHere()[class] == true
+    local present, w = mod.ClassesHere()
+    if not present[class] then return not M.db.hideNoCaster end
+    if not M.db.hideUnlearned or mod.preview or not mod.Unlearned then return true end
+    local cast = w[class]
+    if not cast or cast.stranger then return true end
+    for _, key in ipairs(cast) do
+        if not mod.Unlearned(key, e) then return true end
+    end
+    return false
 end

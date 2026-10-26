@@ -358,3 +358,50 @@ print(lua.eval(r"""function(m)
   MMT.db.team["Bob-Stone"], MMT.db.team["Cid-Ray"] = nil, nil
   return "spec filter and menu ok"
 end""")(mod))
+
+# buffs not learned yet: own row, and buffs cast on others when no caster here has learned them
+print(lua.eval(r"""function(m)
+  local oldInfo, oldCd, oldCaster, oldState, oldTime = m.SpellInfo, m.SpellCooldown, m.CasterClass, m.State, GetTime
+  local NAMES = { [324] = "Lightning Shield", [408510] = "Water Shield", [1243] = "Power Word: Fortitude" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  m.SpellCooldown = function(name) if name == "Lightning Shield" then return 0, 0, true end end   -- Water Shield not learned
+  m.CasterClass = function(e) return e.id == 1243 and "PRIEST" or nil end
+  m.State = function() return "buff", 100, 300, 1 end
+  GetTime = function() return 5000 end                                  -- past the "who is here" cache
+  m.preview = nil
+  m.M.db.allBar, m.M.db.specLists, m.M.db.hideUnlearned, m.M.db.hideNoCaster = false, false, true, true
+  m.M.db.lists.ALL = { { id = 1243 } }
+  m.M.db.lists.SHAMAN = { { id = 324 }, { id = 408510 } }
+  MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone" } end
+  MMT.db.team["Bob-Stone"] = { class = "PRIEST" }
+  m.KnownReset()
+  local own = m.OwnUnlearned()
+  assert(#own == 1 and own[1] == 408510, "own unlearned: " .. #own)
+  assert(m.Unlearned("Anna-Smith", { id = 408510 }) and not m.Unlearned("Anna-Smith", { id = 324 }), "own")
+  -- the priest hasn't learned Fortitude: nobody here can give it
+  TEAM_MESSAGE("Bob-Stone", "MBFK:1243")
+  assert(not m.Castable({ id = 1243 }), "Fortitude hidden")
+  local function AnnaSpells()
+    local t = {}
+    for _, row in ipairs(m.window.def.rows()) do
+      if row.key == "Anna-Smith" then for _, i in ipairs(row.icons) do t[i.spell] = true end end
+    end
+    return t
+  end
+  local s = AnnaSpells()
+  assert(s[324] and not s[408510] and not s[1243], "Anna's row: only Lightning Shield")
+  -- the priest learns it
+  GetTime = function() return 6000 end
+  TEAM_MESSAGE("Bob-Stone", "MBFK:")
+  assert(m.Castable({ id = 1243 }), "Fortitude back")
+  -- option off: everything shows
+  m.M.db.hideUnlearned = false
+  GetTime = function() return 7000 end
+  s = AnnaSpells()
+  assert(s[408510], "option off")
+  m.M.db.hideUnlearned = true
+  m.SpellInfo, m.SpellCooldown, m.CasterClass, m.State, GetTime = oldInfo, oldCd, oldCaster, oldState, oldTime
+  MMT.db.team["Bob-Stone"] = nil
+  m.KnownReset()
+  return "unlearned buffs ok"
+end""")(mod))

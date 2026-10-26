@@ -121,4 +121,5 @@ function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
 M.OnSyncReceived = function()
     mod.ScanGroup()
     mod.Apply()
+    mod.KnownCheck()
 end

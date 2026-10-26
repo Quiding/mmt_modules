@@ -65,7 +65,10 @@ local function Icons(key)
     for _, e in ipairs(EntriesFor(key)) do
         local state, start, dur, count, matched, micon
         -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
-        if mod.Applies(e, key) and mod.Castable(e) then state, start, dur, count, matched, micon = mod.State(key, e) end
+        if mod.Applies(e, key) and mod.Castable(e)
+            and not (M.db.hideUnlearned and mod.Unlearned(key, e)) then
+            state, start, dur, count, matched, micon = mod.State(key, e)
+        end
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id,
