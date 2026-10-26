@@ -2,7 +2,8 @@
 -- armor slots down both sides, the weapons at the bottom, the member's 3D
 -- model in the middle while they are in your group and in sight.
 -- Hover a slot for the item's tooltip; Shift-click links it in chat,
--- Ctrl-click tries it on.
+-- Ctrl-click tries it on. The Talents button switches to the member's
+-- talents (TalentsView.lua) and back.
 
 local _, mod = ...
 local MMT = MMT
@@ -25,6 +26,7 @@ local RIGHT = { 10, 6, 7, 8, 11, 12, 13, 14 }
 local BOTTOM = { 16, 17, 18 }
 
 local W, H = 540, 438
+mod.WINDOW_W, mod.WINDOW_H = W, H
 local ICON, GAP, PAD, TOP = 36, 6, 12, 58
 local TEXT_W = 150
 
@@ -213,6 +215,9 @@ local function Build()
 
     local close = UI.TextButton(f, "x", function() f:Hide() end, 22)
     close:SetPoint("TOPRIGHT", -6, -6)
+    f.talentsButton = UI.TextButton(f, "Talents", function() mod.ToggleTalents() end, 54)
+    f.talentsButton:SetPoint("RIGHT", close, "LEFT", -4, 0)
+    UI.Tooltip(f.talentsButton, "Talents", "Switch between the member's gear and their talents.")
     local prev = UI.TextButton(f, "<", function() mod.Step(-1) end, 22)
     prev:SetPoint("TOPLEFT", 8, -12)
     UI.Tooltip(prev, "Previous member")
@@ -303,7 +308,20 @@ function mod.Refresh()
         -- Item Compare stores a new copy only when the gear changes: the time is the last change
         if rec.time then parts[#parts + 1] = "gear changed " .. MMT.Ago(rec.time) end
     end
+    local talents = mod.TalentSummary(key)
+    if talents then parts[#parts + 1] = talents end
     f.sub:SetText(table.concat(parts, "  -  "))
+    f.talentsButton.label:SetText(mod.showTalents and "Gear" or "Talents")
+    for _, b in pairs(f.slots) do b:SetShown(not mod.showTalents) end
+    if mod.showTalents then
+        f.model:Hide()
+        f.model.dress = nil
+        f.note:SetText("")
+        f.lookNote:Hide()
+        mod.PaintTalents(f, key)
+        return
+    end
+    mod.HideTalents(f)
     for slot, b in pairs(f.slots) do PaintSlot(b, rec and rec.items[slot]) end
 
     local unit = mod.UnitOf(key)
@@ -367,6 +385,14 @@ function mod.Open(key)
     -- shown first: a model set up while its frame is hidden stays empty
     f:Show()
     f:Raise()
+    mod.Refresh()
+end
+
+-- gear <-> talents (stays while stepping through members)
+function mod.ToggleTalents()
+    local f = mod.window
+    if not f then return end
+    mod.showTalents = not mod.showTalents
     mod.Refresh()
 end
 

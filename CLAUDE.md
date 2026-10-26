@@ -281,12 +281,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
 
-### MMT_TeamGear (v0.1.0)
+### MMT_TeamGear (v0.2.0)
 - Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
   members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
   window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
   Item Compare's `EQUIPMENT_CHANGED`), `Button.lua` (button on `CharacterFrame`, shift-drag, `buttonPoint`
-  offsets from its TOPLEFT; member list via `MMT.UI.OpenList`), `Settings.lua`. Sends nothing.
+  offsets from its TOPLEFT; member list via `MMT.UI.OpenList`), `Settings.lua`, `Talents.lua` + `TalentsView.lua`.
+  Gear: sends nothing (Item Compare's data). Talents: see below.
 - Item Compare's store is account-wide per character and never pruned (only its Clear), so `mod.Groups()`
   lists: this team, other profiles' teams (`MMTDB.profiles[name].team`, read only, skips `MMT.profileName`),
   then every other stored character (`others` setting, default off; headers "Team N (<profile>)",
@@ -299,7 +300,20 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - New frames start SHOWN: `f:Hide()` at the end of Build, and place a window when it has no point yet
   (`not f:GetPoint(1)`), or it is "shown" without an anchor and invisible (test stub frames start shown too).
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
-- Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`).
+- Talents (0.2.0): `Talents.lua` reads OWN talents: classic `GetTalentTabInfo`/`GetTalentInfo` when the client has
+  them, else Forever's ONE trait tree (`C_ClassTalents.GetActiveConfigID`, `C_Traits.GetConfigInfo` treeIDs[1],
+  `GetTreeNodes`, `GetNodeInfo` posX/posY/activeRank/maxRanks/groupIDs/isVisible, `activeEntry` or entryIDs[1] ->
+  `GetEntryInfo` -> `GetDefinitionInfo` spellID/overrideIcon). The 3 trees = `C_Traits.GetGroupDisplayInfoByTreeID`
+  sorted by orderIndex (names = displayName; how EllesmereUI's Forever ClassicTalents does it), else the 3 bands of node
+  columns (names from `mod.TREE_NAMES`). Grid row/col per tree from positions (`Axis`: step = smallest gap above a
+  quarter of the median; a position with an extra zero is read at a tenth). Comm: heartbeat `tgt=<hash>`, on change
+  only (first read after login only sets the heartbeat) `TGT:<hash>#<n1>~<n2>~<n3>#<tree>.<row>.<col>.<rank>.<max>.<spell>.<icon>[.<name>];...`
+  via SendLong; hash mismatch -> whispered `TGTQ` (60 s), answered by whisper. `M.store.talents[key] = {hash, text, time}`
+  (parsed on demand, weak cache). Own = read live. `mod.TalentSummary` ("Retribution 5 / 11 / 35") in the window's sub
+  line. `TalentsView.lua`: "Talents" button toggles `mod.showTalents` (kept while stepping), `mod.talentPanel` = 3 trees
+  side by side (fixed window size `mod.WINDOW_W/H`), icons lit/desaturated, "rank/max", spell tooltip.
+- Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
+  the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
 ### MMT_TeamInventory (v0.8.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`

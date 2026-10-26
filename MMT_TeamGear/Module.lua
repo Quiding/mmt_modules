@@ -2,22 +2,24 @@
 -- A button on the character panel lists the team; clicking a member shows
 -- their equipped items in a window laid out like the inspect frame. The
 -- items come from Item Compare's database of the team's gear (synced by
--- Item Compare, kept for offline members), read only: this module sends
--- nothing itself.
+-- Item Compare, kept for offline members), read only. The window also shows
+-- each member's talents, which this module sends itself (Talents.lua).
 --
 --   Window.lua    the gear window
+--   Talents.lua   own talents read and sent to the team, the team's stored
+--   TalentsView.lua  the talents view of the window
 --   Button.lua    the button on the character panel and the member list
 --   Settings.lua  settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.0"
+mod.VERSION = "0.2.0"
 
 local M = MMT.NewModule({
     name = "TeamGear",
     title = "Team Gear",
-    description = "A button on the character panel shows any team member's equipped items, like inspecting them. Needs Item Compare.",
+    description = "A button on the character panel shows any team member's equipped items, like inspecting them, and their talents. Needs Item Compare for the gear.",
     sync = true,
     syncExclude = { "buttonPoint", "windowPoint", "overviewPoint", "windowScale", "overviewScale" },   -- positions belong to each screen
     defaults = {

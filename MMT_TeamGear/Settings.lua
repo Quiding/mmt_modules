@@ -56,7 +56,9 @@ M.Page = function(_, page)
 
     local R = UI.Column(page, COL2_X, 0, COL_W)
     R:Header("Where the items come from")
-    R:Note("Item Compare keeps every member's equipped items, also while they are offline, and updates them when they change gear. This module only shows them and sends nothing itself.")
+    R:Note("Item Compare keeps every member's equipped items, also while they are offline, and updates them when they change gear. This module only shows them.")
+    R:Header("Talents")
+    R:Note("The Talents button in the window shows a member's talent trees. Each client with Team Gear on tells the team its own talents when they change; the last ones known are kept for offline members.")
     local warn = R:Note("")
     page.OnRefresh = function()
         if mod.HasItemCompare() then
@@ -77,6 +79,7 @@ M.Report = function(_, add)
     end
     add(("-- Team Gear %s: itemCompare=%s button=%s members=%d withGear=%d"):format(mod.VERSION,
         tostring(mod.HasItemCompare()), tostring(mod.button and mod.button:IsShown() or false), n, with))
+    mod.TalentReport(add)
     local f = mod.window
     if f then
         local p, _, rp, x, y = f:GetPoint(1)

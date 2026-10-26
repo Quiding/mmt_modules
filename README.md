@@ -13,7 +13,7 @@ MODULES, with its own settings page.
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.5 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
-| [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
+| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.3.0 |
@@ -161,6 +161,9 @@ while they're offline. The items come from Item Compare's stored gear (needs Ite
 - Item names, item levels and enchants, average item level, when the gear last changed.
 - Their 3D model while they're in your group and in sight, else their race and gender wearing the
   stored gear.
+- **Talents**: the Talents button shows a member's three talent trees with every talent and its rank, and the
+  points per tree (e.g. "Retribution 5 / 11 / 35"). Each client tells the team its talents when they change; the
+  last ones known stay for offline members.
 - **Whole team**: one row per member with every slot.
 - Option: your other profiles' teams and every other character Item Compare stored on this account.
 - Hover for the tooltip, Shift-click to link, Ctrl-click to try on, `<` `>` to step through.
