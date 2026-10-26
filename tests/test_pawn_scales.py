@@ -114,7 +114,11 @@ print("A:", A.eval(r'''function(m)
   assert(by.Tank and by.Tank.own and by.Tank.deletable and by.Tank.holders[1] == "Bob-Stone", "own + team row")
   assert(by["Built-in Arms"] and not by["Built-in Arms"].deletable, "built-in scale deletable")
   assert(by["Built-in Arms"].holders[1] == "Bob-Stone", "the team's built-in (shared by display name) not merged")
-  assert(by.Hidden and by.Hidden.own and not by.Hidden.own.visible, "hidden own scale missing")
+  assert(not by.Hidden, "hidden own scale listed without showHidden")
+  local all = {}
+  for _, r in ipairs(m.ScaleRows(true)) do all[r.label] = r end
+  assert(all.Hidden and all.Hidden.own and not all.Hidden.own.visible and all.Hidden.deletable, "showHidden: hidden own scale missing")
+  assert(all["Built-in Hunt"].own and not all["Built-in Hunt"].deletable and all["Built-in Hunt"].holders[1] == "Bob-Stone", "showHidden: hidden built-in")
   local bob = by["Bob's ~ scale: 1"]
   assert(bob and not bob.own and bob.deletable, "team-only scale")
   -- a built-in scale only the team shows (hidden here) is still built-in

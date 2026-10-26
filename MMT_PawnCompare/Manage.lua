@@ -44,15 +44,15 @@ function mod.CanDelete(name)
 end
 
 -- rows for the window: { name, label, own = Pawn info | nil, holders = { team keys }, deletable }
--- own custom scales (shown or hidden), Pawn's built-in ones only while shown,
--- then what only the team has. A team scale is built-in when it has the name of
+-- own scales that are shown in Pawn (with showHidden also the hidden ones,
+-- custom and built-in), then what only the team has (always shown there). A team scale is built-in when it has the name of
 -- one of Pawn's built-in scales here (every Pawn has the same ones; the team
 -- only shares display names). Sorted: deletable first, then own, then by name.
-function mod.ScaleRows()
+function mod.ScaleRows(showHidden)
     local rows, byName, byLabel, builtin = {}, {}, {}, {}
     for _, s in ipairs(mod.PawnScales() or {}) do
         if s.provider then builtin[s.name] = true; builtin[s.label] = true end
-        if not s.provider or s.visible then
+        if s.visible or showHidden then
             local r = { name = s.name, label = s.label, own = s, holders = {}, deletable = not s.provider }
             rows[#rows + 1] = r
             byName[s.name] = r
@@ -244,10 +244,11 @@ local H = MMT.ConfigHelpers
 local W, ROWS, ROW_H = 460, 14, 20
 local win
 local selected = {}
+local showHidden = false   -- this session only
 
 local function Selected(onlyOwn)
     local t = {}
-    for _, r in ipairs(mod.ScaleRows()) do
+    for _, r in ipairs(mod.ScaleRows(showHidden)) do
         if selected[r.name] and r.deletable and (not onlyOwn or r.own) then t[#t + 1] = r.name end
     end
     return t
@@ -279,6 +280,11 @@ local function Build()
     title:SetPoint("TOPLEFT", 12, -10)
     local close = UI.TextButton(f, "x", function() f:Hide() end)
     close:SetPoint("TOPRIGHT", -6, -6)
+    local hidden = UI.Check(f, 130, "Show hidden", function() return showHidden end, function(v)
+        showHidden = v and true or false
+        f.Refresh()
+    end, "Also list the scales that are hidden in Pawn on this character (Pawn's built-in ones included). Off: only scales that are shown here or on a team member.")
+    hidden:SetPoint("TOPRIGHT", -34, -8)
     f.info = UI.Label(f, "")
     f.info:SetPoint("TOPLEFT", 12, -30)
     f.info:SetPoint("TOPRIGHT", -12, -30)
@@ -354,7 +360,7 @@ local function Build()
 
     f.Refresh = function()
         if not f:IsShown() then return end
-        local rows = mod.ScaleRows()
+        local rows = mod.ScaleRows(showHidden)
         local pawn = mod.PawnReady() and "" or (mod.PawnInstalled()
             and "|cffff5555Pawn is still loading.|r " or "|cffff5555Pawn is not loaded on this character:|r only the team's scales can be deleted, on the team. ")
         f.info:SetText(pawn .. "|cff999999Tick scales to delete them in Pawn. Scroll with the mouse wheel. The team's scales are the ones visible in their Pawn.|r")
