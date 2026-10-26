@@ -6,7 +6,7 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.13.2 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.0 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.1 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
@@ -53,6 +53,9 @@ important spells, trinkets and potions.
 
 - Every client sends **one short message** when its character uses a tracked cooldown (exact time
   left), so members outside the group are tracked too; group members are also seen directly.
+- Cooldown lengths are the real ones: your own from the game, the team's from that message (talents and
+  other reductions included), remembered for the next time. The seconds in a list are only the fallback - click
+  them to change.
 - While a spell's buff is up (Berserking, Evasion, Death Wish, trinkets, ...) its icon glows with
   the buff's time left.
 - "Hide what you don't have": spells a character hasn't learned yet are hidden on every client's bars

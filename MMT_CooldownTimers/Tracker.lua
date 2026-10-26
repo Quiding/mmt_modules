@@ -69,6 +69,14 @@ local function GroupUnit(unit)
     return unit and (unit:find("^party%d") or unit:find("^raid%d")) and true or false
 end
 
+-- the length of a member's cooldown: what their client last told us (talents and
+-- other reductions included, M.store.durs, Share.lua), else the list's seconds
+function mod.MemberDuration(key, e)
+    local d = M.store.durs and M.store.durs[key] and M.store.durs[key][mod.EntryKey(e)]
+    if type(d) == "number" and d > 0 then return d end
+    return e.cd or 0
+end
+
 -- a group member cast something
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
@@ -87,10 +95,14 @@ M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
         M.store.seen[key] = M.store.seen[key] or {}
         M.store.seen[key][ek] = true
     end
+    -- their client's message about this use came first: its real length stays
+    local had = mod.cds[key][ek]
+    if had and had.msg and GetTime() - had.msg < 5 then return end
+    local dur = mod.MemberDuration(key, e)
     if mod.IsAfterBuff(spellName) then
-        mod.cds[key][ek] = { pending = GetTime(), dur = e.cd or 0, buff = spellName }
+        mod.cds[key][ek] = { pending = GetTime(), dur = dur, buff = spellName }
     else
-        mod.cds[key][ek] = { start = GetTime(), dur = e.cd or 0 }
+        mod.cds[key][ek] = { start = GetTime(), dur = dur }
     end
     M:Debug("%s used %s", MMT.Repr(key), spellName)
     mod.Refresh()

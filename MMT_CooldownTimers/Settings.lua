@@ -109,12 +109,42 @@ M.Page = function(_, page)
     local list
     LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
+    local EditSeconds
     local function Changed()
         mod.BuildIndex()
         Apply()
         mod.ShareCheck()   -- our running cooldowns that just became tracked
         mod.KnownCheck()   -- which of the tracked spells we haven't learned (Known.lua)
         list:Render(M.db.lists[class] or {})
+    end
+    -- one number box, shown over the seconds of the row being changed
+    local secsEdit
+    EditSeconds = function(row)
+        local e = row.entry
+        if not e then return end
+        if not secsEdit then
+            secsEdit = UI.EditBox(lp, 44, "sec", function(text, box)
+                local entry = box.entry
+                if entry then
+                    local n = tonumber(text)
+                    entry.cd = (n and n >= 0) and math.floor(n + 0.5) or mod.BaseCooldown(entry.t, entry.id) or entry.cd
+                    status.Show_(("%s: %ds."):format(mod.EntryName(entry), entry.cd or 0))
+                end
+                box.entry = nil
+                box:ClearFocus()
+                box:Hide()
+                Changed()
+            end)
+            secsEdit:SetFrameStrata("DIALOG")
+            secsEdit:HookScript("OnEditFocusLost", function(box) box.entry = nil; box:Hide() end)
+        end
+        secsEdit.entry = e
+        secsEdit:ClearAllPoints()
+        secsEdit:SetPoint("RIGHT", row.cd, "RIGHT", 2, 0)
+        secsEdit:SetText(tostring(e.cd or ""))
+        secsEdit:Show()
+        secsEdit:SetFocus()
+        secsEdit:HighlightText()
     end
     local function Move(index, delta)
         local l = M.db.lists[class]
@@ -144,9 +174,10 @@ M.Page = function(_, page)
         end, 26)
         row.toggle:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
         UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
-        row.cd = UI.Label(row, "")
-        row.cd:SetPoint("RIGHT", row.toggle, "LEFT", -6, 0)
-        row.cd:SetTextColor(0.6, 0.6, 0.6)
+        -- the seconds: click to change them (EditSeconds)
+        row.cd = UI.TextButton(row, "", function() EditSeconds(row) end, 40)
+        row.cd:SetPoint("RIGHT", row.toggle, "LEFT", -4, 0)
+        UI.Tooltip(row.cd, "Cooldown in seconds", "Click to change. Used for a member whose client hasn't told us the real length yet (their own talents and reductions); empty = the spell's base cooldown.")
         row.name = UI.Label(row, "")
         row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
         row.name:SetPoint("RIGHT", row.cd, "LEFT", -4, 0)
@@ -165,7 +196,7 @@ M.Page = function(_, page)
         row.entry, row.index = e, index
         row.icon:SetTexture(mod.EntryIcon(e))
         row.name:SetText(mod.EntryName(e))
-        row.cd:SetText((e.cd or 0) .. "s")
+        row.cd.label:SetText("|cff999999" .. (e.cd or 0) .. "s|r")
         row.toggle.label:SetText(e.off and "|cff777777off|r" or "|cff55ff55on|r")
         row.icon:SetDesaturated(e.off and true or false)
         row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
@@ -214,7 +245,7 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them.")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them; click them in the list to change. A team member's own client sends the real length (talents) with each use, and it is remembered.")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()

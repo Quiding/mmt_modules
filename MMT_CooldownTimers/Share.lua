@@ -125,12 +125,16 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if data == "r" then
         mod.cds[key][ek] = nil
     elseif data == "a" then
-        mod.cds[key][ek] = { pending = GetTime(), dur = e.cd or 0, buff = mod.CastName(e) }
+        mod.cds[key][ek] = { pending = GetTime(), dur = mod.MemberDuration(key, e), buff = mod.CastName(e), msg = GetTime() }
     else
         local rem, dur, buff = data:match("^([%d%.]+)/([%d%.]+)(.*)$")
         rem, dur = tonumber(rem), tonumber(dur)
         if not rem or not dur or dur <= 0 then return end
-        local c = { start = GetTime() - (dur - rem), dur = dur }
+        -- the real length (talents, ...): used next time their cast is seen before a message
+        M.store.durs = M.store.durs or {}
+        M.store.durs[key] = M.store.durs[key] or {}
+        M.store.durs[key][ek] = math.floor(dur + 0.5)
+        local c = { start = GetTime() - (dur - rem), dur = dur, msg = GetTime() }
         local bRem, bDur = (buff or ""):match("^:b([%d%.]+)/([%d%.]+)$")
         bRem, bDur = tonumber(bRem), tonumber(bDur)
         if bRem and bDur and bDur > 0 then c.buffStart, c.buffDur = GetTime() - (bDur - bRem), bDur end

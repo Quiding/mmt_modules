@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.13.2) / MMT_BuffTimers (v0.16.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.0) / MMT_BuffTimers (v0.16.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -104,7 +104,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   group units (exact). Buffs of members outside the group can't be tracked.
 - Exception agreed with the user: Cooldowns `Share.lua` sends ONE message per use of a tracked
   cooldown (`MCDU:<s|i><id>:<rem>/<dur>` or `:a` for after-buff spells), from own state changes
-  on SPELL/BAG_UPDATE_COOLDOWN, + `:b<rem>/<dur>` for the buff the use gave. Never periodic.
+  on SPELL/BAG_UPDATE_COOLDOWN, + `:b<rem>/<dur>` for the buff the use gave. Never periodic. The received length is
+  remembered (`M.store.durs[key][ek]`, `mod.MemberDuration`) for their next cast seen before a message; a timer from a
+  message (`c.msg`) isn't replaced by their cast event within 5 s. List seconds: click "120s" in the list to edit.
 - `Known.lua`: own tracked spells not learned (`mod.OwnUnlearned`: SpellName known and SpellCooldown nil) ->
   `MCDK:<id>,<id>` via `MMT.SendLong` when it changes (`mod.KnownCheck`: login, SPELLS_CHANGED, list change, sync,
   profile), heartbeat `cdk=<hash>`, mismatch -> whispered `MCDKQ` (60 s). Stored `M.store.unlearned[key]`; `State`

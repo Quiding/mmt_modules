@@ -499,3 +499,20 @@ print("A:", A.eval(r"""function(m)
     for _, e in ipairs(m.PresetByKey("WARRIOR:PROT").entries) do if e.id == 12975 then return true, e.cd end end end)()) == 180, "Last Stand 3 min")
   return "spec presets ok"
 end""")(amod))
+
+# a member's real cooldown length (talents): their message wins over their cast seen
+# right after it, and is used for their next cast seen before any message
+print("C:", C.eval(r"""function(m)
+  NOW = 2000
+  m.cds["Bob-Stone"] = {}
+  DELIVER("Bob-Stone", "MCDU:s55555:45.0/45.0")      -- talented: 45 s instead of the list's 60
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "party1", "cast", 55555)
+  local c = m.cds["Bob-Stone"]["s55555"]
+  assert(c and c.dur == 45, "the cast replaced the real length: " .. tostring(c and c.dur))
+  NOW = 2100
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "party1", "cast", 55555)
+  c = m.cds["Bob-Stone"]["s55555"]
+  assert(c and c.dur == 45 and c.start == 2100, "next cast doesn't use the remembered length: " .. tostring(c and c.dur))
+  assert(m.MemberDuration("Alice-Nobody", { t = "s", id = 55555, cd = 60 }) == 60, "others: list seconds")
+  return "real cooldown lengths ok"
+end""")(cmod))
