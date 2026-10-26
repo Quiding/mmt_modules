@@ -11,7 +11,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.0"
+mod.VERSION = "0.1.1"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -38,7 +38,7 @@ local M = MMT.NewModule({
 mod.M = M
 
 -- features in the order they were registered:
--- { key, title, addon, tags = { TAG = fn(key, sender, body) }, Page, Report, Reset }
+-- { key, title, addon, slash, tags = { TAG = fn(key, sender, body) }, commands = { word = fn() -> ok, err }, Page, Report }
 mod.features = {}
 local byTag = {}
 
@@ -110,12 +110,13 @@ SlashCmdList.MMTQOL = function(msg)
     if not M.enabled then MMT.Print("Quality of life is switched off (/mmt modules).") return end
     local which, cmd = msg:match("^(%a+)%s*(%a*)$")
     for _, f in ipairs(mod.features) do
-        if which == f.slash and cmd == "send" and f.SendAll then
-            local ok, err = f.SendAll()
+        local fn = which == f.slash and f.commands and f.commands[cmd]
+        if fn then
+            local ok, err = fn()
             MMT.Print("%s: %s", f.title, ok and "sent to the team." or tostring(err))
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send, /mmtqol baganator send (whole list to the team). Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end

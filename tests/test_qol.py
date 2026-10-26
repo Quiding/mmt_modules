@@ -31,6 +31,9 @@ function MMT.NewModule(def)
   return M
 end
 function DELIVER(from, msg) LISTEN.TEAM_MESSAGE(from, from, msg) end
+RELOADS, COMBAT = 0, false
+C_UI = { Reload = function() RELOADS = RELOADS + 1 end }
+function InCombatLockdown() return COMBAT end
 C_Timer = { After = function(_, fn) fn() end, NewTicker = function() return { Cancel = function() end } end }
 C_AddOns = {
   IsAddOnLoaded = function(n) return LOADED[n] == true end,
@@ -195,7 +198,7 @@ run(B, bmod, r'''function(m)
   DJ_ADD("PI", 777); SENT = {}
   local f
   for _, x in ipairs(m.features) do if x.key == "dejunk" then f = x end end
-  assert(f.SendAll())
+  assert(f.commands.send())
   assert(#SENT == 1 and SENT[1]:find("^QDJL:GI=") and SENT[1]:find("PI=777", 1, true), "send all: " .. tostring(SENT[1]))
   return "Bob: bulk not sent, profile switch quiet, whole lists sent"
 end''')
@@ -216,7 +219,24 @@ run(A, amod, r'''function(m)
   local ok, why = m.AddonState("Dejunk"); assert(not ok and why:find("switched off"), tostring(why))
   LOADED.Dejunk = nil; ok, why = m.AddonState("Dejunk"); assert(why:find("not installed"), tostring(why))
   LOADED.Dejunk = true
+  -- the push again: everything is there, the line says Dejunk shows it after a reload
+  DELIVER("Bob-Stone", "QDJL:GI=5001;GE=;PI=;PE=")
+  assert(PRINTS[#PRINTS]:find("have them all already", 1, true) and PRINTS[#PRINTS]:find("/reload", 1, true), "nothing new line: " .. PRINTS[#PRINTS])
   return "Anna: merged, profile option, missing addon ok"
+end''')
+run(B, bmod, r'''function(m)
+  -- Bob took nothing since his reload: the team reload leaves him alone, Anna (who took changes) reloads
+  assert(m.features[1].commands.reload() and SENT[#SENT] == "QDJR:", "reload not sent")
+  SENT = {}
+  DELIVER("Anna-Smith", "QDJR:"); assert(RELOADS == 0, "Bob reloaded without changes")
+  return "Bob: asked the team to reload"
+end''')
+run(A, amod, r'''function(m)
+  COMBAT = true
+  DELIVER("Bob-Stone", "QDJR:"); assert(RELOADS == 0, "reloaded in combat")
+  COMBAT = false; EVENTS.PLAYER_REGEN_ENABLED(); assert(RELOADS == 1, "no reload after combat")
+  DELIVER("Bob-Stone", "QDJR:"); assert(RELOADS == 2, "no reload")
+  return "Anna: reloads for Dejunk (after combat)"
 end''')
 
 # --- Baganator ----------------------------------------------------------
@@ -271,7 +291,7 @@ run(B, bmod, r'''function(m)
   BAGANATOR_CURRENT_PROFILE = "DEFAULT"; m.BaganatorTick(); assert(#SENT == 0, "profile switch back sent")
   local f
   for _, x in ipairs(m.features) do if x.key == "baganator" then f = x end end
-  local ok, n = f.SendAll(); assert(ok and n >= 13, "send all " .. tostring(n))
+  local ok, n = f.commands.send(); assert(ok and n >= 13, "send all " .. tostring(n))
   assert(SENT[1]:find("^QBGL:"), "send all tag")
   return "Bob: bulk quiet, profile switch quiet, all items sent (" .. n .. ")"
 end''')

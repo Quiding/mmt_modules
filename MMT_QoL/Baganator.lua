@@ -329,7 +329,7 @@ F = mod.Feature({
     checkText = "Sync Baganator's categories",
     tip = "Items you put into a Baganator category by hand (or take out of it) go into the same category on the team's characters, right away. Custom categories are matched by name.",
     tags = { QBG = OnChange, QBGL = OnAll, QBGF = OnSetup },
-    SendAll = SendAll,
+    commands = { send = SendAll },
     OnEnable = function()
         snap = nil
         if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, Tick) end

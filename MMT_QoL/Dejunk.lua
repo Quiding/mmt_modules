@@ -29,7 +29,8 @@ local ready = false  -- Dejunk's store exists (its first state update came)
 local snap           -- [list][id] = true: what we saw last
 local profileId      -- Dejunk profile of snap's PI / PE
 local pending = { GI = {}, GE = {}, PI = {}, PE = {} }  -- [list][id] = "+" | "-" from the team, not in Dejunk's copy yet
-local queued, reloadNoted
+local queued, reloadWanted
+local LATER = " - in Dejunk after a /reload"
 local dj = { sent = 0, taken = 0 }
 mod.dj = dj
 
@@ -185,10 +186,6 @@ local function Apply(ops)
         end
     end
     dj.taken = dj.taken + n
-    if n > 0 and not reloadNoted then
-        reloadNoted = true
-        MMT.Print("Quality of life: Dejunk uses list changes from the team after a /reload (it has no way to take them while running).")
-    end
     return n
 end
 
@@ -206,8 +203,8 @@ local function Take(from, ops, lines)
     local function apply()
         local n = Apply(ops)
         if n > 0 and M.db.djChat then
-            if #lines == 1 then MMT.Print("Dejunk from %s: %s", MMT.FullDisplay(from), lines[1])
-            else MMT.Print("Dejunk from %s: %d list changes.", MMT.FullDisplay(from), n) end
+            if #lines == 1 then MMT.Print("Dejunk from %s: %s%s", MMT.FullDisplay(from), lines[1], LATER)
+            else MMT.Print("Dejunk from %s: %d list changes%s", MMT.FullDisplay(from), n, LATER) end
         end
     end
     if M.db.djAsk then mod.Ask(from, F, lines, apply) else apply() end
@@ -241,7 +238,10 @@ local function OnAll(from, _, body)
         if counts[k] then lines[#lines + 1] = ("+ %d item(s) to %s"):format(counts[k], NAMES[k]) end
     end
     if #ops == 0 then
-        if M.db.djChat then MMT.Print("Dejunk lists from %s: nothing new.", MMT.FullDisplay(from)) end
+        if M.db.djChat then
+            MMT.Print("Dejunk lists from %s: Dejunk's saved lists here have them all already.%s", MMT.FullDisplay(from),
+                dj.taken > 0 and " What the team sent this session shows in Dejunk after a /reload." or "")
+        end
         return
     end
     Take(from, ops, lines)
@@ -264,12 +264,35 @@ local function SendAll()
     return true
 end
 
+-- the characters that took changes this session reload (Dejunk reads its lists only at login)
+local function Reload()
+    if InCombatLockdown and InCombatLockdown() then reloadWanted = true return end
+    local ok = pcall(C_UI and C_UI.Reload or ReloadUI)
+    if not ok then MMT.Print("Quality of life: the game didn't let Dejunk's lists be reloaded; /reload by hand.") end
+end
+
+local function OnReload()
+    if dj.taken == 0 then return end
+    MMT.Print("Quality of life: reloading so Dejunk uses the %d list change(s) from the team.", dj.taken)
+    Reload()
+end
+
+M:On("PLAYER_REGEN_ENABLED", function()
+    if reloadWanted then reloadWanted = false; Reload() end
+end)
+
+local function ReloadTeam()
+    if not mod.Active(F) then return false, "switched off, or Dejunk isn't loaded." end
+    MMT.SendToTeam("QDJR:", true)
+    return true
+end
+
 F = mod.Feature({
     key = "dejunk", slash = "dejunk", addon = "Dejunk", title = "Dejunk lists",
     checkText = "Sync Dejunk's lists",
     tip = "Items you put on or take off Dejunk's junk / not junk lists here are put on or taken off the same lists on the team's characters. Baganator's junk follows Dejunk, so that syncs too. The team's changes count in Dejunk after a /reload on that character.",
-    tags = { QDJ = OnChange, QDJL = OnAll },
-    SendAll = SendAll,
+    tags = { QDJ = OnChange, QDJL = OnAll, QDJR = OnReload },
+    commands = { send = SendAll, reload = ReloadTeam },
     OnEnable = function() snap = nil; if ready then Queue() end end,
     OnDisable = function() snap = nil end,
     Page = function(ui)
@@ -282,7 +305,11 @@ F = mod.Feature({
             local ok, err = SendAll()
             ui.status.Show_(ok and "Your Dejunk lists were sent; the team adds what it doesn't have." or ("Not sent: " .. tostring(err)), not ok)
         end, "Sends your whole Dejunk lists once. The others add the items they don't have yet (nothing is removed).")
-        ui.Note("Dejunk takes the team's changes after a /reload of that character.")
+        ui.Button("Reload the team for Dejunk", function()
+            local ok, err = ReloadTeam()
+            ui.status.Show_(ok and "The characters that took Dejunk changes this session reload (after combat)." or ("Not sent: " .. tostring(err)), not ok)
+        end, "Dejunk reads its lists only at login: the characters that took list changes from the team reload their UI, so Dejunk uses them. The others don't.")
+        ui.Note("Dejunk uses the team's changes after a /reload of that character (it has no way to take them while running).")
     end,
     Report = function(add)
         local lists, id = State()
@@ -293,11 +320,11 @@ F = mod.Feature({
             for _ in pairs(pending[k]) do p = p + 1 end
             sizes[#sizes + 1] = ("%s=%d(+%d pending)"):format(k, n, p)
         end
-        add(("Dejunk: ready=%s profile=%s %s sent=%d taken=%d"):format(tostring(ready), tostring(id),
-            table.concat(sizes, " "), dj.sent, dj.taken))
+        add(("Dejunk: ready=%s profile=%s %s sent=%d taken=%d (in Dejunk after a reload) reloadWanted=%s"):format(tostring(ready), tostring(id),
+            table.concat(sizes, " "), dj.sent, dj.taken, tostring(reloadWanted)))
     end,
 })
 
 -- for the tests: Check, and what a /reload does (Dejunk reads the state, nothing pending)
 mod.DejunkCheck = Check
-function mod.DejunkReloaded() for _, k in ipairs(LISTS) do pending[k] = {} end end
+function mod.DejunkReloaded() for _, k in ipairs(LISTS) do pending[k] = {} end; dj.taken = 0 end
