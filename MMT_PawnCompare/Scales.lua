@@ -28,6 +28,8 @@ local function Unescape(s)
     return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end))
 end
 
+mod.Escape, mod.Unescape = Escape, Unescape
+
 local function Num(v)
     return ("%.4g"):format(v)
 end

@@ -11,6 +11,7 @@
 --                the scale value calculation.
 --   Tooltip.lua  adds the lines to Item Compare's tooltips.
 --   ItemTooltip.lua  team list in the normal item tooltip (GameTooltip).
+--   Manage.lua   list of Pawn scales here and on the team, delete them on both.
 --   Settings.lua settings page and debug report.
 --
 -- Uses only the documented MMT module API. Message tags start with PCMP_.
@@ -29,7 +30,9 @@ local M = MMT.NewModule({
         showPercent = true,
         hideUnusable = true,  -- no values for members whose class can never use the item
         teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF
+        askDelete = true,     -- ask before deleting the Pawn scales a team member deleted
     },
+    sync = true,              -- the core's "Sync to team" (nothing here is per client)
 })
 mod.M = M
 
@@ -81,7 +84,14 @@ end
 
 M.OnDisable = function()
     if ticker then ticker:Cancel() ticker = nil end
+    mod.CloseScales()
     M:Debug("disabled")
+end
+
+-- the team's settings were applied: tooltips read M.db fresh, Pawn's cached ones are redrawn
+M.OnSyncReceived = function()
+    if PawnResetTooltips then pcall(PawnResetTooltips) end
+    MMT.Fire("PAWN_SCALES_CHANGED")
 end
 
 ---------------------------------------------------------------------------
@@ -95,6 +105,8 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         mod.UpdateOwn(false)
         mod.SendScales()
         MMT.Print("Pawn Compare: your scales were sent to the team.")
+    elseif msg == "scales" then
+        mod.OpenScales()
     elseif msg == "request" then
         mod.RequestAll()
         MMT.Print("Pawn Compare: asked the online team for their scales.")
@@ -102,6 +114,6 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         MMT.Print("Pawn Compare %s - Pawn %s, Item Compare %s. Stored scales for %d characters.",
             mod.VERSION, mod.PawnInstalled() and "found" or "NOT installed",
             mod.ItemCompareActive() and "on" or "OFF", mod.StoredCount())
-        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs.")
+        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs, /mmtpc scales = list / delete Pawn scales.")
     end
 end

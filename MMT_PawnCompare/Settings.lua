@@ -63,6 +63,8 @@ M.Page = function(_, page)
     }, gt, st)
     local gg, sg = Opt("greetOnLogin")
     L:Check("Message in chat on login", gg, sg)
+    local gd, sd = Opt("askDelete")
+    L:Check("Ask before deleting the team's scales", gd, sd, "When a team member deletes Pawn scales here and on the team, ask before deleting them on this character. Off: they are deleted right away.")
     L:Space(4)
     status = H.StatusLine(page)
     status:SetWidth(COL_W)
@@ -111,11 +113,22 @@ M.Page = function(_, page)
         MMT.RefreshConfig()
     end)
     R:Add(clear, UI.ROW + 2)
+    R:Space(6)
+    R:Button("Pawn scales: list / delete...", function() mod.OpenScales() end)
+    local manageNote = UI.Label(page, "")
+    manageNote:SetWidth(COL_W)
+    manageNote:SetJustifyH("LEFT")
+    manageNote:SetWordWrap(true)
+    manageNote:SetTextColor(0.6, 0.6, 0.6)
+    R:Add(manageNote, 30)
+
 
     page.OnRefresh = function()
         local pawn = mod.PawnInstalled() and "|cff55ff55found|r" or "|cffff5555NOT installed|r (stored scales, approximate stats)"
         local ic = mod.ItemCompareActive() and "|cff55ff55on|r" or "|cffff5555OFF|r - switch it on, Pawn Compare needs it"
         state:SetText("Pawn: " .. pawn .. "\nItem Compare: " .. ic)
+        manageNote:SetText(mod.PawnReady() and "Every Pawn scale here and on the team; delete them here and on the alts."
+            or "|cffff5555Pawn is not loaded here:|r the list shows the team's scales; they can be deleted on the team.")
 
         local members = MMT.SortedMembers()
         for i, fs in ipairs(lines) do
@@ -146,4 +159,10 @@ M.Report = function(_, add)
         add(("scales %s: %d (%s), hash %s, %s%s"):format(MMT.Repr(key), #rec.scales, ScaleNames(rec),
             tostring(rec.hash), MMT.Ago(rec.time), rec.noPawn and ", no Pawn" or ""))
     end
+    for key, p in pairs(M.store.pendingDel or {}) do
+        local t = {}
+        for n in pairs(p.names) do t[#t + 1] = n end
+        add(("delete waiting for %s: %s"):format(MMT.Repr(key), table.concat(t, ", ")))
+    end
+    if mod.DeleteWaiting() > 0 then add(("delete dialogs waiting: %d"):format(mod.DeleteWaiting())) end
 end

@@ -56,7 +56,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.3.0)
+### MMT_PawnCompare (v0.4.0)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -79,6 +79,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `PawnAddValuesToTooltip` to skip GameTooltip (only for equippable items while own scales exist).
   Rings/trinkets: vs the weaker slot; 1H: MH, or OH if a weapon is there; 2H: MH + OH.
 - Comm: heartbeat `pcs=<scale hash>`, `pcn=1` (no Pawn); `PCMP_REQ`, chunked `PCMP_S:id:i:n:data`.
+- `sync = true` (core Sync button, nothing per client), `M.OnSyncReceived` = `PawnResetTooltips` + PAWN_SCALES_CHANGED.
+- `Manage.lua` (0.4.0): window `MMTPawnScalesWindow` (`mod.OpenScales`, `/mmtpc scales`, button on the page).
+  Pawn's API (PawnCommon is ACCOUNT-wide, visibility per character): `PawnGetAllScalesEx` {Name, LocalizedName,
+  IsVisible, IsProvider}, `PawnDoesScaleExist`, `PawnScaleIsReadOnly` (= provider scale: only hideable, never
+  deletable), `PawnDeleteScale(name)` (custom only; no event). After deleting we clear `PawnUICurrentScale` if it
+  was deleted and refresh Pawn's UI if shown (as its own Delete button does), then `mod.UpdateOwn(true)` = PCMP_S.
+  `mod.ScaleRows()` = own custom + shown built-in + team-only names (the team shares DISPLAY names: matched by
+  name or LocalizedName). Team delete: `PCMP_DEL:<escaped>~<escaped>` (< 240 bytes each, `mod.DeleteMessages`),
+  receivers delete by name what `mod.CanDelete` allows, asking first (`askDelete`, one `MMT.UI.Confirm` at a time,
+  later requests queue); members offline then: `M.store.pendingDel[key]`, whispered on their next XP_RECEIVED
+  (14 days). Test: test_pawn_scales.py (two clients + stand-in Pawn); the window is built in test_settings.py.
 - `Proficiency.lua`: `mod.CanUse(key, link)` from GetItemInfoInstant classID/subclassID and Classic weapon /
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.

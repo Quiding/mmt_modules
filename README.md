@@ -9,7 +9,7 @@ MODULES, with its own settings page.
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.4 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
-| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
+| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete Pawn scales team-wide | 0.4.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
@@ -140,8 +140,12 @@ Pawn scores for the whole team. Needs MMT's Item Compare switched on.
   (or below them, or off).
 - Members whose class can never use the item (a bow for a shaman) get no value.
 - Scales are synced and stored, so offline members and clients without Pawn still work.
+- **Pawn scales** window: every Pawn scale here and on the team, and who has it. Tick scales and
+  delete them here, or here and on the alts (they're asked first unless you switch that off;
+  offline members are asked when they come online). Pawn's built-in scales can't be deleted.
+- Settings sync to the team with the Sync button.
 
-`/mmtpc` · `/mmtpc send` · `/mmtpc request`
+`/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales`
 
 <img src="media/pawncompare.png" alt="Team upgrades in the item tooltip" width="306">
 

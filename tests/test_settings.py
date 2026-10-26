@@ -98,7 +98,7 @@ function MMT.NewModule(def)
 end
 '''
 
-for folder in ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL"]:
+for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL"]:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(STUBS)
     toc = [l.strip() for l in open(os.path.join(folder, folder + ".toc"), encoding="utf-8") if l.strip().endswith(".lua")]
@@ -112,5 +112,6 @@ for folder in ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispe
       if rawget(page, "OnRefresh") then page.OnRefresh() end
       for _, use in ipairs(USES) do use() end
       if rawget(page, "OnRefresh") then page.OnRefresh() end
+      if m.OpenScales then m.OpenScales() end  -- Pawn Compare's scale window
       return folder .. ": settings page built, " .. #USES .. " options read and set"
     end''')(mod, folder))
