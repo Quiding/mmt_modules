@@ -259,7 +259,8 @@ end
 local function Build()
     local f = CreateFrame("Frame", "MMTPawnScalesWindow", UIParent)
     f:SetSize(W, 120 + ROWS * ROW_H)
-    f:SetFrameStrata("DIALOG")
+    f:SetFrameStrata("FULLSCREEN_DIALOG")   -- above MMT's settings window (DIALOG, or FULLSCREEN_DIALOG from the game options)
+    f:SetToplevel(true)
     f:EnableMouse(true)
     f:SetMovable(true)
     f:RegisterForDrag("LeftButton")
@@ -365,8 +366,16 @@ local function Build()
     return f
 end
 
-function mod.OpenScales()
+-- owner = the button it opens from: same scale as MMT's settings window
+function mod.OpenScales(owner)
     win = win or Build()
+    local own, parent = owner and owner.GetEffectiveScale and owner:GetEffectiveScale(), UIParent:GetEffectiveScale()
+    if own and parent and parent > 0 then
+        win:SetScale(own / parent)
+    else
+        win:SetScale((MMT.ConfigScale and MMT.ConfigScale()) or 1)
+    end
+    win:Raise()
     win:Show()
     win.Refresh()
     return win

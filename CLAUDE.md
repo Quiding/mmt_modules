@@ -56,7 +56,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.4.0)
+### MMT_PawnCompare (v0.4.1)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -89,12 +89,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   name or LocalizedName). Team delete: `PCMP_DEL:<escaped>~<escaped>` (< 240 bytes each, `mod.DeleteMessages`),
   receivers delete by name what `mod.CanDelete` allows, asking first (`askDelete`, one `MMT.UI.Confirm` at a time,
   later requests queue); members offline then: `M.store.pendingDel[key]`, whispered on their next XP_RECEIVED
-  (14 days). Test: test_pawn_scales.py (two clients + stand-in Pawn); the window is built in test_settings.py.
+  (14 days). The window is FULLSCREEN_DIALOG + Toplevel (MMT's settings are DIALOG) and takes the opening button's
+  effective scale / UIParent's (else `MMT.ConfigScale()`): popups parented to UIParent must match MMT's window scale. Test: test_pawn_scales.py (two clients + stand-in Pawn); the window is built in test_settings.py.
 - `Proficiency.lua`: `mod.CanUse(key, link)` from GetItemInfoInstant classID/subclassID and Classic weapon /
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.2) / MMT_BuffTimers (v0.16.4) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.2) / MMT_BuffTimers (v0.16.5) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and

@@ -52,6 +52,9 @@ function mod.OpenFilter(e, owner, changed)
     local f = CreateFrame("Frame", nil, UIParent)
     filterPopup = f
     f:SetFrameStrata("FULLSCREEN_DIALOG")
+    -- belongs to UIParent: same scale as the settings window it opens from
+    local own, parent = owner and owner.GetEffectiveScale and owner:GetEffectiveScale(), UIParent:GetEffectiveScale()
+    f:SetScale((own and parent and parent > 0) and own / parent or 1)
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
     UI.Fill(f, 0.07, 0.07, 0.08, 0.98)
