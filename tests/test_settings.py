@@ -98,7 +98,7 @@ function MMT.NewModule(def)
 end
 '''
 
-for folder in ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory"]:
+for folder in ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL"]:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(STUBS)
     toc = [l.strip() for l in open(os.path.join(folder, folder + ".toc"), encoding="utf-8") if l.strip().endswith(".lua")]

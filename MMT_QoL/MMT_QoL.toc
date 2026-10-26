@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: MMT - Quality of life
+## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team.
+## Version: 0.1.0
+## Author: Quiding
+## X-Repository: https://github.com/Quiding/mmt_modules
+## X-License: GPL-3.0
+## Dependencies: MMT
+## OptionalDeps: Dejunk, Baganator
+## X-MMT-Module: 1
+## X-MMT-Title: Quality of life
+## IconTexture: Interface\Icons\INV_Misc_Bag_10
+
+Module.lua
+Ask.lua
+Dejunk.lua
+Baganator.lua
+Settings.lua

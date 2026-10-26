@@ -353,6 +353,35 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
+### MMT_QoL (v0.1.0) – "Quality of life": home for small team conveniences
+- One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
+  sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
+  `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
+  One TEAM_MESSAGE listener dispatches `^(Q[A-Z]+):` to the active feature's tag. Settings.lua: one column per feature
+  (main checkbox greyed with the reason as tooltip; `ui.Check/Cycle/Button/Confirm/Note` options greyed and ignored
+  while the feature is off); a 3rd feature needs tabs. `Ask.lua`: `mod.Ask(from, f, lines, apply)` queues one
+  `MMT.UI.Confirm` per sender + feature (a dialog replaced by another counts as Ignore).
+- Tags: `QDJ`, `QDJL` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator). One message per change; > 10 changes at once
+  (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
+- `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private
+  addon table). Read + write `__DEJUNK_ADDON_V3_SAVED_VARIABLES__` (rewritten as a shallow copy on every state change;
+  `.global.inclusions/exclusions` and `.profiles.profileMap[characterMap[<GetUnitName-realm>] or "DEFAULT_PROFILE"]
+  .settings.inclusions/exclusions` ARE the store's tables, keys = item ID strings). Lists GI/GE/PI/PE. Local changes:
+  StateUpdated listener -> 0.3 s -> diff with `snap`; a move sends only the "+" (Dejunk takes it off the opposite list
+  itself). Taken changes go into those tables, but Dejunk filters with its in-memory `Lists` copy (read only at
+  login), so they count after a /reload; meanwhile Dejunk saves its copy over the state on its next change of that
+  list: `pending[list][id]` = "+"/"-" puts them back and is not sent. Another profile = resnapshot, no send.
+- `Baganator.lua`: no API to add items to a category; `BAGANATOR_CONFIG.Profiles[BAGANATOR_CURRENT_PROFILE]
+  .category_modifications[src].addedItems["i:<id>"|"p:<id>"]` is what Config.Get returns and is read on every redraw.
+  Baganator replaces it (Config.Set copy) on each change: a 1 s ticker compares the reference (full diff every 5 s),
+  snap keyed `item\tsrc` (renames are no change). Category on the wire: `default_*` key, custom = `c:<name>` (%XX
+  escapes `%;=,:`). Apply = write the table in place (an item in one category only) + public
+  `Baganator.API.RequestItemButtonsRefresh()` / `RequestLayoutUpdate()`. Scope `bgScope` ALL | JUNK (default_junk).
+  Whole setup (`QBGF:BGR!1!...`): export built like Baganator's CategoriesExportTable, C_EncodingUtil CBOR + compress
+  + base64; receiver always asked, then public `Baganator.API.ImportString` + `SlashCmdList.Baganator(
+  "removeunusedcategories")` (the import re-adds custom categories under new keys), then resnapshot.
+- Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).
+
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between
   Import / Export and the core's Sync button. Others: a local `ResetButton(page, done)` in their settings
