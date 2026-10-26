@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Buff Timers
 ## Notes: MMT module: which team members have (or miss) the buffs you track. Port of EMA Buffs.
-## Version: 0.16.0
+## Version: 0.16.1
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0

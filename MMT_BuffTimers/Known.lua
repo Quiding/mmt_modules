@@ -9,7 +9,10 @@
 -- "unlearned". Each client works out its own (any rank counts: the game knows a
 -- spell by name only when the character has learned it) and sends it once when it
 -- changes (login, spells learned / talents, lists changed):
---   MBFK:<id>,<id>,...       (MMT.SendLong: any size; empty = knows them all)
+--   MBFK:<id>,<id>,...[#<pattern>#<pattern>...]   (MMT.SendLong: any size; empty = knows them all)
+-- Name patterns ("Aspect of the *", "Seal of *", totem buffs): learned when a spell in
+-- the spellbook matches (learned ones only, not the ones it lists for later levels);
+-- checked for the patterns in this character's own lists and those its class casts.
 -- plus heartbeat "bfk=<hash of the list>"; a client whose stored hash differs asks
 -- once with MBFKQ (whispered, at most once a minute). Kept per character in
 -- M.store.unlearned[key] = { ids = { [spellID] = true }, hash }, matched by NAME.
@@ -33,6 +36,7 @@ end
 -- names of the spells of a class (its presets and its casters list)
 local classNames = {}
 local ownNames    -- [buff name] = true: our own unlearned ones (worked out with OwnText)
+local book        -- the spellbook's learned spell names (false: can't be read)
 local function ClassSpells(class)
     local t = classNames[class]
     if t and t.complete then return t end
@@ -49,6 +53,63 @@ local function ClassSpells(class)
     for _, id in ipairs(mod.CASTERS and mod.CASTERS[class] or {}) do Add(id) end
     classNames[class] = t
     return t
+end
+
+-- names of the spells this character has learned, from the spellbook; nil if it can't be read
+local function Spellbook()
+    if book ~= nil then return book or nil end
+    book = false
+    local SB = C_SpellBook
+    if not (SB and SB.GetNumSpellBookSkillLines and SB.GetSpellBookSkillLineInfo and SB.GetSpellBookItemType
+        and Enum and Enum.SpellBookItemType and Enum.SpellBookSpellBank) then return nil end
+    local bank, SPELL = Enum.SpellBookSpellBank.Player, Enum.SpellBookItemType.Spell
+    local n = MMT.Safe(SB.GetNumSpellBookSkillLines)
+    if type(n) ~= "number" then return nil end
+    local names = {}
+    for li = 1, n do
+        local line = MMT.Safe(SB.GetSpellBookSkillLineInfo, li)
+        if type(line) == "table" and line.itemIndexOffset and line.numSpellBookItems then
+            for si = line.itemIndexOffset + 1, line.itemIndexOffset + line.numSpellBookItems do
+                local kind, _, spellID = MMT.Safe(SB.GetSpellBookItemType, si, bank)
+                if kind == SPELL and type(spellID) == "number" then
+                    local name = mod.SpellInfo(spellID)
+                    if type(name) == "string" then names[#names + 1] = name end
+                end
+            end
+        end
+    end
+    if #names == 0 then return nil end
+    book = names
+    return book
+end
+
+-- name patterns this character hasn't learned: those in its own lists (not the All
+-- bar) and those its class casts (totems), when no learned spell matches
+function mod.OwnUnlearnedPatterns()
+    local spells = Spellbook()
+    if not spells then return {} end
+    local _, class = UnitClass("player")
+    local own = MMT.PlayerFull and MMT.PlayerFull()
+    local candidates, seen = {}, {}
+    local function Add(e)
+        if mod.IsPattern(e) and not seen[e.name] then seen[e.name] = true; candidates[#candidates + 1] = e end
+    end
+    for _, lk in ipairs(own and mod.ListKeysFor(own, false) or {}) do
+        for _, e in ipairs(M.db.lists[lk] or {}) do Add(e) end
+    end
+    for _, list in pairs(M.db.lists or {}) do
+        for _, e in ipairs(list) do if e.caster == class then Add(e) end end
+    end
+    local out = {}
+    for _, e in ipairs(candidates) do
+        local learned = false
+        for _, name in ipairs(spells) do
+            if mod.Matches(e, name) then learned = true break end
+        end
+        if not learned then out[#out + 1] = e.name end
+    end
+    table.sort(out)
+    return out
 end
 
 -- this character's tracked class buffs it hasn't learned: sorted spell IDs
@@ -86,7 +147,12 @@ local function OwnText()
         local name = mod.SpellInfo(id)
         if name then ownNames[mod.Canonical(name)] = true end
     end
-    return Text(ids)
+    local text = Text(ids)
+    for _, pattern in ipairs(mod.OwnUnlearnedPatterns()) do
+        ownNames[pattern] = true
+        text = text .. "#" .. pattern:gsub("#", "")
+    end
+    return text
 end
 
 M:Heartbeat("bfk", function()
@@ -105,7 +171,7 @@ end
 local pending = false
 -- spells learned, lists changed: names worked out again
 function mod.KnownReset()
-    classNames, ownNames = {}, nil
+    classNames, ownNames, book = {}, nil, nil
 end
 
 function mod.KnownCheck()
@@ -128,7 +194,7 @@ local namesOf = setmetatable({}, { __mode = "k" })   -- [stored record] = { [buf
 
 -- has member key NOT learned buff entry e (as their client told us)? Never in the preview.
 function mod.Unlearned(key, e)
-    if mod.preview or not e.id then return false end
+    if mod.preview or not (e.id or mod.IsPattern(e)) then return false end
     local name = mod.BuffName(e)
     if not name then return false end
     if MMT.IsSelf(key) then
@@ -137,6 +203,7 @@ function mod.Unlearned(key, e)
     end
     local rec = Store()[key]
     if not (rec and rec.ids) then return false end
+    if mod.IsPattern(e) then return rec.patterns and rec.patterns[e.name] or false end
     local names = namesOf[rec]   -- worked out once per received list (not saved)
     if not names or not names.complete then
         names = { complete = true }
@@ -168,10 +235,12 @@ end)
 M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if MMT.IsSelf(key) then return end
     if text == "MBFKQ" then Send(sender) return end
-    local list = text:match("^MBFK:([%d,]*)$")
+    local list = text:match("^MBFK:(.*)$")
     if not list then return end
-    local ids = {}
-    for id in list:gmatch("%d+") do ids[tonumber(id)] = true end
-    Store()[key] = { ids = ids, hash = Hash(list) }
+    local idPart = list:match("^([%d,]*)")
+    local ids, patterns = {}, {}
+    for id in idPart:gmatch("%d+") do ids[tonumber(id)] = true end
+    for pattern in list:gmatch("#([^#]+)") do patterns[pattern] = true end
+    Store()[key] = { ids = ids, patterns = next(patterns) and patterns or nil, hash = Hash(list) }
     mod.Refresh()
 end)

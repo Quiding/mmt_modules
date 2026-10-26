@@ -405,3 +405,38 @@ print(lua.eval(r"""function(m)
   m.KnownReset()
   return "unlearned buffs ok"
 end""")(mod))
+
+# name patterns not learned yet: from the spellbook (learned spells only), shared after "#"
+print(lua.eval(r"""function(m)
+  local oldInfo, oldEnum, oldSB, oldSafe = m.SpellInfo, Enum, C_SpellBook, rawget(MMT, "Safe")
+  MMT.Safe = function(f, ...) local r = { pcall(f, ...) } if r[1] then return unpack(r, 2, 8) end end   -- like the core
+  local NAMES = { [324] = "Lightning Shield", [8076] = "Strength of Earth Totem" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  Enum = { SpellBookItemType = { Spell = 1, FutureSpell = 2 }, SpellBookSpellBank = { Player = 0 },
+    WeaponSlot = { MainHand = 1, OffHand = 2 }, ItemEnchantType = { Temporary = 0, Imbue = 1 } }
+  local items = { { 1, 324 }, { 2, 8076 } }   -- Lightning Shield learned, the totem only listed for later
+  C_SpellBook = {
+    GetNumSpellBookSkillLines = function() return 1 end,
+    GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = #items } end,
+    GetSpellBookItemType = function(i) return items[i][1], nil, items[i][2] end,
+  }
+  m.M.db.specLists = false
+  local soe, ls = { name = "Strength of Earth*", caster = "SHAMAN" }, { name = "Lightning*" }
+  m.M.db.lists.ALL = { soe }
+  m.M.db.lists.SHAMAN = { ls }
+  m.KnownReset()
+  local pats = m.OwnUnlearnedPatterns()
+  assert(#pats == 1 and pats[1] == "Strength of Earth*", "own patterns: " .. #pats)
+  assert(m.Unlearned("Anna-Smith", soe) and not m.Unlearned("Anna-Smith", ls), "own pattern check")
+  MMT.db.team["Bob-Stone"] = { class = "HUNTER" }
+  local aspects = { name = "Aspect of the *" }
+  TEAM_MESSAGE("Bob-Stone", "MBFK:#Aspect of the *")
+  assert(m.Unlearned("Bob-Stone", aspects), "hunter without aspects")
+  TEAM_MESSAGE("Bob-Stone", "MBFK:")
+  assert(not m.Unlearned("Bob-Stone", aspects), "hunter learned one")
+  m.SpellInfo, Enum, C_SpellBook = oldInfo, oldEnum, oldSB
+  rawset(MMT, "Safe", oldSafe)
+  MMT.db.team["Bob-Stone"] = nil
+  m.KnownReset()
+  return "unlearned patterns ok"
+end""")(mod))
