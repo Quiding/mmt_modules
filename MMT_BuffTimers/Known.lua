@@ -56,7 +56,9 @@ local function ClassSpells(class)
 end
 
 -- names of the spells this character has learned, from the spellbook; nil if it can't be read
-local function Spellbook()
+local Spellbook
+function mod.SpellbookCount() local s = Spellbook() return s and #s or 0 end
+Spellbook = function()
     if book ~= nil then return book or nil end
     book = false
     local SB = C_SpellBook
@@ -70,7 +72,8 @@ local function Spellbook()
         local line = MMT.Safe(SB.GetSpellBookSkillLineInfo, li)
         if type(line) == "table" and line.itemIndexOffset and line.numSpellBookItems then
             for si = line.itemIndexOffset + 1, line.itemIndexOffset + line.numSpellBookItems do
-                local kind, _, spellID = MMT.Safe(SB.GetSpellBookItemType, si, bank)
+                local kind, actionID, spellID = MMT.Safe(SB.GetSpellBookItemType, si, bank)
+                spellID = spellID or actionID   -- like EllesmereUI: some clients give only the action ID
                 if kind == SPELL and type(spellID) == "number" then
                     local name = mod.SpellInfo(spellID)
                     if type(name) == "string" then names[#names + 1] = name end
@@ -93,6 +96,24 @@ local function InBook(name)
         for _, n in ipairs(spells) do bookSet[mod.Canonical(n)] = true end
     end
     return bookSet[name] or false
+end
+
+-- weapon enchant entries (Weapons.lua): a shaman needs an imbue spell, a rogue Poisons
+-- (level 20); other classes can always use an oil or a stone. Shared as "#@imbue".
+local IMBUE = "@imbue"
+local IMBUES = { "Rockbiter Weapon", "Flametongue Weapon", "Frostbrand Weapon", "Windfury Weapon" }
+function mod.OwnCanImbue()
+    local _, class = UnitClass("player")
+    if class ~= "SHAMAN" and class ~= "ROGUE" then return true end
+    local spells = Spellbook()
+    if not spells then return true end   -- can't tell: show it
+    for _, name in ipairs(spells) do
+        if class == "ROGUE" and (name == "Poisons" or name:find("Poison", 1, true)) then return true end
+        if class == "SHAMAN" then
+            for _, imbue in ipairs(IMBUES) do if name == imbue then return true end end
+        end
+    end
+    return class == "ROGUE" and mod.KnowsSpell(2842, nil) or false   -- Poisons (the skill)
 end
 
 -- name patterns this character hasn't learned: those in its own lists (not the All
@@ -164,6 +185,10 @@ local function OwnText()
         ownNames[pattern] = true
         text = text .. "#" .. pattern:gsub("#", "")
     end
+    if not mod.OwnCanImbue() then
+        ownNames[IMBUE] = true
+        text = text .. "#" .. IMBUE
+    end
     return text
 end
 
@@ -206,8 +231,8 @@ local namesOf = setmetatable({}, { __mode = "k" })   -- [stored record] = { [buf
 
 -- has member key NOT learned buff entry e (as their client told us)? Never in the preview.
 function mod.Unlearned(key, e)
-    if mod.preview or not (e.id or mod.IsPattern(e)) then return false end
-    local name = mod.BuffName(e)
+    if mod.preview or not (e.id or mod.IsPattern(e) or mod.IsWeapon(e)) then return false end
+    local name = mod.IsWeapon(e) and IMBUE or mod.BuffName(e)
     if not name then return false end
     if MMT.IsSelf(key) then
         if not ownNames then OwnText() end
@@ -215,7 +240,7 @@ function mod.Unlearned(key, e)
     end
     local rec = Store()[key]
     if not (rec and rec.ids) then return false end
-    if mod.IsPattern(e) then return rec.patterns and rec.patterns[e.name] or false end
+    if mod.IsPattern(e) or mod.IsWeapon(e) then return rec.patterns and rec.patterns[name] or false end
     local names = namesOf[rec]   -- worked out once per received list (not saved)
     if not names or not names.complete then
         names = { complete = true }

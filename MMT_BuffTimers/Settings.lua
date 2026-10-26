@@ -449,7 +449,8 @@ M.Report = function(_, add)
     local own = {}
     for _, id in ipairs(mod.OwnUnlearned() or {}) do own[#own + 1] = tostring(mod.SpellInfo(id) or id) end
     for _, p in ipairs(mod.OwnUnlearnedPatterns()) do own[#own + 1] = p end
-    add(("unlearned (own): %s"):format(#own > 0 and table.concat(own, ", ") or "-"))
+    add(("unlearned (own): %s  [spellbook %d spells, imbues %s]"):format(#own > 0 and table.concat(own, ", ") or "-",
+        mod.SpellbookCount(), tostring(mod.OwnCanImbue())))
     for key, rec in pairs(M.store.unlearned or {}) do
         local t = {}
         for id in pairs(rec.ids or {}) do t[#t + 1] = tostring(mod.SpellInfo(id) or id) end

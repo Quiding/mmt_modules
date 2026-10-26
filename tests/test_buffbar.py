@@ -462,3 +462,34 @@ print(lua.eval(r"""function(m)
   m.KnownReset()
   return "talent spells known by ID ok"
 end""")(mod))
+
+# weapon enchants need an imbue spell (shaman) / Poisons (rogue); the spellbook may give only action IDs
+print(lua.eval(r"""function(m)
+  local oldInfo, oldEnum, oldSB, oldSafe = m.SpellInfo, Enum, C_SpellBook, rawget(MMT, "Safe")
+  MMT.Safe = function(f, ...) local r = { pcall(f, ...) } if r[1] then return unpack(r, 2, 8) end end
+  local NAMES = { [403] = "Lightning Bolt", [8017] = "Rockbiter Weapon" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  Enum = { SpellBookItemType = { Spell = 1, FutureSpell = 2 }, SpellBookSpellBank = { Player = 0 },
+    WeaponSlot = { MainHand = 1, OffHand = 2 }, ItemEnchantType = { Temporary = 0, Imbue = 1 } }
+  local items = { { 1, 403 } }                       -- level 1: Lightning Bolt only
+  C_SpellBook = {
+    GetNumSpellBookSkillLines = function() return 1 end,
+    GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = #items } end,
+    GetSpellBookItemType = function(i) return items[i][1], items[i][2], nil end,   -- action ID only
+  }
+  m.KnownReset()
+  assert(m.SpellbookCount() == 1, "spellbook read from action IDs")
+  local mh = { weapon = "MH" }
+  assert(not m.OwnCanImbue() and m.Unlearned("Anna-Smith", mh), "level 1 shaman: no imbue")
+  items[2] = { 1, 8017 }                             -- learns Rockbiter Weapon
+  m.KnownReset()
+  assert(m.OwnCanImbue() and not m.Unlearned("Anna-Smith", mh), "imbue learned")
+  MMT.db.team["Bob-Stone"] = { class = "ROGUE" }
+  TEAM_MESSAGE("Bob-Stone", "MBFK:#@imbue")
+  assert(m.Unlearned("Bob-Stone", mh), "rogue without Poisons")
+  MMT.db.team["Bob-Stone"] = nil
+  m.SpellInfo, Enum, C_SpellBook = oldInfo, oldEnum, oldSB
+  rawset(MMT, "Safe", oldSafe)
+  m.KnownReset()
+  return "imbues learned ok"
+end""")(mod))

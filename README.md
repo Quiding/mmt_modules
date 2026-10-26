@@ -7,7 +7,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.2 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.3 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips | 0.3.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
