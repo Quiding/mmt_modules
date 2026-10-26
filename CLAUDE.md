@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.1) / MMT_BuffTimers (v0.16.3) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.2) / MMT_BuffTimers (v0.16.4) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -137,7 +137,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   spells BY NAME only if the character knows them, so `mod.AttachSearch(box, {items, onPick})` builds a
   session index of all names over ID ranges 1-60000, 400000-440000, 1250000-1330000 (ticker, 3000 per
   step, presets' IDs win for duplicate names) and shows a popup; `box.picked` = the chosen {t, id, text};
-  `mod.FindByName` for typed exact names; a "Teaches X" trainer spell (generic icon `mod.GENERIC_ICON` 136235, e.g. 864 Seal of Righteousness) loses to a real spell of the same name, and its icon counts as none in `SpellIconAny`. Items: bags + equipped only. Test: test_search.py.
+  `mod.FindByName` for typed exact names; names shared by several IDs: the best `Score` wins (known by this character 4, has a base cooldown 2 - e.g. Fire Nova 408341 not the old effect 17366 -, real icon 1); a "Teaches X" trainer spell (generic icon `mod.GENERIC_ICON` 136235, e.g. 864 Seal of Righteousness) loses to a real spell of the same name, and its icon counts as none in `SpellIconAny`. Items: bags + equipped only. Test: test_search.py.
 - Spell links: this client inserts shift-clicked links via `ChatFrameUtil.InsertLink`;
   `ChatEdit_InsertLink` is only a fallback. Hook through `mod.AcceptSpellLinks`.
 - Spec lists (`Specs.lua`, identical in both; setting `specLists`, default off): list key "SPEC:<CLASS>:<SPEC>" (same

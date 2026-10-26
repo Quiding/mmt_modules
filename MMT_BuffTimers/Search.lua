@@ -31,8 +31,20 @@ local function Generic(id)
     return icon == nil or icon == mod.GENERIC_ICON
 end
 
--- the first spell with a name wins, except that a real spell beats a trainer spell of
--- the same name (864 "Seal of Righteousness" teaches it); the presets' IDs always win
+-- how good a spell is for its name, when several share one: one this character knows,
+-- else one with a cooldown (the shaman's Fire Nova 408341 over old cooldown-less "Fire
+-- Nova" effects like 17366), else a real spell over a trainer spell (864 "Seal of
+-- Righteousness" teaches it)
+local function Score(id)
+    local score = 0
+    if mod.KnowsSpell and mod.KnowsSpell(id, nil) then score = score + 4 end
+    local ok, ms = pcall(GetSpellBaseCooldown or function() return nil end, id)
+    if ok and type(ms) == "number" and ms > 0 then score = score + 2 end
+    if not Generic(id) then score = score + 1 end
+    return score
+end
+
+-- the best spell of a name wins (Score; the first one on a tie); the presets' IDs always win
 local function AddSpell(id, preset)
     local ok, name = pcall(GetName, id)
     if not ok or type(name) ~= "string" or name == "" or MMT.IsSecret(name) then return end
@@ -41,8 +53,10 @@ local function AddSpell(id, preset)
     if not have then
         index[key] = { name = name, id = id, preset = preset }
         names[#names + 1] = key
-    elseif not have.preset and Generic(have.id) and not Generic(id) then
-        have.id = id
+    elseif not have.preset then
+        have.score = have.score or Score(have.id)
+        local score = Score(id)
+        if score > have.score then have.id, have.score = id, score end
     end
 end
 

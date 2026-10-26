@@ -130,3 +130,41 @@ print(lua.eval(r'''function(m)
   assert(t == "s" and id == 20154, "the trainer spell won: " .. tostring(id))
   return "trainer spells lose ok"
 end''')(mod2))
+
+# bug: "Fire Nova" picked 17366, an old effect without a cooldown; the shaman's Fire Nova
+# (408341, 10 s) wins, and the rank this character knows wins over the others
+SPELLS3 = {8349: "Fire Nova", 17366: "Fire Nova", 408341: "Fire Nova", 408343: "Fire Nova"}
+lua.execute('SPELLS = {}')
+for k, v in SPELLS3.items():
+    lua.eval('function(k, v) SPELLS[k] = v end')(k, v)
+def fire_nova(known):
+    m3 = lua.eval('{}')
+    lua.eval(r'''function(m, known)
+      m.PRESETS = {}
+      m.GENERIC_ICON = 136235
+      m.SpellInfo = function(id) return SPELLS[id] end
+      m.SpellIcon = function(id) return SPELLS[id] and 135824 end
+      m.KnowsSpell = function(id) return id == known end
+      GetSpellBaseCooldown = function(id) if id >= 408341 then return 10000 end return 0 end
+    end''')(m3, known)
+    lua.eval('function(src, m) assert(loadstring(src, "Search.lua"))("x", m) end')(
+        open('MMT_CooldownTimers/Search.lua', encoding='utf-8').read(), m3)
+    return lua.eval(r'''function(m)
+      local box = { _text = "" }
+      function box:GetText() return self._text end
+      function box:SetText(v) self._text = v end
+      function box:HasFocus() return true end
+      function box:HookScript(ev, fn) self["_" .. ev] = fn end
+      function box:GetWidth() return 150 end
+      function box:GetEffectiveScale() return 1 end
+      m.AttachSearch(box, { onPick = function() end })
+      box._text = "fire n"
+      box._OnTextChanged(box, true)
+      local _, id = m.FindByName("Fire Nova")
+      return id
+    end''')(m3)
+got = fire_nova(0)
+assert got == 408341, "Fire Nova without a known rank: %s" % got
+got = fire_nova(408343)
+assert got == 408343, "Fire Nova, known rank: %s" % got
+print("Fire Nova picks the spell with a cooldown / the known rank ok")
