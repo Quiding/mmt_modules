@@ -56,7 +56,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.4.1)
+### MMT_PawnCompare (v0.4.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -86,7 +86,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   deletable), `PawnDeleteScale(name)` (custom only; no event). After deleting we clear `PawnUICurrentScale` if it
   was deleted and refresh Pawn's UI if shown (as its own Delete button does), then `mod.UpdateOwn(true)` = PCMP_S.
   `mod.ScaleRows()` = own custom + shown built-in + team-only names (the team shares DISPLAY names: matched by
-  name or LocalizedName). Team delete: `PCMP_DEL:<escaped>~<escaped>` (< 240 bytes each, `mod.DeleteMessages`),
+  name or LocalizedName; a team name that is a built-in scale here, shown or hidden, is built-in: not deletable, checkbox disabled, sorted last). Team delete: `PCMP_DEL:<escaped>~<escaped>` (< 240 bytes each, `mod.DeleteMessages`),
   receivers delete by name what `mod.CanDelete` allows, asking first (`askDelete`, one `MMT.UI.Confirm` at a time,
   later requests queue); members offline then: `M.store.pendingDel[key]`, whispered on their next XP_RECEIVED
   (14 days). The window is FULLSCREEN_DIALOG + Toplevel (MMT's settings are DIALOG) and takes the opening button's

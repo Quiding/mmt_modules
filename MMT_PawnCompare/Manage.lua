@@ -45,10 +45,13 @@ end
 
 -- rows for the window: { name, label, own = Pawn info | nil, holders = { team keys }, deletable }
 -- own custom scales (shown or hidden), Pawn's built-in ones only while shown,
--- then what only the team has. Sorted: own first, then by name.
+-- then what only the team has. A team scale is built-in when it has the name of
+-- one of Pawn's built-in scales here (every Pawn has the same ones; the team
+-- only shares display names). Sorted: deletable first, then own, then by name.
 function mod.ScaleRows()
-    local rows, byName, byLabel = {}, {}, {}
+    local rows, byName, byLabel, builtin = {}, {}, {}, {}
     for _, s in ipairs(mod.PawnScales() or {}) do
+        if s.provider then builtin[s.name] = true; builtin[s.label] = true end
         if not s.provider or s.visible then
             local r = { name = s.name, label = s.label, own = s, holders = {}, deletable = not s.provider }
             rows[#rows + 1] = r
@@ -62,7 +65,7 @@ function mod.ScaleRows()
             -- the team shares Pawn's display name: the same as the name for own scales
             local r = byName[sc.name] or byLabel[sc.name]
             if not r then
-                r = { name = sc.name, label = sc.name, holders = {}, deletable = true }
+                r = { name = sc.name, label = sc.name, holders = {}, deletable = not builtin[sc.name] }
                 rows[#rows + 1] = r
                 byName[sc.name] = r
             end
@@ -70,6 +73,7 @@ function mod.ScaleRows()
         end
     end
     table.sort(rows, function(a, b)
+        if a.deletable ~= b.deletable then return a.deletable end
         if (a.own ~= nil) ~= (b.own ~= nil) then return a.own ~= nil end
         return a.label:lower() < b.label:lower()
     end)
@@ -313,6 +317,9 @@ local function Build()
         local colour = r.deletable and "|cffffffff" or "|cff888888"
         row.check.label:SetText(colour .. r.label .. "|r" .. (r.deletable and "" or " |cff888888(built-in)|r"))
         row.check.Refresh()
+        -- built-in scales can't be ticked (the tooltip still shows on hover)
+        row.check:SetEnabled(r.deletable)
+        row.check:SetAlpha(r.deletable and 1 or 0.45)
         row.who:SetText("|cff999999" .. Holders(r) .. "|r")
     end)
     f.list:SetPoint("TOPLEFT", 12, -62)

@@ -99,8 +99,8 @@ def deliver(msgs, lua, fromKey):
     for m, _ in msgs: lua.eval('DELIVER')(fromKey, m)
 
 # set up: Anna and Bob share their scales with each other
-A.execute('ADDSCALE("Tank"); ADDSCALE("Old"); ADDSCALE("Arms", "Classic"); ADDSCALE("Hidden", nil, false)')
-B.execute('ADDSCALE("Tank"); ADDSCALE("Old"); ADDSCALE("Bob\'s ~ scale: 1"); ADDSCALE("Arms", "Classic")')
+A.execute('ADDSCALE("Tank"); ADDSCALE("Old"); ADDSCALE("Arms", "Classic"); ADDSCALE("Hidden", nil, false); ADDSCALE("Hunt", "Classic", false)')
+B.execute('ADDSCALE("Tank"); ADDSCALE("Old"); ADDSCALE("Bob\'s ~ scale: 1"); ADDSCALE("Arms", "Classic"); ADDSCALE("Hunt", "Classic")')
 for lua, m in ((A, amod), (B, bmod)):
     lua.eval('function(m) m.UpdateOwn(false); m.SendScales() end')(m)
 deliver(take(A), B, "Anna-Smith")
@@ -117,7 +117,13 @@ print("A:", A.eval(r'''function(m)
   assert(by.Hidden and by.Hidden.own and not by.Hidden.own.visible, "hidden own scale missing")
   local bob = by["Bob's ~ scale: 1"]
   assert(bob and not bob.own and bob.deletable, "team-only scale")
-  assert(rows[#rows] == bob, "team-only rows come last")
+  -- a built-in scale only the team shows (hidden here) is still built-in
+  local hunt = by["Built-in Hunt"]
+  assert(hunt and not hunt.own and not hunt.deletable and hunt.holders[1] == "Bob-Stone", "team's built-in deletable")
+  assert(not rows[#rows].deletable, "built-in rows come last")
+  local lastDel
+  for i, r in ipairs(rows) do if r.deletable then lastDel = r end end
+  assert(lastDel == bob, "team-only rows after own ones")
   return #rows .. " rows ok"
 end''')(amod))
 
