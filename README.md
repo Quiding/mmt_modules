@@ -4,6 +4,9 @@ Modules for [MMT - Manage My Team](https://github.com/bnetworking/MMT), a multib
 World of Warcraft: Forever. Each module is its own addon folder and shows up in `/mmt` under
 MODULES, with its own settings page.
 
+> **Updated daily:** these modules are still young and get fixed almost every day as bugs are found in play.
+> Update often, and if something breaks, check here for a newer version first.
+
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
