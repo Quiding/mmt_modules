@@ -5,11 +5,19 @@
 --   * changes here: DejunkApi:AddListener tells us its state changed; we
 --     compare its four lists with what we saw last and send the difference
 --     (QDJ:+GI2589,-GE2589 ...: sign, list, item ID).
---   * changes from the team: written into the lists in Dejunk's saved state
---     (the same tables its store holds). Dejunk keeps its own copy of the
---     lists in memory and only reads the state at login, so they work after a
---     /reload. Until then Dejunk saves its copy over them when that list
---     changes here; `pending` puts them back (and is not sent on).
+--   * changes from the team, right away: Dejunk's key bindings "Add to / Remove
+--     from <list>" each get a hidden button (DejunkKeybinding_<binding>) that
+--     puts the item in GameTooltip on / off that list through Dejunk's own code.
+--     Dejunk makes those buttons only for bindings with a key, so at load (after
+--     Dejunk's saved variables, before it reads them at login) unbound ones get
+--     an unused chord (ALT-CTRL-SHIFT-F13..F20). A change = show the item in
+--     GameTooltip (hidden), click the button. `expect` keeps those out of what we send.
+--   * without the buttons (option off, the first login with this version):
+--     written into the lists in Dejunk's saved state (the same tables its store
+--     holds). Dejunk keeps its own copy of the lists in memory and only reads
+--     the state at login, so they work after a /reload. Until then Dejunk saves
+--     its copy over them when that list changes here; `pending` puts them back
+--     (and is not sent on).
 -- Lists: GI / GE global junk / not junk, PI / PE the active profile's.
 
 local _, mod = ...
@@ -31,7 +39,18 @@ local profileId      -- Dejunk profile of snap's PI / PE
 local pending = { GI = {}, GE = {}, PI = {}, PE = {} }  -- [list][id] = "+" | "-" from the team, not in Dejunk's copy yet
 local queued, reloadWanted
 local LATER = " - in Dejunk after a /reload"
-local dj = { sent = 0, taken = 0 }
+local BIND = { GI = "GlobalInclusions", GE = "GlobalExclusions", PI = "ProfileInclusions", PE = "ProfileExclusions" }
+local CHORDS = {
+    addToGlobalInclusions = "ALT-CTRL-SHIFT-F13", removeFromGlobalInclusions = "ALT-CTRL-SHIFT-F14",
+    addToGlobalExclusions = "ALT-CTRL-SHIFT-F15", removeFromGlobalExclusions = "ALT-CTRL-SHIFT-F16",
+    addToProfileInclusions = "ALT-CTRL-SHIFT-F17", removeFromProfileInclusions = "ALT-CTRL-SHIFT-F18",
+    addToProfileExclusions = "ALT-CTRL-SHIFT-F19", removeFromProfileExclusions = "ALT-CTRL-SHIFT-F20",
+}
+local EXPECT_FOR = 10          -- seconds a change we made through Dejunk's button is waited for
+local expect = {}              -- ["+GI2589"] = time: Dejunk's change caused by us, not sent
+local live = {}                -- changes waiting for Dejunk's buttons: { sign, list, id, tries }
+local liveBusy
+local dj = { sent = 0, taken = 0, live = 0, chords = 0 }
 mod.dj = dj
 
 -- the same key Dejunk uses for its character -> profile map
@@ -84,6 +103,16 @@ local function SendOps(tag, ops)
     if msg ~= "" then MMT.SendToTeam(tag .. ":" .. msg, true) end
 end
 
+local function Now() return GetTime and GetTime() or 0 end
+
+-- a change Dejunk made because we clicked its button
+local function Expected(sign, k, item)
+    local t = expect[sign .. k .. item]
+    if not t then return false end
+    expect[sign .. k .. item] = nil
+    return Now() - t <= EXPECT_FOR
+end
+
 -- what changed here since we looked last
 local function Check()
     queued = false
@@ -107,13 +136,15 @@ local function Check()
         local now, old, pend = lists[k] or {}, snap[k] or {}, pending[k]
         for item in pairs(now) do
             if not old[item] then
-                if pend[item] == "-" then redel[#redel + 1] = { k, item }
+                if Expected("+", k, item) then pend[item] = nil
+                elseif pend[item] == "-" then redel[#redel + 1] = { k, item }
                 else adds[#adds + 1] = { k, item }; pend[item] = nil end
             end
         end
         for item in pairs(old) do
             if not now[item] then
-                if pend[item] == "+" then readd[#readd + 1] = { k, item }
+                if Expected("-", k, item) then pend[item] = nil
+                elseif pend[item] == "+" then readd[#readd + 1] = { k, item }
                 else dels[#dels + 1] = { k, item }; pend[item] = nil end
             end
         end
@@ -162,8 +193,38 @@ if DejunkApi and DejunkApi.AddListener then
     end)
 end
 
+-- Dejunk's hidden button for a change, if it exists (and we may use it)
+local function Button(sign, k)
+    if M.db.djLive == false then return nil end
+    local b = rawget(_G, "DejunkKeybinding_" .. (sign == "+" and "addTo" or "removeFrom") .. BIND[k])
+    if type(b) == "table" and type(b.Click) == "function" then return b end
+end
+
+-- at load: Dejunk's saved variables are there, Dejunk reads them at login.
+-- Bindings without a key get an unused chord, so Dejunk makes their buttons.
+local function SetupChords()
+    if not (DejunkApi and DejunkApi.AddListener) then return end
+    local db = rawget(M, "db")
+    if type(db) == "table" and (db.dejunk == false or db.djLive == false) then return end
+    local sv = rawget(_G, SV)
+    if sv == nil then sv = {}; _G[SV] = sv end
+    if type(sv) ~= "table" then return end
+    if type(sv.global) ~= "table" then sv.global = {} end
+    if type(sv.global.keybindings) ~= "table" then sv.global.keybindings = {} end
+    local kb = sv.global.keybindings
+    local used = {}
+    for _, key in pairs(kb) do used[key] = true end
+    for name, chord in pairs(CHORDS) do
+        if (kb[name] == nil or kb[name] == "") and not used[chord] then
+            kb[name] = chord
+            dj.chords = dj.chords + 1
+        end
+    end
+end
+SetupChords()
+
 -- ops = { {sign, list, id} }; returns how many lists changed
-local function Apply(ops)
+local function ApplyState(ops)
     if not ready then return 0 end
     local lists = State()
     if not lists then return 0 end
@@ -189,6 +250,71 @@ local function Apply(ops)
     return n
 end
 
+local function After(t, fn)
+    if C_Timer and C_Timer.After then C_Timer.After(t, fn) else fn() end
+end
+
+-- the player's own tooltip is up (hovering something): wait a little
+local function TooltipBusy()
+    return GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() ~= UIParent
+end
+
+-- one change at a time through Dejunk's buttons
+local function LiveStep()
+    local op = live[1]
+    if not op then liveBusy = false return end
+    local sign, k, item = op[1], op[2], op[3]
+    local b = Button(sign, k)
+    local lists = State()
+    if not b or not lists or (sign == "-" and pending[k][item] == "+") then
+        -- no button (or the team's item Dejunk doesn't know yet): the saved state
+        table.remove(live, 1)
+        if sign == "-" and pending[k][item] == "+" then pending[k][item] = nil end
+        ApplyState({ op })
+        return After(0, LiveStep)
+    end
+    local id = tonumber(item)
+    op.tries = (op.tries or 0) + 1
+    local GetInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
+    local okInfo, name = pcall(GetInfo, id)
+    if not (okInfo and name) and op.tries <= 10 then
+        if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+        return After(0.3, LiveStep)
+    end
+    if TooltipBusy() and op.tries <= 30 then return After(0.3, LiveStep) end
+    table.remove(live, 1)
+    local on = lists[k] and lists[k][item]
+    if (sign == "-" and not on) or (sign == "+" and on and not pending[k][item]) then return After(0, LiveStep) end
+    local opp = OPPOSITE[k]
+    expect[sign .. k .. item] = Now()
+    if sign == "+" and lists[opp] and lists[opp][item] then expect["-" .. opp .. item] = Now() end
+    pending[k][item], pending[opp][item] = nil, nil
+    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    GameTooltip:SetItemByID(id)
+    local ok, err = pcall(b.Click, b, "LeftButton")
+    GameTooltip:Hide()
+    if ok then dj.live = dj.live + 1 else M:Debug("Dejunk button failed: %s", tostring(err)) end
+    After(0.05, LiveStep)
+end
+
+-- ops = { {sign, list, id} }: through Dejunk's buttons when they exist, else
+-- into its saved state. Returns how many, and whether all go in right away.
+local function Apply(ops)
+    if not ready then return 0, false end
+    local now, later = 0, {}
+    for _, op in ipairs(ops) do
+        if Button(op[1], op[2]) and not (op[1] == "-" and pending[op[2]][op[3]] == "+") then
+            live[#live + 1] = { op[1], op[2], op[3] }
+            now = now + 1
+        else
+            later[#later + 1] = op
+        end
+    end
+    local n = now + (#later > 0 and ApplyState(later) or 0)
+    if now > 0 and not liveBusy then liveBusy = true; LiveStep() end
+    return n, #later == 0
+end
+
 local function Describe(from, ops)
     local lines = {}
     for _, op in ipairs(ops) do
@@ -201,10 +327,11 @@ local function Take(from, ops, lines)
     if #ops == 0 then return end
     lines = lines or Describe(from, ops)
     local function apply()
-        local n = Apply(ops)
+        local n, rightAway = Apply(ops)
         if n > 0 and M.db.djChat then
-            if #lines == 1 then MMT.Print("Dejunk from %s: %s%s", MMT.FullDisplay(from), lines[1], LATER)
-            else MMT.Print("Dejunk from %s: %d list changes%s", MMT.FullDisplay(from), n, LATER) end
+            local later = rightAway and "" or LATER
+            if #lines == 1 then MMT.Print("Dejunk from %s: %s%s", MMT.FullDisplay(from), lines[1], later)
+            else MMT.Print("Dejunk from %s: %d list changes%s", MMT.FullDisplay(from), n, later) end
         end
     end
     if M.db.djAsk then mod.Ask(from, F, lines, apply) else apply() end
@@ -226,7 +353,8 @@ local function OnAll(from, _, body)
     for k, ids in body:gmatch("(%u%u)=([%d,]*)") do
         if OPPOSITE[k] and (k:sub(1, 1) == "G" or M.db.djProfile) and lists[k] then
             for item in ids:gmatch("%d+") do
-                if not lists[k][item] then
+                -- (also one Dejunk doesn't know yet, now that its button can tell it)
+                if not lists[k][item] or (pending[k][item] == "+" and Button("+", k)) then
                     ops[#ops + 1] = { "+", k, item }
                     counts[k] = (counts[k] or 0) + 1
                 end
@@ -299,6 +427,7 @@ F = mod.Feature({
         ui.Check("Send and take additions", "djAdd", "Items put on a list.")
         ui.Check("Send and take removals", "djRemove", "Items taken off a list.")
         ui.Check("Profile lists too", "djProfile", "Also Dejunk's profile lists (they go to the profile each character uses). Off: only the global lists.")
+        ui.Check("Take changes right away", "djLive", "Through Dejunk's own key bindings \"Add to / Remove from ...\": the ones without a key get ALT-CTRL-SHIFT-F13 to F20 (Dejunk > Keybindings shows them; keys you set stay). Works from the next /reload after switching it on. Off: changes go into Dejunk's saved lists and count after a /reload.")
         ui.Check("Ask before taking changes", "djAsk", "A dialog shows what a team member changed, Apply or Ignore. Off: taken right away.")
         ui.Check("Chat line for each change taken", "djChat")
         ui.Button("Send my lists to the team", function()
@@ -309,7 +438,7 @@ F = mod.Feature({
             local ok, err = ReloadTeam()
             ui.status.Show_(ok and "The characters that took Dejunk changes this session reload (after combat)." or ("Not sent: " .. tostring(err)), not ok)
         end, "Dejunk reads its lists only at login: the characters that took list changes from the team reload their UI, so Dejunk uses them. The others don't.")
-        ui.Note("Dejunk uses the team's changes after a /reload of that character (it has no way to take them while running).")
+        ui.Note("Without \"right away\" (or before the first /reload with it), Dejunk uses the team's changes after a /reload of that character.")
     end,
     Report = function(add)
         local lists, id = State()
@@ -320,8 +449,13 @@ F = mod.Feature({
             for _ in pairs(pending[k]) do p = p + 1 end
             sizes[#sizes + 1] = ("%s=%d(+%d pending)"):format(k, n, p)
         end
-        add(("Dejunk: ready=%s profile=%s %s sent=%d taken=%d (in Dejunk after a reload) reloadWanted=%s"):format(tostring(ready), tostring(id),
-            table.concat(sizes, " "), dj.sent, dj.taken, tostring(reloadWanted)))
+        local buttons = 0
+        for _, k in ipairs(LISTS) do
+            if Button("+", k) then buttons = buttons + 1 end
+            if Button("-", k) then buttons = buttons + 1 end
+        end
+        add(("Dejunk: ready=%s profile=%s %s sent=%d live=%d buttons=%d/8 chordsSet=%d waiting=%d taken=%d (in Dejunk after a reload) reloadWanted=%s"):format(
+            tostring(ready), tostring(id), table.concat(sizes, " "), dj.sent, dj.live, buttons, dj.chords, #live, dj.taken, tostring(reloadWanted)))
     end,
 })
 

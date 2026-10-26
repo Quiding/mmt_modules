@@ -71,6 +71,31 @@ function DJ_SAVE(k) local t, f = where(k); t[f] = copy(DJ_CACHE[k]) end
 function DJ_ADD(k, id) id = tostring(id); DJ_CACHE[k][id] = true; DJ_CACHE[OPP[k]][id] = nil; DJ_SAVE(OPP[k]); DJ_SAVE(k); DJ_FIRE() end
 function DJ_DEL(k, id) DJ_CACHE[k][tostring(id)] = nil; DJ_SAVE(k); DJ_FIRE() end
 function DJ_HAS(k, id) local t, f = where(k); return t[f][tostring(id)] == true end
+-- Dejunk's hidden key binding buttons: the item in GameTooltip on / off a list (like its Lists:Add / :Remove)
+NOW = 1000
+function GetTime() return NOW end
+TIP = { shown = false }
+GameTooltip = {
+  SetOwner = function(_, owner) TIP.owner = owner; TIP.item = nil; TIP.shown = true end,
+  SetItemByID = function(_, id) TIP.item = id end,
+  GetItem = function() if TIP.item then return "x", "item:" .. TIP.item end end,
+  Hide = function() TIP.shown = false; TIP.item = nil end,
+  IsShown = function() return TIP.shown end,
+  GetOwner = function() return TIP.owner end,
+}
+UIParent = {}
+CLICKS = 0
+function DJ_BUTTONS()
+  local names = { GI = "GlobalInclusions", GE = "GlobalExclusions", PI = "ProfileInclusions", PE = "ProfileExclusions" }
+  for k, n in pairs(names) do
+    _G["DejunkKeybinding_addTo" .. n] = { Click = function()
+      CLICKS = CLICKS + 1; assert(TIP.item, "no item in the tooltip")
+      if not DJ_CACHE[k][tostring(TIP.item)] then DJ_ADD(k, TIP.item) end end }
+    _G["DejunkKeybinding_removeFrom" .. n] = { Click = function()
+      CLICKS = CLICKS + 1; assert(TIP.item, "no item in the tooltip")
+      if DJ_CACHE[k][tostring(TIP.item)] then DJ_DEL(k, TIP.item) end end }
+  end
+end
 
 -- Baganator: profile config, its Config.Set stores a copy
 BAGANATOR_CURRENT_PROFILE = "DEFAULT"
@@ -103,6 +128,13 @@ def client(me):
     for f in toc:
         src = open('MMT_QoL/' + f, encoding='utf-8').read()
         lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(src, 'MMT_QoL/' + f, mod)
+    # at load (before Dejunk reads its saved variables at login) the unbound add / remove bindings got a chord
+    print(lua.eval(r'''function(m)
+      local kb = __DEJUNK_ADDON_V3_SAVED_VARIABLES__.global.keybindings
+      assert(kb.addToGlobalInclusions == "ALT-CTRL-SHIFT-F13" and kb.removeFromProfileExclusions == "ALT-CTRL-SHIFT-F20", "chords")
+      assert(kb.toggleMainWindow == nil, "touched another binding")
+      return ME .. ": Dejunk bindings got their chords"
+    end''')(mod))
     lua.eval('function(m) m.M.OnEnable(m.M); DJ_FIRE(); m.BaganatorTick() end')(mod)
     return lua, mod
 
@@ -237,6 +269,38 @@ run(A, amod, r'''function(m)
   COMBAT = false; EVENTS.PLAYER_REGEN_ENABLED(); assert(RELOADS == 1, "no reload after combat")
   DELIVER("Bob-Stone", "QDJR:"); assert(RELOADS == 2, "no reload")
   return "Anna: reloads for Dejunk (after combat)"
+end''')
+
+# --- Dejunk right away, through its key binding buttons --------------------
+run(A, amod, r'''function(m)
+  DJ_BUTTONS(); SENT = {}; PRINTS = {}
+  DELIVER("Bob-Stone", "QDJ:+GI3000")
+  assert(CLICKS == 1 and DJ_CACHE.GI["3000"] and DJ_HAS("GI", 3000), "not added through Dejunk")
+  assert(not PRINTS[#PRINTS]:find("/reload", 1, true), "still says reload: " .. PRINTS[#PRINTS])
+  assert(#SENT == 0, "echo: " .. tostring(SENT[1]))
+  assert(not TIP.shown, "tooltip left open")
+  -- moved to not junk: Dejunk takes it off junk itself, nothing sent back
+  DELIVER("Bob-Stone", "QDJ:+GE3000")
+  assert(DJ_CACHE.GE["3000"] and not DJ_CACHE.GI["3000"] and #SENT == 0, "move: " .. tostring(SENT[1]))
+  DELIVER("Bob-Stone", "QDJ:-GE3000")
+  assert(not DJ_CACHE.GE["3000"] and not DJ_HAS("GE", 3000) and #SENT == 0, "remove")
+  -- the player hovers something: waits, then does it anyway
+  TIP.shown, TIP.owner = true, "SomeBagSlot"
+  DELIVER("Bob-Stone", "QDJ:+GI3001")
+  assert(DJ_CACHE.GI["3001"], "never applied while the tooltip was up")
+  -- one sent by a team member before the buttons (in the saved state only): the push now puts it into Dejunk
+  assert(DJ_HAS("GI", 5011) and not DJ_CACHE.GI["5011"], "setup")
+  DELIVER("Bob-Stone", "QDJL:GI=5011;GE=;PI=;PE=")
+  assert(DJ_CACHE.GI["5011"] and #SENT == 0, "pending item not pushed into Dejunk")
+  -- Anna's own change still goes out
+  DJ_ADD("GI", 3002); assert(#SENT == 1 and SENT[1] == "QDJ:+GI3002", "own change: " .. tostring(SENT[1]))
+  -- option off: the saved state again
+  m.M.db.djLive = false; SENT = {}
+  local c = CLICKS
+  DELIVER("Bob-Stone", "QDJ:+GI3003")
+  assert(CLICKS == c and DJ_HAS("GI", 3003) and not DJ_CACHE.GI["3003"], "used the button while off")
+  m.M.db.djLive = true
+  return "Anna: changes go into Dejunk right away, no echo"
 end''')
 
 # --- Baganator ----------------------------------------------------------

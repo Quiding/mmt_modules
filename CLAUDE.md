@@ -353,7 +353,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.1.1) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.2.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -371,6 +371,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   itself). Taken changes go into those tables, but Dejunk filters with its in-memory `Lists` copy (read only at
   login), so they count after a /reload; meanwhile Dejunk saves its copy over the state on its next change of that
   list: `pending[list][id]` = "+"/"-" puts them back and is not sent. Another profile = resnapshot, no send.
+- Dejunk RIGHT AWAY (0.2.0, `djLive`, default on): Dejunk's keybinding handlers (`DejunkKeybinding_addTo<List>` /
+  `removeFrom<List>`, List = GlobalInclusions ...) run `Lists[x]:Add/Remove(GameTooltip's item)` = its own code path.
+  Dejunk creates those buttons only for bindings with a key, at its first StateUpdated after login, so `SetupChords()`
+  runs at OUR file load (Dejunk's SV is loaded, its store isn't built yet) and gives unbound ones ALT-CTRL-SHIFT-F13..F20
+  in `SV.global.keybindings` (keys the user set stay; Reconcile keeps them). Apply: queue, item data loaded first, waits
+  while the player's own GameTooltip is up (max ~9 s), `GameTooltip:SetOwner(UIParent,"ANCHOR_NONE")` + SetItemByID +
+  `button:Click()` + Hide. `expect["+GI<id>"]` (10 s) keeps Dejunk's resulting change (and its opposite-list removal)
+  out of what we send. No button / option off -> the saved-state fallback below.
   The user's first in-game test read this as "not synced" (alt's Dejunk window empty, push said nothing new): chat lines
   say "in Dejunk after a /reload"; "Reload the team for Dejunk" (`QDJR`, `/mmtqol dejunk reload`) makes the characters
   with `dj.taken > 0` call `C_UI.Reload`/`ReloadUI` (after combat). Feature `commands = { word = fn }` for `/mmtqol <slash> <word>`.

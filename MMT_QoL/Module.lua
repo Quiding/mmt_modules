@@ -11,7 +11,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.1"
+mod.VERSION = "0.2.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -24,6 +24,7 @@ local M = MMT.NewModule({
         djAdd = true,              -- send / take items added to a list
         djRemove = true,           -- send / take items removed from a list
         djProfile = true,          -- the profile lists too (else only the global ones)
+        djLive = true,             -- take changes through Dejunk's key binding buttons (else: after a /reload)
         djAsk = false,             -- ask before applying what the team sends
         djChat = true,             -- a chat line for each change taken
         -- Baganator

@@ -13,7 +13,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.1.1 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.2.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -232,8 +232,10 @@ Small team conveniences, each with its own checkbox and options (greyed out when
 
 - **Dejunk lists**: an item you put on (or take off) one of [Dejunk](https://www.curseforge.com/wow/addons/dejunk)'s
   junk / not junk lists goes on (or off) the same list on every team member - global lists, and optionally
-  the profile lists. Baganator's junk marks follow Dejunk, so they sync too. Dejunk has no way for another
-  addon to change its lists while it runs: the team's changes count in Dejunk after a `/reload` of that character. **Reload the team for Dejunk**
+  the profile lists. Baganator's junk marks follow Dejunk, so they sync too. Changes show up right away: they go
+  through Dejunk's own "Add to / Remove from list" key bindings, so the ones you haven't bound get
+  ALT-CTRL-SHIFT-F13 to F20 (you see them in Dejunk > Keybindings; works from the first `/reload` with this version).
+  With "Take changes right away" off they count after a `/reload` - **Reload the team for Dejunk**
   (or `/mmtqol dejunk reload`) reloads just the characters that took changes.
 - **Baganator categories**: items you drag into a Baganator category (or out of it) go into the same category
   on every team member, right away - every category, or only Junk. Custom categories are matched by name.
