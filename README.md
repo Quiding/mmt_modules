@@ -13,7 +13,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.2.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.3.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -239,6 +239,9 @@ Small team conveniences, each with its own checkbox and options (greyed out when
   (or `/mmtqol dejunk reload`) reloads just the characters that took changes.
 - **Baganator categories**: items you drag into a Baganator category (or out of it) go into the same category
   on every team member, right away - every category, or only Junk. Custom categories are matched by name.
+  **Link Junk with Dejunk** (on by default): an item you drag into Baganator's Junk also goes on Dejunk's junk
+  list (so Dejunk sells it), and one you take off Dejunk's junk list (or out of Junk) leaves both - then both syncs
+  pass it to the team.
   **Send my whole category setup** gives the team your categories, order and sections through Baganator's
   own import (each character is asked first).
 - Options for both: additions and / or removals, ask before taking changes (a dialog with Apply / Ignore) or

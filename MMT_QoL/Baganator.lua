@@ -26,6 +26,7 @@ local MSG_MAX = 240
 local F
 local snap, snapMods, snapProfile   -- snap["<item>\t<category key>"] = true
 local ticker, ticks = nil, 0
+local changedHere          -- we changed the table in place (junk link): compare it on the next tick
 local bg = { sent = 0, taken = 0, missing = {} }
 mod.bg = bg
 
@@ -122,7 +123,8 @@ local function Tick()
     if not p then snap = nil return end
     ticks = ticks + 1
     local mods = p.category_modifications
-    if snap and name == snapProfile and rawequal(mods, snapMods) and ticks % 5 ~= 0 then return end
+    if snap and name == snapProfile and rawequal(mods, snapMods) and ticks % 5 ~= 0 and not changedHere then return end
+    changedHere = false
     if not snap or name ~= snapProfile then Resnap() return end   -- first look / another Baganator profile
 
     local now = Snapshot(p)
@@ -139,6 +141,21 @@ local function Tick()
             local item, src = k:match("^(.-)\t(.*)$")
             local id = CatId(p, src)   -- nil: the category was deleted, nothing to send
             if id and Wanted("-", id) then table.insert(ops, 1, "-" .. item .. "=" .. id) end
+        end
+    end
+    -- junk link: into / out of Junk here = on / off Dejunk's global junk list
+    if M.db.junkLink and mod.DejunkFromHere then
+        local link = {}
+        for k in pairs(now) do
+            local item, src = k:match("^i:(%d+)\t(.*)$")
+            if item and src == JUNK and not snap[k] then link[#link + 1] = { "+", item } end
+        end
+        for k in pairs(snap) do
+            local item, src = k:match("^i:(%d+)\t(.*)$")
+            if item and src == JUNK and not now[k] then link[#link + 1] = { "-", item } end
+        end
+        if #link <= BULK then
+            for _, l in ipairs(link) do mod.DejunkFromHere(l[1], l[2]) end
         end
     end
     snap, snapMods = now, mods
@@ -193,6 +210,21 @@ local function Apply(from, ops)
     if n > 0 then Refresh() end
     bg.taken = bg.taken + n
     return n
+end
+
+-- junk link: off Dejunk's junk list here = out of Baganator's Junk. Left out of
+-- snap, so the next tick sends it to the team like a change made in Baganator.
+function mod.BaganatorUnjunk(id)
+    if not mod.Active(F) then return false end
+    local p = Profile()
+    local m = p and type(p.category_modifications) == "table" and p.category_modifications[JUNK]
+    local item = "i:" .. tostring(id)
+    if type(m) ~= "table" or type(m.addedItems) ~= "table" or not m.addedItems[item] then return false end
+    m.addedItems[item] = nil
+    if next(m.addedItems) == nil then m.addedItems = nil end
+    changedHere = true
+    Refresh()
+    return true
 end
 
 local function ItemOf(item)
@@ -343,6 +375,7 @@ F = mod.Feature({
         ui.Check("Send and take additions", "bgAdd", "Items put into a category.")
         ui.Check("Send and take removals", "bgRemove", "Items taken out of a category (back to where Baganator sorts them).")
         ui.Cycle("Categories", { { value = "ALL", text = "Every category" }, { value = "JUNK", text = "Junk only" } }, "bgScope")
+        ui.Check("Link Junk with Dejunk's junk list", "junkLink", "Items you put into Baganator's Junk go on Dejunk's global junk list (so Dejunk sells them), and items you take off Dejunk's junk list (or out of Junk) leave both. Both syncs then send it to the team. Needs Dejunk; the Dejunk sync on to reach the team's Dejunk.")
         ui.Check("Ask before taking changes", "bgAsk", "A dialog shows what a team member changed, Apply or Ignore. Off: taken right away.")
         ui.Check("Chat line for each change taken", "bgChat")
         ui.Button("Send my category items", function()

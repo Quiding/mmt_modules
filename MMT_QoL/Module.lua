@@ -11,7 +11,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.0"
+mod.VERSION = "0.3.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -34,6 +34,7 @@ local M = MMT.NewModule({
         bgScope = "ALL",           -- ALL categories | JUNK (only Baganator's Junk category)
         bgAsk = false,
         bgChat = true,
+        junkLink = true,           -- Baganator's Junk <-> Dejunk's global junk list (on this character)
     },
 })
 mod.M = M

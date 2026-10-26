@@ -353,7 +353,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.2.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.3.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -391,6 +391,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Whole setup (`QBGF:BGR!1!...`): export built like Baganator's CategoriesExportTable, C_EncodingUtil CBOR + compress
   + base64; receiver always asked, then public `Baganator.API.ImportString` + `SlashCmdList.Baganator(
   "removeunusedcategories")` (the import re-adds custom categories under new keys), then resnapshot.
+- Junk link (0.3.0, `junkLink`, Baganator column, default on), local changes only (taken ones update snap, so no
+  link): Baganator Tick sees `i:<id>` into / out of `default_junk` -> `mod.DejunkFromHere(sign, id)` on GI (button op
+  with `own = true`: no `expect`, so Dejunk's Check sends it like the player's; no button: state + QDJ sent directly).
+  Dejunk Check sees a genuine removal from GI / PI (incl. a move to not junk) -> `mod.BaganatorUnjunk(id)` (in place,
+  `changedHere` forces the next tick's full compare, which sends QBG "-"). Loops end because the other side is a no-op.
 - Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).
 
 ### Reset to defaults (every module)

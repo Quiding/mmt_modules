@@ -163,6 +163,13 @@ local function Check()
     end
     for _, k in ipairs(LISTS) do snap[k] = Copy(lists[k]) end
 
+    -- junk link: off Dejunk's junk list here (also moved to not junk) = out of Baganator's Junk
+    if M.db.junkLink and mod.BaganatorUnjunk and #dels <= BULK then
+        for _, d in ipairs(dels) do
+            if d[1] == "GI" or d[1] == "PI" then mod.BaganatorUnjunk(d[2]) end
+        end
+    end
+
     local ops = {}
     for _, a in ipairs(adds) do if Wanted("+", a[1]) then ops[#ops + 1] = "+" .. a[1] .. a[2] end end
     for _, d in ipairs(dels) do
@@ -286,8 +293,10 @@ local function LiveStep()
     local on = lists[k] and lists[k][item]
     if (sign == "-" and not on) or (sign == "+" and on and not pending[k][item]) then return After(0, LiveStep) end
     local opp = OPPOSITE[k]
-    expect[sign .. k .. item] = Now()
-    if sign == "+" and lists[opp] and lists[opp][item] then expect["-" .. opp .. item] = Now() end
+    if not op.own then   -- the team's change: not sent back (one from here, op.own, is sent like the player's)
+        expect[sign .. k .. item] = Now()
+        if sign == "+" and lists[opp] and lists[opp][item] then expect["-" .. opp .. item] = Now() end
+    end
     pending[k][item], pending[opp][item] = nil, nil
     GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
     GameTooltip:SetItemByID(id)
@@ -295,6 +304,30 @@ local function LiveStep()
     GameTooltip:Hide()
     if ok then dj.live = dj.live + 1 else M:Debug("Dejunk button failed: %s", tostring(err)) end
     After(0.05, LiveStep)
+end
+
+-- junk link: Baganator's Junk changed here -> Dejunk's global junk list, sent
+-- on to the team like a change made in Dejunk. false when nothing to do.
+function mod.DejunkFromHere(sign, item)
+    if not ready or not (mod.AddonState("Dejunk")) then return false end
+    local lists = State()
+    if not lists or not lists.GI then return false end
+    local on = lists.GI[item] and true or false
+    if sign == "+" and on and not pending.GI[item] then return false end
+    if sign == "-" and not on then return false end
+    if Button(sign, "GI") and not (sign == "-" and pending.GI[item] == "+") then
+        live[#live + 1] = { sign, "GI", item, own = true }
+        if not liveBusy then liveBusy = true; LiveStep() end
+    else
+        if sign == "-" and pending.GI[item] == "+" then pending.GI[item] = nil end
+        ApplyState({ { sign, "GI", item } })
+        if mod.Active(F) and Wanted(sign, "GI") then
+            SendOps("QDJ", { sign .. "GI" .. item })
+            dj.sent = dj.sent + 1
+        end
+        MMT.Print("Quality of life: %s %s Dejunk's junk list%s", mod.ItemText(item), sign == "+" and "put on" or "taken off", LATER)
+    end
+    return true
 end
 
 -- ops = { {sign, list, id} }: through Dejunk's buttons when they exist, else

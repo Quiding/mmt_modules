@@ -304,6 +304,9 @@ run(A, amod, r'''function(m)
 end''')
 
 # --- Baganator ----------------------------------------------------------
+# (the Junk <-> Dejunk link is tested on its own at the end)
+for lua, mod in ((A, amod), (B, bmod)):
+    lua.eval('function(m) m.M.db.junkLink = false end')(mod)
 run(B, bmod, r'''function(m)
   SENT = {}
   BG().custom_categories["1"] = { name = "Trash; mine", search = "" }
@@ -387,4 +390,44 @@ run(A, amod, r'''function(m)
   m.M.Report(m.M, function() n = n + 1 end)
   assert(n == 3, "report lines " .. n)
   return "Anna: whole setup asked, imported, report ok"
+end''')
+
+# --- Junk link: Baganator's Junk <-> Dejunk's global junk list ------------
+run(A, amod, r'''function(m)
+  m.M.db.junkLink = true; SENT = {}
+  local function sent(msg) for _, x in ipairs(SENT) do if x == msg then return true end end return false end
+  -- into Baganator's Junk: on Dejunk's junk list (through its button), both sent
+  BG_MOVE("i:3100", nil, "default_junk"); m.BaganatorTick()
+  assert(DJ_CACHE.GI["3100"], "not on Dejunk's junk list")
+  assert(sent("QBG:+i:3100=default_junk") and sent("QDJ:+GI3100"), "sent: " .. table.concat(SENT, " | "))
+  -- off Dejunk's junk list: out of Baganator's Junk, both sent, nothing loops
+  SENT = {}
+  local clicks = CLICKS
+  DJ_DEL("GI", 3100); m.BaganatorTick()
+  assert(not BG_IN("default_junk", "i:3100"), "still in Baganator's Junk")
+  assert(sent("QDJ:-GI3100") and sent("QBG:-i:3100=default_junk") and #SENT == 2, "sent: " .. table.concat(SENT, " | "))
+  assert(CLICKS == clicks, "Dejunk clicked again")
+  -- moved to "not junk" in Dejunk: out of Baganator's Junk too
+  BG_MOVE("i:3104", nil, "default_junk"); m.BaganatorTick(); SENT = {}
+  DJ_ADD("GE", 3104); m.BaganatorTick()
+  assert(not BG_IN("default_junk", "i:3104") and sent("QBG:-i:3104=default_junk"), "move to not junk: " .. table.concat(SENT, " | "))
+  -- out of Baganator's Junk into another category: off Dejunk's junk list
+  BG_MOVE("i:3101", nil, "default_junk"); m.BaganatorTick(); SENT = {}
+  BG_MOVE("i:3101", "default_junk", "3"); m.BaganatorTick()
+  assert(not DJ_CACHE.GI["3101"] and sent("QDJ:-GI3101"), "moved out of Junk: " .. table.concat(SENT, " | "))
+  -- link off: nothing on Dejunk
+  m.M.db.junkLink = false; SENT = {}
+  BG_MOVE("i:3102", nil, "default_junk"); m.BaganatorTick()
+  assert(not DJ_CACHE.GI["3102"] and #SENT == 1, "linked while off")
+  m.M.db.junkLink = true
+  return "Anna: Junk <-> Dejunk junk list both ways, no loop"
+end''')
+run(B, bmod, r'''function(m)
+  -- what the team changed is not linked again (the sender linked it already)
+  m.M.db.junkLink = true; SENT = {}
+  DELIVER("Anna-Smith", "QBG:+i:3103=default_junk"); m.BaganatorTick()
+  DELIVER("Anna-Smith", "QDJ:-GI2589"); DJ_FIRE(); m.BaganatorTick()
+  assert(BG_IN("default_junk", "i:3103") and not DJ_HAS("GI", 3103), "a taken change was linked")
+  assert(#SENT == 0, "sent: " .. table.concat(SENT, " | "))
+  return "Bob: taken changes not linked again"
 end''')
