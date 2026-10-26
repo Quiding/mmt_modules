@@ -51,6 +51,20 @@ function mod.SpellIconAny(spell)
     return nil, icon or byName
 end
 
+-- has this character learned the spell? Any of: known by ID (talent spells too:
+-- IsPlayerSpell / IsSpellKnown / C_SpellBook.IsSpellKnown), or the game knows a
+-- cooldown for its name (any rank). name may be nil.
+function mod.KnowsSpell(id, name)
+    for _, fn in ipairs({ IsPlayerSpell, IsSpellKnown, C_SpellBook and C_SpellBook.IsSpellKnown,
+        IsSpellKnownOrOverridesKnown }) do
+        if fn and id then
+            local ok, known = pcall(fn, id)
+            if ok and known == true then return true end
+        end
+    end
+    return name ~= nil and mod.SpellCooldown(name) ~= nil
+end
+
 -- start, duration, enabled for a spell the player knows; nil if not known;
 -- the string "secret" when the game hides the values right now
 function mod.SpellCooldown(spell)

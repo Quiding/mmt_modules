@@ -36,7 +36,7 @@ function mod.OwnUnlearned()
         if e.t == "s" and not seen[e.id] then
             seen[e.id] = true
             local name = mod.SpellName(e.id)
-            if name and mod.SpellCooldown(name) == nil then ids[#ids + 1] = e.id end
+            if name and not mod.KnowsSpell(e.id, name) then ids[#ids + 1] = e.id end
         end
     end
     table.sort(ids)

@@ -440,3 +440,25 @@ print(lua.eval(r"""function(m)
   m.KnownReset()
   return "unlearned patterns ok"
 end""")(mod))
+
+# a talent spell the game knows by ID (not by a cooldown for its name) counts as learned
+print(lua.eval(r"""function(m)
+  local oldInfo, oldCd, oldPS = m.SpellInfo, m.SpellCooldown, IsPlayerSpell
+  local NAMES = { [16864] = "Omen of Clarity", [17007] = "Leader of the Pack" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  m.SpellCooldown = function() return nil end                  -- no cooldown known by name for either
+  IsPlayerSpell = function(id) return id == 17007 end          -- the talent: known by its ID
+  m.M.db.specLists = false
+  m.M.db.lists.SHAMAN = { { id = 16864 }, { id = 17007 } }   -- (the test character is a shaman)
+  m.M.db.lists.ALL = {}
+  m.KnownReset()
+  -- only class spells count: give the shaman these two via a fake preset
+  table.insert(m.PRESETS, { key = "SHAMAN:TEST", group = "SHAMAN", name = "test", entries = { { id = 16864 }, { id = 17007 } } })
+  m.KnownReset()
+  local own = m.OwnUnlearned()
+  assert(#own == 1 and own[1] == 16864, "talent spell counted as not learned: " .. table.concat(own, ","))
+  table.remove(m.PRESETS)
+  m.SpellInfo, m.SpellCooldown, IsPlayerSpell = oldInfo, oldCd, oldPS
+  m.KnownReset()
+  return "talent spells known by ID ok"
+end""")(mod))

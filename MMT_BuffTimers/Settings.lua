@@ -445,6 +445,17 @@ M.Page = function(_, page)
 end
 
 M.Report = function(_, add)
+    -- buffs not learned yet (Known.lua): own, and as the team told us
+    local own = {}
+    for _, id in ipairs(mod.OwnUnlearned() or {}) do own[#own + 1] = tostring(mod.SpellInfo(id) or id) end
+    for _, p in ipairs(mod.OwnUnlearnedPatterns()) do own[#own + 1] = p end
+    add(("unlearned (own): %s"):format(#own > 0 and table.concat(own, ", ") or "-"))
+    for key, rec in pairs(M.store.unlearned or {}) do
+        local t = {}
+        for id in pairs(rec.ids or {}) do t[#t + 1] = tostring(mod.SpellInfo(id) or id) end
+        for p in pairs(rec.patterns or {}) do t[#t + 1] = p end
+        add(("unlearned %s: %s"):format(MMT.Repr(key), #t > 0 and table.concat(t, ", ") or "-"))
+    end
     local n = 0
     for _, l in pairs(M.db.lists or {}) do n = n + #l end
     add(("-- Buffs %s: shown=%s attach=%s attached=%s entries=%d"):format(mod.VERSION, tostring(M.db.shown),

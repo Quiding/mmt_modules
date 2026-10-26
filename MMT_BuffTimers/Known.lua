@@ -83,6 +83,18 @@ local function Spellbook()
     return book
 end
 
+-- is a spell of this name (any rank) in the spellbook? (false when it can't be read)
+local bookSet
+local function InBook(name)
+    local spells = Spellbook()
+    if not spells then return false end
+    if not bookSet or bookSet.of ~= spells then
+        bookSet = { of = spells }
+        for _, n in ipairs(spells) do bookSet[mod.Canonical(n)] = true end
+    end
+    return bookSet[name] or false
+end
+
 -- name patterns this character hasn't learned: those in its own lists (not the All
 -- bar) and those its class casts (totems), when no learned spell matches
 function mod.OwnUnlearnedPatterns()
@@ -124,7 +136,7 @@ function mod.OwnUnlearned()
             if name and mine[name] and not seen[name] then
                 seen[name] = true
                 local own = mod.SpellInfo(e.id)
-                if own and mod.SpellCooldown(own) == nil then ids[#ids + 1] = e.id end
+                if own and not mod.KnowsSpell(e.id, own) and not InBook(name) then ids[#ids + 1] = e.id end
             end
         end
     end

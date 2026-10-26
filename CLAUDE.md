@@ -81,7 +81,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.0) / MMT_BuffTimers (v0.16.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.1) / MMT_BuffTimers (v0.16.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -175,7 +175,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   "ALL:RAID"; "ALL:RAIDAURAS" = the old mix incl. Trueshot / LotP / Moonkin. Shared `AddPreset` deep-copies table
   fields (the filter) so lists never share a preset's tables.
 - Buffs `Known.lua` (setting `hideUnlearned`, default on): own tracked CLASS buffs not learned (class = ids in the
-  class's presets + `mod.CASTERS[class]`, matched by canonical name; learned = `SpellCooldown(name) ~= nil`, like
+  class's presets + `mod.CASTERS[class]`, matched by canonical name; learned = Compat `mod.KnowsSpell(id, name)` (IsPlayerSpell / IsSpellKnown / C_SpellBook.IsSpellKnown by ID, or a cooldown for the name; talent spells!) or in the spellbook, like
   Cooldowns) -> `MBFK:<ids>` via SendLong on change, heartbeat `bfk=<hash>`, `MBFKQ` whispered on mismatch (60 s),
   `M.store.unlearned[key]`. `mod.Unlearned(key, e)`: own row skips it (Window Icons); `Castable` needs a caster of
   the class here who learned it (`ClassesHere` returns present, who[class] = keys + `stranger` for non-team units =
