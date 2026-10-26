@@ -300,7 +300,9 @@ function mod.Receive(from, action, names)
         M:Debug("%s from %s: none of %s here", action, MMT.Repr(from), table.concat(names, ", "))
         return
     end
-    if not M.db.askDelete then return Apply(from, ops) end
+    -- no dialog when switched off here, or when this client accepts every sync on its own
+    -- (the core's "Auto-accept synced settings" on the Profiles page, account-wide; read only)
+    if not M.db.askDelete or (MMTDB and MMTDB.autoAcceptSync) then return Apply(from, ops) end
     for _, q in ipairs(queue) do
         if q.from == from then
             q.ops[action] = q.ops[action] or {}

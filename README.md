@@ -9,7 +9,7 @@ MODULES, with its own settings page.
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.5 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
-| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.0 |
+| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear, like inspecting them | 0.1.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.8.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
@@ -143,7 +143,7 @@ Pawn scores for the whole team. Needs MMT's Item Compare switched on.
 - **Pawn scales** window: every Pawn scale shown here or on the team (hidden ones on request), and who has it. Tick scales and
   apply it here, or here and on the alts: your own scales are deleted, Pawn's built-in ones (which
   can't be deleted) are hidden, and with "Show hidden" hidden ones can be shown again. The alts
-  are asked first unless you switch that off; offline members are asked when they come online.
+  are asked first unless you switch that off (or they have MMT's "Auto-accept synced settings" on); offline members are asked when they come online.
 - Settings sync to the team with the Sync button.
 
 `/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales`

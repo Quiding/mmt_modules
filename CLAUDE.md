@@ -56,7 +56,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
-### MMT_PawnCompare (v0.5.0)
+### MMT_PawnCompare (v0.5.1)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -91,7 +91,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   false: per character; Forever's Pawn has no automatic spec mode - `VgerCore.SpecsExist` false - so it stays hidden),
   hidden built-in = "show". `mod.ApplyLocal(action, names)`, `mod.SendAction` -> `PCMP_DEL` / `PCMP_HIDE` / `PCMP_SHOW`
   `:<escaped>~<escaped>` (< 240 bytes each); receivers resolve names with `mod.FindScale` (name or display name),
-  do what `mod.Target` allows, asking first (`askDelete`, one `MMT.UI.Confirm` per sender, later requests queue);
+  do what `mod.Target` allows, asking first (`askDelete`; not while the core's `MMTDB.autoAcceptSync` is on, read only; one `MMT.UI.Confirm` per sender, later requests queue);
   members offline then: `M.store.pendingDel[key] = { del, hide, show = {[name]=true}, time }` (0.4.0: `names` = del),
   whispered on their next XP_RECEIVED (14 days). The window is FULLSCREEN_DIALOG + Toplevel (MMT's settings are DIALOG) and takes the opening button's
   effective scale / UIParent's (else `MMT.ConfigScale()`): popups parented to UIParent must match MMT's window scale. Test: test_pawn_scales.py (two clients + stand-in Pawn); the window is built in test_settings.py.

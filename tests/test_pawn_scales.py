@@ -186,6 +186,12 @@ print("B:", B.eval(r'''function(m)
   assert(m.DeleteWaiting() == 0, "queue " .. m.DeleteWaiting())
   DELIVER("Anna-Smith", "PCMP_DEL:Nope~Arms")
   assert(not DIALOG, "asked about scales it can't delete")
+  -- the core's "Auto-accept synced settings" (account-wide) skips the dialog too
+  ADDSCALE("Four")
+  MMTDB = { autoAcceptSync = true }
+  DELIVER("Anna-Smith", "PCMP_DEL:Four")
+  assert(not DIALOG and not PawnCommon.Scales.Four, "auto-accept asked")
+  MMTDB = nil
   m.M.db.askDelete = false
   DELIVER("Anna-Smith", "PCMP_DEL:Three")
   assert(not DIALOG and not PawnCommon.Scales.Three, "askDelete off")
