@@ -11,7 +11,7 @@ This git repo lives **directly in `Interface/AddOns`**, which also contains many
 other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
 `.gitignore` ignores everything (`/*`) and whitelists only our files:
 `.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `tests/`, `media/` (README pictures / gifs), and each of OUR module folders.
-- `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker` belong to the
+- `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar` belong to the
   friend: never edit or commit them. Read them for reference only.
 - **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, list it in README.md.
 - Before committing, run `git status` and make sure no other addon's files are staged.
@@ -23,9 +23,11 @@ Changes go to the `dev` branch (since 2026-10-21, the user's choice); `main` onl
 ## Game folder
 WoW: Forever runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`** (this clone). The old
 `_classic_beta_` folder is retired (since 2026-10-25): no sync hooks any more, don't update or use it.
-- The friend's MMT core + modules (`MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`) are NTFS
-  **junctions** to `D:\Games\MMT-src\<name>` (a clone of github.com/bnetworking/MMT): update them with
-  `git -C D:/Games/MMT-src pull`. Never edit them there either.
+- The friend's MMT core + modules (`MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`)
+  are NTFS **junctions** to `D:\Games\MMT-src\<name>` (a clone of github.com/bnetworking/MMT): update them with
+  `git -C D:/Games/MMT-src pull`. Never edit them there either. (Until 2026-10-26 `_forever_` had plain copies by
+  mistake, so pulls only reached `_classic_beta_`; the old copies are in `D:\Games\MMT-forever-old-copies`.) A new
+  module in MMT-src needs its own junction: `New-Item -ItemType Junction -Path <AddOns>\<name> -Target D:\Games\MMT-src\<name>`.
 
 Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` (link in /mmt > MODULES).
 
