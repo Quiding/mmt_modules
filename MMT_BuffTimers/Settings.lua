@@ -154,7 +154,7 @@ M.Page = function(_, page)
     Check(L, "Include your own character", "includeSelf")
     Check(L, "Only online or grouped members", "onlyOnline")
     Check(L, "Hide buffs not learned yet", "hideUnlearned", "A class buff a character hasn't learned yet (Inner Fire, a seal, an armor) leaves their row; a buff cast on others (Fortitude, Blessings, ...) only shows while someone here has learned it. Each client tells the team what it hasn't learned; flasks and world buffs always show.")
-    Check(L, "One blessing per paladin", "blessingLimit", "A member can have one blessing from each paladin: once they have as many blessings as there are paladins in the group, the other blessings tracked for them don't count as missing. Blessings from paladins outside the group don't use up a slot.")
+    Check(L, "One blessing per paladin", "blessingLimit", "A member can have one blessing from each paladin: once they have as many blessings as there are paladins in the group, the other blessings tracked for them don't count as missing. Blessings from paladins outside the group don't use up a slot. Salvation isn't a blessing on Forever and always counts.")
     Check(L, "Hide buffs nobody here can cast", "hideNoCaster", "A class buff (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only shows when someone of that class is in your group or online in your team. World buffs, flasks and food always show.")
     L:Cycle("Preview", {
         { value = "OFF", text = "Off" },

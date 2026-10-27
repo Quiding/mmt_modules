@@ -502,9 +502,11 @@ end""")(mod))
 print(lua.eval(r"""function(m)
   local oldInfo, oldBuff, oldPal, oldState = m.SpellInfo, m.Buff, m.PaladinsHere, m.State
   local oldSplit, oldResolve, oldExists = MMT.SplitUnit, MMT.Resolve, UnitExists
-  local NAMES = { [19740] = "Blessing of Might", [20217] = "Blessing of Kings" }
+  local NAMES = { [19740] = "Blessing of Might", [20217] = "Blessing of Kings", [1038] = "Salvation" }
   m.SpellInfo = function(id) return NAMES[id] end
   m.State = ORIG_STATE
+  m.KnownReset()
+  assert(m.IsBlessing({ id = 19740 }) and not m.IsBlessing({ id = 1038 }), "Salvation isn't a blessing on Forever")
   m.preview, m.testUntil = nil, nil
   m.PaladinsHere = function() return 1 end
   m.KnownReset()

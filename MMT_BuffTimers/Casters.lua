@@ -123,7 +123,9 @@ end
 -- With "One blessing per paladin" (M.db.blessingLimit) a missing blessing doesn't
 -- count while the member already has as many blessings as there are paladins here.
 ---------------------------------------------------------------------------
-local BLESSINGS = { 19740, 19742, 20217, 1038, 19977, 20911 }   -- Might, Wisdom, Kings, Salvation, Light, Sanctuary
+-- Might, Wisdom, Kings, Light, Sanctuary. NOT Salvation: on Forever it's its own buff ("Salvation",
+-- group version "Mass Salvation"), without the one-blessing-per-paladin rule, so it stacks with them
+local BLESSINGS = { 19740, 19742, 20217, 19977, 20911 }
 local blessingNames, blessingsComplete
 local function Blessings()
     if blessingsComplete then return blessingNames end
