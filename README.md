@@ -10,7 +10,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.5 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.6 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
@@ -99,7 +99,8 @@ tracked for them, with exact timers.
   tells the team once what it hasn't learned, like Cooldown Timers' "Hide what you don't have".
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
-- All bar counter: how many members have a buff (from 2 up), in a corner of its icon - corner, size and
+- All bar counter: while someone misses a buff, "have / checked" in a corner of its icon (3/5 = 3 of the 5
+  members it's checked on have it; the tooltip says who misses it). Nothing once everyone has it - corner, size and
   colour in Look.
 - The All bar starts with the party buffs (no auras), for everyone; limit them with the cog.
 - Presets: raid buffs (the party buffs), raid buffs + auras, world buffs, flasks & elixirs, and per spec (the

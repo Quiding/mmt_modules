@@ -47,24 +47,27 @@ print(lua.eval(r'''function(m)
       if row.label == "All" then return row.icons[1] end
     end
   end
-  -- 2 of 3 have it: "2" in the bottom left, white, size 12 (defaults)
+  -- 2 of 3 have it: "2/3" in the bottom left, size 12 (defaults), no separate missing count
   local i = AllIcon()
-  assert(i.state == "missing" and i.tally == 2 and i.tallyPos == "BOTTOMLEFT" and i.tallySize == 12, "counter: " .. tostring(i.tally))
-  assert(i.count == nil, "the missing count still shows next to the counter")
-  assert(i.tip:find("2 have it", 1, true), "tooltip")
-  -- one has it: no counter
+  assert(i.state == "missing" and i.tally == "2/3" and i.tallyPos == "BOTTOMLEFT" and i.tallySize == 12, "counter: " .. tostring(i.tally))
+  assert(i.count == nil, "a missing count still shows")
+  assert(i.tip:find("2 of 3 have it", 1, true), "tooltip")
+  -- one has it: "1/3"
   HAVE = { ["Anna-Smith"] = true }
   i = AllIcon()
-  assert(i.tally == nil, "counter shown for one")
-  -- everyone: "3", the corner and size from the settings
+  assert(i.tally == "1/3" and i.count == nil, "one of three: " .. tostring(i.tally))
+  -- everyone has it: no number, just the timer
   HAVE = { ["Anna-Smith"] = true, ["Bob-Stone"] = true, ["Cid-Ray"] = true }
   c.allCount, c.allCountSize = "TOPRIGHT", 16
   i = AllIcon()
-  assert(i.state == "buff" and i.tally == 3 and i.tallyPos == "TOPRIGHT" and i.tallySize == 16, "counter everyone")
+  assert(i.state == "buff" and i.tally == nil, "a number while everyone has it")
+  HAVE = { ["Anna-Smith"] = true }
+  i = AllIcon()
+  assert(i.tally == "1/3" and i.tallyPos == "TOPRIGHT" and i.tallySize == 16, "corner and size from the settings")
   -- off
   c.allCount = "OFF"
   i = AllIcon()
-  assert(i.tally == nil, "counter while off")
+  assert(i.tally == nil and i.count == nil, "counter while off")
   return "All bar counter ok"
 end''')(mod))
 

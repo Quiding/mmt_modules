@@ -218,7 +218,7 @@ M.Page = function(_, page)
     local LL, LR = mod.LookTab(panels.look, Opt, Apply)
     LR:Header("All bar counter")
     local gcp, scp = Opt("allCount")
-    LR:Cycle("How many have it", {
+    LR:Cycle("Have / checked (while missing)", {
         { value = "OFF", text = "Off" },
         { value = "BOTTOMLEFT", text = "Bottom left" },
         { value = "BOTTOMRIGHT", text = "Bottom right" },

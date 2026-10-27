@@ -124,7 +124,6 @@ local function AllRow()
         if mod.IsPattern(e) or mod.IsWeapon(e) then i.tip = mod.EntryName(e) end
         if #missingBy > 0 or noData == #forThem then
             i.state = "missing"
-            i.count = #missingBy
             i.tip = #missingBy > 0 and ("Missing: " .. table.concat(missingBy, ", ")) or "Nobody in your group to check."
         else
             i.state, i.start, i.duration = "buff", minStart, minDur
@@ -133,11 +132,12 @@ local function AllRow()
         local only = mod.FilterText(e)
         if only then i.tip = i.tip .. "\nOnly for: " .. only end
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
-        -- how many have it, in its own corner (Look > All bar counter)
-        if cfg.allCount and cfg.allCount ~= "OFF" and have > 1 then
-            i.tally, i.tallyPos, i.tallySize, i.tallyColor = have, cfg.allCount, cfg.allCountSize, cfg.allCountColor
-            i.count = nil
-            i.tip = i.tip .. ("\n%d have it."):format(have)
+        -- while someone misses it: "have / checked" (3/5) in its corner (Look > All bar counter);
+        -- one number only, nothing once everyone has it (the timer shows)
+        local checked = #forThem - noData
+        if cfg.allCount and cfg.allCount ~= "OFF" and #missingBy > 0 and checked > 0 then
+            i.tally, i.tallyPos, i.tallySize, i.tallyColor = have .. "/" .. checked, cfg.allCount, cfg.allCountSize, cfg.allCountColor
+            i.tip = i.tip .. ("\n%d of %d have it."):format(have, checked)
         end
         icons[#icons + 1] = Look(i)
         end
