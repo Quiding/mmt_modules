@@ -68,6 +68,8 @@ local function Icons(key)
         if mod.Applies(e, key) and mod.Castable(e)
             and not (M.db.hideUnlearned and mod.Unlearned(key, e)) then
             state, start, dur, count, matched, micon = mod.State(key, e)
+            -- a blessing they can't get: they already have one from every paladin here
+            if state == "missing" and mod.BlessingCovered(key, e) then state = nil end
         end
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
@@ -103,12 +105,16 @@ local function AllRow()
         if not e.off and mod.Castable(e) then
             for _, key in ipairs(members) do if mod.Applies(e, key) then forThem[#forThem + 1] = key end end
         end
-        if #forThem > 0 then
-        local missingBy, noData, have = {}, 0, 0
+        local missingBy, noData, have, covered = {}, 0, 0, 0
         local minStart, minDur, minLeft
+        if #forThem > 0 then
         for _, key in ipairs(forThem) do
             local state, start, dur = mod.State(key, e)
-            if state == nil then
+            -- a blessing they can't get (one per paladin, Casters.lua): not counted
+            if state == "missing" and mod.BlessingCovered(key, e) then state = "covered" end
+            if state == "covered" then
+                covered = covered + 1
+            elseif state == nil then
                 noData = noData + 1
             elseif state == "missing" then
                 missingBy[#missingBy + 1] = MMTIconBars.MemberName(key, cfg.fullNames)
@@ -120,9 +126,13 @@ local function AllRow()
                 if not minLeft or left < minLeft then minStart, minDur, minLeft = start, dur, left end
             end
         end
+        -- nobody needs it right now (everyone checked has their blessings from the paladins here)
+        if have == 0 and #missingBy == 0 and covered > 0 then forThem = {} end
+        end
+        if #forThem > 0 then
         local i = { texture = mod.EntryIcon(e), spell = e.id }
         if mod.IsPattern(e) or mod.IsWeapon(e) then i.tip = mod.EntryName(e) end
-        if #missingBy > 0 or noData == #forThem then
+        if #missingBy > 0 or noData == #forThem - covered then
             i.state = "missing"
             i.tip = #missingBy > 0 and ("Missing: " .. table.concat(missingBy, ", ")) or "Nobody in your group to check."
         else
@@ -134,7 +144,7 @@ local function AllRow()
         if noData > 0 and #missingBy > 0 then i.tip = i.tip .. (" (%d not in your group)"):format(noData) end
         -- while someone misses it: "have / checked" (3/5) in its corner (Look > All bar counter);
         -- one number only, nothing once everyone has it (the timer shows)
-        local checked = #forThem - noData
+        local checked = #forThem - noData - covered
         if cfg.allCount and cfg.allCount ~= "OFF" and #missingBy > 0 and checked > 0 then
             i.tally, i.tallyPos, i.tallySize, i.tallyColor = have .. "/" .. checked, cfg.allCount, cfg.allCountSize, cfg.allCountColor
             i.tip = i.tip .. ("\n%d of %d have it."):format(have, checked)

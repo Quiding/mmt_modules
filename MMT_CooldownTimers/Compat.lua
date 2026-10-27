@@ -84,11 +84,12 @@ function mod.Buff(unit, i)
         local ok, a = pcall(C_UnitAuras.GetBuffDataByIndex, unit, i)
         if not ok or type(a) ~= "table" then return nil end
         if MMT.IsSecret(a.name) then return "secret" end
-        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime)
+        -- 6th: the caster's unit ("party1", "player", ...; nil when they aren't in the group)
+        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime), Clean(a.sourceUnit)
     end
     if UnitBuff then
-        local name, icon, count, _, duration, expiration = UnitBuff(unit, i)
-        return name, icon, count, duration, expiration
+        local name, icon, count, _, duration, expiration, source = UnitBuff(unit, i)
+        return name, icon, count, duration, expiration, source
     end
 end
 

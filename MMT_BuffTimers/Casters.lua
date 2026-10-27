@@ -116,3 +116,59 @@ function mod.Castable(e)
     end
     return false
 end
+
+---------------------------------------------------------------------------
+-- Blessings: one per paladin. A member can have one blessing from each paladin, so
+-- with one paladin in the group only one of the blessings tracked for them can be up.
+-- With "One blessing per paladin" (M.db.blessingLimit) a missing blessing doesn't
+-- count while the member already has as many blessings as there are paladins here.
+---------------------------------------------------------------------------
+local BLESSINGS = { 19740, 19742, 20217, 1038, 19977, 20911 }   -- Might, Wisdom, Kings, Salvation, Light, Sanctuary
+local blessingNames, blessingsComplete
+local function Blessings()
+    if blessingsComplete then return blessingNames end
+    blessingNames, blessingsComplete = {}, true
+    for _, id in ipairs(BLESSINGS) do
+        local name = mod.SpellInfo(id)
+        if name then blessingNames[mod.Canonical(name)] = true else blessingsComplete = false end
+    end
+    return blessingNames
+end
+function mod.BlessingsReset() blessingNames, blessingsComplete = nil, nil end   -- KnownReset
+function mod.IsBlessing(e) return e.id ~= nil and Blessings()[mod.BuffName(e) or ""] == true end
+
+-- paladins in your group (they can only bless who they're grouped with); the preview counts its team
+local paladins, paladinsTime
+function mod.PaladinsHere()
+    if mod.preview then
+        local n = 0
+        for _, key in ipairs(mod.PreviewTeam()) do if mod.ClassOf(key) == "PALADIN" then n = n + 1 end end
+        return n
+    end
+    if paladins and GetTime() - paladinsTime < 0.5 then return paladins end
+    local n = 0
+    local units = { "player" }
+    if IsInRaid() then for i = 1, 40 do units[#units + 1] = "raid" .. i end
+    else for i = 1, 4 do units[#units + 1] = "party" .. i end end
+    for _, u in ipairs(units) do
+        if UnitExists(u) then
+            local _, class = MMT.Safe(UnitClass, u)
+            if class == "PALADIN" then n = n + 1 end
+        end
+    end
+    paladins, paladinsTime = n, GetTime()
+    return n
+end
+
+-- is missing blessing e on member key not expected, because they already have one from each
+-- paladin here? Blessings from someone outside the group (a random) don't use up a slot.
+function mod.BlessingCovered(key, e)
+    if not M.db.blessingLimit or mod.preview or not mod.IsBlessing(e) then return false end
+    local n = mod.PaladinsHere()
+    if n < 1 then return false end
+    local auras = mod.auras and mod.auras[key]
+    if not auras then return false end
+    local have, set = 0, Blessings()
+    for name, a in pairs(auras) do if set[name] and a.group then have = have + 1 end end
+    return have >= n
+end

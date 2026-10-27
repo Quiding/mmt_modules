@@ -496,3 +496,56 @@ print(lua.eval(r"""function(m)
   m.KnownReset()
   return "imbues learned ok"
 end""")(mod))
+
+# one blessing per paladin in the group: with one paladin and Might up (from the group), Kings isn't missing;
+# a blessing from a paladin outside the group (a random) doesn't use up the slot
+print(lua.eval(r"""function(m)
+  local oldInfo, oldBuff, oldPal, oldState = m.SpellInfo, m.Buff, m.PaladinsHere, m.State
+  local oldSplit, oldResolve, oldExists = MMT.SplitUnit, MMT.Resolve, UnitExists
+  local NAMES = { [19740] = "Blessing of Might", [20217] = "Blessing of Kings" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  m.State = ORIG_STATE
+  m.preview, m.testUntil = nil, nil
+  m.PaladinsHere = function() return 1 end
+  m.KnownReset()
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Anna", "Smith", "Anna-Smith" end
+  MMT.Resolve = function(k) return k end
+  MMT.SortedMembers = function() return { "Anna-Smith" } end
+  local c = m.M.db
+  c.allBar, c.specLists, c.hideNoCaster, c.hideUnlearned, c.blessingLimit = false, false, false, false, true
+  c.lists.ALL = {}
+  c.lists.SHAMAN = { { id = 19740 }, { id = 20217 } }
+  local source = "party1"
+  m.Buff = function(unit, i) if unit == "player" and i == 1 then return "Blessing of Might", 135908, 1, 300, GetTime() + 200, source end end
+  local function Shown()
+    m.ScanGroup()
+    local t = {}
+    for _, row in ipairs(m.window.def.rows()) do
+      if row.key == "Anna-Smith" then for _, i in ipairs(row.icons) do t[i.spell] = i.state end end
+    end
+    return t
+  end
+  local s = Shown()
+  assert(s[19740] == "buff" and s[20217] == nil, "Kings shown though the one paladin's blessing is up")
+  source = nil                                   -- Might from a random outside the group
+  s = Shown()
+  assert(s[19740] == "buff" and s[20217] == "missing", "a random's blessing used up our paladin's slot")
+  source = "party1"
+  c.blessingLimit = false
+  s = Shown()
+  assert(s[20217] == "missing", "option off")
+  c.blessingLimit = true
+  -- the All bar: Kings left out while the one paladin's blessing (Might) is up
+  c.allBar, c.lists.SHAMAN, c.lists.ALL = true, {}, { { id = 19740 }, { id = 20217 } }
+  m.ScanGroup()
+  local all
+  for _, row in ipairs(m.window.def.rows()) do if row.label == "All" then all = row end end
+  assert(all and #all.icons == 1 and all.icons[1].spell == 19740 and all.icons[1].state == "buff", "All bar: " .. (all and #all.icons or 0))
+  c.allBar = false
+  m.SpellInfo, m.Buff, m.PaladinsHere, m.State = oldInfo, oldBuff, oldPal, oldState
+  MMT.SplitUnit, MMT.Resolve, UnitExists = oldSplit, oldResolve, oldExists
+  m.KnownReset()
+  m.ScanGroup()
+  return "one blessing per paladin ok"
+end""")(mod))

@@ -10,7 +10,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.16.6 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
@@ -94,6 +94,9 @@ tracked for them, with exact timers.
 - Missing buffs: normal icon, red or grey, optionally glowing, at their own opacity.
 - Class buffs (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only show when someone of
   that class is in your group or online in your team (switchable).
+- **One blessing per paladin** (on by default): a member can only have one blessing from each paladin, so once they
+  have as many as there are paladins in the group, the other blessings tracked for them don't count as missing.
+  Blessings from paladins outside the group (randoms) don't use up a slot.
 - **Hide buffs not learned yet** (on by default): a class buff a character hasn't learned yet (Inner Fire, a seal,
   an armor) leaves their row, and a buff cast on others only shows while someone here has learned it. Each client
   tells the team once what it hasn't learned, like Cooldown Timers' "Hide what you don't have".

@@ -41,6 +41,7 @@ local M = MMT.NewModule({
         allCount = "BOTTOMLEFT",   -- All bar: how many have the buff (2+), in this corner | "OFF"
         allCountSize = 12, allCountColor = { r = 1, g = 1, b = 1 },
         hideUnlearned = true,      -- hide buffs not learned yet: own row, and casters who haven't (Known.lua)
+        blessingLimit = true,      -- one blessing per paladin in the group (Casters.lua)
         hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
         playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,

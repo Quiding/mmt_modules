@@ -209,6 +209,7 @@ local pending = false
 -- spells learned, lists changed: names worked out again
 function mod.KnownReset()
     classNames, ownNames, book = {}, nil, nil
+    if mod.BlessingsReset then mod.BlessingsReset() end
 end
 
 function mod.KnownCheck()

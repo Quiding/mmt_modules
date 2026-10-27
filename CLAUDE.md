@@ -99,7 +99,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.2) / MMT_BuffTimers (v0.16.6) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.2) / MMT_BuffTimers (v0.17.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -198,6 +198,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `M.store.unlearned[key]`. `mod.Unlearned(key, e)`: own row skips it (Window Icons); `Castable` needs a caster of
   the class here who learned it (`ClassesHere` returns present, who[class] = keys + `stranger` for non-team units =
   counts as able). Name patterns: learned when a learned spellbook spell matches (`C_SpellBook.GetSpellBookItemType` == Spell, so not FutureSpell; ID = 3rd value OR the action ID, like EllesmereUI), for patterns in own lists + `caster == class`; sent after "#" (`MBFK:<ids>#<pattern>...`), `rec.patterns`. Weapon entries: `#@imbue` when `mod.OwnCanImbue()` is false (shaman without a "... Weapon" imbue spell, rogue without Poisons; other classes always can). `mod.KnownCheck()` on list change / profile / sync / SPELLS_CHANGED; `mod.KnownReset()` clears caches.
+- Blessings (`Casters.lua`, `blessingLimit`, default on): `mod.BlessingCovered(key, e)` = a missing blessing (`IsBlessing`:
+  canonical name of Might / Wisdom / Kings / Salvation / Light / Sanctuary) while the member has >= `mod.PaladinsHere()`
+  (paladin units in the group; preview: its team) blessings CAST BY A GROUP UNIT (`a.group` from Compat `mod.Buff`'s 6th
+  value = aura sourceUnit; randoms outside the group give nil). Member row: not shown; All bar: `covered`, not counted.
 - Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`
   (default on) `mod.Castable(e)` hides a buff whose class isn't in the group (units) or online in the team
   (`mod.ClassesHere`, cached 0.5 s); buffs not in the table always show.

@@ -61,7 +61,7 @@ local function ScanUnit(unit)
     if not key then return end
     local t = {}
     for i = 1, 40 do
-        local name, icon, count, duration, expiration = mod.Buff(unit, i)
+        local name, icon, count, duration, expiration, source = mod.Buff(unit, i)
         if name == "secret" then return end   -- hidden right now: keep what we had
         if not name then break end
         local raw = name
@@ -69,7 +69,9 @@ local function ScanUnit(unit)
         if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
         local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
         t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count,
-            icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw }
+            icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw,
+            -- cast by someone in the group (blessings: one per paladin here, Casters.lua)
+            group = type(source) == "string" and (source == "player" or source:find("^party%d") or source:find("^raid%d")) and true or nil }
     end
     mod.auras[key] = t
     fromUnit[key] = true
