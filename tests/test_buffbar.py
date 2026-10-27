@@ -346,6 +346,14 @@ print(lua.eval(r"""function(m)
   m.M.db.specSet = { ["Bob-Stone"] = "RET", ["Cid-Ray"] = "HOLY" }
   local e = { id = 19740, only = { specs = { ["PALADIN:RET"] = true } } }
   assert(m.HasFilter(e) and m.Applies(e, "Bob-Stone") and not m.Applies(e, "Cid-Ray"), "only for Retribution")
+  -- spec unknown (no talents yet): any ticked spec of the class counts
+  MMT.db.team["Dan-Low"] = { class = "PALADIN" }
+  MMT.db.team["Eve-Low"] = { class = "MAGE" }
+  local oldTree = m.TreeOf
+  m.TreeOf = function() return nil end
+  assert(m.Applies(e, "Dan-Low") and not m.Applies(e, "Eve-Low"), "spec unknown: class fallback")
+  m.TreeOf = oldTree
+  MMT.db.team["Dan-Low"], MMT.db.team["Eve-Low"] = nil, nil
   assert(m.FilterText(e) == "Paladin: Retribution", tostring(m.FilterText(e)))
   local clean = m.CleanFilter({ specs = { ["PALADIN:RET"] = true, bad = true } })
   assert(clean.specs["PALADIN:RET"] and not clean.specs.bad, "export keeps specs")

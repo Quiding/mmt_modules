@@ -181,6 +181,12 @@ function mod.Applies(e, key)
     if o.specs and mod.SpecOf then
         local spec = mod.SpecOf(key)
         if spec and o.specs[spec] then return true end
+        -- spec not known yet (no talents, older client): any ticked spec of their class counts
+        if not spec and class then
+            for s in pairs(o.specs) do
+                if s:sub(1, #class + 1) == class .. ":" then return true end
+            end
+        end
     end
     if o.mmt then
         for _, r in ipairs(MMT.MemberRoleList(key)) do if o.mmt[r] then return true end end
