@@ -285,7 +285,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.7) – port of ema_totems
+### MMT_Totems (v0.4.8) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -302,6 +302,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Spell data is lazy (0.4.7): `mod.LoadTotemData()` (OnEnable) requests every totem, SPELL_DATA_LOAD_RESULT ->
   `mod.TotemDataArrived` rebuilds the name lookup (`byName` in Data.lua) and redraws. `SlotShown` judges another
   shaman by their MTTK list only (no `SpellInfo` here: a warrior's client lacked it, so `hideUnlearned` hid whole bars).
+- Presets window `MMTTotemsPresets` is FULLSCREEN_DIALOG + Toplevel like MMT's dropdown list `MMTDropdownList`, so a
+  list opened from it went behind it: `hooksecurefunc(MMT.UI, "OpenList", ListToFront)` raises the list's `catcher` and
+  the list while the window is shown (0.4.8, `mod.ListToFront`).
 - Practice shaman (0.4.7, session only): `mod.PRACTICE` = "Practice-Shaman", `mod.SetPractice(on)` (Bars tab button,
   `/mmtt practice`); `IsShaman` true while on, Shamans() adds it last; knows every totem (no known list) and every item;
   SetSelected / SetSequence never send for it (`mod.IsPractice`); its selected / sequences / presets / barPoints are

@@ -631,3 +631,18 @@ print("A:", A.eval(r"""function(m)
   for _, k in ipairs(m.Shamans()) do assert(k ~= m.PRACTICE, "practice bar after removing it") end
   return "practice shaman ok"
 end""")(amod))
+
+# a dropdown opened from the presets window comes to the front (same layer, the window is Toplevel)
+print("A:", A.eval(r"""function(m)
+  local raised = {}
+  local function F(name) local f = CreateFrame("Frame", name); f:Show(); f.Raise = function() raised[#raised + 1] = name end; return f end
+  F("MMTTotemsPresets")
+  local list = F("MMTDropdownList")
+  list.catcher = F("catcher")
+  m.ListToFront()
+  assert(raised[1] == "catcher" and raised[2] == "MMTDropdownList", "list not raised: " .. table.concat(raised, ","))
+  MMTTotemsPresets:Hide(); raised = {}
+  m.ListToFront()
+  assert(#raised == 0, "raised while the presets window is closed")
+  return "dropdown above the presets window ok"
+end""")(amod))
