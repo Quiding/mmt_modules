@@ -76,7 +76,7 @@ M.Page = function(_, page)
     L:Space(6)
     local half = (COL_W - 8) / 2
     local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
-    L:Add(test, 0)
+    L:Add(test, UI.ROW + 4)   -- Reset position sits beside it, Arrange icons below
     local reset = UI.Button(p, half, "Reset position", function()
         M.db.point = { "CENTER", "CENTER", 200, 0 }
         Apply()
