@@ -15,13 +15,13 @@
 --   Settings.lua  settings page and debug report
 --
 -- Stored in M.store.chars[teamKey] = { b = {[itemID] = n}, k = bank, m = mail,
--- e = equipped, s = soulbound ones in the bags, hash, time }, and M.store.mine[key] = true for characters of
--- this account (Syndicator already lists those in its own tooltip lines).
+-- e = equipped, s = soulbound ones in the bags, hash, time, gold, rs = ruleset }, and M.store.mine[key] = true
+-- for characters of this account (Syndicator already lists those in its own tooltip lines).
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.8.0"
+mod.VERSION = "0.9.0"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -47,7 +47,7 @@ local M = MMT.NewModule({
         baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         sidePanel = true,      -- the team / trades panel beside the team bags
-        otherChars = false,    -- team bags: also characters outside the team (other profiles, old teams)
+        otherChars = false,    -- team bags + gold: false = the team | "RULESET" = every stored character of this ruleset | "ALL" = every one
         -- team bags look (settings > Look); defaults = MMT's settings window
         bagIconSize = 36, bagColumns = 10, bagSpacing = 4, bagQuality = true,
         bagBgTexture = "FLAT", bagBgColor = { r = 0.05, g = 0.05, b = 0.06 }, bagBgAlpha = 0.94,
@@ -79,7 +79,77 @@ function mod.InTeam(key)
     for _, k in ipairs(MMT.SortedMembers()) do if k == key then return true end end
     return false
 end
-function mod.Shown(key) return M.db.otherChars or mod.InTeam(key) end
+
+-- Rulesets: Forever has no realms, characters are unique per ruleset (PvE, PvP, ...),
+-- and team keys ("First-Last") carry no realm. Read like Syndicator / EllesmereUI do;
+-- other clients: the realm. Stored per character as rec.rs (own: here; others: the
+-- heartbeat tir, or ours when one of their messages reaches us - so the same ruleset).
+mod.RULESET_NAMES = { PvE = "PvE", PvP = "PvP", RP = "RP", RPPvP = "RP-PvP", HC = "Hardcore" }
+local ownRuleset
+function mod.Ruleset()
+    if ownRuleset then return ownRuleset end
+    local R = Enum and Enum.GameRule
+    local rules = C_GameRules and C_GameRules.IsGameRuleActive
+    local rs
+    if R and rules and (R.PvPRuleset or R.RPRuleset or R.HardcoreRuleset) then
+        local function On(rule) return rule ~= nil and MMT.Safe(rules, rule) == true end
+        local pvp, rp = On(R.PvPRuleset), On(R.RPRuleset)
+        rs = On(R.HardcoreRuleset) and "HC" or (pvp and rp and "RPPvP") or (pvp and "PvP") or (rp and "RP") or "PvE"
+    else
+        rs = GetNormalizedRealmName and MMT.Safe(GetNormalizedRealmName)
+        if not rs or rs == "" or MMT.IsSecret(rs) then rs = ((MMT.Safe(GetRealmName) or ""):gsub("%s", "")) end
+        if rs == "" then return nil end
+    end
+    ownRuleset = rs
+    return rs
+end
+function mod.RulesetName(rs) return rs and (mod.RULESET_NAMES[rs] or rs) or "?" end
+
+-- older records have no rs: Syndicator's own saved data (this account's characters,
+-- "First Last-PvE") tells it when exactly one ruleset matches
+local function FromSyndicator(key)
+    local data = type(SYNDICATOR_DATA) == "table" and type(SYNDICATOR_DATA.Characters) == "table" and SYNDICATOR_DATA.Characters
+    if not data then return nil end
+    local name = key:gsub("%-", " ") .. "-"
+    local found
+    for rs in pairs(mod.RULESET_NAMES) do
+        if data[name .. rs] ~= nil then
+            if found then return nil end
+            found = rs
+        end
+    end
+    return found
+end
+
+-- a character's ruleset, or nil when not known
+function mod.RulesetOf(key)
+    if MMT.IsSelf(key) then return mod.Ruleset() end
+    local rec = mod.Chars()[key]
+    if not rec then return nil end
+    if not rec.rs then rec.rs = FromSyndicator(key) end
+    return rec.rs
+end
+-- could be on the same ruleset (unknown counts as yes)
+function mod.SameRuleset(a, b)
+    local ra = a and mod.RulesetOf(a) or mod.Ruleset()
+    local rb = b and mod.RulesetOf(b) or mod.Ruleset()
+    return not ra or not rb or ra == rb
+end
+
+-- "Characters" setting: "TEAM" | "RULESET" | "ALL" (true from before 0.9.0 = RULESET)
+function mod.CharsMode()
+    local v = M.db.otherChars
+    if v == "ALL" then return "ALL" end
+    if v then return "RULESET" end
+    return "TEAM"
+end
+function mod.Shown(key)
+    if mod.InTeam(key) then return true end
+    local mode = mod.CharsMode()
+    if mode == "ALL" then return true end
+    return mode == "RULESET" and mod.SameRuleset(key)
+end
+
 
 -- known gold of a character in copper, or nil; the total of every shown character
 function mod.Gold(key)
@@ -131,6 +201,8 @@ end
 M.OnEnable = function()
     local key = MMT.PlayerFull()
     if key then mod.Mine()[key] = true end
+    local rec = mod.Own()
+    if rec then rec.rs = mod.Ruleset() or rec.rs end
     mod.ScanAll()
     mod.ScanGold()
     mod.SetupMinimap()

@@ -112,7 +112,7 @@ function MMT.NewModule(def)
     LISTEN[ev] = LISTEN[ev] or setmetatable({}, { __call = function(t, ...) for _, f in ipairs(t) do f(...) end end })
     table.insert(LISTEN[ev], fn)
   end
-  function M:Heartbeat(k, fn) HEARTBEAT = fn end
+  function M:Heartbeat(k, fn) HEARTBEATS = HEARTBEATS or {}; HEARTBEATS[k] = fn; if k == "tiv" then HEARTBEAT = fn end end
   return M
 end
 function FIRE(ev, ...) for _, fn in ipairs(EVENTS[ev] or {}) do fn(...) end end
@@ -488,3 +488,26 @@ print("B:", B.eval(r"""function(m)
   MMT.Print = function() end
   return "full bags ok"
 end""")(bmod))
+
+# rulesets: the heartbeat carries ours (tir); a character we hear from is stamped with theirs
+for L in (A, B):
+    L.execute('''Enum.GameRule = { PvPRuleset = 1, RPRuleset = 2, HardcoreRuleset = 3 }
+C_GameRules = { IsGameRuleActive = function(r) return r == 1 end }''')
+print("A:", A.eval(r'''function(m)
+  assert(m.Ruleset() == "PvP" and HEARTBEATS.tir() == "PvP", "own ruleset: " .. tostring(m.Ruleset()))
+  m.M.OnEnable(m.M)
+  assert(m.Chars()["Anna-Smith"].rs == "PvP", "own record not stamped")
+  local bob = m.Chars()["Bob-Stone"]
+  bob.rs = nil
+  LISTEN.XP_RECEIVED("Bob-Stone", "Bob", { ext = { tiv = tostring(bob.hash), tir = "PvE" } })
+  assert(bob.rs == "PvE", "heartbeat ruleset not stored: " .. tostring(bob.rs))
+  LISTEN.XP_RECEIVED("Bob-Stone", "Bob", { ext = { tir = "bad:value" } })
+  assert(bob.rs == "PvE", "a bad ruleset was taken")
+  -- a character only heard by messages (older client): ours
+  m.Chars()["Cy-Old"] = nil
+  DELIVER("Cy-Old", "TIVS:1:MAGE#b=2589x1")
+  assert(m.Chars()["Cy-Old"].rs == "PvP", "snapshot not stamped: " .. tostring(m.Chars()["Cy-Old"].rs))
+  m.Chars()["Cy-Old"] = nil
+  SENT = {}
+  return "rulesets ok"
+end''')(amod))

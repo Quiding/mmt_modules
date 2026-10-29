@@ -137,10 +137,19 @@ function mod.BagOwners()
     for _, key in ipairs(MMT.SortedMembers()) do
         if chars[key] and not seen[key] then list[#list + 1] = key; seen[key] = true end
     end
-    -- characters outside the team (other profiles, old teams): only with the setting on
-    local rest = {}
+    -- characters outside the team (other profiles, old teams, other accounts): only with the
+    -- setting on; this ruleset first, then the others by ruleset
+    local rest, own = {}, mod.Ruleset() or ""
     for key in pairs(chars) do if not seen[key] and mod.Shown(key) then rest[#rest + 1] = key end end
-    table.sort(rest)
+    local function Order(key)
+        local rs = mod.RulesetOf(key)
+        return (not rs or rs == own) and "" or rs
+    end
+    table.sort(rest, function(a, b)
+        local ra, rb = Order(a), Order(b)
+        if ra ~= rb then return ra < rb end
+        return a < b
+    end)
     for _, key in ipairs(rest) do list[#list + 1] = key end
     return list
 end
@@ -391,7 +400,7 @@ end
 function mod.Holders(id, to)
     local list = {}
     for _, key in ipairs(mod.BagOwners()) do
-        if key ~= to then
+        if key ~= to and mod.SameRuleset(key, to) then   -- no trading across rulesets
             local n = mod.Tradeable(key, id)
             if n > 0 then list[#list + 1] = { key = key, n = n } end
         end
@@ -422,7 +431,7 @@ end
 function Drop(s, to)
     if not to then return end
     if not s.owner then return DropFromTeam(s, to) end
-    if to == s.owner then return end
+    if to == s.owner or not mod.SameRuleset(s.owner, to) then return end
     -- only what can be traded (not soulbound, not promised to someone else)
     local n = mod.Tradeable(s.owner, s.id)
     if n <= 0 then return end
@@ -572,6 +581,13 @@ end
 
 local OwnerText
 
+-- " (PvP)" after a character of another ruleset than this one
+local function RulesetTag(key)
+    local rs, own = mod.RulesetOf(key), mod.Ruleset()
+    if not rs or not own or rs == own then return "" end
+    return " |cff888888(" .. mod.RulesetName(rs) .. ")|r"
+end
+
 -- a character's first name in their class colour
 local function NameTag(key)
     local class = mod.ClassOf and mod.ClassOf(key)
@@ -606,7 +622,7 @@ function OwnerText(who)
     local class = mod.ClassOf and mod.ClassOf(who)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if c then r, g, b = c.r, c.g, c.b end
-    return ("|cff%02x%02x%02x%s|r"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), MMT.FullDisplay(who))
+    return ("|cff%02x%02x%02x%s|r"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), MMT.FullDisplay(who)) .. RulesetTag(who)
 end
 
 local function Build()
@@ -829,8 +845,8 @@ function mod.RefreshTeam(f)
     local listed = false
     for _, key in ipairs(keys) do if key == own then listed = true end end
     if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
-    -- with "Characters outside the team": the others after them
-    if M.db.otherChars then
+    -- with "Characters" on all stored: the others after them
+    if mod.CharsMode() ~= "TEAM" then
         local inList = {}
         for _, key in ipairs(keys) do inList[key] = true end
         for _, key in ipairs(mod.BagOwners()) do if not inList[key] then keys[#keys + 1] = key end end
@@ -866,7 +882,7 @@ function mod.RefreshTeam(f)
         local selected = f.who == key
         if selected then b.bar:Show() else b.bar:Hide() end
         b.bg:SetColorTexture(1, 1, 1, selected and 0.06 or 0)
-        b.label:SetText(NameTag(key) .. (incoming > 0 and ("  |cffffcc33+" .. incoming .. "|r") or ""))
+        b.label:SetText(NameTag(key) .. RulesetTag(key) .. (incoming > 0 and ("  |cffffcc33+" .. incoming .. "|r") or ""))
         local gold = mod.Gold(key)
         b.count:SetText(gold and ("|cffcccccc" .. mod.FormatGold(gold) .. "|r") or "")
         b:ClearAllPoints()

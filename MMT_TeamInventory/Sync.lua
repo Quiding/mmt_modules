@@ -1,5 +1,5 @@
 -- MMT Team Inventory: sharing the counts with the team (like Item Compare).
---   heartbeat  tiv=<hash of your counts>
+--   heartbeat  tiv=<hash of your counts>, tir=<ruleset> (PvE, PvP, ...; mod.Ruleset)
 --   TIVREQ                 "send me your counts" (whispered when a hash differs)
 --   TIVS:<hash>:<CLASS>#<data>  every count of one character (MMT.SendLong: any size)
 --   TIVD:<hash>#<changes>  only what changed ("b13446=4;k6948=0"), to the team
@@ -87,11 +87,20 @@ M:Heartbeat("tiv", function()
     local rec = mod.Own()
     return rec and rec.hash or nil
 end)
+M:Heartbeat("tir", function() return mod.Ruleset() end)
 
 ---------------------------------------------------------------------------
 -- Receiving
 ---------------------------------------------------------------------------
 local lastRequest = {}
+local heardRs = {}   -- key -> ruleset from their heartbeat (this session)
+
+-- their messages reach us: their ruleset (from the heartbeat, else ours)
+local function StampRuleset(key, rec)
+    if not rec then return end
+    local rs = heardRs[key] or mod.Ruleset()
+    if rs then rec.rs = rs end
+end
 
 local function Request(key, sender)
     if lastRequest[key] and GetTime() - lastRequest[key] < REQUEST_COOLDOWN then return end
@@ -106,6 +115,9 @@ end
 
 M:Listen("XP_RECEIVED", function(key, sender, status)
     if MMT.IsSelf(key) then return end
+    local rs = status and status.ext and status.ext.tir
+    if type(rs) == "string" and rs:match("^%w+$") then heardRs[key] = rs end
+    StampRuleset(key, mod.Chars()[key])
     -- gold: the core's heartbeat has it (MMT.status money); kept for when they're offline
     local money = tonumber(status and status.money)
     if money and not MMT.IsSecret(money) then
@@ -135,6 +147,7 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         local old = mod.Chars()[key]
         rec.class = class ~= "" and class or (old and old.class)
         if old then rec.gold, rec.goldTime = old.gold, old.goldTime end   -- not part of the items
+        StampRuleset(key, rec)
         mod.Chars()[key] = rec
         if mod.RefreshBags then mod.RefreshBags() end
         return
@@ -151,6 +164,7 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
             end
         end
         rec.time = time()
+        StampRuleset(key, rec)
         rec.hash = mod.Hash(rec)
         if rec.hash ~= tonumber(hash) then Request(key, sender) end
         if mod.RefreshBags then mod.RefreshBags() end

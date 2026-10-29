@@ -760,3 +760,66 @@ print(lua.eval(r'''function(m)
   chars["Cara-Sun"] = nil
   return "gold and other characters ok"
 end''')(mod))
+
+# "Characters": the team | all stored on this ruleset | all stored on every ruleset (old true = this ruleset)
+lua.execute('''Enum.GameRule = { PvPRuleset = 1, RPRuleset = 2, HardcoreRuleset = 3 }
+C_GameRules = { IsGameRuleActive = function(r) return r == 1 end }
+SYNDICATOR_DATA = { Characters = { ["Ed Old-PvE"] = {} } }''')
+print(lua.eval(r'''function(m)
+  local f = m.bags
+  local chars = m.Chars()
+  for from in pairs(m.Gives()) do m.Gives()[from] = nil end
+  chars["Anna-Smith"].gold, chars["Bob-Stone"].gold = 1000, 2000
+  chars["Cara-Sun"]  = { b = { [13446] = 1 }, k = {}, m = {}, e = {}, gold = 10000, rs = "PvP" }    -- this ruleset
+  chars["Dora-Moon"] = { b = { [13446] = 2 }, k = {}, m = {}, e = {}, gold = 100000, rs = "PvE" }   -- another one
+  chars["Ed-Old"]    = { b = {}, k = {}, m = {}, e = {}, gold = 1000000 }                           -- Syndicator: PvE
+  chars["Fen-New"]   = { b = {}, k = {}, m = {}, e = {}, gold = 10000000 }                          -- unknown: shown
+  assert(m.Ruleset() == "PvP", "own ruleset")
+  assert(m.RulesetOf("Ed-Old") == "PvE" and chars["Ed-Old"].rs == "PvE", "Syndicator's ruleset not taken")
+  assert(m.RulesetOf("Fen-New") == nil, "made-up ruleset")
+  local function Owners()
+    local t = {}
+    for _, key in ipairs(m.BagOwners()) do t[#t + 1] = key end
+    return table.concat(t, ",")
+  end
+  local function Panel()
+    local t = {}
+    for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then t[#t + 1] = tb.key end end
+    return table.concat(t, ",")
+  end
+  f:Hide()
+  m.M.db.otherChars = false
+  m.OpenBags("b", "__ALL__")
+  assert(m.CharsMode() == "TEAM" and Owners() == "Anna-Smith,Bob-Stone" and m.TotalGold() == 3000, "team: " .. Owners())
+  local base = 0
+  for _, s in ipairs(m.BagSlots("__ALL__", "b", "")) do if s.id == 13446 then base = s.count end end
+  -- old "true" = this ruleset
+  m.M.db.otherChars = true
+  assert(m.CharsMode() == "RULESET", "old setting")
+  m.M.db.otherChars = "RULESET"
+  m.RefreshBags()
+  assert(Owners() == "Anna-Smith,Bob-Stone,Cara-Sun,Fen-New", "this ruleset: " .. Owners())
+  assert(Panel() == Owners(), "panel: " .. Panel())
+  assert(m.TotalGold() == 3000 + 10000 + 10000000, "total this ruleset: " .. tostring(m.TotalGold()))
+  for _, s in ipairs(m.BagSlots("__ALL__", "b", "")) do if s.id == 13446 then assert(s.count == base + 1, "potions: " .. s.count) end end
+  for _, sec in ipairs(m.ByCharacter("b", "")) do assert(sec.key ~= "Dora-Moon", "Dora in by character") end
+  -- every ruleset: this one first, then the others by ruleset, tagged
+  m.M.db.otherChars = "ALL"
+  m.RefreshBags()
+  assert(Owners() == "Anna-Smith,Bob-Stone,Cara-Sun,Fen-New,Dora-Moon,Ed-Old", "every ruleset: " .. Owners())
+  assert(m.TotalGold() == 11113000, "total every ruleset: " .. tostring(m.TotalGold()))
+  for _, tb in ipairs(f.teamButtons) do
+    if tb.key == "Dora-Moon" then assert(tb.label:GetText():find("(PvE)", 1, true), "no ruleset tag: " .. tb.label:GetText()) end
+    if tb.key == "Cara-Sun" then assert(not tb.label:GetText():find("(", 1, true), "tag on this ruleset") end
+  end
+  -- no gifts across rulesets
+  for _, h in ipairs(m.Holders(13446, "Bob-Stone")) do assert(h.key ~= "Dora-Moon", "Dora could give to Bob") end
+  m.DropSlot({ id = 13446, owner = "Dora-Moon", count = 2 }, "Bob-Stone")
+  assert(m.PlannedOut("Dora-Moon", 13446) == 0, "gift planned across rulesets")
+  m.DropSlot({ id = 13446, owner = "Cara-Sun", count = 1 }, "Bob-Stone")
+  assert(m.PlannedOut("Cara-Sun", 13446) == 1, "gift on this ruleset refused")
+  m.SetGive("Cara-Sun", "Bob-Stone", 13446, 0)
+  m.M.db.otherChars = false
+  for _, k in ipairs({ "Cara-Sun", "Dora-Moon", "Ed-Old", "Fen-New" }) do chars[k] = nil end
+  return "characters by ruleset ok"
+end''')(mod))

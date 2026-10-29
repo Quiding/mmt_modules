@@ -113,10 +113,15 @@ M.Page = function(_, page)
         M.db.baganatorCats = v
         Redraw()
     end, "With Baganator on: its category order, hidden and custom categories, priorities and the items you dragged into a category - read each time, so changes in Baganator show here too. Without it: the built-in categories.")
-    L:Check("Characters outside the team", function() return M.db.otherChars end, function(v)
-        M.db.otherChars = v
+    local chars = L:Cycle("Characters", {
+        { value = "TEAM", text = "The team" },
+        { value = "RULESET", text = "All stored, this ruleset" },
+        { value = "ALL", text = "All stored, every ruleset" },
+    }, mod.CharsMode, function(v)
+        M.db.otherChars = v ~= "TEAM" and v or false
         Redraw()
-    end, "Also characters this client knows that aren't in the current team (other MMT profiles, old teams): in the character list, the whole-team views, the panel and the total gold.")
+    end)
+    UI.Tooltip(chars, "Characters", "Who the team bags and the gold show: the character list, the whole-team views, the panel and the total gold. All stored = also every other character this client has items of (other MMT profiles, old teams, other accounts' characters that were in a team with this account), on this ruleset (PvE, PvP, ...) or on all of them. Characters of another ruleset can't be given items.")
     L:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
         Redraw()
@@ -205,7 +210,7 @@ M.Report = function(_, add)
             for _ in pairs(rec[p] or {}) do k = k + 1 end
             c[#c + 1] = p .. "=" .. k
         end
-        add(("  %s%s: %s hash=%s %s"):format(MMT.FullDisplay(key), mine[key] and " (this account)" or "",
-            table.concat(c, " "), tostring(rec.hash), rec.time and MMT.Ago(rec.time) or "?"))
+        add(("  %s%s: %s rs=%s hash=%s %s"):format(MMT.FullDisplay(key), mine[key] and " (this account)" or "",
+            table.concat(c, " "), tostring(mod.RulesetOf(key)), tostring(rec.hash), rec.time and MMT.Ago(rec.time) or "?"))
     end
 end

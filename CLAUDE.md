@@ -319,7 +319,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.8.0)
+### MMT_TeamInventory (v0.9.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -366,8 +366,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Gold: `rec.gold` / `goldTime` (copper) on each character's record, NOT synced by us: own from `GetMoney` (ScanGold:
   OnEnable, PLAYER_MONEY, PLAYER_ENTERING_WORLD), others from the core heartbeat (`status.money` in XP_RECEIVED); a
   TIVS snapshot keeps it. `mod.Gold`, `mod.TotalGold` (shown characters), `mod.FormatGold` (coin icons).
-- `otherChars` (off): `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self) or the setting; filters BagOwners,
-  the added-up views, the panel and the total. The item tooltip still counts everyone.
+- `otherChars` = false | "RULESET" | "ALL" (old `true` = RULESET; `mod.CharsMode()` -> TEAM/RULESET/ALL, settings Cycle "Characters"):
+  `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self), or ALL, or RULESET and `mod.SameRuleset(key)`; filters BagOwners
+  (rest sorted: this ruleset / unknown first, then by ruleset), the added-up views, the panel and the total. The item tooltip still counts everyone.
+  Rulesets (0.9.0): team keys "First-Last" carry no realm; `mod.Ruleset()` = C_GameRules.IsGameRuleActive(Enum.GameRule.Hardcore/PvP/RPRuleset)
+  -> HC | RPPvP | PvP | RP | PvE (like Syndicator / EllesmereUI; elsewhere the normalized realm). `rec.rs`: own on enable, others = heartbeat
+  `tir=<rs>`, else ours when their XP/TIVS/TIVD reaches us (same ruleset); older records: Syndicator's SYNDICATOR_DATA.Characters
+  "First Last-<rs>" (own account only, one match). Unknown = counts as this ruleset. No gifts across rulesets (Drop / Holders);
+  other rulesets tagged " (PvE)" in the picker and panel. Only characters this account heard from are stored: another account's
+  SavedVariables can't be read in game (on the user's PC each account only has its own teams' characters).
 - Settings: tabs General / Team bags / Look (`SettingsKit.lua` `mod.Tabs`; own ResetButton, no ShareBar). Look keys
   `bagIconSize`, `bagColumns`, `bagSpacing` (read by `ReadLook()` into the SIZE / COLS / GAP upvalues each redraw;
   window never narrower than `MIN_W`), `bagBgTexture` (LSM) / `bagBgColor` / `bagBgAlpha` / `bagBorderColor`
