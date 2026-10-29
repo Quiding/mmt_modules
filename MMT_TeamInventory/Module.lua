@@ -15,13 +15,13 @@
 --   Settings.lua  settings page and debug report
 --
 -- Stored in M.store.chars[teamKey] = { b = {[itemID] = n}, k = bank, m = mail,
--- e = equipped, s = soulbound ones in the bags, hash, time, gold, rs = ruleset }, and M.store.mine[key] = true
+-- e = equipped, s = soulbound ones in the bags, hash, time, gold, rs = ruleset, team = mod.TeamSig() }, and M.store.mine[key] = true
 -- for characters of this account (Syndicator already lists those in its own tooltip lines).
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.9.5"
+mod.VERSION = "0.10.0"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -137,6 +137,32 @@ function mod.SameRuleset(a, b)
     return not ra or not rb or ra == rb
 end
 
+-- Teams: each character keeps the team it was last played in (rec.team = the keys of
+-- that team, sorted, joined by ","), stamped on every stored member of the current
+-- team; the team bags group the other stored characters by it
+function mod.TeamKeys()
+    local keys, seen = {}, {}
+    local own = MMT.PlayerFull()
+    if own then keys[1] = own; seen[own] = true end
+    for _, key in ipairs(MMT.SortedMembers()) do
+        if not seen[key] then keys[#keys + 1] = key; seen[key] = true end
+    end
+    return keys
+end
+function mod.TeamSig()
+    local keys = mod.TeamKeys()
+    table.sort(keys)
+    return table.concat(keys, ",")
+end
+function mod.StampTeam()
+    local sig, chars = mod.TeamSig(), mod.Chars()
+    if sig == "" then return end
+    for _, key in ipairs(mod.TeamKeys()) do
+        if chars[key] then chars[key].team = sig end
+    end
+end
+M:Listen("TEAM_CHANGED", function() mod.StampTeam(); if mod.RefreshBags then mod.RefreshBags() end end)
+
 -- "Characters" setting: "TEAM" | "RULESET" | "ALL" (true from before 0.9.0 = RULESET)
 function mod.CharsMode()
     local v = M.db.otherChars
@@ -208,6 +234,7 @@ M.OnEnable = function()
     if key then mod.Mine()[key] = true end
     local rec = mod.Own()
     if rec then rec.rs = mod.Ruleset() or rec.rs end
+    mod.StampTeam()
     mod.ScanAll()
     mod.ScanGold()
     mod.SetupMinimap()

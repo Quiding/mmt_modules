@@ -14,7 +14,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.9.5 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.3.0 |
 
@@ -226,6 +226,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 - **Characters**: the team only (default), or every character Team Inventory has stored (other MMT profiles, old teams,
   other accounts' characters that were once in a team with this account) on this ruleset (PvE, PvP, ...) or on every ruleset,
   in the character list, the whole-team views, the panel and the total gold. Characters of another ruleset are tagged and can't be given items.
+  The other characters are grouped by the team they were last played in ("Team: Anna, Bob", with that team's gold in the
+  panel). Switch it in the settings (Team bags tab) or at the bottom of the character list in the team bags.
   A client can only know characters it has heard from: another account's saved files can't be read in game.
 - **Look** tab in the settings: window size, background (colour, opacity, LibSharedMedia texture),
   border colour, icon size, columns, spacing, quality colours, count font and size.

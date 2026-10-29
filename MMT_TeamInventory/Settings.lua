@@ -121,7 +121,7 @@ M.Page = function(_, page)
         M.db.otherChars = v ~= "TEAM" and v or false
         Redraw()
     end)
-    UI.Tooltip(chars, "Characters", "Who the team bags and the gold show: the character list, the whole-team views, the panel and the total gold. All stored = also every other character this client has items of (other MMT profiles, old teams, other accounts' characters that were in a team with this account), on this ruleset (PvE, PvP, ...) or on all of them. Characters of another ruleset can't be given items.")
+    UI.Tooltip(chars, "Characters", "Who the team bags and the gold show: the character list, the whole-team views, the panel and the total gold. All stored = also every other character this client has items of (other MMT profiles, old teams, other accounts' characters that were in a team with this account), on this ruleset (PvE, PvP, ...) or on all of them, grouped by the team they were last played in. Also at the bottom of the character list in the team bags. Characters of another ruleset can't be given items.")
     L:Check("Team and trades beside the window", function() return M.db.sidePanel ~= false end, function(v)
         M.db.sidePanel = v
         Redraw()

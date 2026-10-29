@@ -128,29 +128,67 @@ end
 ---------------------------------------------------------------------------
 -- Data
 ---------------------------------------------------------------------------
--- characters for the picker: this team first (team order), then the rest
-function mod.BagOwners()
-    local list, seen = {}, {}
+-- The characters shown, in teams: { { current = true, keys }, { sig, keys }, ... }.
+-- This team first (team order; withEmpty: also members nothing is stored of, for the
+-- panel), then the other stored characters (only with "Characters" on all stored),
+-- grouped by the team they were last played in (rec.team): this ruleset first, then the
+-- others by ruleset, characters whose team isn't known last
+function mod.TeamGroups(withEmpty)
+    mod.StampTeam()
     local chars = mod.Chars()
-    local own = MMT.PlayerFull()
-    if own and chars[own] then list[1] = own; seen[own] = true end
-    for _, key in ipairs(MMT.SortedMembers()) do
-        if chars[key] and not seen[key] then list[#list + 1] = key; seen[key] = true end
+    local cur, seen = { current = true, keys = {} }, {}
+    for _, key in ipairs(mod.TeamKeys()) do
+        if withEmpty or chars[key] then cur.keys[#cur.keys + 1] = key end
+        seen[key] = true
     end
-    -- characters outside the team (other profiles, old teams, other accounts): only with the
-    -- setting on; this ruleset first, then the others by ruleset
-    local rest, own = {}, mod.Ruleset() or ""
-    for key in pairs(chars) do if not seen[key] and mod.Shown(key) then rest[#rest + 1] = key end end
+    local groups, bySig = {}, {}
+    if #cur.keys > 0 then groups[1] = cur end
+    local ownRs = mod.Ruleset() or ""
     local function Order(key)
         local rs = mod.RulesetOf(key)
-        return (not rs or rs == own) and "" or rs
+        return (not rs or rs == ownRs) and "" or rs
+    end
+    local rest = {}
+    for key, rec in pairs(chars) do
+        if not seen[key] and mod.Shown(key) then
+            local sig = rec.team or ""
+            local g = bySig[sig]
+            if not g then g = { sig = sig, keys = {} }; bySig[sig] = g; rest[#rest + 1] = g end
+            g.keys[#g.keys + 1] = key
+        end
+    end
+    for _, g in ipairs(rest) do
+        table.sort(g.keys, function(a, b)
+            local ra, rb = Order(a), Order(b)
+            if ra ~= rb then return ra < rb end
+            return a < b
+        end)
+        g.order = Order(g.keys[1])
     end
     table.sort(rest, function(a, b)
-        local ra, rb = Order(a), Order(b)
-        if ra ~= rb then return ra < rb end
-        return a < b
+        if (a.sig == "") ~= (b.sig == "") then return b.sig == "" end
+        if a.order ~= b.order then return a.order < b.order end
+        return a.keys[1] < b.keys[1]
     end)
-    for _, key in ipairs(rest) do list[#list + 1] = key end
+    for _, g in ipairs(rest) do groups[#groups + 1] = g end
+    return groups
+end
+
+-- "Team: Anna, Bob" (every member of that team, also ones nothing is stored of)
+function mod.GroupLabel(g)
+    if g.current then return "This team" end
+    if g.sig == "" then return "Team not known" end
+    local names = {}
+    for key in g.sig:gmatch("[^,]+") do names[#names + 1] = MMT.FirstName(key) end
+    return "Team: " .. table.concat(names, ", ")
+end
+
+-- characters for the picker: this team first (team order), then the rest by team
+function mod.BagOwners()
+    local list = {}
+    for _, g in ipairs(mod.TeamGroups()) do
+        for _, key in ipairs(g.keys) do list[#list + 1] = key end
+    end
     return list
 end
 
@@ -581,6 +619,30 @@ end
 
 local OwnerText
 
+-- the character picker: the added-up views, the characters by team (a title per team
+-- while more than this team is shown), then the "Characters" setting
+local MODES = {
+    { "TEAM", "The team" },
+    { "RULESET", "All stored, this ruleset" },
+    { "ALL", "All stored, every ruleset" },
+}
+function mod.PickerItems()
+    local items = { { value = ALL, text = "|cffffd100" .. OwnerText(ALL) .. "|r" },
+                    { value = BYCHAR, text = "|cffffd100" .. OwnerText(BYCHAR) .. "|r" } }
+    local titles = mod.CharsMode() ~= "TEAM"
+    for _, g in ipairs(mod.TeamGroups()) do
+        if titles then items[#items + 1] = { header = true, text = "|cff888888" .. mod.GroupLabel(g) .. "|r" } end
+        for _, key in ipairs(g.keys) do items[#items + 1] = { value = key, text = OwnerText(key) } end
+    end
+    items[#items + 1] = { header = true, text = "|cff888888Show|r" }
+    local mode = mod.CharsMode()
+    for _, m in ipairs(MODES) do
+        items[#items + 1] = { value = "__MODE_" .. m[1] .. "__",
+            text = (m[1] == mode and "|cff33ff33>|r " or "   ") .. m[2] }
+    end
+    return items
+end
+
 -- a small refresh icon (grey like the cog): our own items and gold read again, everyone online asked for theirs
 function mod.RefreshButton(parent)
     local b = CreateFrame("Button", nil, parent)
@@ -640,8 +702,9 @@ function mod.ByCharacter(place, search)
 end
 
 function OwnerText(who)
-    if who == ALL then return "Whole team" end
-    if who == BYCHAR then return "Whole team, by character" end
+    local all = mod.CharsMode() ~= "TEAM"
+    if who == ALL then return all and "All characters" or "Whole team" end
+    if who == BYCHAR then return all and "All characters, by character" or "Whole team, by character" end
     local r, g, b = 1, 1, 1
     local class = mod.ClassOf and mod.ClassOf(who)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -672,10 +735,13 @@ local function Build()
     end)
 
     f.owner = UI.Button(f, 200, "", function(self)
-        local items = { { value = ALL, text = "|cffffd100Whole team|r" },
-                        { value = BYCHAR, text = "|cffffd100Whole team, by character|r" } }
-        for _, key in ipairs(mod.BagOwners()) do items[#items + 1] = { value = key, text = OwnerText(key) } end
-        UI.OpenList(self, items, f.who, function(v)
+        UI.OpenList(self, mod.PickerItems(), f.who, function(v)
+            local mode = type(v) == "string" and v:match("^__MODE_(%u+)__$")
+            if mode then   -- the "Characters" setting, from here too
+                M.db.otherChars = mode ~= "TEAM" and mode or false
+                if MMT.RefreshConfig then MMT.RefreshConfig() end
+                return mod.RefreshBags()
+            end
             f.who, f.offset = v, 0
             M.db.lastWho = v   -- for "Open on: last viewed"
             mod.RefreshBags()
@@ -790,7 +856,7 @@ local function Build()
     f.team.empty:SetJustifyH("LEFT")
     f.team.empty:SetWidth(TEAM_W - 16)
     f.team.empty:SetText("Drag an item onto a name above to give it.")
-    f.teamButtons, f.pairRows = {}, {}
+    f.teamButtons, f.pairRows, f.teamTitles = {}, {}, {}
     f.team.totalLabel = UI.Label(f.team, "Total gold", "GameFontNormalSmall")
     f.team.total = UI.Label(f.team, "", "GameFontHighlightSmall")
     -- keep the panel on screen while the window is dragged
@@ -869,20 +935,42 @@ function mod.RefreshTeam(f)
     -- switched off in the settings: no panel (drops still work on a character's section, by character)
     if M.db.sidePanel == false then f.team:Hide() return end
     f.team:Show()
-    local keys = {}
-    for _, key in ipairs(MMT.SortedMembers()) do keys[#keys + 1] = key end
-    local own = MMT.PlayerFull()
-    local listed = false
-    for _, key in ipairs(keys) do if key == own then listed = true end end
-    if own and not listed and mod.Chars()[own] then table.insert(keys, 1, own) end   -- not in the team yet
-    -- with "Characters" on all stored: the others after them
-    if mod.CharsMode() ~= "TEAM" then
-        local inList = {}
-        for _, key in ipairs(keys) do inList[key] = true end
-        for _, key in ipairs(mod.BagOwners()) do if not inList[key] then keys[#keys + 1] = key end end
+    -- the team (also members nothing is stored of yet: drop targets), then with "Characters"
+    -- on all stored the other teams, each under a title with its gold added up
+    local keys, titleAt = {}, {}
+    local titles = mod.CharsMode() ~= "TEAM"
+    for _, g in ipairs(mod.TeamGroups(true)) do
+        if titles then titleAt[#keys + 1] = g end
+        for _, key in ipairs(g.keys) do keys[#keys + 1] = key end
     end
+    local nTitle = 0
     local y = -30
     for i, key in ipairs(keys) do
+        local g = titleAt[i]
+        if g then
+            nTitle = nTitle + 1
+            local t = f.teamTitles[nTitle]
+            if not t then
+                t = { label = UI.Label(f.team, "", "GameFontNormalSmall"), gold = UI.Label(f.team, "", "GameFontHighlightSmall") }
+                t.label:SetJustifyH("LEFT")
+                t.label:SetWordWrap(false)
+                f.teamTitles[nTitle] = t
+            end
+            local sum, any = 0, false
+            for _, k in ipairs(g.keys) do
+                local gold = mod.Gold(k)
+                if gold then sum, any = sum + gold, true end
+            end
+            t.gold:SetText(any and mod.FormatGold(sum) or "")
+            t.gold:ClearAllPoints()
+            t.gold:SetPoint("TOPRIGHT", -14, y - 4)
+            t.label:SetText(mod.GroupLabel(g))
+            t.label:ClearAllPoints()
+            t.label:SetPoint("TOPLEFT", 10, y - 4)
+            t.label:SetPoint("RIGHT", t.gold, "LEFT", -6, 0)
+            t.label:Show(); t.gold:Show()
+            y = y - 18
+        end
         local b = f.teamButtons[i]
         if not b then
             -- a row like MMT's settings list: the one shown gets the blue bar
@@ -921,6 +1009,7 @@ function mod.RefreshTeam(f)
         y = y - TEAM_ROW
     end
     for i = #keys + 1, #f.teamButtons do f.teamButtons[i]:Hide() end
+    for i = nTitle + 1, #f.teamTitles do f.teamTitles[i].label:Hide(); f.teamTitles[i].gold:Hide() end
     -- everyone's gold added up (the characters listed above)
     local total = mod.TotalGold()
     f.team.total:ClearAllPoints()

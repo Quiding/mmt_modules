@@ -345,7 +345,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.9.5)
+### MMT_TeamInventory (v0.10.0)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -405,6 +405,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   "First Last-<rs>" (own account only, one match). Unknown = counts as this ruleset. No gifts across rulesets (Drop / Holders);
   other rulesets tagged " (PvE)" in the picker and panel. Only characters this account heard from are stored: another account's
   SavedVariables can't be read in game (on the user's PC each account only has its own teams' characters).
+  Teams (0.10.0): `rec.team` = `mod.TeamSig()` (keys of own + SortedMembers, sorted, joined ","), stamped on every stored
+  member by `mod.StampTeam()` (OnEnable, TEAM_CHANGED, each `mod.TeamGroups`). `mod.TeamGroups(withEmpty)` = { {current, keys},
+  {sig, keys}, ... } (this team in team order - withEmpty adds members nothing is stored of, for the panel -, then by sig: this
+  ruleset first, unknown team last); `mod.BagOwners()` flattens it; `mod.GroupLabel(g)` "This team" / "Team: <first names of
+  the sig>" / "Team not known". Titles only when CharsMode ~= TEAM: picker (`mod.PickerItems()`, headers) and panel
+  (`f.teamTitles` label + the group's gold). The picker ends with "Show" + `__MODE_<TEAM|RULESET|ALL>__` entries = the
+  Characters setting. ALL / BYCHAR are named "All characters ..." when more than the team is shown.
 - Settings: tabs General / Team bags / Look (`SettingsKit.lua` `mod.Tabs`; own ResetButton, no ShareBar). Look keys
   `bagIconSize`, `bagColumns`, `bagSpacing` (read by `ReadLook()` into the SIZE / COLS / GAP upvalues each redraw;
   window never narrower than `MIN_W`), `bagBgTexture` (LSM) / `bagBgColor` / `bagBgAlpha` / `bagBorderColor`

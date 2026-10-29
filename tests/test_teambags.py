@@ -840,3 +840,53 @@ print(lua.eval(r'''function(m)
   for _, k in ipairs({ "Cara-Sun", "Dora-Moon", "Ed-Old", "Fen-New" }) do chars[k] = nil end
   return "characters by ruleset ok"
 end''')(mod))
+
+# all stored characters grouped by the team they were last played in (rec.team), a title per team
+# with its gold in the panel; the picker has the titles and the "Characters" choice
+print(lua.eval(r"""function(m)
+  local f = m.bags
+  local chars = m.Chars()
+  chars["Anna-Smith"].gold, chars["Bob-Stone"].gold = 1000, 2000
+  chars["Cara-Sun"] = { b = {}, k = {}, m = {}, e = {}, gold = 10000, rs = "PvP", team = "Cara-Sun,Dan-Sky,Ola-Gone" }
+  chars["Dan-Sky"]  = { b = {}, k = {}, m = {}, e = {}, gold = 20000, rs = "PvP", team = "Cara-Sun,Dan-Sky,Ola-Gone" }
+  chars["Eve-Old"]  = { b = {}, k = {}, m = {}, e = {}, gold = 40000, rs = "PvP" }
+  m.M.db.otherChars = false
+  f:Hide()
+  m.OpenBags("b", "__ALL__")
+  -- this team is stamped on its members
+  assert(chars["Anna-Smith"].team == "Anna-Smith,Bob-Stone" and chars["Bob-Stone"].team == "Anna-Smith,Bob-Stone", "team not stamped")
+  -- the team only: no titles
+  for _, t in ipairs(f.teamTitles) do assert(not t.label:IsShown(), "title with the team only") end
+  local items = m.PickerItems()
+  for _, it in ipairs(items) do assert(not (it.header and it.text:find("Team", 1, true)), "team title in the picker") end
+  -- choose "All stored, this ruleset" in the picker
+  m.bags.owner._click(m.bags.owner)
+  LIST.pick("__MODE_RULESET__")
+  assert(m.M.db.otherChars == "RULESET" and f.who == "__ALL__", "mode from the picker: " .. tostring(m.M.db.otherChars))
+  assert(table.concat(m.BagOwners(), ",") == "Anna-Smith,Bob-Stone,Cara-Sun,Dan-Sky,Eve-Old", "order: " .. table.concat(m.BagOwners(), ","))
+  local groups = m.TeamGroups()
+  assert(#groups == 3 and m.GroupLabel(groups[1]) == "This team" and m.GroupLabel(groups[2]) == "Team: Cara, Dan, Ola"
+    and m.GroupLabel(groups[3]) == "Team not known", "groups: " .. #groups .. " " .. m.GroupLabel(groups[2]))
+  -- panel: a title above each team, its gold added up
+  local shown = {}
+  for _, t in ipairs(f.teamTitles) do if t.label:IsShown() then shown[#shown + 1] = t end end
+  assert(#shown == 3 and shown[2].label:GetText() == "Team: Cara, Dan, Ola" and shown[2].gold:GetText():find("^3|T"), "panel titles")
+  assert(f.info:GetText():find("7|T", 1, true) or m.TotalGold() == 73000, "total: " .. tostring(m.TotalGold()))
+  assert(m.TotalGold() == 73000, "total of everyone: " .. tostring(m.TotalGold()))
+  -- the picker: titles in team order, the views named for everyone, the current choice marked
+  items = m.PickerItems()
+  assert(items[1].text:find("All characters", 1, true), "view name: " .. items[1].text)
+  local heads = {}
+  for _, it in ipairs(items) do if it.header then heads[#heads + 1] = it.text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end end
+  assert(table.concat(heads, ";") == "This team;Team: Cara, Dan, Ola;Team not known;Show", "picker titles: " .. table.concat(heads, ";"))
+  local marked
+  for _, it in ipairs(items) do if it.value and tostring(it.value):find("^__MODE_") and it.text:find(">", 1, true) then marked = it.value end end
+  assert(marked == "__MODE_RULESET__", "current choice not marked: " .. tostring(marked))
+  -- back to the team
+  m.bags.owner._click(m.bags.owner)
+  LIST.pick("__MODE_TEAM__")
+  assert(m.M.db.otherChars == false and table.concat(m.BagOwners(), ",") == "Anna-Smith,Bob-Stone", "back to the team")
+  for _, k in ipairs({ "Cara-Sun", "Dan-Sky", "Eve-Old" }) do chars[k] = nil end
+  return "teams grouped ok"
+end"""
+)(mod))

@@ -92,6 +92,7 @@ function MMT.IsSecret() return false end
 function MMT.Safe(fn, ...) local ok, a, b, c, d, e, f, g = pcall(fn, ...) if ok then return a, b, c, d, e, f, g end end
 function MMT.PlayerFull() return ME end
 function MMT.IsSelf(k) return k == ME end
+function MMT.SortedMembers() return { "Anna-Smith", "Bob-Stone" } end
 function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
 function MMT.FirstName(k) return (k:match("^[^-]+")) end
 function MMT.Ago() return "1 min ago" end
