@@ -1,0 +1,21 @@
+# For CurseForge's / the BigWigs packager, if it ever builds the files from GitHub:
+# each MMT_* folder is its own addon in the zip, nothing else goes in.
+# (By hand: python tools/make_release.py builds the same zip.)
+package-as: QMMTModules
+
+move-folders:
+  QMMTModules/MMT_CooldownTimers: MMT_CooldownTimers
+  QMMTModules/MMT_BuffTimers: MMT_BuffTimers
+  QMMTModules/MMT_Totems: MMT_Totems
+  QMMTModules/MMT_PawnCompare: MMT_PawnCompare
+  QMMTModules/MMT_TeamGear: MMT_TeamGear
+  QMMTModules/MMT_TeamInventory: MMT_TeamInventory
+  QMMTModules/MMT_Whispers: MMT_Whispers
+  QMMTModules/MMT_QoL: MMT_QoL
+
+ignore:
+  - tests
+  - media
+  - tools
+  - CLAUDE.md
+  - README.md

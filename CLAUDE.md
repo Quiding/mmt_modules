@@ -10,11 +10,16 @@ World of Warcraft: Forever (interface `16001`, Lua 5.1 WoW API).
 This git repo lives **directly in `Interface/AddOns`**, which also contains many
 other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
 `.gitignore` ignores everything (`/*`) and whitelists only our files:
-`.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `tests/`, `media/` (README pictures / gifs), and each of OUR module folders.
+`.gitignore`, `.gitattributes`, `.pkgmeta`, `README.md`, `CLAUDE.md`, `tests/`, `tools/`, `media/` (README pictures / gifs), and each of OUR module folders.
 - `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`, `MMT_Statistics` (every `MMT*`
   folder in MMT-src) belong to the friend: never edit or commit them. Read them for reference only.
-- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, list it in README.md.
+- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, a move-folders line to `.pkgmeta`, list it in README.md.
 - Before committing, run `git status` and make sure no other addon's files are staged.
+- Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md and the
+  git / packager files (GitHub's Download ZIP, release archives). CurseForge zip: `python tools/make_release.py [ref]`
+  (git archive of every MMT_* folder -> `dist/QMMTModules-<date>-<sha>.zip`, prints each module's version);
+  `.pkgmeta` (package-as QMMTModules + move-folders, one line per module) is for CurseForge's packager if it's ever
+  hooked up - add new modules there too.
 
 ## Git workflow
 After each meaningful change: `git add -A`, commit with a short clear message, `git push`.
