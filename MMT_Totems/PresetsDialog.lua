@@ -19,29 +19,15 @@ local function AllShamans()
     return list
 end
 
--- MMT's dropdown list is on the same layer (FULLSCREEN_DIALOG) as this window, which comes to the
--- front when clicked (Toplevel) - so a dropdown opened from it ended up behind it. After the core
--- opens a list (post-hook, nothing replaced), it and its click-catcher come to the front again.
-local function ListToFront()
-    local list = _G.MMTDropdownList
-    local f = _G.MMTTotemsPresets
-    if not (list and list:IsShown() and f and f:IsShown()) then return end
-    if list.catcher and list.catcher.Raise then list.catcher:Raise() end
-    list:Raise()
-end
-mod.ListToFront = ListToFront
-
-local hooked = false
 local function Build()
     local UI, Hp = MMT.UI, MMT.ConfigHelpers
-    if not hooked and type(UI.OpenList) == "function" then
-        hooked = true
-        hooksecurefunc(UI, "OpenList", ListToFront)
-    end
     local f = CreateFrame("Frame", "MMTTotemsPresets", UIParent)
     f:SetSize(W, H)
     f:SetPoint("CENTER")
-    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    -- DIALOG like MMT's settings (Toplevel: in front of them when opened or clicked); MMT's dropdown
+    -- lists are FULLSCREEN_DIALOG, one layer up. On that layer too, this window came to the front
+    -- over its own dropdowns (raising the list after it opened didn't win in game).
+    f:SetFrameStrata("DIALOG")
     f:SetToplevel(true)
     f:SetClampedToScreen(true)
     f:SetMovable(true)

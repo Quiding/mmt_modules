@@ -632,17 +632,19 @@ print("A:", A.eval(r"""function(m)
   return "practice shaman ok"
 end""")(amod))
 
-# a dropdown opened from the presets window comes to the front (same layer, the window is Toplevel)
+# the presets window sits one layer below MMT's dropdown lists (FULLSCREEN_DIALOG), so its dropdowns
+# open in front of it: on the same layer the window (Toplevel) came to the front over them
 print("A:", A.eval(r"""function(m)
-  local raised = {}
-  local function F(name) local f = CreateFrame("Frame", name); f:Show(); f.Raise = function() raised[#raised + 1] = name end; return f end
-  F("MMTTotemsPresets")
-  local list = F("MMTDropdownList")
-  list.catcher = F("catcher")
-  m.ListToFront()
-  assert(raised[1] == "catcher" and raised[2] == "MMTDropdownList", "list not raised: " .. table.concat(raised, ","))
-  MMTTotemsPresets:Hide(); raised = {}
-  m.ListToFront()
-  assert(#raised == 0, "raised while the presets window is closed")
-  return "dropdown above the presets window ok"
+  local strata
+  local real = CreateFrame
+  CreateFrame = function(kind, name, ...)
+    local f = real(kind, name, ...)
+    if name == "MMTTotemsPresets" then f.SetFrameStrata = function(_, s) strata = s end end
+    return f
+  end
+  setmetatable(MMT.ConfigHelpers, { __index = function() return function() return CreateFrame("Frame") end end })
+  local ok, err = pcall(m.OpenPresets)
+  CreateFrame = real
+  assert(strata == "DIALOG", "presets window strata: " .. tostring(strata) .. " " .. tostring(err))
+  return "presets window below the dropdown layer ok"
 end""")(amod))
