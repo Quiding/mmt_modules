@@ -120,9 +120,9 @@ SlashCmdList.MMTCOOLDOWNTIMERS = function(msg)
     elseif msg == "lock" then
         M.db.locked = not M.db.locked
         MMT.Print("Cooldowns window %s.", M.db.locked and "locked" or "unlocked")
-        mod.window:Refresh()   -- unlocked: every tracked icon shows, draggable
-        if MMT.RefreshConfig then MMT.RefreshConfig() end
+    elseif msg == "arrange" then
+        mod.ToggleArrange()
     else
-        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
+        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct arrange, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
     end
 end

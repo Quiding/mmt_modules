@@ -39,13 +39,14 @@
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
 --
--- Dragging icons (v13): while the window is unlocked, an icon with `drag` can be dragged along its
--- own row. It only lands among icons of the same `group` (any value compared with ==, e.g. the list
+-- Dragging icons (v13): an icon with `drag` can be dragged along its own row (modules give icons
+-- `drag` only in their arrange mode: MMTIconBars.SetArrange(windowName, on), MMTIconBars.Arranging(name),
+-- session only; such icons take the mouse even with clickThrough and show a dotted grip). It only lands among icons of the same `group` (any value compared with ==, e.g. the list
 -- table the entries come from): a line shows the spot, dropped past the group it goes to the group's
 -- nearest end. On release move(src, dst, after) gets the dragged icon's drag table and that of the
 -- group icon it lands before (after = false) or after (after = true); `id` tells icons apart (the
 -- dragged one is dimmed, dropping it on its own spot does nothing). Dragging an icon without `drag`
--- moves the window like its background.
+-- moves the window like its background (when unlocked).
 
 local VERSION = 13
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
@@ -55,6 +56,14 @@ MMTIconBars = lib
 lib.version = VERSION
 lib.windows = lib.windows or {}
 lib.extras = lib.extras or {}   -- [windowName] = { [id] = { fn, side } }
+lib.arrange = lib.arrange or {}  -- [windowName] = true while its icons are being arranged (session only)
+
+function lib.Arranging(name) return lib.arrange[name] and true or false end
+function lib.SetArrange(name, on)
+    lib.arrange[name] = on and true or nil
+    local w = lib.windows[name]
+    if w then w:Refresh() end
+end
 
 local MMT = MMT
 
@@ -170,6 +179,22 @@ local function NewIcon(parent)
     b.count = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.count:SetPoint("BOTTOMRIGHT", -1, 1)
     b.tally = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    -- dotted grip (2 x 3 dots on a dark patch, top left) on icons that can be dragged
+    b.grip = CreateFrame("Frame", nil, over)
+    b.grip:SetSize(8, 12)
+    b.grip:SetPoint("TOPLEFT", 1, -1)
+    local patch = b.grip:CreateTexture(nil, "ARTWORK")
+    patch:SetAllPoints()
+    patch:SetColorTexture(0, 0, 0, 0.55)
+    for col = 0, 1 do
+        for r = 0, 2 do
+            local d = b.grip:CreateTexture(nil, "OVERLAY")
+            d:SetSize(2, 2)
+            d:SetPoint("TOPLEFT", 1 + col * 4, -1 - r * 4)
+            d:SetColorTexture(1, 1, 1, 0.9)
+        end
+    end
+    b.grip:Hide()
     b:SetScript("OnEnter", function(self)
         local i = self.data
         if not i then return end
@@ -271,7 +296,8 @@ local function Setup(b, i, key, c)
     else
         b.cd:Hide()
     end
-    b:EnableMouse(not c.clickThrough)
+    b:EnableMouse(not c.clickThrough or i.drag ~= nil)
+    b.grip:SetShown(i.drag ~= nil)
     Paint(b, c)
     b:Show()
 end
@@ -389,7 +415,7 @@ function IconDragStart(b)
     local row = b:GetParent()
     local w = row.window
     local c = w.def.cfg()
-    if b.data and b.data.drag and c and not c.locked and not drag then
+    if b.data and b.data.drag and c and not drag then
         GameTooltip:Hide()
         drag = { src = b.data.drag, row = row, key = row.key, window = w }
         Repaint(w)

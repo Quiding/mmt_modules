@@ -184,6 +184,13 @@ M.Page = function(_, page)
         Apply()
     end)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
+    -- arrange mode (session only): every tracked buff shows, drag them to reorder
+    local arrange
+    arrange = UI.Button(p, COL_W, "", function() mod.ToggleArrange() end)
+    local function ArrangeText() arrange.label:SetText(mod.Arranging("MMTBuffs") and "Stop arranging icons" or "Arrange icons (drag to reorder)") end
+    ArrangeText()
+    L:Add(arrange, UI.ROW + 2)
+    UI.Tooltip(arrange, "Arrange icons", "Every member's row and the All bar show everything their lists track (the hide options wait), with dots on the icons: drag one along its row to move it in its list. Attached to the Cooldowns bars, the buff icons there too. Until you click again or /reload. Also /mmtbt arrange.")
 
     local R = UI.Column(p, COL2_X, 0, COL_W)
     R:Header("All bar")
@@ -439,6 +446,7 @@ M.Page = function(_, page)
     page.OnRefresh = function()
         list:Render(M.db.lists[class] or {})
         who.label:SetText(WhoText())
+        ArrangeText()
     end
 end
 

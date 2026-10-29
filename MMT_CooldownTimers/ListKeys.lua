@@ -130,10 +130,13 @@ function mod.CollectEntries(key, withAll, id)
     return out, from
 end
 
--- Bars unlocked (cfg = the window's settings: locked, clickThrough): every tracked icon shows,
--- whatever the hide options say, and icons can be dragged to reorder their list (IconBars v13).
-function mod.Arranging(cfg)
-    return cfg and not cfg.locked and not cfg.clickThrough or false
+-- Arrange mode of any of these IconBars windows (session only, /mmtct arrange, /mmtbt arrange): every
+-- tracked icon shows, whatever the hide options say, and icons can be dragged to reorder their list.
+function mod.Arranging(...)
+    for i = 1, select("#", ...) do
+        if MMTIconBars.Arranging(select(i, ...)) then return true end
+    end
+    return false
 end
 
 -- an icon dragged on the bars: move its entry in its list (mod.MoveEntry: SettingsKit), then the

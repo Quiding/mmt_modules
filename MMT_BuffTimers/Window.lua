@@ -47,11 +47,10 @@ local function EntriesFor(key)
     return out, outFrom
 end
 
--- the bars the member rows are drawn in are unlocked (the Cooldowns window's lock when attached):
--- every tracked buff shows, whatever the hide options say, and icons can be dragged (ListKeys.lua)
-local function RowsCfg()
-    local w = mod.Attached() and MMTIconBars.windows[CD_WINDOW]
-    return w and w.def.cfg() or M.db
+-- arrange mode for the member rows (ListKeys.lua): ours, or the Cooldowns window's while attached
+local function ArrangingRows()
+    if mod.Attached() then return mod.Arranging("MMTBuffs", CD_WINDOW) end
+    return mod.Arranging("MMTBuffs")
 end
 
 -- look of a buff icon (missing: normal / red / grey, glow; active: opacity),
@@ -70,7 +69,7 @@ end
 -- icons of one member
 local function Icons(key)
     local icons = {}
-    local arranging = mod.Arranging(RowsCfg())
+    local arranging = ArrangingRows()
     local entries, from = EntriesFor(key)
     for n, e in ipairs(entries) do
         local state, start, dur, count, matched, micon
@@ -110,8 +109,8 @@ local function AllRow()
     local cfg = M.db
     local icons = {}
     local members = mod.AllMembers()
-    -- unlocked: every switched-on buff of the list shows, draggable
-    local arranging = mod.Arranging(cfg)
+    -- arrange mode: every switched-on buff of the list shows, draggable
+    local arranging = mod.Arranging("MMTBuffs")
     for _, e in ipairs(cfg.lists.ALL or {}) do
         local before = #icons
         -- only the members this buff is for ("Only for", Roles.lua)
@@ -228,6 +227,17 @@ function mod.Apply()
         mod.Detach()
         mod.window:Refresh()
     end
+end
+
+-- arrange mode on / off (session only); attached, it covers our icons on the Cooldowns bars too
+function mod.ToggleArrange()
+    local on = not mod.Arranging("MMTBuffs")
+    MMTIconBars.SetArrange("MMTBuffs", on)
+    mod.Apply()
+    if on and not M.db.shown then MMT.Print("%s: the window is hidden (/mmtbt shows it).", M.title) end
+    MMT.Print("%s: %s", M.title, on and "arranging - every tracked buff shows; drag icons by their dots to reorder. /mmtbt arrange again to stop."
+        or "arranging off.")
+    if MMT.RefreshConfig then MMT.RefreshConfig() end
 end
 
 -- a list changed from the bars (an icon dragged): like the list editor's changes

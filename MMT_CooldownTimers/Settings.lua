@@ -82,6 +82,13 @@ M.Page = function(_, page)
         Apply()
     end)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
+    -- arrange mode (session only): every tracked icon shows, drag them to reorder
+    local arrange
+    arrange = UI.Button(p, COL_W, "", function() mod.ToggleArrange() end)
+    local function ArrangeText() arrange.label:SetText(mod.Arranging("MMTCooldowns") and "Stop arranging icons" or "Arrange icons (drag to reorder)") end
+    ArrangeText()
+    L:Add(arrange, UI.ROW + 2)
+    UI.Tooltip(arrange, "Arrange icons", "Every member's row shows everything their lists track (the hide options wait), with dots on the icons: drag one along its row to move it in its list. Until you click again or /reload. Also /mmtct arrange.")
 
     local R = UI.Column(p, COL2_X, 0, COL_W)
     R:Header("Icons")
@@ -250,7 +257,10 @@ M.Page = function(_, page)
     end)
     RS:Add(def, UI.ROW + 2)
 
-    page.OnRefresh = function() list:Render(M.db.lists[class] or {}) end
+    page.OnRefresh = function()
+        list:Render(M.db.lists[class] or {})
+        ArrangeText()
+    end
 end
 
 M.Report = function(_, add)

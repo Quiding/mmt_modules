@@ -30,8 +30,8 @@ end
 
 local function Rows()
     local rows = {}
-    -- unlocked: every tracked icon shows (not learned, not carried, ready), draggable (ListKeys.lua)
-    local arranging = mod.Arranging(M.db)
+    -- arrange mode: every tracked icon shows (not learned, not carried, ready), draggable (ListKeys.lua)
+    local arranging = mod.Arranging("MMTCooldowns")
     for _, key in ipairs(mod.Members()) do
         local icons = {}
         local entries, from = mod.EntriesFor(key)
@@ -59,6 +59,16 @@ local function Rows()
     return rows
 end
 
+-- arrange mode on / off (session only)
+function mod.ToggleArrange()
+    local on = not mod.Arranging("MMTCooldowns")
+    MMTIconBars.SetArrange("MMTCooldowns", on)
+    if on and not M.db.shown then MMT.Print("%s: the window is hidden (/mmtct shows it).", M.title) end
+    MMT.Print("%s: %s", M.title, on and "arranging - every tracked icon shows; drag icons by their dots to reorder. /mmtct arrange again to stop."
+        or "arranging off.")
+    if MMT.RefreshConfig then MMT.RefreshConfig() end
+end
+
 -- a list changed from the bars (an icon dragged): like the list editor's changes
 function mod.ListsChanged()
     mod.BuildIndex()
@@ -68,7 +78,7 @@ end
 
 -- with "hide ready" an icon must go away when its cooldown ends
 C_Timer.NewTicker(1, function()
-    if M.enabled and M.db and M.db.hideReady and M.db.shown and not mod.Arranging(M.db) and not MMTIconBars.IsDragging() then mod.Refresh() end
+    if M.enabled and M.db and M.db.hideReady and M.db.shown and not mod.Arranging("MMTCooldowns") and not MMTIconBars.IsDragging() then mod.Refresh() end
 end)
 
 mod.window = MMTIconBars.NewWindow({

@@ -1,8 +1,9 @@
 """Dragging icons on the bars (IconBars v13 "Dragging icons") in Cooldown Timers and
-Buff Timers: unlocked bars show every tracked icon whatever the hide options say,
-an icon dragged along its row reorders the list it comes from (only among icons of
-that list: past them it goes to the list's nearest end), locked bars hide again and a
-drag moves the window. Built on test_settings' stand-ins, with frames that keep their
+Buff Timers: in arrange mode (/mmtct arrange, /mmtbt arrange; session only, not the
+lock) the bars show every tracked icon whatever the hide options say, with a dotted
+grip, and an icon dragged along its row reorders the list it comes from (only among
+icons of that list: past them it goes to the list's nearest end); arrange off hides
+them again and a drag moves the window. Built on test_settings' stand-ins, with frames that keep their
 scripts and a position (TOPLEFT offsets inside the row) so the drop spot can be found."""
 import os, sys
 from lupa.lua51 import LuaRuntime
@@ -105,21 +106,23 @@ print(lua.eval(r'''function(m)
   MMT.IsSelf = function(k) return k == "Anna-Smith" end
   MMT.db.team["Bob-Stone"] = { class = "SHAMAN" }
   M.db.showBuffs = false
-  M.db.hideReady = true          -- everything is ready: nothing shows while locked
+  M.db.hideReady = true          -- everything is ready: nothing shows outside arrange mode
   M.db.lists = {
     SHAMAN = { { t = "s", id = 1, cd = 60 }, { t = "s", id = 2, cd = 60 }, { t = "s", id = 3, cd = 60 } },
     ALL = { { t = "s", id = 4, cd = 60 }, { t = "s", id = 5, cd = 60 }, { t = "s", id = 6, cd = 60, off = true } },
   }
   local w = m.window
-  M.db.locked = true
+  M.db.locked = false            -- unlocked or not doesn't matter any more
   w:Refresh()
-  assert(not w.frame.shown or #w.rows == 0 or not w.rows[1].shown or Ids(w.rows[1]) == "", "locked: ready icons shown")
-  -- unlocked: every switched-on entry, ready or not
-  M.db.locked = false
-  w:Refresh()
+  assert(not w.frame.shown or #w.rows == 0 or not w.rows[1].shown or Ids(w.rows[1]) == "", "ready icons shown")
+  -- arrange mode: every switched-on entry, ready or not, with the grip; locked and click-through too
+  M.db.locked, M.db.clickThrough = true, true
+  m.ToggleArrange()
+  assert(MMTIconBars.Arranging("MMTCooldowns"), "arrange mode not on")
   local row = w.rows[1]
-  assert(Ids(row) == "1,2,3,4,5", "unlocked icons: " .. Ids(row))
+  assert(Ids(row) == "1,2,3,4,5", "arranging icons: " .. Ids(row))
   assert(row.icons[1].data.drag and row.icons[1].data.drag.group == M.db.lists.SHAMAN, "no drag on the icons")
+  assert(row.icons[1].grip.shown and row.icons[5].grip.shown, "no dots on the icons")
   -- 1 after 3 (its own list)
   Drag(w, row, 1, 3)
   assert(ListIds(M.db.lists.SHAMAN) == "2,3,1", "1 after 3: " .. ListIds(M.db.lists.SHAMAN))
@@ -146,18 +149,17 @@ print(lua.eval(r'''function(m)
   assert(not row.drop.shown, "drop line on its own spot")
   b.scripts.OnDragStop(b)
   assert(not Driver(w.frame).shown, "drag not ended")
-  -- locked again: hidden again, and a drag moves the window instead
-  M.db.locked = true
-  w:Refresh()
-  assert(not row.shown or Ids(row) == "", "locked: still everything shown")
+  -- arrange off: hidden again, no dots, and a drag moves the window instead
+  m.ToggleArrange()
+  assert(not row.shown or Ids(row) == "", "arrange off: still everything shown")
   local moved = false
   w.frame.scripts.OnDragStart = function() moved = true end
-  M.db.hideReady = false
+  M.db.hideReady, M.db.locked, M.db.clickThrough = false, false, false
   w:Refresh()
   row = w.rows[1]
-  assert(row.icons[1].data.drag == nil, "drag on a locked bar")
+  assert(row.icons[1].data.drag == nil and not row.icons[1].grip.shown, "drag / dots outside arrange mode")
   Drag(w, row, 1, 3)
-  assert(moved and ListIds(M.db.lists.SHAMAN) == "3,1,2", "locked drag")
+  assert(moved and ListIds(M.db.lists.SHAMAN) == "3,1,2", "drag outside arrange mode")
   return "Cooldowns bar drag ok"
 end''')(mod))
 
@@ -170,21 +172,20 @@ print(lua.eval(r'''function(m)
   MMT.db.team["Bob-Stone"] = { class = "SHAMAN" }
   MMT.ModuleActive = function() return false end   -- Cooldowns off: own window
   M.db.allBar = true
-  M.db.hideNoCaster = true    -- nobody can cast these: hidden while locked
+  M.db.hideNoCaster = true    -- nobody can cast these: hidden outside arrange mode
   M.db.lists = {
     SHAMAN = { { id = 11 }, { id = 12 } },
     ALL = { { id = 21 }, { id = 22 }, { id = 23 } },
   }
   m.Castable = function() return false end
   local w = m.window
-  M.db.locked = true
   m.Apply()
-  assert(not w.frame.shown or not w.rows[1] or not w.rows[1].shown, "locked: uncastable buffs shown")
-  M.db.locked = false
-  m.Apply()
+  assert(not w.frame.shown or not w.rows[1] or not w.rows[1].shown, "uncastable buffs shown")
+  m.ToggleArrange()
   local all, bob = w.rows[1], w.rows[2]
-  assert(all.key == "All" and Ids(all) == "21,22,23", "All row unlocked: " .. Ids(all))
-  assert(bob.key == "Bob-Stone" and Ids(bob) == "11,12", "Bob's row unlocked: " .. tostring(bob.key) .. " " .. Ids(bob))
+  assert(all.key == "All" and Ids(all) == "21,22,23", "All row arranging: " .. Ids(all))
+  assert(bob.key == "Bob-Stone" and Ids(bob) == "11,12", "Bob's row arranging: " .. tostring(bob.key) .. " " .. Ids(bob))
+  assert(all.icons[1].grip.shown and bob.icons[2].grip.shown, "no dots")
   -- All row: 21 after 23
   Drag(w, all, 1, 3)
   assert(ListIds(M.db.lists.ALL) == "22,23,21", "All row drag: " .. ListIds(M.db.lists.ALL))
@@ -192,8 +193,7 @@ print(lua.eval(r'''function(m)
   -- Bob's row: 12 before 11
   Drag(w, bob, 2, 0)
   assert(ListIds(M.db.lists.SHAMAN) == "12,11", "member row drag: " .. ListIds(M.db.lists.SHAMAN))
-  M.db.locked = true
-  m.Apply()
-  assert(not w.frame.shown or not w.rows[1].shown, "locked again: still shown")
+  m.ToggleArrange()
+  assert(not w.frame.shown or not w.rows[1].shown, "arrange off: still shown")
   return "Buffs bar drag ok"
 end''')(mod))
