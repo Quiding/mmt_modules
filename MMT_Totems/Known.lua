@@ -82,8 +82,11 @@ function mod.SlotShown(key, element)
     if c.hideNoItem and not mod.HasTotemItem(key, element) then return false end
     if c.hideUnlearned and mod.HasKnownList(key) then
         local any = false
+        local own = MMT.IsSelf(key)
         for _, id in ipairs(mod.TOTEMS[element]) do
-            if mod.SpellInfo(id) and mod.KnowsTotem(key, id) then any = true break end
+            -- another shaman: their client's list (it only has totems that exist there), so this
+            -- client needs no spell data for it (a warrior often has none: the bar disappeared)
+            if (not own or mod.SpellInfo(id)) and mod.KnowsTotem(key, id) then any = true break end
         end
         if not any then return false end
     end

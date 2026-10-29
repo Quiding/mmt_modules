@@ -34,14 +34,14 @@ function mod.SetSelected(key, element, id, quiet)
     id = tonumber(id) or 0
     M.db.selected[key] = M.db.selected[key] or {}
     M.db.selected[key][element] = id ~= 0 and id or nil
-    if not quiet then MMT.SendToTeam(("MTTS:%s:%d:%s"):format(element, id, key), true) end
+    if not quiet and not mod.IsPractice(key) then MMT.SendToTeam(("MTTS:%s:%d:%s"):format(element, id, key), true) end
     Changed(key)
 end
 
 function mod.SetSequence(key, text, quiet)
     text = (text or ""):gsub("[\r\n=]", " ")
     M.db.sequences[key] = text ~= "" and text or nil
-    if not quiet then MMT.SendToTeam(("MTTQ:%s=%s"):format(key, text), true) end
+    if not quiet and not mod.IsPractice(key) then MMT.SendToTeam(("MTTQ:%s=%s"):format(key, text), true) end
     Changed(key)
 end
 

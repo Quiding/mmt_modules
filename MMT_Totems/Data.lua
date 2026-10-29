@@ -36,8 +36,35 @@ mod.RECALL = { ["Totemic Recall"] = true, ["Totemic Call"] = true }
 mod.DEFAULT_SEQUENCE = "Fire, Air, Water, Earth"
 mod.PRESET_ICON = "Interface\\Icons\\Spell_Totem_WardOfDraining"
 
+-- spell data is lazy on this client: names of spells this character never used can be
+-- nil until asked for (a warrior's client then had no totems to choose for a shaman).
+-- mod.LoadTotemData() asks for every totem; SPELL_DATA_LOAD_RESULT rebuilds the lookup.
+local isTotem = {}
+for _, list in pairs(mod.TOTEMS) do for _, id in ipairs(list) do isTotem[id] = true end end
+
+function mod.LoadTotemData()
+    if not (C_Spell and C_Spell.RequestLoadSpellData) then return 0 end
+    local n = 0
+    for id in pairs(isTotem) do
+        if not mod.SpellInfo(id) then pcall(C_Spell.RequestLoadSpellData, id); n = n + 1 end
+    end
+    return n
+end
+
 -- name -> { id, element }, built when the spell names are available
 local byName
+local reloadQueued = false
+function mod.TotemDataArrived(id, ok)
+    if not isTotem[tonumber(id) or 0] or ok == false then return end
+    byName = nil
+    if reloadQueued then return end
+    reloadQueued = true
+    C_Timer.After(0.5, function()
+        reloadQueued = false
+        if mod.M.enabled then mod.Refresh() end
+    end)
+end
+
 local function Names()
     if not byName then
         byName = {}

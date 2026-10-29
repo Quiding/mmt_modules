@@ -594,3 +594,40 @@ print("A:", A.eval(r"""function(m)
   TOTEMS_UP = {}
   return "MTTR answered ok"
 end""")(amod))
+
+# another shaman's slots follow THEIR learned list, even when this client has no spell data for
+# the totems (a warrior's client often hasn't: the whole bar disappeared with "hide unlearned")
+print("B:", B.eval(r"""function(m)
+  m.M.db.hideUnlearned, m.M.db.hideNoItem = true, false
+  m.M.store.known = m.M.store.known or {}
+  m.M.store.known["Anna-Smith"] = { [3599] = true }          -- Searing Totem only (Fire)
+  local realInfo = m.SpellInfo
+  m.SpellInfo = function() return nil end                    -- no spell data here at all
+  assert(m.SlotShown("Anna-Smith", "Fire"), "Fire hidden although Anna knows Searing Totem")
+  assert(not m.SlotShown("Anna-Smith", "Water"), "Water shown although Anna knows no water totem")
+  -- the name lookup is built again when the data arrives (built now without data: no names)
+  m.TotemDataArrived(3599, true)
+  assert(m.TotemByName("Searing Totem") == nil, "name known without data")
+  m.SpellInfo = realInfo
+  m.TotemDataArrived(3599, true)
+  assert(m.TotemByName("Searing Totem") == 3599, "lookup not rebuilt when the data arrived")
+  return "other shamans' slots without spell data ok"
+end""")(bmod))
+
+# the practice shaman: a made-up bar, nothing about it sent, wiped when it goes
+print("A:", A.eval(r"""function(m)
+  SENT = {}
+  m.SetPractice(true)
+  local found = false
+  for _, k in ipairs(m.Shamans()) do if k == m.PRACTICE then found = true end end
+  assert(found and m.IsShaman(m.PRACTICE), "no practice bar")
+  assert(m.SlotShown(m.PRACTICE, "Fire") and m.KnowsTotem(m.PRACTICE, 3599), "practice shaman can't use every totem")
+  m.SetSelected(m.PRACTICE, "Fire", 3599)
+  m.SetSequence(m.PRACTICE, "Fire, Air")
+  assert(#SENT == 0, "practice shaman sent to the team: " .. tostring(SENT[1]))
+  assert(m.M.db.selected[m.PRACTICE].Fire == 3599, "choice not kept while practising")
+  m.SetPractice(false)
+  assert(m.M.db.selected[m.PRACTICE] == nil and m.M.db.sequences[m.PRACTICE] == nil, "practice choices left behind")
+  for _, k in ipairs(m.Shamans()) do assert(k ~= m.PRACTICE, "practice bar after removing it") end
+  return "practice shaman ok"
+end""")(amod))

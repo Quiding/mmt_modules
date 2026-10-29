@@ -13,7 +13,7 @@ MODULES, with its own settings page.
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.8 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.9 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.6 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.7 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.0 |
@@ -154,12 +154,15 @@ tracked for them, with exact timers.
 
 - Active totem with its timer, else the chosen / last one.
 - Right-click a slot to choose a totem (only the ones that shaman has learned), left-click your own
-  to cast it.
+  to cast it. Works from every client: a warrior can set the shaman's totems.
 - A cast sequence (reorder the four element buttons) on a key, spam-safe option.
 - Individual and team presets (P / TP buttons), grouped or ungrouped bars.
-- Slots hide when the shaman has no totem item or no totem of that element learned yet.
+- Slots hide when the shaman has no totem item or no totem of that element learned yet, judged by that
+  shaman's own spells and bags (every client shows the same bar).
+- **Practice shaman** (Bars tab, or `/mmtt practice`): a made-up bar to set things up when no shaman is
+  around. It knows every totem, nothing about it is sent to the team, and it's gone after a `/reload`.
 
-`/mmtt` · `/mmtt test` · `/mmtt presets` · `/mmtt export`
+`/mmtt` · `/mmtt test` · `/mmtt practice` · `/mmtt presets` · `/mmtt export`
 
 ## Pawn Compare
 

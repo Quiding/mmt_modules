@@ -63,7 +63,31 @@ function mod.OwnKey()
     return MMT.PlayerFull()
 end
 
+-- practice shaman (session only, /mmtt practice, button on the Bars tab): a made-up bar to set
+-- things up where no shaman is around; it knows every totem, has every item, and nothing
+-- about it is sent to the team. Whatever was chosen for it is wiped when it goes.
+mod.PRACTICE = "Practice-Shaman"
+mod.practice = false
+function mod.IsPractice(key) return key == mod.PRACTICE end
+
+local function ClearPractice()
+    local k = mod.PRACTICE
+    for _, t in ipairs({ M.db.selected, M.db.sequences, M.db.presets, M.db.barPoints }) do
+        if type(t) == "table" then t[k] = nil end
+    end
+    if mod.active then mod.active[k] = nil end
+    if mod.last then mod.last[k] = nil end
+end
+
+function mod.SetPractice(on)
+    mod.practice = on and true or false
+    if not mod.practice then ClearPractice() end
+    mod.Refresh()
+    if MMT.RefreshConfig then MMT.RefreshConfig() end
+end
+
 function mod.IsShaman(key)
+    if key == mod.PRACTICE then return mod.practice end
     if MMT.IsSelf(key) then return select(2, UnitClass("player")) == "SHAMAN" end
     local m = MMT.db.team[key]
     return m and m.class == "SHAMAN" or false
@@ -83,6 +107,7 @@ function mod.Shamans()
             end
         end
     end
+    if mod.practice then list[#list + 1] = { key = mod.PRACTICE, pos = 999 } end
     -- a shaman that isn't in the team yet still gets its own bar
     local own = mod.OwnKey()
     if cfg.includeSelf and mod.IsShaman(own) and not MMT.db.team[own] then
@@ -108,7 +133,11 @@ function mod.Shamans()
     return keys
 end
 
+M:On("SPELL_DATA_LOAD_RESULT", function(id, ok) mod.TotemDataArrived(id, ok) end)
+
 M.OnEnable = function()
+    ClearPractice()        -- left in the profile when the game closed with it on
+    mod.LoadTotemData()    -- names of totems this character never used (Data.lua)
     mod.RestoreRunning()   -- other shamans' totems from before a /reload (Tracker.lua)
     mod.Refresh()
     C_Timer.After(2, function() if M.enabled then mod.Refresh() end end)
@@ -141,9 +170,13 @@ SlashCmdList.MMTTOTEMS = function(msg)
         MMT.Print("Totem bars %s.", M.db.locked and "locked" or "unlocked")
     elseif msg == "presets" then
         mod.OpenPresets()
+    elseif msg == "practice" then
+        mod.SetPractice(not mod.practice)
+        MMT.Print(mod.practice and "Totems: practice shaman on - a made-up bar to set things up, nothing about it is sent. /mmtt practice again (or /reload) removes it."
+            or "Totems: practice shaman off.")
     elseif msg == "export" or msg == "import" then
         mod.OpenTransfer()
     else
-        MMT.Print("/mmtt = show/hide, /mmtt lock, /mmtt test, /mmtt presets, /mmtt export. Settings: /mmt > MODULES > Totems.")
+        MMT.Print("/mmtt = show/hide, /mmtt lock, /mmtt test, /mmtt practice, /mmtt presets, /mmtt export. Settings: /mmt > MODULES > Totems.")
     end
 end

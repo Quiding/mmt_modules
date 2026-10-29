@@ -285,7 +285,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.6) – port of ema_totems
+### MMT_Totems (v0.4.7) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -299,6 +299,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Chooser + preset editor filter by it, own casting skips unlearned chosen totems.
 - Looks like the IconBars rows: name LEFT of the icons in one shared name column (grouped;
   own width ungrouped), above them when vertical; same timer text (tenths under 10 s).
+- Spell data is lazy (0.4.7): `mod.LoadTotemData()` (OnEnable) requests every totem, SPELL_DATA_LOAD_RESULT ->
+  `mod.TotemDataArrived` rebuilds the name lookup (`byName` in Data.lua) and redraws. `SlotShown` judges another
+  shaman by their MTTK list only (no `SpellInfo` here: a warrior's client lacked it, so `hideUnlearned` hid whole bars).
+- Practice shaman (0.4.7, session only): `mod.PRACTICE` = "Practice-Shaman", `mod.SetPractice(on)` (Bars tab button,
+  `/mmtt practice`); `IsShaman` true while on, Shamans() adds it last; knows every totem (no known list) and every item;
+  SetSelected / SetSequence never send for it (`mod.IsPractice`); its selected / sequences / presets / barPoints are
+  wiped when it goes and on OnEnable.
 - Slots: `mod.SlotShown(key, element)` (Known.lua): `hiddenElements`, `hideNoItem` (totem items
   5175-5178, own via GetItemCount on BAG_UPDATE_DELAYED; others from `MTTK:<ids>;<letters EFWA>`,
   `M.store.items[key]`, no ";" = older client = unknown), `hideUnlearned`. Sequence skips no-item elements.

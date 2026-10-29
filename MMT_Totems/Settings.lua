@@ -71,13 +71,21 @@ M.Page = function(_, page)
     L:Space(6)
     local half = (COL_W - 8) / 2
     local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
-    L:Add(test, 0)
+    L:Add(test, UI.ROW + 4)   -- Reset position sits beside it, Practice shaman below
     local reset = UI.Button(p, half, "Reset position", function()
         M.db.point = { "CENTER", "CENTER", 0, -150 }
         M.db.barPoints = {}
         mod.Refresh()
     end)
     reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
+    local practice
+    practice = UI.Button(p, COL_W, "", function() mod.SetPractice(not mod.practice) end)
+    local function PracticeText()
+        practice.label:SetText(mod.practice and "Remove the practice shaman" or "Practice shaman (until /reload)")
+    end
+    PracticeText()
+    L:Add(practice, UI.ROW + 2)
+    UI.Tooltip(practice, "Practice shaman", "A made-up shaman bar to set up the look, totems and presets on a client with no shaman around. It knows every totem and carries every item; nothing about it is sent to the team, and what you choose for it is wiped when it goes. Also /mmtt practice.")
 
     local RB = UI.Column(p, COL2_X, 0, COL_W)
     RB:Header("How the bars work")
@@ -218,6 +226,7 @@ M.Page = function(_, page)
 
 
     page.OnRefresh = function()
+        PracticeText()
         if not capturing then keyButton.label:SetText("Sequence key: " .. KeyText()) end
         if not seqKey then
             local first = Shamans()[1]
