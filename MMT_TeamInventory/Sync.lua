@@ -3,6 +3,7 @@
 --   TIVREQ                 "send me your counts" (whispered when a hash differs)
 --   TIVS:<hash>:<CLASS>#<data>  every count of one character (MMT.SendLong: any size)
 --   TIVD:<hash>#<changes>  only what changed ("b13446=4;k6948=0"), to the team
+--   TIVM:<copper>          gold, whispered with the reply to TIVREQ (else gold comes from the core's heartbeat)
 -- data = "b=13446x4,6948x1;k=...;m=...;e=...;s=..." (b bags, k bank, m mail, e equipped,
 -- s = how many of the bag items are soulbound; the hash leaves s out)
 
@@ -113,17 +114,33 @@ function mod.RequestAll()
     MMT.SendToTeam("TIVREQ", true)
 end
 
+-- the refresh buttons: read our own again and ask everyone online for theirs (items + gold)
+local lastRefresh
+function mod.RefreshAll()
+    if lastRefresh and GetTime() - lastRefresh < 5 then return false end
+    lastRefresh = GetTime()
+    mod.ScanAll()
+    mod.ScanGold()
+    mod.RequestAll()
+    return true
+end
+
+local function SetGold(key, money)
+    local rec = mod.Chars()[key]
+    if not rec or not money or MMT.IsSecret(money) then return end
+    local changed = rec.gold ~= money
+    rec.gold, rec.goldTime = money, time()
+    -- the open window shows it now (trades, mail, vendors: the core sends it ~5 s later)
+    if changed and mod.RefreshBags then mod.RefreshBags() end
+end
+
 M:Listen("XP_RECEIVED", function(key, sender, status)
     if MMT.IsSelf(key) then return end
     local rs = status and status.ext and status.ext.tir
     if type(rs) == "string" and rs:match("^%w+$") then heardRs[key] = rs end
     StampRuleset(key, mod.Chars()[key])
     -- gold: the core's heartbeat has it (MMT.status money); kept for when they're offline
-    local money = tonumber(status and status.money)
-    if money and not MMT.IsSecret(money) then
-        local rec = mod.Chars()[key]
-        if rec then rec.gold, rec.goldTime = money, time() end
-    end
+    SetGold(key, tonumber(status and status.money))
     local hash = tonumber(status and status.ext and status.ext.tiv)
     if not hash then return end
     local rec = mod.Chars()[key]
@@ -138,8 +155,12 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         if lastReply[key] and GetTime() - lastReply[key] < 5 then return end
         lastReply[key] = GetTime()
         mod.SendSnapshot(sender)
+        local money = MMT.Safe(GetMoney)
+        if money then MMT.SendAddon("TIVM:" .. money, "WHISPER", sender) end
         return
     end
+    local money = text:match("^TIVM:(%d+)$")
+    if money then return SetGold(key, tonumber(money)) end
     local hash, class, data = text:match("^TIVS:(%d+):?(%u*)#(.*)$")
     if hash then
         local rec = mod.Decode(data)

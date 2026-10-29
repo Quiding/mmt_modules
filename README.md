@@ -14,7 +14,7 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.9.2 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.9.3 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team *(new, not tested in game yet)* | 0.3.0 |
 
@@ -208,6 +208,9 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   other's nameplate with friendly nameplates on).
 - **Gold**: every character's gold (from MMT's heartbeat, kept while they're offline) in the side
   panel and the by-character headers, with the **total** below the team.
+  Updates a few seconds after a trade, mail or vendor sale; the refresh icon (top bar and Team header) asks
+  everyone online for their items and gold right away. Silver and copper can be hidden (settings > Look);
+  the totals are always added up from the exact amounts.
 - **Characters**: the team only (default), or every character Team Inventory has stored (other MMT profiles, old teams,
   other accounts' characters that were once in a team with this account) on this ruleset (PvE, PvP, ...) or on every ruleset,
   in the character list, the whole-team views, the panel and the total gold. Characters of another ruleset are tagged and can't be given items.

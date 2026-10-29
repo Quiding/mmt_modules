@@ -758,6 +758,14 @@ print(lua.eval(r'''function(m)
   -- rows keep silver and copper too (they add up to the total)
   assert(m.FormatGold(12345678):find("56|T", 1, true) and m.FormatGold(12345678):find("78|T", 1, true), "row rounded: " .. m.FormatGold(12345678))
   assert(m.FormatGold(10203):find(" 2|T", 1, true) and m.FormatGold(10203):find(" 3|T", 1, true), "1g 2s 3c: " .. m.FormatGold(10203))
+  -- silver / copper can be hidden: only the text, the total stays exact
+  m.M.db.goldCopper = false
+  assert(not m.FormatGold(10203):find("Copper", 1, true) and m.FormatGold(10203):find("Silver", 1, true), "copper shown: " .. m.FormatGold(10203))
+  m.M.db.goldSilver = false
+  assert(m.FormatGold(10203):find("^1|T") and not m.FormatGold(10203):find(" "), "only gold: " .. m.FormatGold(10203))
+  assert(m.FormatGold(203):find("^0|T.-Gold"), "under 1g with gold only: " .. m.FormatGold(203))
+  assert(m.TotalGold() == 1284567 + 12345678, "total changed by the look")
+  m.M.db.goldSilver, m.M.db.goldCopper = true, true
   names = {}
   for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
   assert(names[3] == "Cara-Sun", "Cara not after the team: " .. table.concat(names, ","))

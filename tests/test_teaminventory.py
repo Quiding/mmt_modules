@@ -388,8 +388,40 @@ print("A:", A.eval(r"""function(m)
   -- a full copy of Bob's items replaces the record: the gold stays
   DELIVER("Bob-Stone", "TIVS:1:WARRIOR#b=2589x1")
   assert(m.Gold("Bob-Stone") == 777777, "gold lost with a snapshot")
+  -- a gold change redraws the open window (trades, mail, vendors); the same amount doesn't
+  local redraws = 0
+  local saved = m.RefreshBags
+  m.RefreshBags = function() redraws = redraws + 1 end
+  LISTEN.XP_RECEIVED("Bob-Stone", "Bob", { money = 888888 })
+  assert(m.Gold("Bob-Stone") == 888888 and redraws == 1, "no redraw on a gold change: " .. redraws)
+  LISTEN.XP_RECEIVED("Bob-Stone", "Bob", { money = 888888 })
+  assert(redraws == 1, "redraw without a change")
+  -- the reply to a request carries gold (TIVM)
+  DELIVER("Bob-Stone", "TIVM:999999")
+  assert(m.Gold("Bob-Stone") == 999999 and redraws == 2, "TIVM not taken")
+  m.RefreshBags = saved
+  -- refresh button: our own read again + everyone asked; not again within 5 s
+  SENT = {}
+  assert(m.RefreshAll() == true, "refresh refused")
+  local asked = false
+  for _, s in ipairs(SENT) do if s.msg == "TIVREQ" then asked = true end end
+  assert(asked, "refresh didn't ask the team")
+  assert(m.RefreshAll() == false, "refresh twice within 5 s")
+  NOW = NOW + 6
+  SENT = {}
   return "gold ok"
 end""")(amod))
+
+# answering a request: items, then gold by whisper
+print("B:", B.eval(r"""function(m)
+  GetMoney = function() return 4242 end
+  NOW = NOW + 10
+  SENT = {}
+  DELIVER("Anna-Smith", "TIVREQ")
+  assert(#SENT == 2 and SENT[1].msg:find("^TIVS:") and SENT[2].msg == "TIVM:4242" and SENT[2].to == "Anna-Smith", "no gold with the reply")
+  SENT = {}
+  return "gold reply ok"
+end""")(bmod))
 
 # bug: split amounts never went in, then the whole stack (a trade slot holds a bag
 # slot); accepting takes the key / button (the game blocks addons), which says why not

@@ -581,6 +581,30 @@ end
 
 local OwnerText
 
+-- a small refresh icon (grey like the cog): our own items and gold read again, everyone online asked for theirs
+function mod.RefreshButton(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(16, 16)
+    local tex = b:CreateTexture(nil, "ARTWORK")
+    tex:SetAllPoints()
+    tex:SetTexture("Interface\\Buttons\\UI-RefreshButton")
+    tex:SetDesaturated(true)
+    tex:SetVertexColor(0.7, 0.7, 0.7)
+    b.tex = tex
+    b:SetScript("OnEnter", function(self)
+        tex:SetVertexColor(1, 1, 1)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Refresh")
+        GameTooltip:AddLine("Asks everyone in the team who is online for their items and gold now. Gold also updates by itself a few seconds after it changes.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() tex:SetVertexColor(0.7, 0.7, 0.7); GameTooltip:Hide() end)
+    b:SetScript("OnClick", function()
+        if mod.RefreshAll() then MMT.Print("Team Inventory: asked the team for their items and gold.") end
+    end)
+    return b
+end
+
 -- " (PvP)" after a character of another ruleset than this one
 local function RulesetTag(key)
     local rs, own = mod.RulesetOf(key), mod.Ruleset()
@@ -681,6 +705,8 @@ local function Build()
     cog:SetScript("OnLeave", function() tex:SetVertexColor(0.6, 0.6, 0.6); GameTooltip:Hide() end)
     cog:SetScript("OnClick", function() MMT.ToggleConfig("TeamInventory") end)
     f.cog = cog
+    f.refresh = mod.RefreshButton(f)
+    f.refresh:SetPoint("RIGHT", cog, "LEFT", -4, 0)
 
     f.tabs = {}
     local prev
@@ -726,7 +752,7 @@ local function Build()
     f.filters:Hide()
 
     f.search = UI.EditBox(f, 140, "Search", function(_, box) box:ClearFocus() end)
-    f.search:SetPoint("TOPRIGHT", -54, -PAD)
+    f.search:SetPoint("TOPRIGHT", -72, -PAD)
     f.search:HookScript("OnTextChanged", function() f.offset = 0; mod.RefreshBags() end)
 
     f.info = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -755,6 +781,8 @@ local function Build()
     end
     f.team.title = Title("Team")
     f.team.title:SetPoint("TOPLEFT", 8, -8)
+    f.team.refresh = mod.RefreshButton(f.team)
+    f.team.refresh:SetPoint("TOPRIGHT", -8, -7)
     f.team.tradesTitle = Title("Trades")
     f.team.empty = f.team:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     f.team.empty:SetJustifyH("LEFT")

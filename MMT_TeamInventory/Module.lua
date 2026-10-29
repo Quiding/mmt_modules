@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.9.2"
+mod.VERSION = "0.9.3"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -51,7 +51,8 @@ local M = MMT.NewModule({
         -- team bags look (settings > Look); defaults = MMT's settings window
         bagIconSize = 36, bagColumns = 10, bagSpacing = 4, bagQuality = true,
         bagBgTexture = "FLAT", bagBgColor = { r = 0.05, g = 0.05, b = 0.06 }, bagBgAlpha = 0.94,
-        bagBorderColor = { r = 0.22, g = 0.22, b = 0.24 }, bagCountSize = 14,   -- bagFont = MMT font name (nil = game font)
+        bagBorderColor = { r = 0.22, g = 0.22, b = 0.24 }, bagCountSize = 14,
+        goldSilver = true, goldCopper = true,   -- gold amounts show silver / copper (display only)   -- bagFont = MMT font name (nil = game font)
         -- bagFilters = { boe / bound / reagent / quest / consumable = "HIDE" | "ONLY" (Include) } (team bags; mod.Filters())
         openOn = "LAST",       -- team bags open on: LAST viewed | SELF | ALL (whole team) | BYCHAR (by character)
     },
@@ -164,7 +165,8 @@ function mod.TotalGold()
     return any and sum or nil
 end
 
--- "1,234g 56s 78c" with coin icons, every coin that isn't 0 (so the rows add up to the total)
+-- "1,234g 56s 78c" with coin icons, every coin that isn't 0 (so the rows add up to the total);
+-- silver / copper can be left out (settings > Look), the amounts and totals stay exact
 local GOLD = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:1:0|t"
 local SILVER = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:1:0|t"
 local COPPER = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:1:0|t"
@@ -181,8 +183,10 @@ function mod.FormatGold(copper)
     local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
     local parts = {}
     if g > 0 then parts[#parts + 1] = Thousands(g) .. GOLD end
-    if s > 0 then parts[#parts + 1] = s .. SILVER end
-    if c > 0 or #parts == 0 then parts[#parts + 1] = c .. COPPER end
+    local silver, cop = M.db.goldSilver ~= false, M.db.goldCopper ~= false
+    if s > 0 and silver then parts[#parts + 1] = s .. SILVER end
+    if c > 0 and cop then parts[#parts + 1] = c .. COPPER end
+    if #parts == 0 then parts[1] = cop and (c .. COPPER) or (silver and (s .. SILVER)) or ("0" .. GOLD) end
     return table.concat(parts, " ")
 end
 
