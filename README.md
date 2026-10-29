@@ -11,7 +11,7 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.7 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.8 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.8 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.5 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
@@ -70,6 +70,8 @@ important spells, trinkets and potions.
 
 - Every client sends **one short message** when its character uses a tracked cooldown (exact time
   left), so members outside the group are tracked too; group members are also seen directly.
+- A `/reload` or relog keeps the team's running timers, and each member is asked once for theirs when they're
+  seen again (cooldowns used while you were away show up too).
 - Cooldown lengths are the real ones: your own from the game, the team's from that message (talents and
   other reductions included), remembered for the next time. The seconds in a list are only the fallback - click
   them to change.

@@ -427,9 +427,11 @@ print("B:", B.eval(r"""function(m, hb)
   assert(m.State("Anna-Smith", iceblock) ~= nil, "hidden with the option off")
   m.M.db.hideUnknown = true
   -- the heartbeat hash matches what we have: no question
+  -- (her first heartbeat also asks for her running cooldowns, MCDQ, Share.lua: that one's expected)
   WHISPERS = {}
   for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = tostring(hb) } }) end
-  assert(#WHISPERS == 0, "asked although the list matches")
+  assert(#WHISPERS == 1 and WHISPERS[1].msg == "MCDQ", "asked although the list matches")
+  WHISPERS = {}
   -- a different hash (she learned something meanwhile): ask once
   for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = "12345" } }) end
   for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Anna-Smith", "Anna", { ext = { cdk = "12345" } }) end
@@ -515,4 +517,37 @@ print("C:", C.eval(r"""function(m)
   assert(c and c.dur == 45 and c.start == 2100, "next cast doesn't use the remembered length: " .. tostring(c and c.dur))
   assert(m.MemberDuration("Alice-Nobody", { t = "s", id = 55555, cd = 60 }) == 60, "others: list seconds")
   return "real cooldown lengths ok"
+end""")(cmod))
+
+# after a /reload: the team's running timers are saved on logout and put back (real clock),
+# and each member is asked once (whispered MCDQ) when their first heartbeat arrives
+print("C:", C.eval(r"""function(m)
+  CLOCK = 50000
+  function time() return CLOCK end
+  NOW = 3000
+  m.cds = { ["Bob-Stone"] = { s11111 = { start = 2900, dur = 300 } } }   -- 200 s left
+  FIRE("PLAYER_LOGOUT")
+  local saved = m.M.store.running
+  assert(saved and saved["Bob-Stone"].s11111, "not saved on logout")
+  -- reload: memory empty, GetTime goes on, 30 s passed on the clock
+  m.cds = {}
+  NOW, CLOCK = 3030, 50030
+  assert(m.RestoreRunning() == 1, "not restored")
+  local c = m.cds["Bob-Stone"].s11111
+  local left = c.start + c.dur - NOW
+  assert(math.abs(left - 170) < 0.01, "time left after the reload: " .. left)
+  assert(m.M.store.running == nil, "saved timers kept after restoring")
+  -- run out while logged out: not restored
+  m.cds = { ["Bob-Stone"] = { s11111 = { start = 3000, dur = 60 } } }
+  FIRE("PLAYER_LOGOUT")
+  m.cds, CLOCK = {}, CLOCK + 120
+  assert(m.RestoreRunning() == 0 and not m.cds["Bob-Stone"], "ran-out timer restored")
+  -- the first heartbeat of each member asks them once
+  WHISPERS = {}
+  for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Wally-Warrior", "Wally", { ext = {} }) end
+  for _, fn in ipairs(LISTEN.XP_RECEIVED) do fn("Wally-Warrior", "Wally", { ext = {} }) end
+  local n = 0
+  for _, w in ipairs(WHISPERS) do if w.msg == "MCDQ" and w.to == "Wally" then n = n + 1 end end
+  assert(n == 1, "MCDQ whispers to Wally: " .. n)
+  return "running cooldowns after a reload ok"
 end""")(cmod))

@@ -7,8 +7,10 @@
 --   MCDU:<entryKey>:r                        ready again before its time (Cold Snap,
 --                                            Preparation, ... reset it)
 --   MCDQ                                     "which of your cooldowns are running?" - sent
---                                            after taking over new lists; everyone answers
---                                            with their running ones (whisper)
+--                                            after taking over new lists (to the team) and
+--                                            after login / reload (whispered to each member
+--                                            the first time their heartbeat arrives); the
+--                                            asked answer with their running ones (whisper)
 -- Only state CHANGES of your own tracked entries are sent, found on the
 -- game's cooldown events. An entry that just became tracked (lists changed)
 -- counts as a change, so its running cooldown is announced too.
@@ -93,6 +95,57 @@ end
 function mod.RequestRunning()
     MMT.SendToTeam("MCDQ", true)
 end
+
+---------------------------------------------------------------------------
+-- After login / reload: the team's running cooldowns aren't in memory any more
+--  - a reload keeps them: saved on logout with the real clock (time()), put back on enable
+--  - and each member is asked once, when their first heartbeat arrives (whisper MCDQ)
+---------------------------------------------------------------------------
+local asked = {}   -- [key] = true: asked this session
+
+M:On("PLAYER_LOGOUT", function()
+    local now, clock, saved = GetTime(), time(), {}
+    for key, list in pairs(mod.cds) do
+        for ek, c in pairs(list) do
+            local rem = c.start and c.dur and (c.start + c.dur - now)
+            if rem and rem > 1 then
+                saved[key] = saved[key] or {}
+                saved[key][ek] = { rem = rem, dur = c.dur, at = clock }
+            end
+        end
+    end
+    M.store.running = next(saved) and saved or nil
+end)
+
+function mod.RestoreRunning()
+    local saved = M.store.running
+    M.store.running = nil
+    if type(saved) ~= "table" then return 0 end
+    local now, clock, n = GetTime(), time(), 0
+    for key, list in pairs(saved) do
+        if not MMT.IsSelf(key) then
+            for ek, s in pairs(list) do
+                local rem = (tonumber(s.rem) or 0) - (clock - (tonumber(s.at) or clock))
+                local dur = tonumber(s.dur)
+                if rem > 0 and dur and dur > 0 then
+                    mod.cds[key] = mod.cds[key] or {}
+                    if not mod.cds[key][ek] then
+                        mod.cds[key][ek] = { start = now - (dur - rem), dur = dur, msg = now }
+                        n = n + 1
+                    end
+                end
+            end
+        end
+    end
+    if n > 0 then mod.Refresh() end
+    return n
+end
+
+M:Listen("XP_RECEIVED", function(key, sender)
+    if asked[key] or MMT.IsSelf(key) or not sender then return end
+    asked[key] = true
+    MMT.SendAddon("MCDQ", "WHISPER", sender)
+end)
 
 ---------------------------------------------------------------------------
 -- Receiving

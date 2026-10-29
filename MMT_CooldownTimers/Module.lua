@@ -84,6 +84,7 @@ M.OnEnable = function()
     TakeOver()
     mod.OwnSpecSent()
     mod.BuildIndex()
+    mod.RestoreRunning()   -- the team's timers from before a /reload (Share.lua)
     mod.window:Refresh()
 end
 
