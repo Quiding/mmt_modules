@@ -1,3 +1,5 @@
+<p align="center"><img src="media/qmmt-modules-icon.png" alt="MMT - Q Modules" width="180"></p>
+
 # Quiding's MMT modules
 
 Modules for [MMT - Manage My Team](https://github.com/bnetworking/MMT), a multiboxing addon for
