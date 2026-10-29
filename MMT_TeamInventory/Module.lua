@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.9.0"
+mod.VERSION = "0.9.1"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -164,7 +164,7 @@ function mod.TotalGold()
     return any and sum or nil
 end
 
--- "1,234g 56s" with coin icons (gold only from 1000g up)
+-- "1,234g 56s" with coin icons (gold only from 1000g up, unless full)
 local GOLD = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:1:0|t"
 local SILVER = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:1:0|t"
 local COPPER = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:1:0|t"
@@ -176,9 +176,17 @@ local function Thousands(n)
         if k == 0 then return s end
     end
 end
-function mod.FormatGold(copper)
+-- full = every coin that isn't 0 ("1,234g 56s 78c"; the gold totals)
+function mod.FormatGold(copper, full)
     copper = math.floor(tonumber(copper) or 0)
     local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    if full then
+        local parts = {}
+        if g > 0 then parts[#parts + 1] = Thousands(g) .. GOLD end
+        if s > 0 then parts[#parts + 1] = s .. SILVER end
+        if c > 0 or #parts == 0 then parts[#parts + 1] = c .. COPPER end
+        return table.concat(parts, " ")
+    end
     if g >= 1000 then return Thousands(g) .. GOLD end
     if g > 0 then return g .. GOLD .. (s > 0 and (" " .. s .. SILVER) or "") end
     if s > 0 then return s .. SILVER .. (c > 0 and (" " .. c .. COPPER) or "") end

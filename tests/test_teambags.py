@@ -749,6 +749,12 @@ print(lua.eval(r'''function(m)
   m.M.db.otherChars = true
   m.OpenBags("b", "__ALL__")
   assert(m.TotalGold() == 1284567 + 12345678, "total with others")
+  -- totals keep silver and copper: 1,363g 2s 45c
+  local t = f.team.total:GetText()
+  assert(t:find("1,363", 1, true) and t:find(" 2|T", 1, true) and t:find("45|T", 1, true), "total rounded: " .. t)
+  assert(f.info:GetText():find("45|T", 1, true), "footer total rounded: " .. f.info:GetText())
+  assert(m.FormatGold(10000, true):find("^1|T") and not m.FormatGold(10000, true):find(" "), "full of 1g: " .. m.FormatGold(10000, true))
+  assert(m.FormatGold(0, true):find("^0|T"), "full of 0")
   names = {}
   for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
   assert(names[3] == "Cara-Sun", "Cara not after the team: " .. table.concat(names, ","))

@@ -319,7 +319,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.9.0)
+### MMT_TeamInventory (v0.9.1)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -365,7 +365,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   once the trade is just the planned gifts (steady 1.5 s). "Planned items" button (giver) fills by hand.
 - Gold: `rec.gold` / `goldTime` (copper) on each character's record, NOT synced by us: own from `GetMoney` (ScanGold:
   OnEnable, PLAYER_MONEY, PLAYER_ENTERING_WORLD), others from the core heartbeat (`status.money` in XP_RECEIVED); a
-  TIVS snapshot keeps it. `mod.Gold`, `mod.TotalGold` (shown characters), `mod.FormatGold` (coin icons).
+  TIVS snapshot keeps it. `mod.Gold`, `mod.TotalGold` (shown characters), `mod.FormatGold(copper, full)` (coin icons; full = every coin, used for the totals: panel + whole-team footer).
 - `otherChars` = false | "RULESET" | "ALL" (old `true` = RULESET; `mod.CharsMode()` -> TEAM/RULESET/ALL, settings Cycle "Characters"):
   `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self), or ALL, or RULESET and `mod.SameRuleset(key)`; filters BagOwners
   (rest sorted: this ruleset / unknown first, then by ruleset), the added-up views, the panel and the total. The item tooltip still counts everyone.
