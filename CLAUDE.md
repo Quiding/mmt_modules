@@ -11,8 +11,8 @@ This git repo lives **directly in `Interface/AddOns`**, which also contains many
 other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
 `.gitignore` ignores everything (`/*`) and whitelists only our files:
 `.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `tests/`, `media/` (README pictures / gifs), and each of OUR module folders.
-- `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar` belong to the
-  friend: never edit or commit them. Read them for reference only.
+- `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`, `MMT_Statistics` (every `MMT*`
+  folder in MMT-src) belong to the friend: never edit or commit them. Read them for reference only.
 - **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, list it in README.md.
 - Before committing, run `git status` and make sure no other addon's files are staged.
 
@@ -28,6 +28,10 @@ WoW: Forever runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`
   `git -C D:/Games/MMT-src pull`. Never edit them there either. (Until 2026-10-26 `_forever_` had plain copies by
   mistake, so pulls only reached `_classic_beta_`; the old copies are in `D:\Games\MMT-forever-old-copies`.) A new
   module in MMT-src needs its own junction: `New-Item -ItemType Junction -Path <AddOns>\<name> -Target D:\Games\MMT-src\<name>`.
+  **`D:\Games\Update-MMT.ps1`** (2026-10-29) does both: `git pull` in MMT-src, then a junction for every `MMT*` folder
+  there (new modules too); a real folder in the way is MOVED to `D:\Games\MMT-forever-old-copies\<date>`, never deleted
+  (`-NoPull` = links only). Needed on 2026-10-29: something unknown (on 2026-10-27 18:13) had replaced the junctions with
+  plain MMT 0.9.27 copies, and deleting through a junction removed `MMT/Media/*.tga` from MMT-src's working tree.
 
 Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` (link in /mmt > MODULES).
 
