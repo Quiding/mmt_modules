@@ -91,7 +91,9 @@ important spells, trinkets and potions.
 
 ![Cooldowns bar](media/cooldowns.gif)
 
-<img src="media/cooldowns_lists.png" alt="Cooldowns: tracked spells and presets" width="600">
+| | |
+| --- | --- |
+| <img src="media/cooldowns_settings.png" alt="Cooldown Timers: the Bars tab and the bars" width="420"> | <img src="media/cooldowns_presets.png" alt="Cooldown Timers: tracked spells and the presets" width="420"> |
 
 ## Buff Timers
 
@@ -139,9 +141,11 @@ tracked for them, with exact timers.
 
 ![Buffs bar](media/buffs.gif)
 
+<img src="media/buffs_bar.png" alt="Buff Timers: the All bar and the members' rows" width="304">
+
 | | |
 | --- | --- |
-| <img src="media/buffs_lists.png" alt="Buffs: tracked buffs and the name search" width="420"> | <img src="media/buffs_look.png" alt="Buffs: look settings" width="420"> |
+| <img src="media/buffs_lists.png" alt="Buffs: tracked buffs and the name search" width="420"> | <img src="media/buffs_arrange.png" alt="Buff Timers: the Look tab, and the bars while arranging (dots on every icon, the move tab above)" width="420"> |
 
 ## Totems
 
@@ -175,7 +179,9 @@ Pawn scores for the whole team. Needs MMT's Item Compare switched on.
 
 `/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales`
 
-<img src="media/pawncompare.png" alt="Team upgrades in the item tooltip" width="306">
+<img src="media/pawn_tooltip.png" alt="Team upgrades in the item tooltip" width="364">
+
+<img src="media/pawn_scales.png" alt="Pawn Compare: the team's scales, delete or hide them team-wide" width="521">
 
 ## Team Gear
 
@@ -194,7 +200,9 @@ while they're offline. The items come from Item Compare's stored gear (needs Ite
 
 `/mmtgear <name>` · `/mmtgear all`
 
-<img src="media/teamgear.png" alt="Team Gear: whole team and one member's gear" width="600">
+| | |
+| --- | --- |
+| <img src="media/teamgear_gear.png" alt="Team Gear: one member's gear" width="420"> | <img src="media/teamgear_talents.png" alt="Team Gear: one member's talents" width="420"> |
 
 ## Team Inventory
 
@@ -247,11 +255,11 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 
 <img src="media/teambags_trades.webp" alt="Team bags by character with planned gifts (gold glow at the receiver, dimmed at the giver) and the team / trades panel" width="640">
 
-<img src="media/teambags_filters.png" alt="Team bags filters: BoE gear and crafting reagents on Include, soulbound and quest items hidden" width="574">
+<img src="media/teambags_filter.png" alt="Team bags filters: show, hide or only include BoE gear, soulbound, reagents, quest items and consumables" width="473">
 
 | | |
 | --- | --- |
-| <img src="media/teambags_team.png" alt="Team bags: the whole team in Baganator's categories" width="420"> | <img src="media/teambags_bycharacter.png" alt="Team bags: the whole team by character" width="420"> |
+| <img src="media/teambags_team.png" alt="Team bags: the whole team in Baganator's categories" width="420"> | <img src="media/teambags_window.png" alt="Team bags: the whole team by character, with the team's gold beside it" width="420"> |
 | <img src="media/teambags_equipped.png" alt="Team bags: one character's equipped items" width="420"> | <img src="media/teaminventory.png" alt="Team inventory lines in the item tooltip" width="277"> |
 
 ## Whispers
