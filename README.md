@@ -9,8 +9,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.4 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.5 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.5 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.6 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
@@ -30,12 +30,13 @@ MODULES, with its own settings page.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
 
-**Arranging the bars** (Cooldown Timers and Buff Timers): while a window is unlocked (Lock position off, or
-`/mmtct lock` / `/mmtbt lock`) every member's row shows everything their lists track - the hide options (not learned,
-nobody here can cast it, Only for, one blessing per paladin, hide ready, ...) wait until you lock it again. Drag an
-icon along its row to move it: it moves within the list it comes from (class, All bar, race, role, character), so a
-line shows where it can land and dropping it past the others of its list puts it at that list's end. Lock the
-window to get the normal bars back. Dragging an icon while locked moves nothing.
+**Arranging the bars** (Cooldown Timers and Buff Timers): **Arrange icons** on the Bars tab, or `/mmtct arrange` /
+`/mmtbt arrange`, until you click it again or `/reload` (the lock doesn't matter). Every member's row then shows
+everything their lists track - the hide options (not learned, nobody here can cast it, Only for, one blessing per
+paladin, hide ready, ...) wait - and each icon gets dots in its corner: drag it along its row to move it. It moves
+within the list it comes from (class, All bar, race, role, character), so a line shows where it can land and dropping
+it past the others of its list puts it at that list's end. Buff icons on the Cooldown Timers bars follow either
+module's arrange mode.
 
 Cooldown Timers and Buff Timers have a **Preview** (Bars tab, or `/mmtct preview` / `/mmtbt preview`): every team
 member gets a row with made-up states, to set up the look and position without the team around -
@@ -73,7 +74,7 @@ important spells, trinkets and potions.
   (each client tells the team which tracked spells it hasn't learned), and items you don't carry on your own row.
 - Lists per class, race, MMT role or character; entries can be switched off without deleting them.
 - **Reorder a list by dragging** an entry by its dots (a line shows where it lands; hold it above or below the list
-  to scroll), or drag the icons on the bars themselves while they're unlocked (see below).
+  to scroll), or drag the icons on the bars themselves in arrange mode (see below).
 - **Presets per spec** (all 28, Feral split into cat and bear) from Wowhead's WoW: Forever class guides: big
   cooldowns, defensives and control on, the rotation in the list but off; racials per race, potions & runes.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
@@ -111,7 +112,7 @@ tracked for them, with exact timers.
   an armor) leaves their row, and a buff cast on others only shows while someone here has learned it. Each client
   tells the team once what it hasn't learned, like Cooldown Timers' "Hide what you don't have".
 - **Reorder a list by dragging** a buff by its dots up or down in the Buffs tab (a line shows where it lands; hold it above or
-  below the list to scroll), or drag the icons on the bars themselves while they're unlocked (see below).
+  below the list to scroll), or drag the icons on the bars themselves in arrange mode (see below).
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.
 - All bar counter: while someone misses a buff, "have / checked" in a corner of its icon (3/5 = 3 of the 5
