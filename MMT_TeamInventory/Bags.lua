@@ -897,7 +897,7 @@ function mod.RefreshTeam(f)
     f.team.total:SetPoint("TOPRIGHT", -14, y - 2)
     f.team.totalLabel:ClearAllPoints()
     f.team.totalLabel:SetPoint("TOPLEFT", 16, y - 2)
-    f.team.total:SetText(total and mod.FormatGold(total, true) or "?")
+    f.team.total:SetText(total and mod.FormatGold(total) or "?")
     y = y - 18
 
     y = y - 8
@@ -1093,7 +1093,7 @@ function mod.RefreshBags()
     if maxOffset > 0 then note = note .. "  -  mouse wheel scrolls" end
     local team = who == ALL or who == BYCHAR
     local gold = team and mod.TotalGold() or (not team and mod.Gold(who))
-    if gold then note = note .. "  -  " .. mod.FormatGold(gold, team) end
+    if gold then note = note .. "  -  " .. mod.FormatGold(gold) end
     local rec = not team and mod.Chars()[who]
     if rec and rec.time then note = note .. "  -  updated " .. MMT.Ago(rec.time) end
     if (place == "k" or place == "m") and #slots == 0 and not team then

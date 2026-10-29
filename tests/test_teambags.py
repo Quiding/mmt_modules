@@ -753,8 +753,11 @@ print(lua.eval(r'''function(m)
   local t = f.team.total:GetText()
   assert(t:find("1,363", 1, true) and t:find(" 2|T", 1, true) and t:find("45|T", 1, true), "total rounded: " .. t)
   assert(f.info:GetText():find("45|T", 1, true), "footer total rounded: " .. f.info:GetText())
-  assert(m.FormatGold(10000, true):find("^1|T") and not m.FormatGold(10000, true):find(" "), "full of 1g: " .. m.FormatGold(10000, true))
-  assert(m.FormatGold(0, true):find("^0|T"), "full of 0")
+  assert(m.FormatGold(10000):find("^1|T") and not m.FormatGold(10000):find(" "), "1g: " .. m.FormatGold(10000))
+  assert(m.FormatGold(0):find("^0|T"), "0")
+  -- rows keep silver and copper too (they add up to the total)
+  assert(m.FormatGold(12345678):find("56|T", 1, true) and m.FormatGold(12345678):find("78|T", 1, true), "row rounded: " .. m.FormatGold(12345678))
+  assert(m.FormatGold(10203):find(" 2|T", 1, true) and m.FormatGold(10203):find(" 3|T", 1, true), "1g 2s 3c: " .. m.FormatGold(10203))
   names = {}
   for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
   assert(names[3] == "Cara-Sun", "Cara not after the team: " .. table.concat(names, ","))
