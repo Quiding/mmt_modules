@@ -314,14 +314,6 @@ M.Page = function(_, page)
         mod.KnownCheck()   -- which of the tracked class buffs we haven't learned (Known.lua)
         list:Render(M.db.lists[class] or {})
     end
-    local function Move(index, delta)
-        local l = M.db.lists[class]
-        local j = index + delta
-        if not l or j < 1 or j > #l then return end
-        mod.CloseFilter()
-        l[index], l[j] = l[j], l[index]
-        Changed()
-    end
 
     list = H.List(lp, COL_W, 14, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
@@ -332,16 +324,12 @@ M.Page = function(_, page)
         row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         row.del = UI.TextButton(row, "x", function() mod.CloseFilter(); table.remove(M.db.lists[class], row.index); Changed() end, 16)
         row.del:SetPoint("RIGHT", -2, 0)
-        row.down = UI.TextButton(row, "v", function() Move(row.index, 1) end, 16)
-        row.down:SetPoint("RIGHT", row.del, "LEFT", -2, 0)
-        row.up = UI.TextButton(row, "^", function() Move(row.index, -1) end, 16)
-        row.up:SetPoint("RIGHT", row.down, "LEFT", -2, 0)
         -- on / off: switched-off entries stay in the list but aren't tracked
         row.toggle = UI.TextButton(row, "", function()
             local e = M.db.lists[class][row.index]
             if e then e.off = (not e.off) or nil; Changed() end
         end, 26)
-        row.toggle:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
+        row.toggle:SetPoint("RIGHT", row.del, "LEFT", -4, 0)
         UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
         -- cog: who this buff is for (player roles, classes, MMT roles)
         row.cog = CreateFrame("Button", nil, row)
@@ -381,6 +369,7 @@ M.Page = function(_, page)
             else
                 GameTooltip:SetSpellByID(self.entry.id)
             end
+            GameTooltip:AddLine("Drag to move it in the list.", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -401,6 +390,11 @@ M.Page = function(_, page)
         row.cog.tex:SetAlpha(limited and 1 or 0.45)
     end)
     LS:Add(list, 14 * 22 + 6)
+    -- drag a row to reorder the list (SettingsKit)
+    mod.DragReorder(list, function() return M.db.lists[class] end, function()
+        mod.CloseFilter()
+        Changed()
+    end)
 
     local box
     -- picked from the search list, else a link / ID / known name, else the name index
@@ -432,7 +426,7 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil).")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to player roles, classes or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil). Drag a buff to reorder.")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()

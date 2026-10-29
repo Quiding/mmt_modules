@@ -5,6 +5,7 @@
 --                                          Reset to defaults, the core's "Sync to team"
 --   mod.ResetSettings()                    every setting of the module back to its default
 --   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
+--   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
 -- Opt(key) returns getter, setter for M.db[key]; apply() redraws.
 
 local _, mod = ...
@@ -200,4 +201,84 @@ function mod.LookTab(panel, Opt, apply)
     R:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
     R:Note("Textures come from LibSharedMedia (other addons such as Details bring many).")
     return L, R
+end
+
+-- Moves data[from] so it ends up before what is now data[slot] (slot = 1 .. #data + 1).
+-- Returns its new index, or nil when nothing moves.
+function mod.MoveEntry(data, from, slot)
+    if not data[from] or slot == from or slot == from + 1 or slot < 1 or slot > #data + 1 then return end
+    local e = table.remove(data, from)
+    local to = (slot > from) and slot - 1 or slot
+    table.insert(data, to, e)
+    return to
+end
+
+-- Drag to reorder the rows of an MMT.ConfigHelpers.List (fixed row pool + mouse-wheel offset).
+-- Rows need row.index (their data index, set in fillRow). getData() -> the table to reorder;
+-- moved(from, to) runs after an entry moved (redraw, ...). A line shows where it lands; holding
+-- the cursor above / below the list scrolls it.
+function mod.DragReorder(list, getData, moved)
+    local UI = MMT.UI
+    local rows = list.rows
+    local rh = list:GetHeight() / #rows
+    local marker = list:CreateTexture(nil, "OVERLAY")
+    marker:SetColorTexture(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3], 1)
+    marker:SetHeight(2)
+    marker:Hide()
+    local from, nextScroll
+    -- where the cursor is: data slot it would land before, visible row gap, distance from the top
+    local function Slot()
+        local top = list:GetTop()
+        local data = getData()
+        if not top or not data then return end
+        local _, y = GetCursorPosition()
+        local dy = top - y / list:GetEffectiveScale()
+        local gap = math.max(0, math.min(#rows, math.floor(dy / rh + 0.5)))
+        local slot = math.max(1, math.min(#data + 1, list.offset + gap + 1))
+        return slot, slot - list.offset - 1, dy
+    end
+    local function Dim()
+        for _, row in ipairs(rows) do row:SetAlpha((from and row.index == from) and 0.4 or 1) end
+    end
+    local function Stop()
+        list:SetScript("OnUpdate", nil)
+        marker:Hide()
+        from = nil
+        Dim()
+    end
+    local function Update()
+        local slot, gap, dy = Slot()
+        if not slot then return end
+        -- scroll while the cursor is past the top / bottom edge
+        local now = GetTime()
+        if (dy < 0 or dy > list:GetHeight()) and (not nextScroll or now >= nextScroll) then
+            nextScroll = now + 0.15
+            list:GetScript("OnMouseWheel")(list, dy < 0 and 1 or -1)
+            Dim()
+            slot, gap = Slot()
+        end
+        if slot == from or slot == from + 1 then marker:Hide() return end
+        marker:ClearAllPoints()
+        marker:SetPoint("TOPLEFT", list, "TOPLEFT", 0, -gap * rh + 1)
+        marker:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, -gap * rh + 1)
+        marker:Show()
+    end
+    for _, row in ipairs(rows) do
+        row:RegisterForDrag("LeftButton")
+        row:SetScript("OnDragStart", function(self)
+            if not self.index then return end
+            GameTooltip:Hide()
+            from, nextScroll = self.index, nil
+            Dim()
+            list:SetScript("OnUpdate", Update)
+        end)
+        row:SetScript("OnDragStop", function()
+            local data, f = getData(), from
+            local slot = f and Slot()
+            Stop()
+            local to = slot and data and mod.MoveEntry(data, f, slot)
+            if to then moved(f, to) end
+        end)
+    end
+    list:HookScript("OnHide", Stop)
 end
