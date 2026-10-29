@@ -9,7 +9,7 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.3 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.4 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
@@ -65,6 +65,8 @@ important spells, trinkets and potions.
 - "Hide what you don't have": spells a character hasn't learned yet are hidden on every client's bars
   (each client tells the team which tracked spells it hasn't learned), and items you don't carry on your own row.
 - Lists per class, race, MMT role or character; entries can be switched off without deleting them.
+- **Reorder a list by dragging** an entry by its dots (a line shows where it lands; hold it above or below the list
+  to scroll).
 - **Presets per spec** (all 28, Feral split into cat and bear) from Wowhead's WoW: Forever class guides: big
   cooldowns, defensives and control on, the rotation in the list but off; racials per race, potions & runes.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items

@@ -146,33 +146,22 @@ M.Page = function(_, page)
         secsEdit:SetFocus()
         secsEdit:HighlightText()
     end
-    local function Move(index, delta)
-        local l = M.db.lists[class]
-        local j = index + delta
-        if not l or j < 1 or j > #l then return end
-        l[index], l[j] = l[j], l[index]
-        Changed()
-    end
 
     list = H.List(lp, COL_W, 14, 22, function(parent, i)
         local row = CreateFrame("Frame", nil, parent)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
         row.icon:SetSize(18, 18)
-        row.icon:SetPoint("LEFT", 2, 0)
+        row.icon:SetPoint("LEFT", mod.DragGrip(row), "RIGHT", 4, 0)   -- dots: drag to reorder
         row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         row.del = UI.TextButton(row, "x", function() table.remove(M.db.lists[class], row.index); Changed() end, 16)
         row.del:SetPoint("RIGHT", -2, 0)
-        row.down = UI.TextButton(row, "v", function() Move(row.index, 1) end, 16)
-        row.down:SetPoint("RIGHT", row.del, "LEFT", -2, 0)
-        row.up = UI.TextButton(row, "^", function() Move(row.index, -1) end, 16)
-        row.up:SetPoint("RIGHT", row.down, "LEFT", -2, 0)
         -- on / off: switched-off entries stay in the list but aren't tracked
         row.toggle = UI.TextButton(row, "", function()
             local e = M.db.lists[class][row.index]
             if e then e.off = (not e.off) or nil; Changed() end
         end, 26)
-        row.toggle:SetPoint("RIGHT", row.up, "LEFT", -4, 0)
+        row.toggle:SetPoint("RIGHT", row.del, "LEFT", -4, 0)
         UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
         -- the seconds: click to change them (EditSeconds)
         row.cd = UI.TextButton(row, "", function() EditSeconds(row) end, 40)
@@ -188,6 +177,7 @@ M.Page = function(_, page)
             if not self.entry then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if self.entry.t == "s" then GameTooltip:SetSpellByID(self.entry.id) else GameTooltip:SetItemByID(self.entry.id) end
+            GameTooltip:AddLine("Drag to move it in the list.", 0.6, 0.6, 0.6)
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -202,6 +192,11 @@ M.Page = function(_, page)
         row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
     end)
     LS:Add(list, 14 * 22 + 6)
+    -- drag a row to reorder the list (SettingsKit); an open seconds box closes first
+    mod.DragReorder(list, function() return M.db.lists[class] end, function()
+        if secsEdit then secsEdit:ClearFocus() end
+        Changed()
+    end)
 
     -- add: name / ID / shift-click a spell or item, and the cooldown in seconds
     local box, secs
@@ -245,7 +240,7 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them; click them in the list to change. A team member's own client sends the real length (talents) with each use, and it is remembered.")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All classes, their roles, their character). The cooldown seconds fill in by themselves when the game knows them; click them in the list to change. A team member's own client sends the real length (talents) with each use, and it is remembered. Drag an entry to reorder.")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
