@@ -7,7 +7,9 @@
 --   other members   ONE message when theirs changes (put on, replaced, gone, weapon
 --                   swapped) - never periodic:  MBW:<MH>;<OH>  with each part
 --                   "0" = none | "x" = no weapon there | "<rem>/<dur>/<icon>/<name>"
---                   MBWQ = "send me yours" (at login), answered by whisper.
+--                   MBWQ = "send me yours" (to the team 8 s after login, and whispered to each
+--                   member on their first heartbeat), answered by whisper. A /reload keeps
+--                   them: saved on logout with the real clock, put back when they start.
 -- Members we never heard from (older version, offline) show nothing.
 
 local _, mod = ...
@@ -190,8 +192,59 @@ frame:SetScript("OnEvent", function(_, event, unit)
     mod.ScanWeapons()
 end)
 
+-- a /reload keeps the team's weapon enchants (saved with the real clock, time())
+M:On("PLAYER_LOGOUT", function()
+    local now, clock, saved = GetTime(), time(), {}
+    for key, w in pairs(mod.weapons) do
+        if not MMT.IsSelf(key) then
+            local s = {}
+            for _, slot in ipairs({ "MH", "OH" }) do
+                local p = w[slot]
+                if p == false then s[slot] = false
+                elseif type(p) == "table" and p.endTime - now > 1 then
+                    s[slot] = { rem = p.endTime - now, dur = p.dur, icon = p.icon, name = p.name }
+                end
+            end
+            s.at = clock
+            saved[key] = s
+        end
+    end
+    M.store.weaponsSaved = next(saved) and saved or nil
+end)
+
+function mod.RestoreWeapons()
+    local saved = M.store.weaponsSaved
+    M.store.weaponsSaved = nil
+    if type(saved) ~= "table" then return 0 end
+    local now, clock, n = GetTime(), time(), 0
+    for key, s in pairs(saved) do
+        if not MMT.IsSelf(key) and not mod.weapons[key] then
+            local gone = clock - (tonumber(s.at) or clock)
+            local w = {}
+            for _, slot in ipairs({ "MH", "OH" }) do
+                local p = s[slot]
+                if p == false then w[slot] = false
+                elseif type(p) == "table" and (tonumber(p.rem) or 0) - gone > 0 then
+                    w[slot] = { endTime = now + p.rem - gone, dur = p.dur, icon = p.icon, name = p.name }
+                end
+            end
+            mod.weapons[key] = w
+            n = n + 1
+        end
+    end
+    return n
+end
+
+local asked = {}   -- [key] = true: asked this session
+M:Listen("XP_RECEIVED", function(key, sender)
+    if asked[key] or MMT.IsSelf(key) or not sender then return end
+    asked[key] = true
+    MMT.SendAddon("MBWQ", "WHISPER", sender)
+end)
+
 local ticker
 function mod.StartWeapons()
+    mod.RestoreWeapons()
     mod.ScanWeapons(true)
     if not ticker then ticker = C_Timer.NewTicker(5, function() if M.enabled then mod.ScanWeapons() end end) end
     C_Timer.After(8, function()

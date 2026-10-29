@@ -559,3 +559,38 @@ print("A:", A.eval(r"""function(m)
   m.Refresh()
   return "growth direction ok"
 end""")(amod))
+
+# after a /reload: other shamans' totems are saved on logout and put back (real clock), each member
+# is asked once (whispered MTTR) on their first heartbeat, and the asked one answers with an MTT per totem
+print("B:", B.eval(r"""function(m)
+  CLOCK = 70000
+  function time() return CLOCK end
+  NOW = 5000
+  local element = m.SLOT_ELEMENT[1]
+  DELIVER("Anna-Smith", "MTT:1:100.0/120.0:Searing Totem")
+  assert(m.active["Anna-Smith"][element], "totem not taken")
+  FIRE("PLAYER_LOGOUT")
+  assert(m.M.store.running and m.M.store.running["Anna-Smith"][element], "not saved")
+  m.active = {}
+  NOW, CLOCK = 5020, 70020          -- 20 s later
+  assert(m.RestoreRunning() == 1, "not restored")
+  local name, _, start, dur = m.ActiveTotem("Anna-Smith", element)
+  assert(name == "Searing Totem" and math.abs(start + dur - NOW - 80) < 0.01, "time left after the reload: " .. tostring(start and (start + dur - NOW)))
+  WHISPERS = {}
+  for _, fn in ipairs(LISTEN.XP_RECEIVED or {}) do fn("Anna-Smith", "Anna", { ext = {} }) end
+  for _, fn in ipairs(LISTEN.XP_RECEIVED or {}) do fn("Anna-Smith", "Anna", { ext = {} }) end
+  local n = 0
+  for _, w in ipairs(WHISPERS) do if w.msg == "MTTR" and w.to == "Anna" then n = n + 1 end end
+  assert(n == 1, "MTTR whispers: " .. n)
+  return "totems after a reload ok"
+end""")(bmod))
+print("A:", A.eval(r"""function(m)
+  NOW = 6000
+  TOTEMS_UP = { [2] = { name = "Stoneskin Totem", start = 5990, dur = 120 } }
+  WHISPERS = {}
+  DELIVER("Bob-Stone", "MTTR")
+  DELIVER("Bob-Stone", "MTTR")            -- asked twice within 10 s: one answer
+  assert(#WHISPERS == 1 and WHISPERS[1].to == "Bob-Stone" and WHISPERS[1].msg:find("^MTT:2:110%.0/120%.0:Stoneskin Totem$"), "answer: " .. tostring(WHISPERS[1] and WHISPERS[1].msg))
+  TOTEMS_UP = {}
+  return "MTTR answered ok"
+end""")(amod))

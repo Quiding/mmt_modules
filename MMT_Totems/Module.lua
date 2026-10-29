@@ -109,6 +109,7 @@ function mod.Shamans()
 end
 
 M.OnEnable = function()
+    mod.RestoreRunning()   -- other shamans' totems from before a /reload (Tracker.lua)
     mod.Refresh()
     C_Timer.After(2, function() if M.enabled then mod.Refresh() end end)
 end

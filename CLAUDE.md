@@ -113,7 +113,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.8) / MMT_BuffTimers (v0.17.8) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.8) / MMT_BuffTimers (v0.17.9) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -148,7 +148,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `MCDQ` = "send me your running cooldowns" (after taking over lists), answered by whisper.
   After login / reload (0.14.8): PLAYER_LOGOUT saves others' running timers in `M.store.running` (rem, dur, `time()`),
   `mod.RestoreRunning()` in OnEnable puts them back (GetTime restarts on relog, so the real clock); and each member's
-  first XP_RECEIVED of the session gets a whispered `MCDQ` (`asked[key]`).
+  first XP_RECEIVED of the session gets a whispered `MCDQ` (`asked[key]`). Same in Totems 0.4.6 (`M.store.running`,
+  `MTTR` -> an `MTT` per own totem, whispered) and Buffs 0.17.9 weapons (`M.store.weaponsSaved`, `MBWQ` whispered).
 - `showBuffs`: a tracked spell/item's buff = buff with the SAME NAME as the cast on the user
   (player / group unit via `unitOf`, else the time from MCDU); helpful auras first, then harmful ones
   (`mod.Debuff` in Compat: Death Wish is a debuff on the warrior). Icon: state "buff" + glow,
@@ -199,7 +200,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   entries}; `mod.DEFAULT_LISTS` built from them). Data from Wowhead Forever (nether.wowhead.com
   tooltips; 40xxxx IDs that aren't talents are Season of Discovery runes, leave them out).
   `ListKeys.lua`: `PresetChoices`, `PresetByKey`, `DefaultPreset`, `ApplyPreset(listKey, key, replace, id)`.
-- Settings pages are ~564 px high: check both columns still fit when adding widgets.
+- Settings pages are ~564 px high (tab panels 484): `tests/test_layout.py` adds up every column's real widget heights
+  (notes estimated) and fails on a column past its page / panel or a widget on the line of a 0-height `Add` (give the
+  row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
   bump VERSION on change (now 13: v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
@@ -282,7 +285,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.5) – port of ema_totems
+### MMT_Totems (v0.4.6) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry

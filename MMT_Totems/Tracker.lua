@@ -6,6 +6,9 @@
 -- periodic:
 --   MTT:<slot>:<remaining>/<duration>:<totem name>   totem down
 --   MTT:<slot>:0                                      slot empty
+--   MTTR                                              "which totems are down?" - whispered to each
+--                                                     member on their first heartbeat after login /
+--                                                     reload; answered with an MTT per totem (whisper)
 -- Group members' totem casts (UNIT_SPELLCAST_SUCCEEDED) are used too, so a
 -- shaman without this module still shows up while in your group.
 
@@ -101,6 +104,78 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         SetActive(key, element, name, rem, dur)
     end
     mod.UpdateIcons()
+end)
+
+---------------------------------------------------------------------------
+-- After login / reload: other shamans' totems aren't in memory any more
+--  - a reload keeps them: saved on logout with the real clock (time()), put back on enable
+--  - and each member is asked once, when their first heartbeat arrives (whisper MTTR)
+---------------------------------------------------------------------------
+-- this character's totems that are down, each as one MTT whispered to target
+function mod.AnnounceTotems(target)
+    if select(2, UnitClass("player")) ~= "SHAMAN" then return 0 end
+    local n = 0
+    for slot = 1, 4 do
+        local have, name, start, dur = GetTotemInfo(slot)
+        if not (MMT.IsSecret(have) or MMT.IsSecret(start) or MMT.IsSecret(dur) or MMT.IsSecret(name))
+            and have and name and name ~= "" and dur and dur > 0 and start + dur > GetTime() then
+            MMT.SendAddon(("MTT:%d:%.1f/%.1f:%s"):format(slot, start + dur - GetTime(), dur, name), "WHISPER", target)
+            n = n + 1
+        end
+    end
+    return n
+end
+
+M:On("PLAYER_LOGOUT", function()
+    local now, clock, saved = GetTime(), time(), {}
+    for key, list in pairs(mod.active) do
+        if not MMT.IsSelf(key) then
+            for element, a in pairs(list) do
+                local rem = a.start + a.dur - now
+                if rem > 1 then
+                    saved[key] = saved[key] or {}
+                    saved[key][element] = { name = a.name, rem = rem, dur = a.dur, at = clock }
+                end
+            end
+        end
+    end
+    M.store.running = next(saved) and saved or nil
+end)
+
+function mod.RestoreRunning()
+    local saved = M.store.running
+    M.store.running = nil
+    if type(saved) ~= "table" then return 0 end
+    local clock, n = time(), 0
+    for key, list in pairs(saved) do
+        if not MMT.IsSelf(key) then
+            for element, s in pairs(list) do
+                local rem = (tonumber(s.rem) or 0) - (clock - (tonumber(s.at) or clock))
+                local dur = tonumber(s.dur)
+                if rem > 0 and dur and dur > 0 and type(s.name) == "string"
+                    and not (mod.active[key] and mod.active[key][element]) then
+                    SetActive(key, element, s.name, rem, dur)
+                    n = n + 1
+                end
+            end
+        end
+    end
+    return n
+end
+
+local asked = {}   -- [key] = true: asked this session
+M:Listen("XP_RECEIVED", function(key, sender)
+    if asked[key] or MMT.IsSelf(key) or not sender then return end
+    asked[key] = true
+    MMT.SendAddon("MTTR", "WHISPER", sender)
+end)
+
+local answered = {}
+M:Listen("TEAM_MESSAGE", function(key, sender, text)
+    if text ~= "MTTR" or MMT.IsSelf(key) then return end
+    if answered[key] and GetTime() - answered[key] < 10 then return end
+    answered[key] = GetTime()
+    mod.AnnounceTotems(sender)
 end)
 
 ---------------------------------------------------------------------------

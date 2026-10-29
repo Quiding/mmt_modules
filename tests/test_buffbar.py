@@ -13,9 +13,12 @@ lua.execute(STUBS)
 lua.execute('''
 local nm = MMT.NewModule
 LISTEN = {}
+EVENTS = {}
+function FIRE(ev, ...) for _, fn in ipairs(EVENTS[ev] or {}) do fn(...) end end
 MMT.NewModule = function(def)
   local M = nm(def)
   function M:Listen(ev, fn) LISTEN[#LISTEN + 1] = { ev, fn } end
+  function M:On(ev, fn) EVENTS[ev] = EVENTS[ev] or {}; table.insert(EVENTS[ev], fn) end
   return M
 end
 SENT = {}
@@ -558,4 +561,27 @@ print(lua.eval(r"""function(m)
   m.KnownReset()
   m.ScanGroup()
   return "one blessing per paladin ok"
+end""")(mod))
+
+# weapon enchants after a /reload: saved on logout with the real clock and put back, and each
+# member is asked once (whispered MBWQ) on their first heartbeat
+print(lua.eval(r"""function(m)
+  CLOCK = 90000
+  function time() return CLOCK end
+  local now = GetTime()
+  m.weapons = { ["Bob-Stone"] = { MH = { endTime = now + 600, dur = 1800, icon = 136018, name = "Windfury" }, OH = false } }
+  FIRE("PLAYER_LOGOUT")
+  assert(m.M.store.weaponsSaved and m.M.store.weaponsSaved["Bob-Stone"], "not saved")
+  m.weapons = {}
+  CLOCK = CLOCK + 100
+  assert(m.RestoreWeapons() == 1, "not restored")
+  local w = m.weapons["Bob-Stone"]
+  assert(w and w.OH == false and w.MH and math.abs(w.MH.endTime - GetTime() - 500) < 0.01 and w.MH.name == "Windfury", "restored enchant")
+  SENT = {}
+  for _, l in ipairs(LISTEN) do if l[1] == "XP_RECEIVED" then l[2]("Cid-Ray", "Cid", { ext = {} }) end end
+  for _, l in ipairs(LISTEN) do if l[1] == "XP_RECEIVED" then l[2]("Cid-Ray", "Cid", { ext = {} }) end end
+  local n = 0
+  for _, s in ipairs(SENT) do if s == "WHISPER:Cid:MBWQ" then n = n + 1 end end
+  assert(n == 1, "MBWQ whispers: " .. n)
+  return "weapon enchants after a reload ok"
 end""")(mod))
