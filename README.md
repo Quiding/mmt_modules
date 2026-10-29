@@ -1,4 +1,4 @@
-<p align="center"><img src="media/qmmt-modules-banner.png" alt="MMT - Q Modules" width="960"></p>
+<p align="center"><img src="media/qmmt-modules-banner.png" alt="MMT - Q Modules" width="760"></p>
 
 # Quiding's MMT modules
 
