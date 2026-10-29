@@ -37,6 +37,29 @@ for name, dirs in shared:
     print("shared %s.lua: %s" % (name, "identical" if len(texts) == 1 else "DIFFERS"))
     bad += len(texts) > 1
 
+# key bindings as in the core's CreateModules.md: Bindings.xml not in the TOC, every binding in
+# category BINDING_CATEGORY_MMT, the first with an own MMT_<NAME> header, texts set in Lua
+for d in ours:
+    xml = os.path.join(root, d, "Bindings.xml")
+    if not os.path.exists(xml):
+        continue
+    text = open(xml, encoding="utf-8").read()
+    lua = "".join(open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(root, d, "*.lua")))
+    toc = open(os.path.join(root, d, d + ".toc"), encoding="utf-8").read()
+    binds = re.findall(r"<Binding\s+([^>]*)>", text)
+    headers = re.findall(r'header="([^"]*)"', text)
+    problems = []
+    if re.search(r"^\s*Bindings\.xml\s*$", toc, re.M | re.I): problems.append("listed in the TOC")
+    if any('category="BINDING_CATEGORY_MMT"' not in b for b in binds): problems.append("binding without category BINDING_CATEGORY_MMT")
+    if not binds or 'header="' not in binds[0]: problems.append("first binding has no header")
+    for h in headers:
+        if not h.startswith("MMT_") or h == "MMT": problems.append("header %s is not MMT_<NAME>" % h)
+        if "BINDING_HEADER_" + h not in lua: problems.append("BINDING_HEADER_%s not set in Lua" % h)
+    for name in re.findall(r'name="([^"]*)"', text):
+        if ("BINDING_NAME_" + name) not in lua: problems.append("BINDING_NAME_%s not set in Lua" % name)
+    print("bindings %s: %s" % (d, "; ".join(problems) or "ok"))
+    bad += len(problems)
+
 here = os.path.dirname(os.path.abspath(__file__))
 for t in sorted(glob.glob(os.path.join(here, "test_*.py"))):
     r = subprocess.run([sys.executable, t, root], capture_output=True, text=True)

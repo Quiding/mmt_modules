@@ -200,7 +200,7 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   equipped Bind on Equip one) can't be dragged; the tooltip says why. It glows at the receiver with the giver's name on it, stays dimmed at the
   giver with the receiver's name. The next time those two trade, the giver's
   client puts it into the trade window. Accepting takes a key press (the game blocks addons from
-  accepting): the **"Accept trade (planned gifts only)"** key (Keybindings > AddOns; with ISBoxer one
+  accepting): the **"Accept trade (planned gifts only)"** key (Keybindings > MMT (Manage My Team) > Team Inventory; with ISBoxer one
   key for all characters) or the "Accept planned gifts" button under the trade window - it accepts
   only a trade that is nothing but those gifts, else it says why. Right-click a glowing item
   to cancel. A "Planned items" button under the trade window fills it by hand. **Trade** in the
@@ -218,7 +218,7 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
 - **Look** tab in the settings: window size, background (colour, opacity, LibSharedMedia texture),
   border colour, icon size, columns, spacing, quality colours, count font and size.
 - Open it from the minimap button (left-click bags, right-click bank) or a key (Keybindings >
-  AddOns > MMT - Team Inventory).
+  MMT (Manage My Team) > Team Inventory).
 - The bank and mailbox are counted while open: open them once on each character.
 - Each client counts its own items and shares them; only changes are sent after the first time.
 

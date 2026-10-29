@@ -139,7 +139,7 @@ M.Page = function(_, page)
         status.Show_(ok and ("Totem sequence is now on " .. GetBindingText(combo) .. ".") or msg, not ok)
         StopCapture()
     end)
-    UI.Tooltip(keyButton, "Totem sequence key", "Click, then press a key (Alt, Ctrl, Shift work). Right-click removes it. Also in Esc > Options > Keybindings > AddOns.")
+    UI.Tooltip(keyButton, "Totem sequence key", "Click, then press a key (Alt, Ctrl, Shift work). Right-click removes it. Also in Esc > Options > Keybindings > MMT (Manage My Team) > Totems.")
     C:Add(keyButton, UI.ROW + 2)
     Check(C, "Spam-safe sequence", "spamSafe", "/castsequence reset=3 with an empty step at the end, so mashing the key doesn't restart the sequence.")
 

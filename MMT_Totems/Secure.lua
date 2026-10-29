@@ -5,15 +5,15 @@
 --   * MMTTotemsSequenceButton: /castsequence of your totems in your element
 --     order (spam-safe: reset=3 with a ", null" step at the end),
 --   * the key: your own key from the settings page (override binding) and/or
---     Esc > Options > Keybindings > AddOns > "Totem sequence" (Bindings.xml).
+--     Esc > Options > Keybindings > MMT (Manage My Team) > Totems (Bindings.xml).
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
--- own binding group: "MMT" is Item Compare's, declaring it twice gives a LUA_WARNING
-BINDING_HEADER_MMTTOTEMS = "MMT - Totems"
-_G["BINDING_NAME_CLICK MMTTotemsSequenceButton:LeftButton"] = "Totem sequence (MMT Totems)"
+-- own header in the core's binding group (category BINDING_CATEGORY_MMT); "MMT" is the core's
+BINDING_HEADER_MMT_TOTEMS = "Totems"
+_G["BINDING_NAME_CLICK MMTTotemsSequenceButton:LeftButton"] = "Totem sequence"
 
 local seq = CreateFrame("Button", "MMTTotemsSequenceButton", UIParent, "SecureActionButtonTemplate")
 seq:RegisterForClicks("AnyUp", "AnyDown")

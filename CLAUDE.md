@@ -51,6 +51,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `M:Heartbeat(key, fn)` – tiny values only, no `:` `,` `=`; heartbeat message is capped at 255 bytes
 - `M.Page = function(self, page)` settings page (use `MMT.UI.Column`, `MMT.ConfigHelpers.COL_W`)
 - `M.Report = function(self, add)` lines for /mmt debug dump; `M:Debug(fmt, ...)`
+- Key bindings (core's CreateModules.md "Key bindings", core 0.9.31+): `Bindings.xml` in the module folder, NOT in
+  the TOC; `category="BINDING_CATEGORY_MMT"` on every binding (the core sets the group title "MMT (Manage My Team)");
+  the first binding gets an own header `MMT_<NAME>` (never "MMT": the core's); texts in Lua:
+  `BINDING_HEADER_MMT_<NAME> = "<Title>"`, `BINDING_NAME_<binding name>`. Never rename a binding name (players'
+  keys are saved by it). Bindings.xml changes need a game restart. `tests/run_all.py` lints all of this.
 - Comm: `MMT.SendToTeam(msg, onlyOnline)`, `MMT.SendAddon(msg, "WHISPER", sender)`,
   receive via `M:Listen("TEAM_MESSAGE", function(key, sender, text) end)`.
   Messages < 250 bytes, prefixed with OUR OWN tag (taken by core: XP, XP2, BYE, PING, PONG,
@@ -247,11 +252,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.3) – port of ema_totems
+### MMT_Totems (v0.4.4) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
-  under its OWN header MMTTOTEMS (header "MMT" belongs to Item Compare; declaring it twice warns).
+  under header MMT_TOTEMS (see "Key bindings").
   Never re-apply bindings on UPDATE_BINDINGS (setting an override fires it: loop).
 - Totems: own `GetTotemInfo`; others `MTT:<slot>:<rem>/<dur>:<name>` / `MTT:<slot>:0` per change
   (PLAYER_TOTEM_UPDATE), + group `UNIT_SPELLCAST_SUCCEEDED`. Chosen totems `MTTS:<el>:<id>:<key>`,
@@ -323,7 +328,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.9.3)
+### MMT_TeamInventory (v0.9.4)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -336,8 +341,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `Bags.lua`: team bags window `MMTTeamBagsWindow` (character picker incl. `__ALL__` = summed, `__BYCHAR__` = a section per character in category order, tabs b/k/m/e,
   search, styled like MMT's settings (fill 0.05/0.94, border 0.22/0.24, popups 0.07 + accent border 0.5, headers with a 0.08 white line, team rows like its nav list: accent bar + 0.06 bg for the one shown), window pinned by TOPLEFT (`mod.PinTop`, saved as such: height changes only move the bottom), `mod.CATEGORIES` = Baganator's default Classic order by GetItemInfoInstant classID, quality 0 = Junk
   last; lines = headers + rows of 10; the window grows to fit, scrolls by line only past the screen height) and the own minimap button
-  `MMTTeamBagsMinimapButton` (`minimapAngle`, left bags / right bank, drag). Keys: `Bindings.xml` (own header
-  MMTTEAMINV) -> global `MMTTeamInventory_Toggle(place, who)`.
+  `MMTTeamBagsMinimapButton` (`minimapAngle`, left bags / right bank, drag). Keys: `Bindings.xml` (header
+  MMT_TEAMINVENTORY, binding names still MMTTEAMINV_* so bound keys survive) -> global `MMTTeamInventory_Toggle(place, who)`.
 - `BaganatorCats.lua`: with Baganator on, `mod.BaganatorGroups(slots)` reads `BAGANATOR_CONFIG.Profiles[BAGANATOR_CURRENT_PROFILE]`
   (category_display_order, custom_categories, category_modifications priority / addedItems "i:<id>",
   category_hidden) READ ONLY on every draw; default_* searches rebuilt like Baganator's Forever defaults

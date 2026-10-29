@@ -1167,8 +1167,9 @@ function mod.OpenBags(place, who)
     end
 end
 
--- key bindings (Bindings.xml, Options > Keybindings > AddOns): toggle the window
-BINDING_HEADER_MMTTEAMINV = "MMT - Team Inventory"
+-- key bindings (Bindings.xml, Options > Keybindings > MMT (Manage My Team) > Team Inventory):
+-- toggle the window; binding names stay MMTTEAMINV_* so bound keys survive
+BINDING_HEADER_MMT_TEAMINVENTORY = "Team Inventory"
 BINDING_NAME_MMTTEAMINV_BAGS = "Team bags"
 BINDING_NAME_MMTTEAMINV_BANK = "Team bank"
 BINDING_NAME_MMTTEAMINV_BYCHAR = "Team bags, by character"

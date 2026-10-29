@@ -1,14 +1,15 @@
 <Bindings>
-	<Binding name="MMTTEAMINV_BAGS" header="MMTTEAMINV" category="ADDONS">
+	<!-- In the key binding menu under "MMT (Manage My Team)" > "Team Inventory" (texts in Bags.lua). Not in the TOC. -->
+	<Binding name="MMTTEAMINV_BAGS" header="MMT_TEAMINVENTORY" category="BINDING_CATEGORY_MMT">
 		MMTTeamInventory_Toggle("b")
 	</Binding>
-	<Binding name="MMTTEAMINV_BANK" category="ADDONS">
+	<Binding name="MMTTEAMINV_BANK" category="BINDING_CATEGORY_MMT">
 		MMTTeamInventory_Toggle("k")
 	</Binding>
-	<Binding name="MMTTEAMINV_BYCHAR" category="ADDONS">
+	<Binding name="MMTTEAMINV_BYCHAR" category="BINDING_CATEGORY_MMT">
 		MMTTeamInventory_Toggle("b", "__BYCHAR__")
 	</Binding>
-	<Binding name="MMTTEAMINV_ACCEPT" category="ADDONS">
+	<Binding name="MMTTEAMINV_ACCEPT" category="BINDING_CATEGORY_MMT">
 		MMTTeamInventory_AcceptPlanned()
 	</Binding>
 </Bindings>

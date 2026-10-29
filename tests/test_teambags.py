@@ -185,7 +185,7 @@ print(lua.eval(r'''function(m)
   assert(f.who == "Bob-Stone" and f.place == "k", "switching to the bank changed the character")
   f:Hide()
   -- key bindings: toggle the window
-  assert(BINDING_HEADER_MMTTEAMINV and BINDING_NAME_MMTTEAMINV_BANK, "binding names")
+  assert(BINDING_HEADER_MMT_TEAMINVENTORY and BINDING_NAME_MMTTEAMINV_BANK, "binding names")
   MMTTeamInventory_Toggle("k")
   assert(f:IsShown() and f.place == "k", "bank key")
   MMTTeamInventory_Toggle("k")

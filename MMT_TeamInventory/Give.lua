@@ -530,7 +530,7 @@ end
 
 -- Accepting: the game blocks an addon from accepting a trade by itself (tested in
 -- game: ADDON_ACTION_BLOCKED from a timer / OnUpdate). It takes a key press or a
--- click: the "Accept trade (planned gifts only)" key (Keybindings > AddOns; with
+-- click: the "Accept trade (planned gifts only)" key (Keybindings > MMT (Manage My Team) > Team Inventory; with
 -- ISBoxer one key for every character) or the "Accept planned gifts" button under
 -- the trade window. Both accept only a trade that is nothing but the planned gifts
 -- between these two (mod.TradeIsPlanned), else they say why. A game confirmation
@@ -572,7 +572,7 @@ watcher:SetScript("OnUpdate", function(_, e)
         hinted = signature
         local key = GetBindingKey and GetBindingKey("MMTTEAMINV_ACCEPT")
         MMT.Print("Team Inventory: the trade with %s is just the planned gifts - %s.", MMT.FirstName(partner),
-            key and ("press " .. key .. " to accept") or "click \"Accept planned gifts\" (or bind a key in Keybindings > AddOns)")
+            key and ("press " .. key .. " to accept") or "click \"Accept planned gifts\" (or bind a key in Keybindings > MMT (Manage My Team) > Team Inventory)")
     end
 end)
 
@@ -588,7 +588,7 @@ local function ShowButton()
         MMT.UI.Tooltip(fillButton, "Planned items", "Puts the items you planned for this character in the team bags into the trade window.")
         acceptButton = MMT.UI.Button(TradeFrame, 150, "Accept planned gifts", function() mod.AcceptPlanned() end)
         acceptButton:SetPoint("LEFT", fillButton, "RIGHT", 6, 0)
-        MMT.UI.Tooltip(acceptButton, "Accept planned gifts", "Accepts the trade if it holds nothing but the planned gifts between you two (else it says why). Also a key: Keybindings > AddOns > MMT - Team Inventory.")
+        MMT.UI.Tooltip(acceptButton, "Accept planned gifts", "Accepts the trade if it holds nothing but the planned gifts between you two (else it says why). Also a key: Keybindings > MMT (Manage My Team) > Team Inventory.")
     end
     local own = MMT.PlayerFull()
     local give, get = false, false
