@@ -752,6 +752,8 @@ local function Build()
     f.filters:Hide()
 
     f.search = UI.EditBox(f, 140, "Search", function(_, box) box:ClearFocus() end)
+    -- fills the room between the character button and the icons (the window's narrowest: 126 px)
+    f.search:SetPoint("TOPLEFT", f.owner, "TOPRIGHT", 8, 0)
     f.search:SetPoint("TOPRIGHT", -72, -PAD)
     f.search:HookScript("OnTextChanged", function() f.offset = 0; mod.RefreshBags() end)
 

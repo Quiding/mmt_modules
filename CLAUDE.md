@@ -328,7 +328,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.9.4)
+### MMT_TeamInventory (v0.9.5)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -378,7 +378,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Look settings `goldSilver` / `goldCopper` hide those coins, display only). Others' gold: core heartbeat ~5 s after PLAYER_MONEY
   (`SetGold` in Sync.lua redraws the open window on a change - before 0.9.3 it didn't, so trades looked lost) + `TIVM:<copper>`
   whispered with every TIVREQ reply. `mod.RefreshAll()` (5 s throttle) = own scan + RequestAll: `mod.RefreshButton(parent)` icon
-  in the window's top bar (left of the cog; search box at -72) and the panel's Team header.
+  in the window's top bar (left of the cog; the search box stretches from the character button to -72: fixed 140 px overlapped it at the narrowest window, MIN_W) and the panel's Team header.
 - `otherChars` = false | "RULESET" | "ALL" (old `true` = RULESET; `mod.CharsMode()` -> TEAM/RULESET/ALL, settings Cycle "Characters"):
   `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self), or ALL, or RULESET and `mod.SameRuleset(key)`; filters BagOwners
   (rest sorted: this ruleset / unknown first, then by ruleset), the added-up views, the panel and the total. The item tooltip still counts everyone.
