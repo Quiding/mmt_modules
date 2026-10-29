@@ -9,9 +9,9 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.6 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.7 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.7 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.8 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.5 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.0 |
@@ -29,6 +29,9 @@ MODULES, with its own settings page.
 2. `/reload` (or log in) and switch the modules on under `/mmt` > MODULES if needed.
 3. Recommended: [Baganator](https://www.curseforge.com/wow/addons/baganator) - Team Inventory then
    uses its categories and puts its tooltip lines right below Baganator's.
+
+**Moving the windows** (Cooldown Timers, Buff Timers, Totems): while a window is unlocked, a small tab shows above
+its top-left corner when the mouse is over it - drag the tab to move the window (the background still works too).
 
 **Arranging the bars** (Cooldown Timers and Buff Timers): **Arrange icons** on the Bars tab, or `/mmtct arrange` /
 `/mmtbt arrange`, until you click it again or `/reload` (the lock doesn't matter). Every member's row then shows

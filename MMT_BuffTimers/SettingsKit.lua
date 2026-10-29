@@ -7,6 +7,7 @@
 --   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
 --   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
 --   mod.DragGrip(row)                      -> the dotted handle at a draggable row's left edge
+--   mod.MoveTab(frame, opts)               -> the move tab above a movable window's top-left corner
 -- Opt(key) returns getter, setter for M.db[key]; apply() redraws.
 
 local _, mod = ...
@@ -202,6 +203,66 @@ function mod.LookTab(panel, Opt, apply)
     R:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
     R:Note("Textures come from LibSharedMedia (other addons such as Details bring many).")
     return L, R
+end
+
+-- The move tab (like MMT's XP window): a small tab above the top-left corner of a movable
+-- window, shown while it can be moved and the mouse is over the window (or opts.always());
+-- dragging it runs the window's own move code. opts = { locked = fn -> true when it can't
+-- move, start = fn, stop = fn, always = fn (optional), tip = text (optional) }.
+-- Load this file before the windows that use it.
+function mod.MoveTab(frame, opts)
+    local A = MMT.UI and type(MMT.UI.ACCENT) == "table" and MMT.UI.ACCENT or { 0.31, 0.70, 1.00 }
+    local tab = CreateFrame("Frame", nil, frame)
+    tab:SetSize(40, 12)
+    tab:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, 0)
+    tab:SetFrameLevel(frame:GetFrameLevel() + 10)
+    local bg = tab:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0, 0, 0, 0.6)
+    local line = tab:CreateTexture(nil, "BORDER")
+    line:SetPoint("TOPLEFT"); line:SetPoint("TOPRIGHT")
+    line:SetHeight(1)
+    line:SetColorTexture(A[1], A[2], A[3], 0.8)
+    for c = 0, 4 do
+        for r = 0, 1 do
+            local d = tab:CreateTexture(nil, "ARTWORK")
+            d:SetSize(2, 2)
+            d:SetPoint("CENTER", (c - 2) * 5, r == 0 and 2 or -2)
+            d:SetColorTexture(1, 1, 1, 0.8)
+        end
+    end
+    local moving = false
+    tab:EnableMouse(true)
+    tab:RegisterForDrag("LeftButton")
+    tab:SetScript("OnDragStart", function()
+        if opts.locked() then return end
+        moving = true
+        opts.start()
+    end)
+    tab:SetScript("OnDragStop", function()
+        if not moving then return end
+        moving = false
+        opts.stop()
+    end)
+    tab:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Drag to move")
+        GameTooltip:AddLine(opts.tip or "Lock its position in its settings.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    tab:Hide()
+    -- shown or not, checked a few times a second while the window is shown
+    local wait = 0
+    frame:HookScript("OnUpdate", function(_, elapsed)
+        wait = wait + elapsed
+        if wait < 0.15 then return end
+        wait = 0
+        local want = moving or (not opts.locked() and ((opts.always and opts.always())
+            or frame:IsMouseOver(14, 0, 0, 0) or tab:IsMouseOver()))
+        tab:SetShown(want and true or false)
+    end)
+    return tab
 end
 
 -- Moves data[from] so it ends up before what is now data[slot] (slot = 1 .. #data + 1).
