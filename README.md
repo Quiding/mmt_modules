@@ -10,7 +10,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.14.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.3 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.4 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.3 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.0 |
@@ -101,7 +101,7 @@ tracked for them, with exact timers.
 - **Hide buffs not learned yet** (on by default): a class buff a character hasn't learned yet (Inner Fire, a seal,
   an armor) leaves their row, and a buff cast on others only shows while someone here has learned it. Each client
   tells the team once what it hasn't learned, like Cooldown Timers' "Hide what you don't have".
-- **Reorder a list by dragging** a buff up or down in the Buffs tab (a line shows where it lands; hold it above or
+- **Reorder a list by dragging** a buff by its dots up or down in the Buffs tab (a line shows where it lands; hold it above or
   below the list to scroll).
 - **All bar**: the team-wide buffs in one place (missing when anyone lacks one, otherwise the
   shortest time left); members can be left out of it.

@@ -6,6 +6,7 @@
 --   mod.ResetSettings()                    every setting of the module back to its default
 --   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
 --   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
+--   mod.DragGrip(row)                      -> the dotted handle at a draggable row's left edge
 -- Opt(key) returns getter, setter for M.db[key]; apply() redraws.
 
 local _, mod = ...
@@ -213,6 +214,32 @@ function mod.MoveEntry(data, from, slot)
     return to
 end
 
+-- The dotted handle (2 x 3 dots, 6 x 10 px) at the left edge of a draggable row: anchor the row's
+-- content to its right. DragReorder lights it while the cursor is on the row.
+local GRIP_DIM, GRIP_LIT = 0.35, 0.9
+function mod.DragGrip(row)
+    local g = CreateFrame("Frame", nil, row)
+    g:SetSize(6, 10)
+    g:SetPoint("LEFT", 3, 0)
+    g.dots = {}
+    for c = 0, 1 do
+        for r = 0, 2 do
+            local d = g:CreateTexture(nil, "ARTWORK")
+            d:SetSize(2, 2)
+            d:SetPoint("TOPLEFT", c * 4, -r * 4)
+            d:SetColorTexture(1, 1, 1, GRIP_DIM)
+            g.dots[#g.dots + 1] = d
+        end
+    end
+    row.grip = g
+    return g
+end
+
+local function LightGrip(row, on)
+    if not row.grip then return end
+    for _, d in ipairs(row.grip.dots) do d:SetColorTexture(1, 1, 1, on and GRIP_LIT or GRIP_DIM) end
+end
+
 -- Drag to reorder the rows of an MMT.ConfigHelpers.List (fixed row pool + mouse-wheel offset).
 -- Rows need row.index (their data index, set in fillRow). getData() -> the table to reorder;
 -- moved(from, to) runs after an entry moved (redraw, ...). A line shows where it lands; holding
@@ -265,6 +292,8 @@ function mod.DragReorder(list, getData, moved)
     end
     for _, row in ipairs(rows) do
         row:RegisterForDrag("LeftButton")
+        row:HookScript("OnEnter", function(self) LightGrip(self, true) end)
+        row:HookScript("OnLeave", function(self) LightGrip(self, false) end)
         row:SetScript("OnDragStart", function(self)
             if not self.index then return end
             GameTooltip:Hide()

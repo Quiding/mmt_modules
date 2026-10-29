@@ -31,6 +31,7 @@ local function Frame()
   rawset(f, "IsShown", function(self) return self.shown end)
   rawset(f, "SetAlpha", function(self, a) self.alpha = a end)
   rawset(f, "CreateTexture", function() return Frame() end)
+  rawset(f, "SetColorTexture", function(self, ...) self.color = { ... } end)
   -- not placed on screen (IconBars' PointAt then leaves the window alone)
   for _, k in ipairs({ "GetLeft", "GetRight", "GetTop", "GetBottom" }) do rawset(f, k, function() return nil end) end
   return f
@@ -96,6 +97,12 @@ print(lua.eval(r'''function(m)
   local list = LIST
   assert(list and list.rows[1].index == 1, "list not drawn")
   local rows = list.rows
+  -- the dotted handle, lit while the cursor is on the row
+  local dot = rows[1].grip.dots[1]
+  rows[1].scripts.OnEnter(rows[1])
+  assert(dot.color[4] > 0.5, "grip not lit on hover")
+  rows[1].scripts.OnLeave(rows[1])
+  assert(dot.color[4] < 0.5, "grip still lit")
   -- no up / down buttons any more
   assert(rawget(rows[1], "up") == nil and rawget(rows[1], "down") == nil, "up / down buttons still there")
   local function Ids()

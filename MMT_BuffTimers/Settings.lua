@@ -320,7 +320,7 @@ M.Page = function(_, page)
         H.RowBackground(row, i)
         row.icon = row:CreateTexture(nil, "ARTWORK")
         row.icon:SetSize(18, 18)
-        row.icon:SetPoint("LEFT", 2, 0)
+        row.icon:SetPoint("LEFT", mod.DragGrip(row), "RIGHT", 4, 0)   -- dots: drag to reorder
         row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         row.del = UI.TextButton(row, "x", function() mod.CloseFilter(); table.remove(M.db.lists[class], row.index); Changed() end, 16)
         row.del:SetPoint("RIGHT", -2, 0)
