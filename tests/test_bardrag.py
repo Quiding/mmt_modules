@@ -197,3 +197,28 @@ print(lua.eval(r'''function(m)
   assert(not w.frame.shown or not w.rows[1].shown, "arrange off: still shown")
   return "Buffs bar drag ok"
 end''')(mod))
+
+# the move tab (SettingsKit mod.MoveTab): above the corner while unlocked and hovered, drag moves
+print(lua.eval(r'''function(m)
+  local win = CreateFrame("Frame", nil, UIParent)
+  local over, locked, started, stopped = false, false, 0, 0
+  rawset(win, "IsMouseOver", function() return over end)
+  local tab = m.MoveTab(win, {
+    locked = function() return locked end,
+    start = function() started = started + 1 end,
+    stop = function() stopped = stopped + 1 end,
+  })
+  rawset(tab, "IsMouseOver", function() return false end)
+  local function Tick() win.scripts.OnUpdate(win, 1) end
+  Tick()
+  assert(not tab.shown, "tab shown without the mouse over the window")
+  over = true; Tick()
+  assert(tab.shown, "tab not shown on mouseover")
+  tab.scripts.OnDragStart(tab); tab.scripts.OnDragStop(tab)
+  assert(started == 1 and stopped == 1, "drag didn't move the window")
+  locked = true; Tick()
+  assert(not tab.shown, "tab shown while locked")
+  tab.scripts.OnDragStart(tab); tab.scripts.OnDragStop(tab)
+  assert(started == 1 and stopped == 1, "locked window moved")
+  return "move tab ok"
+end''')(mod))

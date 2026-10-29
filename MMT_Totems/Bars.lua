@@ -100,36 +100,6 @@ local function FormatTime(t)
     return ("%.1f"):format(t)
 end
 
----------------------------------------------------------------------------
--- Drag grips (hidden while locked)
----------------------------------------------------------------------------
-local function Grip(parent, target, onStop)
-    local g = CreateFrame("Frame", nil, parent)
-    g:SetWidth(8)
-    UI.Fill(g, 0.25, 0.25, 0.25, 0.9)
-    g:EnableMouse(true)
-    g:RegisterForDrag("LeftButton")
-    g:SetScript("OnDragStart", function() if not M.db.locked and not InCombatLockdown() then target:StartMoving() end end)
-    g:SetScript("OnDragStop", function()
-        target:StopMovingOrSizing()
-        local point, _, relPoint, x, y = target:GetPoint()
-        onStop({ point, relPoint, math.floor(x + 0.5), math.floor(y + 0.5) })
-    end)
-    g:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Drag to move")
-        GameTooltip:AddLine("Lock the bars in /mmt > MODULES > Totems.", 0.7, 0.7, 0.7)
-        GameTooltip:Show()
-    end)
-    g:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    return g
-end
-
-container.grip = Grip(container, container, function(p)
-    p = PointAt(container, ANCHOR[Growth(M.db)]) or p
-    M.db.point = p; container.placed = p
-end)
-
 -- the background / border: right-click opens the Totems settings, left-drag moves
 -- (like the Buffs / Cooldowns windows); the slot buttons keep their own clicks
 local function Background(frame, which)
@@ -157,8 +127,18 @@ local function Background(frame, which)
     end)
 end
 Background(container, function() return container end)
-container.grip:SetPoint("TOPRIGHT", container, "TOPLEFT", 0, 0)
-container.grip:SetPoint("BOTTOMRIGHT", container, "BOTTOMLEFT", 0, 0)
+
+-- move tab above the corner while unlocked (SettingsKit): the grouped frame, or each bar on its own
+local TAB_TIP = "Lock the bars in /mmt > MODULES > Totems."
+local function Tab(frame, locked)
+    return mod.MoveTab(frame, {
+        locked = function() return locked() or InCombatLockdown() end,
+        start = function() frame:GetScript("OnDragStart")(frame) end,
+        stop = function() frame:GetScript("OnDragStop")(frame) end,
+        tip = TAB_TIP,
+    })
+end
+container.tab = Tab(container, function() return M.db.locked or M.db.ungrouped end)
 
 ---------------------------------------------------------------------------
 -- Small text buttons (P / TP)
@@ -251,11 +231,9 @@ local function NewBar(key)
     bar.name = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     bar.name:SetJustifyH("LEFT")
     bar.name:SetWordWrap(false)
-    bar.grip = Grip(bar, bar, function(p) M.db.barPoints[key] = p end)
     -- ungrouped: the bar moves itself, grouped: the whole frame
     Background(bar, function() return M.db.ungrouped and bar or container end)
-    bar.grip:SetPoint("TOPRIGHT", bar, "TOPLEFT", 0, 0)
-    bar.grip:SetPoint("BOTTOMRIGHT", bar, "BOTTOMLEFT", 0, 0)
+    bar.tab = Tab(bar, function() return M.db.locked or not M.db.ungrouped end)
     bar.preset = TextButton(bar, "P", 1, 1, 1)
     bar.preset:SetScript("OnClick", function(self) mod.OpenPresetMenu(self, key) end)
     bar.preset:SetScript("OnEnter", function(self)
@@ -396,7 +374,6 @@ function mod.Refresh()
         end
         local w, h = LayoutBar(bar, inset,
             c.ungrouped and (c.showNames and not c.vertical) and (SetName(bar) + 6) or nameW)
-        bar.grip:SetShown(c.ungrouped and not c.locked)
         bar:ClearAllPoints()
         if c.ungrouped then
             bar:SetParent(UIParent)
@@ -433,7 +410,6 @@ function mod.Refresh()
         else container:SetSize(maxW + 2 * pad, -y - c.rowGap + pad) end
         container:SetScale(c.scale)
         container:SetAlpha(c.alpha)
-        container.grip:SetShown(not c.locked)
         local p = c.point
         if p ~= container.placed then
             container.placed = p

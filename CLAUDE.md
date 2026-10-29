@@ -10,11 +10,16 @@ World of Warcraft: Forever (interface `16001`, Lua 5.1 WoW API).
 This git repo lives **directly in `Interface/AddOns`**, which also contains many
 other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
 `.gitignore` ignores everything (`/*`) and whitelists only our files:
-`.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `tests/`, `media/` (README pictures / gifs), and each of OUR module folders.
+`.gitignore`, `.gitattributes`, `.pkgmeta`, `README.md`, `CLAUDE.md`, `tests/`, `tools/`, `media/` (README pictures / gifs), and each of OUR module folders.
 - `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`, `MMT_Statistics` (every `MMT*`
   folder in MMT-src) belong to the friend: never edit or commit them. Read them for reference only.
-- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, list it in README.md.
+- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, a move-folders line to `.pkgmeta`, list it in README.md.
 - Before committing, run `git status` and make sure no other addon's files are staged.
+- Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md and the
+  git / packager files (GitHub's Download ZIP, release archives). CurseForge zip: `python tools/make_release.py [ref]`
+  (git archive of every MMT_* folder -> `dist/QMMTModules-<date>-<sha>.zip`, prints each module's version);
+  `.pkgmeta` (package-as QMMTModules + move-folders, one line per module) is for CurseForge's packager if it's ever
+  hooked up - add new modules there too.
 
 ## Git workflow
 After each meaningful change: `git add -A`, commit with a short clear message, `git push`.
@@ -108,7 +113,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.6) / MMT_BuffTimers (v0.17.7) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.7) / MMT_BuffTimers (v0.17.8) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -161,7 +166,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
   Status line just above the share bar. `mod.DragReorder(list, getData, moved)` = drag the rows of a core
   `ConfigHelpers.List` (rows need `row.index`; accent line marks the drop gap, cursor past an edge scrolls every 0.15 s,
-  `mod.MoveEntry(data, from, slot)`; `mod.DragGrip(row)` = 2 x 3 dots at the row's left, lit while hovered, 0.17.4); both list editors use it instead of ^ / v buttons (Buffs 0.17.3, Cooldowns 0.14.3). Test: test_dragreorder.py (copy of the core's List on frames that keep scripts).
+  `mod.MoveEntry(data, from, slot)`; `mod.DragGrip(row)` = 2 x 3 dots at the row's left, lit while hovered, 0.17.4); both list editors use it instead of ^ / v buttons (Buffs 0.17.3, Cooldowns 0.14.3).
+  `mod.MoveTab(frame, {locked, start, stop, always, tip})` = the move tab (like the XP window proposal): 40 x 12 tab above the
+  top-left corner, shown while not locked and the mouse is over the frame (`IsMouseOver(14, 0, 0, 0)`, or `always()`: arranging),
+  polled from the frame's OnUpdate (HookScript); drag runs the frame's own OnDragStart / OnDragStop. Used by the Cooldowns /
+  Buffs windows (Window.lua) and Totems (container, and each bar while ungrouped; replaced the 8 px grey grips). SettingsKit
+  is loaded BEFORE Window.lua / Bars.lua in those TOCs for it. Test: test_bardrag.py. Test: test_dragreorder.py (copy of the core's List on frames that keep scripts).
 - Name search: `Search.lua` (identical in Cooldowns / Buffs): the game finds
   spells BY NAME only if the character knows them, so `mod.AttachSearch(box, {items, onPick})` builds a
   session index of all names over ID ranges 1-60000, 400000-440000, 1250000-1330000 (ticker, 3000 per
@@ -269,7 +279,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.4) – port of ema_totems
+### MMT_Totems (v0.4.5) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry

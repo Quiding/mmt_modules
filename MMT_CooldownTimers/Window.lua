@@ -88,3 +88,15 @@ mod.window = MMTIconBars.NewWindow({
     config = function() MMT.ToggleConfig(M.name) end,
     active = function() return M.enabled end,
 })
+
+-- move tab above the window's corner while unlocked (SettingsKit), always while arranging
+do
+    local f = mod.window.frame
+    mod.MoveTab(f, {
+        locked = function() return M.db.locked end,
+        start = function() f:GetScript("OnDragStart")(f) end,
+        stop = function() f:GetScript("OnDragStop")(f) end,
+        always = function() return MMTIconBars.Arranging("MMTCooldowns") end,
+        tip = "Lock its position on the Bars tab of its settings (or /mmtct lock).",
+    })
+end

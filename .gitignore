@@ -5,6 +5,8 @@
 !/README.md
 !/.gitattributes
 !/CLAUDE.md
+!/.pkgmeta
+!/tools/
 
 # --- our modules (add one line per new module) ---
 !/MMT_PawnCompare/

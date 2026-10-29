@@ -1,2 +1,12 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Kept in the repo, left out of downloads (GitHub's "Download ZIP" / release archives and
+# tools/make_release.py, which uses git archive): players get only the MMT_* module folders.
+/tests export-ignore
+/media export-ignore
+/tools export-ignore
+/CLAUDE.md export-ignore
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/.pkgmeta export-ignore
