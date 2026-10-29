@@ -22,7 +22,8 @@
 --          tint = { r, g, b }, desaturate = true,
 --          glow = true (glow regardless of state),
 --          after = { state, start, duration } (state to switch to when a "buff" runs out,
---                  e.g. a spell's buff, then its cooldown) }
+--                  e.g. a spell's buff, then its cooldown),
+--          drag = { group, id, move = fn(src, dst, after) } (v13, see "Dragging icons") }
 --   state: "ready" | "cd" (start/duration) | "active" (glow) | "buff" (start/duration
 --          optional, count) | "missing"
 --
@@ -37,8 +38,16 @@
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
+--
+-- Dragging icons (v13): while the window is unlocked, an icon with `drag` can be dragged along its
+-- own row. It only lands among icons of the same `group` (any value compared with ==, e.g. the list
+-- table the entries come from): a line shows the spot, dropped past the group it goes to the group's
+-- nearest end. On release move(src, dst, after) gets the dragged icon's drag table and that of the
+-- group icon it lands before (after = false) or after (after = true); `id` tells icons apart (the
+-- dragged one is dimmed, dropping it on its own spot does nothing). Dragging an icon without `drag`
+-- moves the window like its background.
 
-local VERSION = 12
+local VERSION = 13
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -133,6 +142,7 @@ end
 ---------------------------------------------------------------------------
 -- Icons
 ---------------------------------------------------------------------------
+local IconDragStart, IconDragStop   -- below ("Dragging icons")
 local function NewIcon(parent)
     local b = CreateFrame("Frame", nil, parent)
     b.tex = b:CreateTexture(nil, "ARTWORK")
@@ -172,6 +182,9 @@ local function NewIcon(parent)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:RegisterForDrag("LeftButton")
+    b:SetScript("OnDragStart", function(self) IconDragStart(self) end)
+    b:SetScript("OnDragStop", function(self) IconDragStop(self) end)
     return b
 end
 
@@ -182,6 +195,8 @@ local function Remaining(i)
         if r > 0 then return r end
     end
 end
+
+local drag   -- { src = drag table, row, key, window } while an icon is dragged
 
 -- alpha, glow and timer text of one icon (called on every tick)
 local function Paint(b, c)
@@ -205,6 +220,7 @@ local function Paint(b, c)
     elseif state == "buff" then alpha = i.activeAlpha or c.activeAlpha or 1
     elseif state == "active" then glow = c.glowActive end
     if i.glow then glow = true end
+    if drag and i.drag and i.drag.id == drag.src.id and b:GetParent() == drag.row then alpha = alpha * 0.4 end
     b:SetAlpha(alpha)
     if glow then
         if not b.glow:IsShown() then b.glow:Show(); b.pulse:Play() end
@@ -259,6 +275,136 @@ local function Setup(b, i, key, c)
     Paint(b, c)
     b:Show()
 end
+
+---------------------------------------------------------------------------
+-- Dragging icons
+---------------------------------------------------------------------------
+local function InGroup(b, group) return b.data and b.data.drag and b.data.drag.group == group end
+
+-- where the dragged icon would land: the group icon it goes next to, after (true) or before it
+local function Target(d)
+    local row = d.row
+    local icons = {}
+    for _, b in ipairs(row.icons) do if b:IsShown() and b.data then icons[#icons + 1] = b end end
+    local scale = row:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    cx, cy = cx / scale, cy / scale
+    -- gap = how many icons lie before the cursor
+    local gap = 0
+    for k, b in ipairs(icons) do
+        local l, r, t, bt = b:GetLeft(), b:GetRight(), b:GetTop(), b:GetBottom()
+        if l and r and t and bt then
+            if row.vertical then
+                if cy < (t + bt) / 2 then gap = k end
+            elseif cx > (l + r) / 2 then gap = k end
+        end
+    end
+    -- only between icons of its group: past them = the group's nearest end
+    local group, first, last = d.src.group
+    for k, b in ipairs(icons) do
+        if InGroup(b, group) then first = first or k; last = k end
+    end
+    if not first then return end
+    gap = math.max(first - 1, math.min(last, gap))
+    if gap >= last then return icons[last], true end
+    for k = gap + 1, last do
+        if InGroup(icons[k], group) then return icons[k], false end
+    end
+end
+
+-- dropping there leaves it where it is
+local function NoMove(d, dst, after)
+    if dst.data.drag.id == d.src.id then return true end
+    local icons = {}
+    for _, b in ipairs(d.row.icons) do if b:IsShown() and InGroup(b, d.src.group) then icons[#icons + 1] = b end end
+    for k, b in ipairs(icons) do
+        if b == dst then
+            local nb = icons[after and k + 1 or k - 1]
+            return nb and nb.data.drag.id == d.src.id
+        end
+    end
+end
+
+local driver = CreateFrame("Frame")
+driver:Hide()
+
+local function DropLine(row)
+    if row.drop then return row.drop end
+    local l = CreateFrame("Frame", nil, row)
+    l:SetFrameLevel(row:GetFrameLevel() + 20)
+    l.tex = l:CreateTexture(nil, "OVERLAY")
+    l.tex:SetAllPoints()
+    l.tex:SetColorTexture(1, 0.82, 0, 1)
+    l:Hide()
+    row.drop = l
+    return l
+end
+
+local function ShowLine(d)
+    local line = DropLine(d.row)
+    local dst, after = Target(d)
+    if not dst or NoMove(d, dst, after) then line:Hide() return end
+    local c = d.window.def.cfg()
+    local size, half = c.iconSize or 28, (c.spacing or 2) / 2
+    line:ClearAllPoints()
+    if d.row.vertical then
+        line:SetSize(size, 2)
+        line:SetPoint("CENTER", dst, after and "BOTTOM" or "TOP", 0, after and -half or half)
+    else
+        line:SetSize(2, size)
+        line:SetPoint("CENTER", dst, after and "RIGHT" or "LEFT", after and half or -half, 0)
+    end
+    line:Show()
+end
+
+local function Repaint(w)
+    local c = w.def.cfg()
+    if not c then return end
+    for _, row in ipairs(w.rows) do
+        for _, b in ipairs(row.icons) do if b:IsShown() and b.data then Paint(b, c) end end
+    end
+end
+
+local function FinishDrag()
+    local d = drag
+    if not d then return end
+    drag = nil
+    driver:Hide()
+    if d.row.drop then d.row.drop:Hide() end
+    Repaint(d.window)
+    -- the row shows someone else now (team changed while dragging): nothing to drop on
+    if d.row.key ~= d.key or not d.row:IsShown() then return end
+    local dst, after = Target(d)
+    if dst and not NoMove(d, dst, after) then d.src.move(d.src, dst.data.drag, after) end
+end
+
+driver:SetScript("OnUpdate", function()
+    if not drag then driver:Hide() return end
+    -- the button came up somewhere OnDragStop didn't see
+    if not IsMouseButtonDown("LeftButton") then FinishDrag() return end
+    ShowLine(drag)
+end)
+
+function IconDragStart(b)
+    local row = b:GetParent()
+    local w = row.window
+    local c = w.def.cfg()
+    if b.data and b.data.drag and c and not c.locked and not drag then
+        GameTooltip:Hide()
+        drag = { src = b.data.drag, row = row, key = row.key, window = w }
+        Repaint(w)
+        driver:Show()
+        return
+    end
+    w.frame:GetScript("OnDragStart")(w.frame)   -- like the background: moves the window
+end
+
+function IconDragStop(b)
+    if drag then FinishDrag() return end
+    local f = b:GetParent().window.frame
+    f:GetScript("OnDragStop")(f)
+end
+function lib.IsDragging() return drag ~= nil end
 
 ---------------------------------------------------------------------------
 -- Window
@@ -316,6 +462,7 @@ function Window:Row(i)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.icons = {}
+    row.window = self
     row:RegisterForDrag("LeftButton")
     local f = self.frame
     row:SetScript("OnDragStart", function() f:GetScript("OnDragStart")(f) end)
@@ -381,6 +528,7 @@ function Window:Refresh()
     local x, y, maxW, maxH = PAD, -PAD, 0, 0
     for i, r in ipairs(rows) do
         local row = self:Row(i)
+        row.key, row.vertical = r.key or r.label, vertical
         local icons = r.key and WithExtras(def.name, r.key, r.icons or {}) or (r.icons or {})
         -- vertical: a column as wide as the name, icons centred in it
         local colW = vertical and math.max(size, c.showNames and (row.name:GetStringWidth() + 2) or 0) or 0

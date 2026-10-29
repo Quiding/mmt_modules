@@ -30,20 +30,28 @@ function mod.Members()
 end
 
 -- class, ALL (unless the All classes row has them), their roles, the character
+-- (second value: the list each one comes from)
 local function EntriesFor(key)
-    local list = mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
-    if not M.db.allBar then return list end
+    local list, from = mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
+    if not M.db.allBar then return list, from end
     -- a buff the All bar shows stays out of the member's row, even when a class list has it too
     local inAll = {}
     for _, e in ipairs(M.db.lists.ALL or {}) do
         local name = not e.off and (mod.BuffName(e) or mod.EntryKey(e))
         if name then inAll[name] = true end
     end
-    local out = {}
-    for _, e in ipairs(list) do
-        if not inAll[mod.BuffName(e) or mod.EntryKey(e) or ""] then out[#out + 1] = e end
+    local out, outFrom = {}, {}
+    for n, e in ipairs(list) do
+        if not inAll[mod.BuffName(e) or mod.EntryKey(e) or ""] then out[#out + 1] = e; outFrom[#out] = from[n] end
     end
-    return out
+    return out, outFrom
+end
+
+-- the bars the member rows are drawn in are unlocked (the Cooldowns window's lock when attached):
+-- every tracked buff shows, whatever the hide options say, and icons can be dragged (ListKeys.lua)
+local function RowsCfg()
+    local w = mod.Attached() and MMTIconBars.windows[CD_WINDOW]
+    return w and w.def.cfg() or M.db
 end
 
 -- look of a buff icon (missing: normal / red / grey, glow; active: opacity),
@@ -62,18 +70,21 @@ end
 -- icons of one member
 local function Icons(key)
     local icons = {}
-    for _, e in ipairs(EntriesFor(key)) do
+    local arranging = mod.Arranging(RowsCfg())
+    local entries, from = EntriesFor(key)
+    for n, e in ipairs(entries) do
         local state, start, dur, count, matched, micon
         -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
-        if mod.Applies(e, key) and mod.Castable(e)
-            and not (M.db.hideUnlearned and mod.Unlearned(key, e)) then
+        if arranging or (mod.Applies(e, key) and mod.Castable(e)
+            and not (M.db.hideUnlearned and mod.Unlearned(key, e))) then
             state, start, dur, count, matched, micon = mod.State(key, e)
             -- a blessing they can't get: they already have one from every paladin here
-            if state == "missing" and mod.BlessingCovered(key, e) then state = nil end
+            if not arranging and state == "missing" and mod.BlessingCovered(key, e) then state = nil end
+            if arranging and not state then state = "ready" end
         end
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
-                count = count, spell = e.id,
+                count = count, spell = e.id, drag = arranging and mod.DragFor(from[n], e) or nil,
                 tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")")
                         or state == "missing" and ("None of " .. e.name) or e.name)
                     or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
@@ -99,11 +110,14 @@ local function AllRow()
     local cfg = M.db
     local icons = {}
     local members = mod.AllMembers()
+    -- unlocked: every switched-on buff of the list shows, draggable
+    local arranging = mod.Arranging(cfg)
     for _, e in ipairs(cfg.lists.ALL or {}) do
+        local before = #icons
         -- only the members this buff is for ("Only for", Roles.lua)
         local forThem = {}
-        if not e.off and mod.Castable(e) then
-            for _, key in ipairs(members) do if mod.Applies(e, key) then forThem[#forThem + 1] = key end end
+        if not e.off and (arranging or mod.Castable(e)) then
+            for _, key in ipairs(members) do if arranging or mod.Applies(e, key) then forThem[#forThem + 1] = key end end
         end
         local missingBy, noData, have, covered = {}, 0, 0, 0
         local minStart, minDur, minLeft
@@ -111,7 +125,7 @@ local function AllRow()
         for _, key in ipairs(forThem) do
             local state, start, dur = mod.State(key, e)
             -- a blessing they can't get (one per paladin, Casters.lua): not counted
-            if state == "missing" and mod.BlessingCovered(key, e) then state = "covered" end
+            if not arranging and state == "missing" and mod.BlessingCovered(key, e) then state = "covered" end
             if state == "covered" then
                 covered = covered + 1
             elseif state == nil then
@@ -150,6 +164,14 @@ local function AllRow()
             i.tip = i.tip .. ("\n%d of %d have it."):format(have, checked)
         end
         icons[#icons + 1] = Look(i)
+        end
+        if arranging and not e.off then
+            -- shown even when nobody needs it now
+            if #icons == before then
+                icons[#icons + 1] = Look({ texture = mod.EntryIcon(e), state = "ready", spell = e.id,
+                    tip = (mod.IsPattern(e) or mod.IsWeapon(e)) and mod.EntryName(e) or nil })
+            end
+            icons[#icons].drag = mod.DragFor("ALL", e)
         end
     end
     return { label = "All", color = { 1, 0.82, 0 }, icons = icons }
@@ -206,6 +228,15 @@ function mod.Apply()
         mod.Detach()
         mod.window:Refresh()
     end
+end
+
+-- a list changed from the bars (an icon dragged): like the list editor's changes
+function mod.ListsChanged()
+    mod.BuildIndex()
+    mod.ScanGroup()
+    mod.Apply()
+    mod.KnownCheck()
+    if MMT.RefreshConfig then MMT.RefreshConfig() end   -- the list editor, if it's open
 end
 
 -- Cooldowns switched on/off or settings changed: attach or detach again

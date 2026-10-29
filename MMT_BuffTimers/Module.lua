@@ -126,6 +126,8 @@ SlashCmdList.MMTBUFFTIMERS = function(msg)
     elseif msg == "lock" then
         M.db.locked = not M.db.locked
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
+        mod.Apply()   -- unlocked: every tracked icon shows, draggable
+        if MMT.RefreshConfig then MMT.RefreshConfig() end
     else
         MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
     end

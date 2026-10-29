@@ -31,6 +31,9 @@ for f in [l.strip() for l in open(os.path.join(folder, folder + '.toc'), encodin
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(
         open(os.path.join(folder, f), encoding='utf-8').read(), folder + '/' + f, mod)
 
+# locked bars: the hide options apply (unlocked shows every tracked buff, test_bardrag.py)
+lua.eval('function(m) m.M.db.locked = true end')(mod)
+
 print(lua.eval(r'''function(m)
   ORIG_STATE = m.State
   MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone", "Cid-Ray" } end

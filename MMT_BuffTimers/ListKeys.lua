@@ -117,16 +117,41 @@ function mod.ListKeysFor(key, withAll)
     return keys
 end
 
--- switched-on entries for a member from all their lists; id(e) removes doubles
+-- switched-on entries for a member from all their lists; id(e) removes doubles.
+-- Second value: from[i] = the list key out[i] came from.
 function mod.CollectEntries(key, withAll, id)
-    local out, seen = {}, {}
+    local out, from, seen = {}, {}, {}
     for _, lk in ipairs(mod.ListKeysFor(key, withAll)) do
         for _, e in ipairs(mod.M.db.lists[lk] or {}) do
             local k = not e.off and id(e)
-            if k and not seen[k] then seen[k] = true; out[#out + 1] = e end
+            if k and not seen[k] then seen[k] = true; out[#out + 1] = e; from[#out] = lk end
         end
     end
-    return out
+    return out, from
+end
+
+-- Bars unlocked (cfg = the window's settings: locked, clickThrough): every tracked icon shows,
+-- whatever the hide options say, and icons can be dragged to reorder their list (IconBars v13).
+function mod.Arranging(cfg)
+    return cfg and not cfg.locked and not cfg.clickThrough or false
+end
+
+-- an icon dragged on the bars: move its entry in its list (mod.MoveEntry: SettingsKit), then the
+-- module's mod.ListsChanged() redraws like the list editor does
+local function MoveIcon(src, dst, after)
+    local l = src.group
+    local from, to
+    for i, e in ipairs(l) do
+        if e == src.id then from = i end
+        if e == dst.id then to = i end
+    end
+    if from and to and mod.MoveEntry(l, from, after and to + 1 or to) then mod.ListsChanged() end
+end
+
+-- icon.drag for an entry of list lk (only while arranging)
+function mod.DragFor(lk, e)
+    local l = lk and mod.M.db.lists[lk]
+    if l then return { group = l, id = e, move = MoveIcon } end
 end
 
 function mod.ListLabel(k)

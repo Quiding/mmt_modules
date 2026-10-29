@@ -108,7 +108,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.3) / MMT_BuffTimers (v0.17.4) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.4) / MMT_BuffTimers (v0.17.5) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -189,7 +189,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Settings pages are ~564 px high: check both columns still fit when adding widgets.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
-  bump VERSION on change (now 11: v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 13: v13 icon `drag = {group, id, move}` = drag along its row while the window is unlocked, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+- Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5): unlocked = `mod.Arranging(cfg)` (shared ListKeys: not locked,
+  not clickThrough). Then Window.lua shows every switched-on entry, skipping hideReady / hideUnknown / hideUnseenItems
+  (State nil -> "ready") and Buffs' Applies / Castable / Unlearned / BlessingCovered (All row too); Buffs member rows use the
+  Cooldowns window's cfg when attached (`RowsCfg`). `CollectEntries` returns `out, from` (list key per entry);
+  icon `drag = mod.DragFor(lk, e)` = { group = the list TABLE (so Buffs icons on the Cooldowns bars never mix with
+  Cooldowns'), id = entry, move = MoveIcon } -> `mod.MoveEntry` + `mod.ListsChanged()` (each Window.lua; also
+  `MMT.RefreshConfig`). Lib: icon OnDragStart (not locked + drag) -> `drag`, a parentless driver frame's OnUpdate draws
+  the row's drop line (`row.drop`, yellow, frame level +20) via `Target` (cursor vs icon centres, clamped to the group's
+  first/last icon) and ends on mouse up (`IsMouseButtonDown`) or OnDragStop; no drag data / locked -> forwards to the
+  window's drag. `row.key` / `row.vertical` set in Refresh. Locking (`/mmtct lock`, checkbox) redraws.
+  Test: test_bardrag.py (positions from SetPoint("TOPLEFT", x, y); test_buffbar locks its bars).
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
   corner; Buffs AllRow sets it to "have/checked" (e.g. "3/5", only while someone misses it; no separate missing count since 0.16.6) from `allCount` (corner | "OFF"), `allCountSize`,
   `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with

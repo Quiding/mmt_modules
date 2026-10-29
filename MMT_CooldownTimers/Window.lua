@@ -23,22 +23,28 @@ function mod.Members()
 end
 
 -- the entries tracked for a member: class, ALL, their roles, the character
+-- (second value: the list each one comes from)
 function mod.EntriesFor(key)
     return mod.CollectEntries(key, true, mod.EntryKey)
 end
 
 local function Rows()
     local rows = {}
+    -- unlocked: every tracked icon shows (not learned, not carried, ready), draggable (ListKeys.lua)
+    local arranging = mod.Arranging(M.db)
     for _, key in ipairs(mod.Members()) do
         local icons = {}
-        for _, e in ipairs(mod.EntriesFor(key)) do
+        local entries, from = mod.EntriesFor(key)
+        for n, e in ipairs(entries) do
             local state, start, dur = mod.State(key, e)
+            if arranging and not state then state = "ready" end
             local bStart, bDur
             if state and M.db.showBuffs then bStart, bDur = mod.ActiveBuff(key, e) end
-            if state and (bStart or not (M.db.hideReady and state == "ready")) then
+            if state and (bStart or arranging or not (M.db.hideReady and state == "ready")) then
                 local icon = {
                     texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                     spell = e.t == "s" and e.id or nil, item = e.t == "i" and e.id or nil,
+                    drag = arranging and mod.DragFor(from[n], e) or nil,
                 }
                 if bStart then
                     -- buff up: glow with its time left, then the cooldown
@@ -53,9 +59,16 @@ local function Rows()
     return rows
 end
 
+-- a list changed from the bars (an icon dragged): like the list editor's changes
+function mod.ListsChanged()
+    mod.BuildIndex()
+    mod.window:Refresh()
+    if MMT.RefreshConfig then MMT.RefreshConfig() end   -- the list editor, if it's open
+end
+
 -- with "hide ready" an icon must go away when its cooldown ends
 C_Timer.NewTicker(1, function()
-    if M.enabled and M.db and M.db.hideReady and M.db.shown then mod.Refresh() end
+    if M.enabled and M.db and M.db.hideReady and M.db.shown and not mod.Arranging(M.db) and not MMTIconBars.IsDragging() then mod.Refresh() end
 end)
 
 mod.window = MMTIconBars.NewWindow({
