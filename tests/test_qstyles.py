@@ -105,6 +105,10 @@ function Object:SetBlendMode(m) self._blend = m end
 function Object:SetAlpha(a) self._alpha = a end
 function Object:GetAlpha() return self._alpha or 1 end
 function Object:IsProtected() return self._protected or false end
+function Object:SetMovable(v) self._movable = v end
+function Object:IsMovable() return self._movable or false end
+function Object:StartMoving() self._moving = true end
+function Object:StopMovingOrSizing() self._moving = false end
 function Object:CreateLine(_, layer)
   local l = new("Line", self, layer)
   self._regions[#self._regions + 1] = l
@@ -503,6 +507,28 @@ GetFileIDFromPath = nil
 mod.SetOpt("classicBg", "ROCK")
 assert(EdgeOf(graph) and EdgeOf(graph)._backdrop.edgeFile:find("Tooltip"), "a panel inside a page got the window border")
 assert(EdgeOf(side) and EdgeOf(side)._backdrop.edgeFile:find("DialogBox") and side._backdrop.bgFile:find("Rock"), "a side panel beside its window isn't a window")
+-- the border sits outside the window: dragging it moves the window (its own drag scripts: the position is saved)
+big:SetMovable(true)
+local saved = 0
+big:SetScript("OnDragStart", function(self) self:StartMoving() end)
+big:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); saved = saved + 1 end)
+mod.Apply()
+local function GripsOf(f) local e = EdgeOf(f); local out = {} for _, c in ipairs(e and e._children or {}) do if c._scripts.OnDragStart then out[#out + 1] = c end end return out end
+local grips = GripsOf(big)
+assert(#grips == 4 and grips[1]._shown and grips[1]._points[1][1] == "BOTTOMLEFT" and grips[1]._points[1][3] == "TOPLEFT", "no drag strips outside the window's edges")
+grips[1]._scripts.OnDragStart(grips[1])
+assert(big._moving, "dragging the border doesn't move the window")
+grips[1]._scripts.OnDragStop(grips[1])
+assert(not big._moving and saved == 1, "the window's own OnDragStop (saves the position) didn't run")
+-- a side panel: its border moves the window it belongs to
+local sideGrips = GripsOf(side)
+assert(#sideGrips == 4 and sideGrips[3]._shown, "side panel without drag strips")
+sideGrips[3]._scripts.OnDragStart(sideGrips[3])
+assert(big._moving, "dragging the side panel's border doesn't move its window")
+sideGrips[3]._scripts.OnDragStop(sideGrips[3])
+-- a window that can't move: no strips (clicks there go to the world as before)
+local fixedGrips = GripsOf(narrow)
+assert(#fixedGrips == 4 and not fixedGrips[1]._shown, "drag strips on a window that can't move")
 assert(EdgeOf(narrow) and EdgeOf(narrow)._backdrop.edgeFile:find("DialogBox") and EdgeOf(narrow)._backdrop.edgeSize == 24, "a narrow window isn't a window")
 assert(EdgeOf(MMTDropdownList) and EdgeOf(MMTDropdownList)._backdrop.edgeFile:find("Tooltip"), "the dropdown list got the window border")
 assert(not secure._backdrop and eq(col(select(2, secure:GetRegions())), 0.6, 0.6, 0.6, 1), "a secure frame got a backdrop")
@@ -551,6 +577,9 @@ assert(QStyles.Current() == "MODERN" and QStyles.WindowGap() == 16, "Modern not 
 local function MetalOf(f) for _, c in ipairs(f._children) do if c._layout and c._shown then return c end end end
 local metal = MetalOf(big)
 assert(metal and metal._layout.TopLeftCorner.atlas == "UI-Frame-Metal-CornerTopLeft" and metal._points[1][5] == 22, "Modern window: no metal rim (title band above)")
+local metalGrips = {}
+for _, c in ipairs(metal._children) do if c._scripts.OnDragStart and c._shown then metalGrips[#metalGrips + 1] = c end end
+assert(#metalGrips == 4 and metalGrips[1]._h == 26, "Modern: no drag strip over the title band")
 assert(not EdgeOf(big) and not big._backdrop, "Modern window still has Classic's border / background")
 assert(eq(col(bigFill), 0.08, 0.08, 0.09, 0.95), "Modern window: not the dark colour")
 assert(col(select(2, big:GetRegions()))[4] == 0, "Modern window: MMT's 1 px edges under the rim")

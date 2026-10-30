@@ -415,6 +415,55 @@ local function EdgeFrame(f, out)
     return e
 end
 
+-- Drag handles on a window's border: the border frames sit OUTSIDE the window and take no mouse (they must
+-- not block its content), so a press on the border fell through to the world. Four thin strips just outside
+-- the window's edges (never over its content) pass a drag on to the window - or, for a side panel, to the
+-- movable window it belongs to - through that window's own OnDragStart / OnDragStop (positions get saved).
+local function DragTarget(f)
+    local t = f
+    while t and t ~= UIParent do
+        if t.IsMovable and t:IsMovable() then return t end
+        t = t.GetParent and t:GetParent()
+    end
+    return nil
+end
+
+local function Grips(holder, f, top, bottom, left, right)
+    local s = State(holder)
+    if not s.grips then
+        s.grips = {}
+        for i = 1, 4 do
+            local g = CreateFrame("Frame", nil, holder)
+            mod.seen[g] = true
+            g:EnableMouse(true)
+            if g.RegisterForDrag then g:RegisterForDrag("LeftButton") end
+            g:SetScript("OnDragStart", function()
+                local t = DragTarget(f)
+                if not t then return end
+                s.moving = t
+                local fn = t:GetScript("OnDragStart")
+                if fn then fn(t, "LeftButton") else t:StartMoving() end
+            end)
+            g:SetScript("OnDragStop", function()
+                local t = s.moving
+                s.moving = nil
+                if not t then return end
+                local fn = t:GetScript("OnDragStop")
+                if fn then fn(t) else t:StopMovingOrSizing() end
+            end)
+            s.grips[i] = g
+        end
+    end
+    local g = s.grips
+    for _, x in ipairs(g) do x:ClearAllPoints(); x:SetFrameLevel(holder:GetFrameLevel() + 1) end
+    g[1]:SetPoint("BOTTOMLEFT", f, "TOPLEFT", -left, 0); g[1]:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", right, 0); g[1]:SetHeight(math.max(1, top))
+    g[2]:SetPoint("TOPLEFT", f, "BOTTOMLEFT", -left, 0); g[2]:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", right, 0); g[2]:SetHeight(math.max(1, bottom))
+    g[3]:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, 0); g[3]:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 0, 0); g[3]:SetWidth(math.max(1, left))
+    g[4]:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, 0); g[4]:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 0, 0); g[4]:SetWidth(math.max(1, right))
+    for _, x in ipairs(g) do x:SetShown(DragTarget(f) ~= nil) end
+end
+mod.DragTarget = DragTarget
+
 -- Modern's metal rim: the game's NineSlice on a child frame above the window, its title band above the top edge
 local function MetalFrame(f)
     local s = State(f)
@@ -465,7 +514,10 @@ function mod.ArtBorder(rec, S)
         ShowPieces(f, kind)
     elseif kind == "dialog" and S.modern then
         local m = MetalFrame(f)
-        if m then m:Show() end
+        if m then
+            m:Show()
+            Grips(m, f, METAL_TITLE + 4, 6, 13, 6)   -- the title band and the rim's outer reach
+        end
     elseif kind == "dialog" then
         local picture = f.GetName and f:GetName() == "MMTConfigFrame" and mod.BackgroundShown()
         if not picture then
@@ -474,8 +526,10 @@ function mod.ArtBorder(rec, S)
         end
         local w, h = mod.Size(f)
         local size = (w >= 400 and h >= 200) and 32 or 24
-        local e = EdgeFrame(f, size == 32 and 10 or 7)   -- the art's visible border is about a third of its size
+        local out = size == 32 and 10 or 7
+        local e = EdgeFrame(f, out)   -- the art's visible border is about a third of its size
         if e then
+            Grips(e, f, out, out, out, out)
             e:SetBackdrop(DIALOG_EDGE[size])
             if e.SetBackdropBorderColor then e:SetBackdropBorderColor(1, 1, 1, 1) end
             e:Show()
