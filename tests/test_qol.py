@@ -833,3 +833,24 @@ run(A, amod, r"""function(m)
   MMT.ShownName = nil
   return "Anna: SmartBuff alerts use the privacy names"
 end""")
+run(B, bmod, r"""function(m)
+  -- a follower that never gets into combat itself: the group's fight counts too
+  INFIGHT = {}
+  function UnitAffectingCombat(u) return INFIGHT[u] == true end
+  function UnitExists(u) return u == "party1" or u == "player" end
+  function IsInRaid() return false end
+  function GetNumGroupMembers() return 2 end
+  OUT = {}; NOW = NOW + 500
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Thorns", "icon", false, 0, nil, false)
+  NOW = NOW + 5; m.SmartBuffCombatTick()
+  INFIGHT.party1 = true; NOW = NOW + 1; m.SmartBuffCombatTick()
+  INFIGHT.party1 = nil; NOW = NOW + 10; m.SmartBuffCombatTick()
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Thorns", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "not sent again after the group's fight: " .. #OUT)
+  NOW = NOW + 5; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Thorns", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "sent again without a fight")
+  local line
+  m.M.Report(m.M, function(l) if l:find("^SmartBuff:") then line = l end end)
+  assert(line:find("held=", 1, true) and line:find("lastFight=", 1, true), line)
+  return "Bob: a group member's fight counts as a fight"
+end""")

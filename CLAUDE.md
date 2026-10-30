@@ -465,7 +465,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.6.1) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.2) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -564,7 +564,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Warnings.lua (its display only knows its own NOTE:WARN kinds); the same target + buff + kind once per 10 s from anyone.
   SmartBuff's Check stops at the FIRST missing buff (its button's cast), so only one alert per check; it checks at
   PLAYER_REGEN_ENABLED itself. 0.6.1: `sbAfterCombat` (default on) = an alert last sent before the latest
-  PLAYER_REGEN_DISABLED counts as new; names shown with the privacy setting on the receiver
+  PLAYER_REGEN_DISABLED counts as new (0.6.2: also when anyone in the group starts fighting - `mod.SmartBuffCombatTick`,
+  1 s ticker, UnitAffectingCombat on player + party/raid units, secret = fighting: followers often never get combat
+  themselves; report: seen / sent / held / lastFight). SmartBuff itself reports nothing while mounted, eating /
+  drinking, or with a group buff's target out of range. Names shown with the privacy setting on the receiver
   (`mod.SmartBuffShownName`: team member by "First Last" / key / unambiguous first name, case ignored, via
   `MMT.RealFirst` / `MMT.RealName` -> `MMT.ShownName`; the sender too; pets / others unchanged).
 - Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).

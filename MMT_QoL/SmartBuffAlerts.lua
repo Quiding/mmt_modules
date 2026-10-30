@@ -26,7 +26,8 @@ local SHOW_AGAIN = 10        -- the same alert (from anyone) on screen at most o
 local FORGET = 300
 
 local F
-local sbs = { sent = 0, shown = 0, hooked = false }
+local sbs = { seen = 0, sent = 0, held = 0, shown = 0, hooked = false }
+local ticker
 mod.sbs = sbs
 local lastSent = {}          -- ["<target>\t<buff>"] = { kind, time }
 local lastShown = {}         -- ["<target>\t<buff>\t<kind>"] = time
@@ -60,13 +61,18 @@ local function OnSmartBuffAlert(target, buff, _, canCharge, charges, timeLeft, e
         if canCharge and tonumber(charges) and charges > 0 then kind, value = "C", charges
         else kind, value = "E", math.floor(tonumber(timeLeft) or 0) end
     end
+    sbs.seen = sbs.seen + 1
     local name = BuffName(buff)
     local now = GetTime()
     Clean(lastSent, now)
     local key = target .. "\t" .. name
     local last = lastSent[key]
     local fresh = M.db.sbAfterCombat and last and last.time <= combatStart
-    if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then return end
+    if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then
+        sbs.held = sbs.held + 1
+        return
+    end
+    M:Debug("SmartBuff alert sent: %s / %s (%s)", target, name, kind)
     lastSent[key] = { kind = kind, time = now }
     local msg = ("QSB:%s:%d:%s:%s"):format(kind, value, Esc(target), Esc(name))
     if #msg > 240 then msg = msg:sub(1, 240):gsub("%%%x?$", "") end
@@ -150,26 +156,57 @@ F = mod.Feature({
     notes = {
         "Each character with SmartBuff sends what its SmartBuff reports - the same alerts as its splash text, also with SmartBuff's splash or sound switched off - once a minute per target and buff, and right away when it changes.",
         "They go out as MMT alerts: the FTL leader first, then the team. Where they show is set on each character (\"Show the team's alerts\"). The same alert from several characters shows once.",
-        "SmartBuff checks mostly out of combat, so the alerts come then. A character whose SmartBuff doesn't track a buff sends nothing for it.",
+        "SmartBuff reports only out of combat, and not while mounted, eating / drinking or with a group buff's target out of range; it reports one missing buff at a time (the one it would cast next). A character whose SmartBuff doesn't track a buff sends nothing for it.",
     },
     tags = { QSB = OnAlert },
-    OnEnable = function() mod.SmartBuffHook() end,
+    OnEnable = function()
+        mod.SmartBuffHook()
+        if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.SmartBuffCombatTick) end
+    end,
+    OnDisable = function()
+        if ticker then ticker:Cancel(); ticker = nil end
+    end,
     Page = function(ui)
         ui.Check("Send my SmartBuff alerts", "sbSend", "What SmartBuff reports on this character goes to the team.")
         ui.Check("Buffs running out too", "sbExpire", "Also SmartBuff's \"rebuff, 30 s left\" / low charges alerts. Off: only missing buffs.")
         ui.Cycle("Send the same alert again after", { { value = 30, text = "30 seconds" }, { value = 60, text = "1 minute" },
             { value = 120, text = "2 minutes" }, { value = 300, text = "5 minutes" } }, "sbRepeat")
-        ui.Check("Again after each fight", "sbAfterCombat", "SmartBuff checks as soon as combat ends: what it reports then is sent even within the time above.")
+        ui.Check("Again after each fight", "sbAfterCombat", "After a fight (this character or anyone in the group in combat) the next thing SmartBuff reports is sent even within the time above.")
         ui.Cycle("Show the team's alerts", { { value = "LEADER", text = "Only on the FTL leader" },
             { value = "ALL", text = "On every character" }, { value = "OFF", text = "Not on this character" } }, "sbShow")
         ui.Check("Raid warning text", "sbRaid", "The alert in the middle of the screen, like a raid warning.")
         ui.Check("Sound", "sbSound", "The raid warning sound with each alert shown.")
     end,
     Report = function(add)
-        add(("SmartBuff: hooked=%s sent=%d shown=%d showsHere=%s show=%s"):format(tostring(sbs.hooked), sbs.sent, sbs.shown,
-            tostring(ShowsHere()), tostring(M.db.sbShow)))
+        add(("SmartBuff: hooked=%s seen=%d sent=%d held=%d shown=%d showsHere=%s show=%s lastFight=%s"):format(tostring(sbs.hooked),
+            sbs.seen, sbs.sent, sbs.held, sbs.shown, tostring(ShowsHere()), tostring(M.db.sbShow),
+            combatStart < 0 and "-" or ("%d s ago"):format(GetTime() - combatStart)))
     end,
 })
 
--- a fight starts: everything sent before it counts as new afterwards
+-- a fight starts: everything sent before it counts as new afterwards. A fight
+-- = this character OR anyone in the group in combat (followers that never get
+-- into combat themselves still count the team's fights), polled every second.
+local function Fighting(unit)
+    local ok, v = pcall(UnitAffectingCombat, unit)
+    if not ok then return false end
+    if MMT.IsSecret(v) then return true end
+    return v and true or false
+end
+
+local fighting = false
+function mod.SmartBuffCombatTick()
+    local now = Fighting("player")
+    if not now and IsInGroup and IsInGroup() then
+        local raid = IsInRaid and IsInRaid()
+        local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+        for i = 1, raid and n or math.min(n, 4) do
+            local unit = (raid and "raid" or "party") .. i
+            if UnitExists(unit) and Fighting(unit) then now = true break end
+        end
+    end
+    if now and not fighting then combatStart = GetTime() end
+    fighting = now
+end
+
 M:On("PLAYER_REGEN_DISABLED", function() combatStart = GetTime() end)

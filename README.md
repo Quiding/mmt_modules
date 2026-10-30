@@ -18,7 +18,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.1 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.1 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.2 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -315,7 +315,7 @@ Small team conveniences, each on its own tab with its own checkbox and options (
 - **SmartBuff alerts**: when [SmartBuff](https://www.curseforge.com/wow/addons/smartbuff) on a character says a buff is
   missing (or runs out), the FTL leader gets it as a chat line, raid warning text and sound ("Bob: Anna needs Arcane
   Intellect") - also with SmartBuff's own splash or sound off on that character. Once a minute per target and buff,
-  right away when it changes, and again after each fight; the same alert from several characters shows once. Names follow
+  right away when it changes, and again after each fight (also a fight only the group was in); the same alert from several characters shows once. Names follow
   MMT's privacy setting (Team > Privacy). Options: send my alerts, buffs running
   out too, how often, show the team's alerts on the leader / every character / not here, raid warning text, sound.
 - Options for Dejunk and Baganator: additions and / or removals, ask before taking changes (a dialog with Apply / Ignore) or
