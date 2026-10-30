@@ -46,14 +46,22 @@ local function SkinFrame(fr)
     local name = M.db.bagBgTexture
     local LSM = name and name ~= "FLAT" and LibStub and LibStub("LibSharedMedia-3.0", true)
     local file = LSM and LSM:Fetch("background", name, true)
+    -- MMT_qStyles (if loaded) paints the flat colours for its style: these are the originals
+    local QS = QStyles
     if file then
         sk.bg:SetTexture(file)
         sk.bg:SetVertexColor(c.r or 1, c.g or 1, c.b or 1, a)
+    elseif QS and QS.Paint then
+        QS.Paint(sk.bg, c.r or 0, c.g or 0, c.b or 0, a)
     else
         sk.bg:SetColorTexture(c.r or 0, c.g or 0, c.b or 0, a)
     end
     local e = M.db.bagBorderColor or { r = 0.22, g = 0.22, b = 0.24 }
-    for _, t in ipairs(sk.edges) do t:SetColorTexture(e.r or 0, e.g or 0, e.b or 0, 1) end
+    if QS and QS.PaintEdges then
+        QS.PaintEdges(fr, sk.edges, e.r or 0, e.g or 0, e.b or 0, 1)
+    else
+        for _, t in ipairs(sk.edges) do t:SetColorTexture(e.r or 0, e.g or 0, e.b or 0, 1) end
+    end
     return sk
 end
 mod.SkinFrame = SkinFrame

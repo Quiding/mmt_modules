@@ -16,9 +16,10 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.1 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.1 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.6 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like or EllesmereUI-like *(new, not tested in game yet)* | 0.1.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -323,6 +324,22 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.
 
 `/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat`
+
+## Styles
+
+Another look for MMT's settings window and every window built from MMT's widgets - the core's (dropdown lists,
+colour picker, dialogs, Item Compare's tooltips, the death panel ...) and the modules' (Team bags, Team Gear,
+Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export ...). Pick it from a
+dropdown; it switches right away, no `/reload`, and **None** gives MMT's own look back exactly.
+
+- **ElvUI**: flat dark panels, 1 pixel black edges with a faint line inside, ElvUI's blue, a narrow outlined font.
+- **EllesmereUI**: warm dark glassy panels with a soft light at the top, faint white edges with soft corners and a
+  shadow, EllesmereUI's accent colour (its own when it's installed) and its Expressway font when it's installed.
+- Options: the style's font, the style's accent colour. Saved per account (every character and profile).
+- Made new from colours and WoW's own fonts: nothing of ElvUI or EllesmereUI is copied, and MMT's files aren't
+  changed (the style is put on from outside). The Cooldown / Buff Timers and Totem bars keep their own Look tab.
+
+`/mmtstyle` · `/mmtstyle none | elvui | ellesmere`
 
 ---
 

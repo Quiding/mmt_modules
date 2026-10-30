@@ -75,7 +75,7 @@ assert lua.eval(r"""function()
   L:Add(STUB(), 24)       -- Arrange icons: on top of both
   return #PROBLEMS == 1
 end""")(), "the layout check doesn't catch a 0-height overlap"
-for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL"]:
+for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL", "MMT_qStyles"]:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(STUBS)
     lua.execute(MEASURE)

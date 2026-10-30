@@ -376,7 +376,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.10.1)
+### MMT_TeamInventory (v0.10.2)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -449,7 +449,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Settings: tabs General / Team bags / Look (`SettingsKit.lua` `mod.Tabs`; own ResetButton, no ShareBar). Look keys
   `bagIconSize`, `bagColumns`, `bagSpacing` (read by `ReadLook()` into the SIZE / COLS / GAP upvalues each redraw;
   window never narrower than `MIN_W`), `bagBgTexture` (LSM) / `bagBgColor` / `bagBgAlpha` / `bagBorderColor`
-  (`mod.SkinFrame`, window + side panel), `bagQuality`, `bagFont`, `bagCountSize`.
+  (`mod.SkinFrame`, window + side panel; flat colours go through `QStyles.Paint` / `QStyles.PaintEdges` when MMT_qStyles
+  is loaded (0.10.2): the Look colours are the originals, a style repaints them), `bagQuality`, `bagFont`, `bagCountSize`.
 - Filters `bagFilters` = { boe / bound / reagent / quest / consumable = "HIDE" | "ONLY" } ("ONLY" shown as Include;
   `mod.Filters()`, old single `bagFilter` converted once; window: `f.filter` toggles the sticky panel `f.filters` /
   `f.filterRows`, click cycles Show/Hide/Include, right-click Show, `f.filters.only` = "Showing only: ..." line;
@@ -585,6 +586,40 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   waiting for an open import window / combat, FTL-leader-only, the window's rows. EllesmereUI: stand-in with export /
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
+
+### MMT_qStyles (v0.1.0) – "Styles": another look for MMT's windows
+- Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere]`.
+  Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
+  `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE: panel / control colours, panelTop = gradient, border / controlBorder,
+  accentBorder BLACK | ACCENT, inner line, shadow rings, round, pixel, track, accent(), font(), fontDelta, fontFlags,
+  noShadow), `Skin.lua` (hooks + painting + API), `Settings.lua`.
+- Saved PER ACCOUNT in `M.store` (style, fonts, accent; `mod.DEFAULTS`): a look is the screen's / player's, not a team
+  profile's (like the core's configScale). No sync. M.db stays empty. Reset = `mod.ResetSettings()` (store keys cleared).
+- How it skins without touching the core: `hooksecurefunc` on `MMT.UI.Fill / Border / Label / Check / Slider / Dropdown /
+  Cycle (the alias holds the unhooked function) / EditBox / TextArea / SyncButton` and `MMT.ToggleConfig` /
+  `MMT.ApplyBackground` (only if present), installed when Skin.lua loads (MMT is a dependency, so before every lazy
+  build; frames built at the core's load - XP window, distance frame - are missed). A post-hook gets the arguments, not
+  the result: the new texture / font string = the NEWEST not-yet-recorded region of that kind (and layer) on the frame,
+  a widget = the parent's newest child (WoW keeps creation order). Records keep the originals (fill colour from the
+  args, edge anchors + thickness from GetPoint / GetHeight, font from GetFont + GetShadowOffset, text colour from
+  GetTextColor; the slider track has no colour getter: MMT's 0.18 constant), `rec.painted` = changed by us; None restores
+  only painted ones. Every hook body runs in pcall (`Try`, errors to M:Debug): a hook problem never breaks the core.
+- What gets painted: neutral dark fills (< 0.085 panel, < 0.2 control), fills in MMT's accent (UI.ACCENT), neutral
+  (< 0.6) or accent edges, check marks, slider thumb / track, dropdown value text, the nav bars of `MMTConfigFrame.tabs`
+  (ARTWORK texture <= 3 px wide, `mod.ScanConfig`). Coloured fills (quality, warnings) and white tints stay. Small frames
+  (height <= 32, or unknown size and edge >= 0.28 grey) use controlBorder and get no shadow. EllesmereUI gradient =
+  SetColorTexture(1,1,1,1) + SetGradient("VERTICAL", CreateColor bottom, top); undone with SetVertexColor(1,1,1,1).
+  ElvUI edges via PixelUtil (1 screen pixel). Fonts: ElvUI = LSM "PT Sans Narrow" or Fonts\ARIALN.TTF +2 OUTLINE no
+  shadow; EllesmereUI = LSM "Expressway" (EllesmereUI registers it) or ARIALN +2; a SetFont that fails keeps MMT's.
+  EllesmereUI accent = `EllesmereUI.ELLESMERE_GREEN` (read only) else its Forever bronze #DCA77F. Nothing of
+  ElvUI / EllesmereUI is copied (EllesmereUI is all rights reserved).
+- Core background picker (PR bnetworking/MMT#2, `MMT.ConfigBackground` / `ApplyBackground`): the settings window's
+  base fill is skipped while a picture is chosen (`skip`), and repainted after each ApplyBackground when it's NONE.
+- Public API for modules that colour textures themselves: `QStyles.Paint(tex, r, g, b, a)` / `QStyles.PaintEdges(frame,
+  edges, r, g, b, a)` (call INSTEAD of SetColorTexture: the colours are the originals), `QStyles.Current()`. Used by Team
+  Inventory's SkinFrame. Not styled on purpose: Cooldown / Buff Timers IconBars and Totem bars (own Look tabs).
+- Test: `tests/test_qstyles.py` loads the REAL `MMT/Widgets.lua` (read only) on stand-in frames that keep regions /
+  children in order, colours, anchors, fonts; skipped if MMT isn't there.
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between

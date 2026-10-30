@@ -12,6 +12,7 @@ move-folders:
   QMMTModules/MMT_TeamInventory: MMT_TeamInventory
   QMMTModules/MMT_Whispers: MMT_Whispers
   QMMTModules/MMT_QoL: MMT_QoL
+  QMMTModules/MMT_qStyles: MMT_qStyles
 
 ignore:
   - tests
