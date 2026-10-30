@@ -1,6 +1,7 @@
-"""MMT_BuffTimers/Roles.lua: who a buff is for ("Only for": player roles, classes, MMT
-roles) and each member's player role (set by hand > druid form > a fresh BPR
-message > heartbeat > own talents (classic tabs or Forever's trait bands) > class)."""
+"""MMT_BuffTimers/OnlyFor.lua: who a buff is for ("Only for": classes, specs, MMT roles; Buff
+Timers' own player roles are gone since 0.22 - old ones are ignored and dropped), the own talent
+tree (Specs.lua: classic tabs, Forever's trait groups or bands), a feral druid with an MMT tank
+role, and Casters.lua."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -28,7 +29,7 @@ SPELLS = { [768] = "Cat Form", [5487] = "Bear Form", [9634] = "Dire Bear Form", 
 ''')
 mod = lua.eval('''function()
   local m = { CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "ALL" }, auras = {} }
-  m.M = { enabled = true, db = { playerRoles = {} } }
+  m.M = { enabled = true, db = {} }
   function m.M:Heartbeat(k, fn) HEARTBEAT = fn end
   function m.M:Listen(ev, fn) LISTENERS[ev] = fn end
   m.SpellInfo = function(id) return SPELLS[id] end
@@ -37,19 +38,16 @@ mod = lua.eval('''function()
   m.Refresh = function() REFRESHED = (REFRESHED or 0) + 1 end
   return m
 end''')()
-# the talent reader (Specs.lua) first: Roles' heartbeat / listener stand-ins win
 lua.eval('function(src, m) assert(loadstring(src, "Specs.lua"))("x", m) end')(
     open('MMT_BuffTimers/Specs.lua', encoding='utf-8').read(), mod)
-lua.eval('function(src, m) assert(loadstring(src, "Roles.lua"))("x", m) end')(
-    open('MMT_BuffTimers/Roles.lua', encoding='utf-8').read(), mod)
+lua.eval('function(src, m) assert(loadstring(src, "OnlyFor.lua"))("x", m) end')(
+    open('MMT_BuffTimers/OnlyFor.lua', encoding='utf-8').read(), mod)
 
 print(lua.eval(r'''function(m)
   -- own talents, classic tabs (name, icon, points): Feral has the most
   GetNumTalentTabs = function() return 3 end
   GetTalentTabInfo = function(t) return "Tree" .. t, "icon", ({ 5, 31, 15 })[t] end
-  assert(m.OwnTalentRole() == "MELEE", "classic tabs")
-  assert(HEARTBEAT() == "M", "heartbeat " .. tostring(HEARTBEAT()))
-  assert(m.PlayerRole("Me-Self") == "MELEE", "own role from talents")
+  assert(m.OwnTree() == 2, "classic tabs")
   -- Forever: one trait tree, three bands of node columns
   GetNumTalentTabs = nil
   NOW = NOW + 20
@@ -65,7 +63,7 @@ print(lua.eval(r'''function(m)
     local pts = (col <= 4 and col == 2 and 5) or (col >= 15 and col <= 17 and 7) or 0
     nodes[id] = { posX = col * 100, ranksPurchased = pts }
   end
-  assert(m.OwnTalentRole() == "HEALER", "trait bands: " .. tostring(m.OwnTalentRole()))
+  assert(m.OwnTree() == 3, "trait bands: " .. tostring(m.OwnTree()))
   -- Forever: the classic tabs exist but read 0; the trait groups (orderIndex
   -- order) have the points, like a paladin's Holy 0 / Protection 32 / Retribution 19
   GetNumTalentTabs = function() return 3 end
@@ -94,60 +92,33 @@ print(lua.eval(r'''function(m)
   p = m.TreePoints()
   assert(p[1] == 5 and p[2] == 0 and p[3] == 21, "bands after zero groups / tabs")
   NOW = NOW + 20
-  assert(m.OwnTalentRole() == "HEALER", "bands after zero groups / tabs: role")
+  assert(m.OwnTree() == 3, "bands after zero groups / tabs: tree")
   GetNumTalentTabs, GetTalentTabInfo = nil, nil
   C_Traits.GetGroupDisplayInfoByTreeID, C_Traits.GetGroupCurrencyInfo = nil, nil
-  -- a respec: one BPR message at once, not again for the same role
-  SENT = {}
-  m.OwnRoleSent()
-  nodes[1].ranksPurchased = 40   -- now Balance
-  TALENT_EVENT()
-  assert(#SENT == 1 and SENT[1] == "BPR:C", "BPR on respec: " .. tostring(SENT[1]))
-  TALENT_EVENT()
-  assert(#SENT == 1, "BPR sent twice for the same role")
-  assert(EVENTS.TRAIT_CONFIG_UPDATED, "talent events not registered")
-
-  -- others: class default, heartbeat, a fresh BPR, a druid's form, set by hand
-  assert(m.PlayerRole("Bob-Stone") == "MELEE", "class default")
-  MMT.status["Bob-Stone"] = { ext = { bpr = "T" } }
-  assert(m.PlayerRole("Bob-Stone") == "TANK", "heartbeat")
-  LISTENERS.TEAM_MESSAGE("Bob-Stone", "Bob", "BPR:M")
-  assert(m.PlayerRole("Bob-Stone") == "MELEE", "fresh BPR beats the heartbeat")
-  NOW = NOW + 60
-  assert(m.PlayerRole("Bob-Stone") == "TANK", "after 40 s the heartbeat (which carries it by then) counts again")
-  MMT.status["Cid-Ray"] = { ext = { bpr = "H" } }
-  assert(m.PlayerRole("Cid-Ray") == "HEALER", "resto druid out of form")
-  m.auras["Cid-Ray"] = { ["Cat Form"] = {} }
-  local r, src = m.PlayerRole("Cid-Ray")
-  assert(r == "MELEE" and src == "form", "cat form")
-  m.auras["Cid-Ray"] = { ["Dire Bear Form"] = {} }
-  assert(m.PlayerRole("Cid-Ray") == "TANK", "bear form")
-  m.auras["Cid-Ray"] = { ["Mark of the Wild"] = {} }
-  assert(m.PlayerRole("Cid-Ray") == "HEALER", "out of form: talents again")
-  m.auras["Bob-Stone"] = { ["Cat Form"] = {} }
-  assert(m.PlayerRole("Bob-Stone") == "TANK", "a form only counts for druids")
-  m.M.db.playerRoles["Cid-Ray"] = "CASTER"
-  assert(select(2, m.PlayerRole("Cid-Ray")) == "set" and m.PlayerRole("Cid-Ray") == "CASTER", "set by hand")
-  m.M.db.playerRoles["Cid-Ray"] = nil
+  -- no player roles any more: nothing about them is sent or kept
+  assert(m.PlayerRole == nil and m.OwnTalentRole == nil, "player roles still there")
+  -- a feral druid tanks as a bear with an MMT role named like a tank
+  TEAM["Cid-Ray"].roles = { ["Main tank"] = true }
+  assert(m.IsTank("Cid-Ray") and m.IsTank("Bob-Stone") and not m.IsTank("Dee-Kay"), "MMT tank roles")
+  TEAM["Cid-Ray"].roles = {}
 
   -- "Only for": nothing = everyone; any match counts
   local might = { id = 19740 }
   assert(m.Applies(might, "Dee-Kay") and not m.HasFilter(might), "no filter")
+  -- an old filter with only (removed) player roles: for everyone
   might.only = { roles = { MELEE = true, TANK = true } }
-  assert(m.Applies(might, "Bob-Stone"), "tank gets Might")
-  assert(not m.Applies(might, "Dee-Kay"), "mage gets Might")
-  assert(not m.Applies(might, "Cid-Ray"), "resto druid gets Might")
-  m.auras["Cid-Ray"] = { ["Cat Form"] = {} }
-  assert(m.Applies(might, "Cid-Ray"), "cat druid doesn't get Might")
+  assert(not m.HasFilter(might) and m.Applies(might, "Dee-Kay"), "old player roles still filter")
+  might.only = { classes = { WARRIOR = true }, roles = { CASTER = true } }
+  assert(m.Applies(might, "Bob-Stone") and not m.Applies(might, "Dee-Kay"), "classes with an old roles part")
   local wisdom = { id = 19742, only = { classes = { MAGE = true }, mmt = { Tank = true } } }
   assert(m.Applies(wisdom, "Dee-Kay") and m.Applies(wisdom, "Bob-Stone") and not m.Applies(wisdom, "Cid-Ray"), "class / MMT role")
   assert(m.FilterText(wisdom) == "Mage, Tank (MMT role)", m.FilterText(wisdom))
-  assert(m.FilterText(might) == "Tank, Melee", m.FilterText(might))
-  -- imported / synced filters are cleaned
-  local c = m.CleanFilter({ roles = { MELEE = true, BOGUS = true, CASTER = false }, classes = { ALL = true }, mmt = { [""] = true } })
-  assert(c and c.roles.MELEE and not c.roles.BOGUS and not c.roles.CASTER and not c.classes and not c.mmt, "clean")
-  assert(m.CleanFilter({ roles = {} }) == nil and m.CleanFilter("x") == nil, "empty filter")
-  return "buff roles ok"
+  assert(m.FilterText(might) == "Warrior", m.FilterText(might))
+  -- imported / synced filters are cleaned: old player roles dropped
+  local c = m.CleanFilter({ roles = { MELEE = true }, classes = { ALL = true, MAGE = true, BOGUS = true }, mmt = { [""] = true, Healer = true } })
+  assert(c and c.roles == nil and c.classes.MAGE and not c.classes.ALL and not c.classes.BOGUS and c.mmt.Healer and not c.mmt[""], "clean")
+  assert(m.CleanFilter({ roles = { TANK = true } }) == nil and m.CleanFilter("x") == nil, "empty filter")
+  return "only for ok"
 end''')(mod))
 
 # "Hide buffs nobody here can cast" (Casters.lua)
@@ -200,17 +171,4 @@ print(lua.eval(r'''function(m)
   m.M.db.hideNoCaster = false
   assert(m.Castable(fort) and m.Castable(ai), "option off")
   return "casters ok"
-end''')(mod))
-
-# a survival hunter counts as melee (Forever's Survival tree is a melee tree)
-print(lua.eval(r'''function(m)
-  CLASS = "HUNTER"
-  GetNumTalentTabs = function() return 3 end
-  GetTalentTabInfo = function(t) return "Tree" .. t, "icon", ({ 5, 10, 31 })[t] end
-  NOW = NOW + 20
-  assert(m.OwnTalentRole() == "MELEE", "survival hunter: " .. tostring(m.OwnTalentRole()))
-  GetTalentTabInfo = function(t) return "Tree" .. t, "icon", ({ 5, 31, 10 })[t] end
-  NOW = NOW + 20
-  assert(m.OwnTalentRole() == "RANGED", "marksmanship hunter")
-  return "survival ok"
 end''')(mod))

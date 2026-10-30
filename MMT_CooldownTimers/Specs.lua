@@ -11,8 +11,8 @@
 -- tells the team on MMT's heartbeat ("cts=<tree>" from Cooldown Timers, "bts=<tree>"
 -- from Buff Timers while Cooldown Timers is off), plus ONE message "MSPC:<tree>"
 -- right when it changes (respec, dual spec swap) - never periodic. A druid in the
--- Feral tree counts as the bear tank spec while their player role is Tank (Buff
--- Timers' Roles.lua: bear form or set by hand).
+-- Feral tree counts as the bear tank spec when they have an MMT role with "tank"
+-- in its name (/mmt > Roles; mod.IsTank).
 --
 -- MMT_CooldownTimers and MMT_BuffTimers ship the same copy of this file (KEEP BOTH
 -- IDENTICAL). It needs mod.M, mod.ClassOf (ListKeys.lua) and mod.PresetByKey.
@@ -251,6 +251,14 @@ function mod.SetSpec(key, class)
     return nil
 end
 
+-- a member with an MMT role that has "tank" in its name (/mmt > Roles): a feral druid tanks as a bear
+function mod.IsTank(key)
+    for _, r in ipairs(MMT.MemberRoleList and MMT.MemberRoleList(key) or {}) do
+        if type(r) == "string" and r:lower():find("tank", 1, true) then return true end
+    end
+    return false
+end
+
 -- "PALADIN:HOLY" for a member, or nil (spec unknown)
 function mod.SpecOf(key)
     local class = mod.ClassOf(key)
@@ -260,7 +268,7 @@ function mod.SpecOf(key)
     local tree = trees and mod.TreeOf(key)
     if not tree then return nil end
     local spec = trees[tree]
-    if spec == "FERAL" and mod.PlayerRole and mod.PlayerRole(key) == "TANK" then spec = "BEAR" end
+    if spec == "FERAL" and mod.IsTank(key) then spec = "BEAR" end
     return class .. ":" .. spec
 end
 
@@ -323,7 +331,7 @@ function mod.SpecsTab(panel, status, changed)
     end
     local R = UI.Column(panel, H.COL2_X, 0, H.COL_W)
     R:Header("How specs work")
-    R:Note("Auto: the talent tree with the most points. Each client tells the team, also right after a respec or dual spec swap. A feral druid counts as the bear tank spec while their player role is Tank.")
+    R:Note("Auto: the talent tree with the most points. Each client tells the team, also right after a respec or dual spec swap. A feral druid counts as the bear tank spec when they have an MMT role with 'tank' in its name (/mmt > Roles).")
     R:Note("Set a spec here to choose it by hand: for a character without talents yet, or to see a spec's list in the preview. A spec set in Cooldown Timers counts in Buff Timers too, and the other way round.")
     R:Note("Edit the spec lists in the List menu of the lists tab, under \"Specs\".")
 end

@@ -52,7 +52,6 @@ local M = MMT.NewModule({
         hideUnlearned = true,      -- hide buffs not learned yet: own row, and casters who haven't (Known.lua)
         blessingLimit = true,      -- one blessing per paladin in the group (Casters.lua)
         hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
-        playerRoles = {},          -- [teamKey] = TANK | HEALER | MELEE | RANGED | CASTER, set by hand (Roles.lua)
         lists = mod.DEFAULT_LISTS,
     },
 })
@@ -92,7 +91,6 @@ mod.TakeOver = TakeOver
 M.OnEnable = function()
     TakeOver()
     mod.OwnSpecSent()
-    if mod.OwnRoleSent then mod.OwnRoleSent() end
     mod.BuildIndex()
     mod.ScanGroup()
     mod.StartWeapons()
