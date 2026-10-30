@@ -16,29 +16,53 @@ local MMT = MMT
 local current = {}   -- [page] = selected tab id (kept while the game runs)
 local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 
+-- list = { { id, text [, blocked = function() return why | nil end] }, ... }; a blocked tab
+-- is greyed, can't be opened and says why in its tooltip (e.g. the addon it needs is missing)
 function mod.Tabs(page, list)
     local UI = MMT.UI
     local W = MMT.ConfigHelpers.PAGE_W
     local panels, buttons = {}, {}
     local bw = math.floor((W - 8 * (#list - 1)) / #list)
+    local function Blocked(t) return t.blocked and t.blocked() or nil end
     local function Show(id)
         current[mod] = id
         for k, p in pairs(panels) do p:SetShown(k == id) end
-        for k, b in pairs(buttons) do
-            if k == id then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
+        for _, t in ipairs(list) do
+            local b = buttons[t[1]]
+            if Blocked(t) then b.label:SetTextColor(0.35, 0.35, 0.35)
+            elseif t[1] == id then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
             else b.label:SetTextColor(0.7, 0.7, 0.7) end
         end
     end
     for i, t in ipairs(list) do
-        local b = UI.Button(page, bw, t[2], function() Show(t[1]) end)
+        local b = UI.Button(page, bw, t[2], function() if not Blocked(t) then Show(t[1]) end end)
         b:SetPoint("TOPLEFT", (i - 1) * (bw + 8), 0)
+        if t.blocked then
+            b:HookScript("OnEnter", function(self)
+                local why = Blocked(t)
+                if not why then return end
+                GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+                GameTooltip:SetText(t[2])
+                GameTooltip:AddLine(why, 1, 0.35, 0.35, true)
+                GameTooltip:Show()
+            end)
+            b:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        end
         buttons[t[1]] = b
         local p = CreateFrame("Frame", nil, page)
         p:SetPoint("TOPLEFT", 0, -30)
         p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30 - BOTTOM))
         panels[t[1]] = p
     end
-    Show(current[mod] and panels[current[mod]] and current[mod] or list[1][1])
+    -- the tab shown last, else the first one that isn't blocked
+    local start = current[mod] and panels[current[mod]] and current[mod]
+    for _, t in ipairs(list) do
+        if t[1] == start and Blocked(t) then start = nil end
+    end
+    if not start then
+        for _, t in ipairs(list) do if not Blocked(t) then start = t[1] break end end
+    end
+    Show(start or list[1][1])
     return panels
 end
 

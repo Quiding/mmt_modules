@@ -465,14 +465,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.6.4) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.5) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
   One TEAM_MESSAGE listener dispatches `^(Q[A-Z]+):` to the active feature's tag. Settings.lua: one TAB per feature
   (0.4.0: SettingsKit.lua copied in, `mod.Tabs`, ids = `f.key`, label `f.tabText or f.title`; column left, `f.notes` =
   "How it works" column right; main checkbox greyed with the reason as tooltip; `ui.Check/Cycle/Button/Confirm/Note`
-  options greyed and ignored while the feature is off; `f.Refresh()` runs on page refresh). `Ask.lua`:
+  options greyed and ignored while the feature is off; `f.Refresh()` runs on page refresh; 0.6.5: a feature whose addon
+  isn't loaded gets a greyed tab that won't open, its reason in the tooltip = SettingsKit `mod.Tabs` entry `blocked = fn -> why`). `Ask.lua`:
   `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
   another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
   Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.

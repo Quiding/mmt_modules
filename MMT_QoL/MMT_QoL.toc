@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Quality of life
 ## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team. Sends ForeverAuras auras and EllesmereUI profiles to the team, and calls out SmartBuff alerts.
-## Version: 0.6.4
+## Version: 0.6.5
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0

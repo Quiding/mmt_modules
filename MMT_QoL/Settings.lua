@@ -83,7 +83,13 @@ M.Page = function(_, page)
     ResetButton(page)
 
     local tabs = {}
-    for _, f in ipairs(mod.features) do tabs[#tabs + 1] = { f.key, f.tabText or f.title } end
+    for _, f in ipairs(mod.features) do
+        -- the tab of a feature whose addon isn't loaded is greyed and says why (SettingsKit)
+        tabs[#tabs + 1] = { f.key, f.tabText or f.title, blocked = f.addon and function()
+            local ok, why = mod.AddonState(f.addon)
+            if not ok then return (why or "") .. " This tab needs it." end
+        end or nil }
+    end
     local panels = mod.Tabs(page, tabs)
     local refresh = {}
     for _, f in ipairs(mod.features) do
