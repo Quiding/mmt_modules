@@ -83,6 +83,7 @@ end)
 
 mod.window = MMTIconBars.NewWindow({
     name = "MMTCooldowns",
+    frameOrder = 1,   -- beside a party frame: nearest it (Buff Timers' row comes after)
     cfg = function() return M.db end,
     rows = Rows,
     config = function() MMT.ToggleConfig(M.name) end,

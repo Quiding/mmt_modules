@@ -178,6 +178,7 @@ end
 
 mod.window = MMTIconBars.NewWindow({
     name = "MMTBuffs",
+    frameOrder = 2,   -- beside a party frame: after Cooldown Timers' row
     cfg = function() return M.db end,
     rows = function()
         local rows = {}

@@ -26,7 +26,7 @@ local M = MMT.NewModule({
         includeSelf = true, onlyOnline = true,
         specSet = {},              -- [teamKey] = spec key set by hand (Specs tab)
         specLists = false,         -- a member with a known spec uses their spec's list instead of the class list (Specs.lua)
-        attach = "OFF",            -- OFF: own window | LEFT / RIGHT: on the Cooldowns rows
+        attach = "OFF",            -- OFF: own window (or party frames, onFrames) | LEFT / RIGHT: on the Cooldowns rows
         iconSize = 28, iconZoom = 8, spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
         bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,
         borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,
@@ -34,6 +34,11 @@ local M = MMT.NewModule({
         showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         missingAlpha = 0.25, activeAlpha = 1, glowMissing = false,
         point = { "CENTER", "CENTER", -200, 0 },
+        onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
+        framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22,
+        framesOthers = "WINDOW",   -- members without a frame: WINDOW (own window) | HIDE
+        allOnFrames = false,       -- the All bar above the top party / raid frame (else free, in the window)
+        allX = 0, allY = 0,
         hidden = {},
         allBar = true,             -- "All classes" row; the ALL buffs leave the members' rows
         allMissingLook = "RED",    -- missing buffs: PLAIN (normal icon) | RED | GREY, all at missingAlpha

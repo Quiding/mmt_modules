@@ -1,7 +1,7 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
 -- Tabs: Bars (what is shown) / Look (sizes, text, background, border,
 -- missing buffs) / Buffs (the tracked lists, the All bar, sharing) /
--- Roles (each member's player role for "Only for", Roles.lua).
+-- Roles (each member's player role for "Only for", Roles.lua) / Specs / Frames (FramesTab.lua).
 
 local _, mod = ...
 local MMT = MMT
@@ -121,24 +121,49 @@ function mod.OpenFilter(e, owner, changed)
     return f
 end
 
+-- "Where" (Bars and Party frames tabs): own window, on the Cooldowns bars, or beside the party frames
+local WHERE = {
+    { value = "OFF", text = "Own window" },
+    { value = "RIGHT", text = "On the Cooldowns bars, right" },
+    { value = "LEFT", text = "On the Cooldowns bars, left" },
+    { value = "FRAMES", text = "Beside the party frames" },
+}
+local function WhereGet()
+    if M.db.attach == "OFF" and M.db.onFrames then return "FRAMES" end
+    return M.db.attach
+end
+local function WhereSet(v)
+    M.db.onFrames = (v == "FRAMES")
+    M.db.attach = (v == "RIGHT" or v == "LEFT") and v or "OFF"
+    Apply()
+    if MMT.RefreshConfig then MMT.RefreshConfig() end   -- the same choice on the other tab
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "roles", "Roles" }, { "specs", "Specs" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "roles", "Roles" }, { "specs", "Specs" }, { "frames", "Frames" } })
     mod.ShareBar(page, status)
+
+    local FL = mod.FramesTab(panels.frames, Opt, status, { choices = WHERE, get = WhereGet, set = WhereSet })
+    FL:Header("All bar")
+    FL:Cycle("Place", {
+        { value = "FREE", text = "Free (in the window)" },
+        { value = "FRAMES", text = "Above the party frames" },
+    }, function() return M.db.allOnFrames and "FRAMES" or "FREE" end,
+       function(v) M.db.allOnFrames = (v == "FRAMES"); Apply() end)
+    local gax, sax = Opt("allX")
+    FL:Slider("X offset", -100, 100, 1, gax, sax)
+    local gay, say = Opt("allY")
+    FL:Slider("Y offset", -100, 100, 1, gay, say)
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
     local L = UI.Column(p, 0, 0, COL_W)
     L:Header("Window")
     Check(L, "Show the buffs", "shown")
-    local ga, sa = Opt("attach")
-    L:Cycle("Where", {
-        { value = "OFF", text = "Own window" },
-        { value = "RIGHT", text = "On the Cooldowns bars, right" },
-        { value = "LEFT", text = "On the Cooldowns bars, left" },
-    }, ga, sa)
+    L:Cycle("Where", WHERE, WhereGet, WhereSet)
     Check(L, "Lock position", "locked")
     Check(L, "Click-through", "clickThrough", "Mouse clicks go through the window (no tooltips, no dragging).")
     L:Cycle("Growth direction", {
@@ -466,8 +491,9 @@ M.Report = function(_, add)
     end
     local n = 0
     for _, l in pairs(M.db.lists or {}) do n = n + #l end
-    add(("-- Buffs %s: shown=%s attach=%s attached=%s entries=%d"):format(mod.VERSION, tostring(M.db.shown),
-        tostring(M.db.attach), tostring(mod.Attached()), n))
+    add(("-- Buffs %s: shown=%s attach=%s attached=%s entries=%d onFrames=%s (%s) allOnFrames=%s frames: %s"):format(mod.VERSION,
+        tostring(M.db.shown), tostring(M.db.attach), tostring(mod.Attached()), n, tostring(M.db.onFrames),
+        tostring(M.db.framesSide), tostring(M.db.allOnFrames), mod.FramesFound()))
     for key, t in pairs(mod.auras) do
         local names = {}
         for name in pairs(t) do names[#names + 1] = name end

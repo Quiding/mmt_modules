@@ -113,7 +113,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.10) / MMT_BuffTimers (v0.17.11) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.15.0) / MMT_BuffTimers (v0.18.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -209,8 +209,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (notes estimated) and fails on a column past its page / panel or a widget on the line of a 0-height `Add` (give the
   row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
-  **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`: `cmp` each pair);
-  bump VERSION on change (now 13: v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`, `FramesTab`: `cmp` each pair);
+  bump VERSION on change (now 14: v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5; own mode since 0.14.5 / 0.17.6 - tying it to "unlocked"
   showed everything on every profile: unlocked is the default): arrange mode = session-only `MMTIconBars.arrange[windowName]`
   (`lib.SetArrange(name, on)` refreshes that window, `lib.Arranging(name)`; shared ListKeys `mod.Arranging(name, ...)` = any
@@ -226,6 +226,23 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   first/last icon) and ends on mouse up (`IsMouseButtonDown`) or OnDragStop; no drag data / locked -> forwards to the
   window's drag. `row.key` / `row.vertical` set in Refresh.
   Test: test_bardrag.py (positions from SetPoint("TOPLEFT", x, y)).
+- Party frames (IconBars v14, Cooldowns 0.15.0 / Buffs 0.18.0): cfg `onFrames` = each member row beside their unit frame,
+  `allOnFrames` (Buffs: the All bar = label rows) above the TOP frame (highest, then leftmost); `framesSide` RIGHT/LEFT/TOP/BOTTOM,
+  `framesX/Y`, `framesIconSize` (0 = iconSize), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.
+  `lib.UnitFrames()` -> byKey, top, count per `lib.PROVIDERS` (first shown frame of a unit wins): EllesmereUI
+  (`ERFPartySelfButton`, children `hdr[i]` / attribute `child<i>` of `ERFPartyHeader`, `ERFFlatHeader`, `ERFGroupHeader1-8`:
+  SecureGroupHeaders, unit attribute), Blizzard compact (`CompactPartyFrameMember1-5`, `CompactRaidFrame1-40`,
+  `CompactRaidGroup<g>Member<i>`, `.unit` field), Blizzard party (`PartyFrame.MemberFrame1-4` / `PartyMemberFrame1-4`, `PlayerFrame`).
+  Globals via `rawget(_G)`. Unit -> key = `MMT.SplitUnit` + `MMT.Resolve`, cached per unit until GROUP_ROSTER_UPDATE /
+  PLAYER_ENTERING_WORLD / UNIT_NAME_UPDATE. **Never anchored to the unit frames** (secure: an anchored frame becomes
+  protected in combat): frame rows (`w.frows`, `Window:FrameRow`, parent UIParent, `row.framed`, `row.fc` = cfg with the frame
+  icon size) are SetPoint("BOTTOMLEFT", UIParent) at the frame's GetRect (scaled by effective scales); a parentless driver
+  paints them every 0.1 s and `lib.CheckFrames()` every 0.25 s: key->frame signature changed -> every window with
+  `w.onFrames` Refresh (not while dragging), else `lib.PlaceFramed()` (moves only on change). Rows on one frame + side line up
+  by `def.frameOrder` (Cooldowns 1, Buffs 2), label rows last. Buffs "Where" (Bars + Frames tab) = attach OFF/RIGHT/LEFT
+  or FRAMES (attach OFF + onFrames); attached buffs ride on Cooldowns' frame rows via WithExtras. Settings tab: `FramesTab.lua`
+  (identical in both: `mod.FramesTab(panel, Opt, status, where)`, `mod.FramesFound()`). Test: test_partyframes.py (both modules
+  in one Lua state, EllesmereUI-like headers + Blizzard compact stand-ins, re-sort, leaving, stacking, All bar).
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
   corner; Buffs AllRow sets it to "have/checked" (e.g. "3/5", only while someone misses it; no separate missing count since 0.16.6) from `allCount` (corner | "OFF"), `allCountSize`,
   `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with

@@ -1,6 +1,6 @@
 -- MMT Cooldowns: settings page (MODULES > Cooldowns in /mmt) and debug report.
 -- Tabs: Bars (what is shown) / Look (sizes, text, background, border) /
--- Spells & items (the tracked lists and sharing).
+-- Spells & items (the tracked lists and sharing) / Specs / Frames (FramesTab.lua).
 
 local _, mod = ...
 local MMT = MMT
@@ -26,7 +26,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" }, { "specs", "Specs" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" }, { "specs", "Specs" }, { "frames", "Frames" } })
     mod.ShareBar(page, status)
     mod.SpecsTab(panels.specs, status, function()
         mod.BuildIndex()
@@ -34,6 +34,15 @@ M.Page = function(_, page)
         mod.ShareCheck()
         mod.KnownCheck()
     end)
+
+    mod.FramesTab(panels.frames, Opt, status, {
+        choices = {
+            { value = "WINDOW", text = "In the window" },
+            { value = "FRAMES", text = "Beside the party frames" },
+        },
+        get = function() return M.db.onFrames and "FRAMES" or "WINDOW" end,
+        set = function(v) M.db.onFrames = (v == "FRAMES"); Apply() end,
+    })
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
@@ -267,7 +276,8 @@ M.Report = function(_, add)
     mod.SpecReport(add)
     local n = 0
     for _, l in pairs(M.db.lists or {}) do n = n + #l end
-    add(("-- Cooldowns %s: shown=%s entries=%d"):format(mod.VERSION, tostring(M.db.shown), n))
+    add(("-- Cooldowns %s: shown=%s entries=%d onFrames=%s (%s) frames: %s"):format(mod.VERSION, tostring(M.db.shown), n,
+        tostring(M.db.onFrames), tostring(M.db.framesSide), mod.FramesFound()))
     for key, cds in pairs(mod.cds) do
         local t = {}
         for ek, c in pairs(cds) do t[#t + 1] = ek .. (c.pending and "(buff)" or "") end

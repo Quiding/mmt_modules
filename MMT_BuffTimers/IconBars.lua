@@ -47,8 +47,19 @@
 -- group icon it lands before (after = false) or after (after = true); `id` tells icons apart (the
 -- dragged one is dimmed, dropping it on its own spot does nothing). Dragging an icon without `drag`
 -- moves the window like its background (when unlocked).
+--
+-- Party / raid frames (v14): cfg.onFrames puts each member's row beside that member's unit frame
+-- (EllesmereUI's party / raid frames, Blizzard's compact party / raid frames, Blizzard's party
+-- frames + PlayerFrame; lib.UnitFrames() finds them), cfg.allOnFrames does the same for label rows
+-- (e.g. an All bar: above the top frame). Fields: framesSide ("RIGHT" | "LEFT" | "TOP" | "BOTTOM"),
+-- framesX, framesY (offsets, + = right / up), framesIconSize (0 = iconSize), framesOthers ("WINDOW":
+-- members without a frame stay in the window | "HIDE"), allX, allY. The rows are our own frames on
+-- UIParent, placed at the unit frame's screen position (read, never anchored: the unit frames are
+-- secure, and anchoring to them would make our frames protected in combat); a poll every 0.25 s
+-- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
+-- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 13
+local VERSION = 14
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -371,7 +382,7 @@ local function ShowLine(d)
     local dst, after = Target(d)
     if not dst or NoMove(d, dst, after) then line:Hide() return end
     local c = d.window.def.cfg()
-    local size, half = c.iconSize or 28, (c.spacing or 2) / 2
+    local size, half = d.row.iconSize or c.iconSize or 28, (c.spacing or 2) / 2
     line:ClearAllPoints()
     if d.row.vertical then
         line:SetSize(size, 2)
@@ -388,6 +399,11 @@ local function Repaint(w)
     if not c then return end
     for _, row in ipairs(w.rows) do
         for _, b in ipairs(row.icons) do if b:IsShown() and b.data then Paint(b, c) end end
+    end
+    for _, row in ipairs(w.frows or {}) do
+        if row:IsShown() and row.fc then
+            for _, b in ipairs(row.icons) do if b:IsShown() and b.data then Paint(b, row.fc) end end
+        end
     end
 end
 
@@ -422,15 +438,207 @@ function IconDragStart(b)
         driver:Show()
         return
     end
+    if row.framed then return end   -- beside a unit frame: nothing to move
     w.frame:GetScript("OnDragStart")(w.frame)   -- like the background: moves the window
 end
 
 function IconDragStop(b)
     if drag then FinishDrag() return end
-    local f = b:GetParent().window.frame
+    local row = b:GetParent()
+    if row.framed then return end
+    local f = row.window.frame
     f:GetScript("OnDragStop")(f)
 end
 function lib.IsDragging() return drag ~= nil end
+
+---------------------------------------------------------------------------
+-- Party / raid frames (v14)
+---------------------------------------------------------------------------
+-- (global look-ups with rawget: a missing global stays missing)
+local function G(name) return rawget(_G, name) end
+
+local function Children(hdr, out)
+    if type(hdr) ~= "table" then return end
+    for i = 1, 40 do
+        local b = rawget(hdr, i)
+        if not b and hdr.GetAttribute then b = hdr:GetAttribute("child" .. i) end
+        if type(b) ~= "table" then break end
+        out[#out + 1] = b
+    end
+end
+
+local function Named(out, name) local f = G(name); if type(f) == "table" then out[#out + 1] = f end end
+
+-- unit frame addons, in this order: a unit's first shown frame wins
+local PROVIDERS = {
+    { name = "EllesmereUI", frames = function(out)
+        -- EllesmereUIRaidFrames: party header (+ the static self button of "Show Self First"),
+        -- raid: one header per group or one flat header (Merge Groups); EUI_NameSort only re-sorts them
+        Named(out, "ERFPartySelfButton")
+        Children(G("ERFPartyHeader"), out)
+        Children(G("ERFFlatHeader"), out)
+        for g = 1, 8 do Children(G("ERFGroupHeader" .. g), out) end
+    end },
+    { name = "Blizzard raid frames", frames = function(out)
+        for i = 1, 5 do Named(out, "CompactPartyFrameMember" .. i) end
+        for i = 1, 40 do Named(out, "CompactRaidFrame" .. i) end
+        for g = 1, 8 do for i = 1, 5 do Named(out, "CompactRaidGroup" .. g .. "Member" .. i) end end
+    end },
+    { name = "Blizzard party frames", frames = function(out)
+        local pf = G("PartyFrame")
+        for i = 1, 4 do
+            local f = type(pf) == "table" and rawget(pf, "MemberFrame" .. i) or nil
+            if f then out[#out + 1] = f else Named(out, "PartyMemberFrame" .. i) end
+        end
+        Named(out, "PlayerFrame")
+    end },
+}
+lib.PROVIDERS = PROVIDERS
+
+local unitKeys = {}   -- [unit] = team key (until the roster changes)
+
+local function KeyOf(unit)
+    if type(unit) ~= "string" or unit == "" then return nil end
+    local k = unitKeys[unit]
+    if k then return k end
+    local ok, real = pcall(function() return UnitExists(unit) and true or false end)
+    if not ok or not real then return nil end
+    local _, _, key = MMT.SplitUnit(unit)
+    if type(key) ~= "string" or (MMT.IsSecret and MMT.IsSecret(key)) or key == UNKNOWNOBJECT then return nil end
+    if MMT.Resolve then key = MMT.Resolve(key) or key end
+    unitKeys[unit] = key
+    return key
+end
+
+local function UnitOfFrame(f)
+    local u = f.GetAttribute and f:GetAttribute("unit")
+    if type(u) ~= "string" then u = rawget(f, "unit") or rawget(f, "displayedUnit") end
+    return u
+end
+
+-- every shown unit frame with a player: [team key] = frame, the top one (highest, then leftmost),
+-- and how many each addon gave ([provider name] = n)
+function lib.UnitFrames()
+    local byKey, count, top, topY, topX = {}, {}, nil, nil, nil
+    for _, p in ipairs(PROVIDERS) do
+        local list = {}
+        pcall(p.frames, list)
+        for _, f in ipairs(list) do
+            local ok, shown = pcall(f.IsVisible, f)
+            local key = ok and shown and KeyOf(UnitOfFrame(f))
+            if key and not byKey[key] then
+                byKey[key] = f
+                count[p.name] = (count[p.name] or 0) + 1
+                local s = f:GetEffectiveScale()
+                local l, t = f:GetLeft(), f:GetTop()
+                if l and t then
+                    l, t = l * s, t * s
+                    if not top or t > topY + 0.5 or (math.abs(t - topY) <= 0.5 and l < topX) then top, topY, topX = f, t, l end
+                end
+            end
+        end
+    end
+    return byKey, top, count
+end
+
+local GAP = 2
+local SIDES = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }
+
+-- puts a row beside a unit frame, `before` px further out (rows nearer the frame); returns the room it takes
+local function Place(row, uf, side, before, x, y)
+    local ok, l, b, w, h = pcall(uf.GetRect, uf)
+    if not ok or not (l and b and w and h) then return 0 end
+    local k = uf:GetEffectiveScale() / row:GetEffectiveScale()
+    l, b, w, h = l * k, b * k, w * k, h * k
+    local rw, rh = row.fw or 0, row.fh or 0
+    local px, py
+    if side == "LEFT" then px, py = l - GAP - before - rw, b + (h - rh) / 2
+    elseif side == "TOP" then px, py = l, b + h + GAP + before
+    elseif side == "BOTTOM" then px, py = l, b - GAP - before - rh
+    else px, py = l + w + GAP + before, b + (h - rh) / 2 end
+    px, py = math.floor(px + x + 0.5), math.floor(py + y + 0.5)
+    if row.px ~= px or row.py ~= py then
+        row.px, row.py = px, py
+        row:ClearAllPoints()
+        row:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", px, py)
+    end
+    return ((side == "LEFT" or side == "RIGHT") and rw or rh) + GAP
+end
+
+-- every window's frame rows to their places
+function lib.PlaceFramed()
+    local list = {}
+    for _, w in pairs(lib.windows) do if w.frows then list[#list + 1] = w end end
+    table.sort(list, function(a, b)
+        local x, y = a.def.frameOrder or 9, b.def.frameOrder or 9
+        if x ~= y then return x < y end
+        return a.def.name < b.def.name
+    end)
+    local taken = {}   -- [unit frame] = { [side] = room used by rows nearer the frame }
+    for pass = 1, 2 do   -- member rows first; label rows (an All bar) above whatever sits on top
+        for _, w in ipairs(list) do
+            local c = w.def.cfg()
+            for _, row in ipairs(w.frows) do
+                if c and row.unitFrame and row:IsShown() and ((pass == 2) == (row.label == true)) then
+                    local side = row.label and "TOP" or (SIDES[c.framesSide] and c.framesSide or "RIGHT")
+                    local x = tonumber(row.label and c.allX or c.framesX) or 0
+                    local y = tonumber(row.label and c.allY or c.framesY) or 0
+                    local t = taken[row.unitFrame] or {}
+                    taken[row.unitFrame] = t
+                    t[side] = (t[side] or 0) + Place(row, row.unitFrame, side, t[side] or 0, x, y)
+                end
+            end
+        end
+    end
+end
+
+-- frame rows tick here (the window itself may be hidden: everyone is on a frame)
+local fdrive = CreateFrame("Frame")
+fdrive:Hide()
+local builtFor   -- frames + units the frame rows were last built for
+
+function lib.CheckFrames()
+    local any = false
+    for _, w in pairs(lib.windows) do if w.onFrames then any = true end end
+    if not any then fdrive:Hide() return end
+    local byKey, top = lib.UnitFrames()
+    local parts = {}
+    for k, f in pairs(byKey) do parts[#parts + 1] = k .. "=" .. tostring(f) end
+    table.sort(parts)
+    local sig = table.concat(parts, ",") .. "|" .. tostring(top)
+    if sig ~= builtFor and not drag then   -- (while an icon is dragged: after it)
+        builtFor = sig
+        for _, w in pairs(lib.windows) do if w.onFrames then w:Refresh() end end
+        return
+    end
+    lib.PlaceFramed()
+end
+
+do
+    local paintT, pollT = 0, 0
+    fdrive:SetScript("OnUpdate", function(_, e)
+        paintT, pollT = paintT + (e or 0.1), pollT + (e or 0.1)
+        if paintT >= 0.1 then
+            paintT = 0
+            for _, w in pairs(lib.windows) do
+                for _, row in ipairs(w.frows or {}) do
+                    if row:IsShown() and row.fc then
+                        for _, b in ipairs(row.icons) do if b:IsShown() and b.data then Paint(b, row.fc) end end
+                    end
+                end
+            end
+        end
+        if pollT >= 0.25 then
+            pollT = 0
+            lib.CheckFrames()
+        end
+    end)
+end
+
+-- the roster changed: units may belong to someone else now
+local roster = CreateFrame("Frame")
+for _, ev in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "UNIT_NAME_UPDATE" }) do pcall(roster.RegisterEvent, roster, ev) end
+roster:SetScript("OnEvent", function() unitKeys = {}; builtFor = nil end)
 
 ---------------------------------------------------------------------------
 -- Window
@@ -439,7 +647,7 @@ local Window = {}
 Window.__index = Window
 
 function lib.NewWindow(def)
-    local w = setmetatable({ def = def, rows = {} }, Window)
+    local w = setmetatable({ def = def, rows = {}, frows = {} }, Window)
     local f = CreateFrame("Frame", def.name, UIParent, BACKDROP)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
@@ -488,7 +696,7 @@ function Window:Row(i)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.icons = {}
-    row.window = self
+    row.window, row.framed = self, false
     row:RegisterForDrag("LeftButton")
     local f = self.frame
     row:SetScript("OnDragStart", function() f:GetScript("OnDragStart")(f) end)
@@ -519,12 +727,85 @@ local function WithExtras(name, key, icons)
     return all
 end
 
+-- a row beside a unit frame (on UIParent, placed by lib.PlaceFramed)
+function Window:FrameRow(i)
+    local row = self.frows[i]
+    if row then return row end
+    row = CreateFrame("Frame", nil, UIParent)
+    row:SetFrameStrata("MEDIUM")
+    row.icons, row.window, row.framed = {}, self, true
+    row:Hide()
+    self.frows[i] = row
+    return row
+end
+
+-- list = { { row = a rows() entry, frame = its unit frame }, ... }; c nil = hide them all
+function Window:LayoutFramed(list, c)
+    self.frows = self.frows or {}
+    local used = 0
+    if c and #list > 0 then
+        local size = tonumber(c.framesIconSize) or 0
+        if size <= 0 then size = c.iconSize or 28 end
+        local gap = c.spacing or 2
+        local fc = setmetatable({ iconSize = size }, { __index = c })
+        for _, it in ipairs(list) do
+            local r = it.row
+            local icons = r.key and WithExtras(self.def.name, r.key, r.icons or {}) or (r.icons or {})
+            if #icons > 0 then
+                used = used + 1
+                local row = self:FrameRow(used)
+                row.key, row.vertical, row.unitFrame, row.label = r.key or r.label, false, it.frame, r.key == nil
+                row.fc, row.iconSize = fc, size
+                for j, data in ipairs(icons) do
+                    local b = row.icons[j] or NewIcon(row)
+                    row.icons[j] = b
+                    Setup(b, data, r.key, fc)
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", (j - 1) * (size + gap), 0)
+                end
+                for j = #icons + 1, #row.icons do row.icons[j]:Hide(); row.icons[j].data = nil end
+                row.fw, row.fh = #icons * size + (#icons - 1) * gap, size
+                row:SetSize(row.fw, row.fh)
+                row:EnableMouse(false)
+                row:Show()
+            end
+        end
+    end
+    for i = used + 1, #self.frows do
+        local row = self.frows[i]
+        row:Hide()
+        row.unitFrame = nil
+    end
+    lib.PlaceFramed()
+end
+
 function Window:Refresh()
     local def, f = self.def, self.frame
     local c = def.cfg()
-    if not c or not c.shown or (def.active and not def.active()) then f:Hide() return end
+    if not c or not c.shown or (def.active and not def.active()) then
+        f:Hide()
+        self.onFrames = false
+        self:LayoutFramed({})
+        return
+    end
     local ok, rows = pcall(def.rows)
     if not ok then rows = {} end
+    -- members with a party / raid frame get their row beside it (v14); the others stay here
+    local framed = {}
+    self.onFrames = (c.onFrames or c.allOnFrames) and true or false
+    if self.onFrames then
+        local byKey, top = lib.UnitFrames()
+        local keep = {}
+        for _, r in ipairs(rows) do
+            local uf
+            if r.key then uf = c.onFrames and byKey[r.key] or nil else uf = c.allOnFrames and top or nil end
+            if uf then framed[#framed + 1] = { row = r, frame = uf }
+            elseif not (r.key and c.onFrames and c.framesOthers == "HIDE") then keep[#keep + 1] = r end
+        end
+        rows = keep
+        fdrive:Show()
+    end
+    self:LayoutFramed(framed, c)
     local size, gap = c.iconSize or 28, c.spacing or 2
     local growth = lib.Growth(c)
     local rowGap, vertical = c.rowGap or 4, (growth == "RIGHT" or growth == "LEFT")
@@ -554,7 +835,7 @@ function Window:Refresh()
     local x, y, maxW, maxH = PAD, -PAD, 0, 0
     for i, r in ipairs(rows) do
         local row = self:Row(i)
-        row.key, row.vertical = r.key or r.label, vertical
+        row.key, row.vertical, row.iconSize = r.key or r.label, vertical, size
         local icons = r.key and WithExtras(def.name, r.key, r.icons or {}) or (r.icons or {})
         -- vertical: a column as wide as the name, icons centred in it
         local colW = vertical and math.max(size, c.showNames and (row.name:GetStringWidth() + 2) or 0) or 0
@@ -622,7 +903,11 @@ function Window:Refresh()
     f:Show()
 end
 
-function Window:Hide() self.frame:Hide() end
+function Window:Hide()
+    self.frame:Hide()
+    self.onFrames = false
+    self:LayoutFramed({})
+end
 
 function lib.SetExtra(windowName, id, fn, side)
     lib.extras[windowName] = lib.extras[windowName] or {}

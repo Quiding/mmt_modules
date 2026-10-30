@@ -8,7 +8,8 @@ local M = mod.M
 local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
     "iconSize", "iconZoom", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
-    "hideUnseenItems", "showBuffs" }
+    "hideUnseenItems", "showBuffs", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesOthers" }
+local CHOICES = { framesSide = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }, framesOthers = { WINDOW = true, HIDE = true } }
 
 local function GetKeys(keys)
     local t = {}
@@ -32,7 +33,7 @@ local function SetKeys(keys, data)
         if type(v) == "table" and k:find("Color$") then
             v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
         end
-        if v ~= nil and k ~= "font" and type(v) == type(M.db[k]) then M.db[k] = v; n = n + 1 end
+        if v ~= nil and k ~= "font" and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then M.db[k] = v; n = n + 1 end
     end
     return n > 0, n == 0 and "no known settings" or nil
 end
