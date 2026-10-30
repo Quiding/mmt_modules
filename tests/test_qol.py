@@ -803,3 +803,33 @@ run(A, amod, r"""function(m)
   assert(n == 1, "report")
   return "Anna (leader): alerts shown with raid text + sound, repeats once, leader / ALL / OFF"
 end""")
+run(B, bmod, r"""function(m)
+  -- after a fight: what SmartBuff still reports goes out again, even within the minute
+  OUT = {}; NOW = NOW + 500
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
+  NOW = NOW + 5; EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "not sent again after the fight: " .. #OUT)
+  NOW = NOW + 5; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "sent again without a fight")
+  m.M.db.sbAfterCombat = false
+  EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "sent after a fight while the option is off")
+  m.M.db.sbAfterCombat = true
+  return "Bob: SmartBuff's alerts go out again after each fight"
+end""")
+run(A, amod, r"""function(m)
+  -- privacy names: team members in SmartBuff's text and the sender show as MMT.ShownName does
+  local SHOWN = { ["Anna-Smith"] = "Healer", ["Bob-Stone"] = "Druid 2", ["Cara-Moon"] = "Slot 3" }
+  MMT.ShownName = function(k) return SHOWN[k] or k end
+  MMT.RealFirst = function(k) return (k:match("^[^-]+")) end
+  MMT.RealName = function(k) return (k:gsub("-", " ")) end
+  assert(m.SmartBuffShownName("Bob") == "Druid 2" and m.SmartBuffShownName("cara moon") == "Slot 3", "names")
+  assert(m.SmartBuffShownName("Pet: Fluffy") == "Pet: Fluffy" and m.SmartBuffShownName("Stranger") == "Stranger", "others")
+  m.M.db.sbShow = "ALL"; m.M.db.sbRaid = true; NOW = NOW + 30
+  DELIVER("Bob-Stone", "QSB:N:0:Cara:Arcane Intellect")
+  assert(RAID[#RAID] == "Druid 2: Slot 3 needs Arcane Intellect", "privacy text: " .. tostring(RAID[#RAID]))
+  MMT.ShownName = nil
+  return "Anna: SmartBuff alerts use the privacy names"
+end""")

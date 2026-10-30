@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.6.0"
+mod.VERSION = "0.6.1"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -54,6 +54,7 @@ local M = MMT.NewModule({
         sbSend = true,             -- send what SmartBuff reports here
         sbExpire = true,           -- "runs out" / low charges too (else only missing buffs)
         sbRepeat = 60,             -- the same alert again after (s)
+        sbAfterCombat = true,      -- and again after each fight
         sbShow = "LEADER",         -- show the team's alerts: LEADER (FTL leader) | ALL | OFF
         sbRaid = true,             -- raid warning text
         sbSound = true,            -- raid warning sound

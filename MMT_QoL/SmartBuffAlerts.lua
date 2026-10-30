@@ -8,7 +8,10 @@
 -- SmartBuff changes), so it works with SmartBuff's own splash / sound off too.
 --   * on each character: one MMT.SendAlert (the FTL leader first, then the
 --     team) per target + buff and minute (sbRepeat), and again right away
---     when it changes (missing -> running out):
+--     when it changes (missing -> running out) or after a fight (sbAfterCombat:
+--     what was sent before the fight started counts as new again; SmartBuff
+--     checks right when combat ends). SmartBuff reports only the FIRST missing
+--     buff of each check (the one its button would cast), the next after that:
 --     QSB:<N|E|C>:<seconds or charges>:<target>:<buff>   (%XX escaped)
 --   * on the others: a chat line, optionally the raid warning text and a
 --     sound - only on the FTL leader (sbShow LEADER, the group leader when no
@@ -27,6 +30,7 @@ local sbs = { sent = 0, shown = 0, hooked = false }
 mod.sbs = sbs
 local lastSent = {}          -- ["<target>\t<buff>"] = { kind, time }
 local lastShown = {}         -- ["<target>\t<buff>\t<kind>"] = time
+local combatStart = -1       -- GetTime() when the last fight began
 
 local RAID_WARNING_SOUND = (SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959
 
@@ -61,7 +65,8 @@ local function OnSmartBuffAlert(target, buff, _, canCharge, charges, timeLeft, e
     Clean(lastSent, now)
     local key = target .. "\t" .. name
     local last = lastSent[key]
-    if last and last.kind == kind and now - last.time < (tonumber(M.db.sbRepeat) or 60) then return end
+    local fresh = M.db.sbAfterCombat and last and last.time <= combatStart
+    if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then return end
     lastSent[key] = { kind = kind, time = now }
     local msg = ("QSB:%s:%d:%s:%s"):format(kind, value, Esc(target), Esc(name))
     if #msg > 240 then msg = msg:sub(1, 240):gsub("%%%x?$", "") end
@@ -93,8 +98,28 @@ local function ShowsHere()
 end
 mod.SmartBuffShowsHere = ShowsHere
 
+-- a team member's name as SmartBuff wrote it ("Bob" / "Bob Stone") -> the
+-- name the privacy setting shows here (MMT.ShownName); anything else stays
+local function Shown(name)
+    if not MMT.ShownName then return name end
+    local low = name:lower()
+    local found
+    for _, key in ipairs(MMT.SortedMembers()) do
+        local first = (MMT.RealFirst and MMT.RealFirst(key) or key:match("^[^-]+") or ""):lower()
+        local full = (MMT.RealName and MMT.RealName(key) or key:gsub("-", " ")):lower()
+        if low == full or low == key:lower() then return MMT.ShownName(key) end
+        if low == first then
+            if found then return name end   -- two members with this first name: leave it
+            found = key
+        end
+    end
+    return found and MMT.ShownName(found) or name
+end
+mod.SmartBuffShownName = Shown
+
 local function Text(from, kind, value, target, buff)
-    local who = MMT.FirstName and MMT.FirstName(from) or from
+    local who = MMT.ShownName and MMT.ShownName(from) or MMT.FirstName and MMT.FirstName(from) or from
+    target = Shown(target)
     if kind == "C" then return ("%s: %s - %s has %d charge(s) left"):format(who, target, buff, value) end
     if kind == "E" then return ("%s: %s - %s runs out in %d s"):format(who, target, buff, value) end
     return ("%s: %s needs %s"):format(who, target, buff)
@@ -134,6 +159,7 @@ F = mod.Feature({
         ui.Check("Buffs running out too", "sbExpire", "Also SmartBuff's \"rebuff, 30 s left\" / low charges alerts. Off: only missing buffs.")
         ui.Cycle("Send the same alert again after", { { value = 30, text = "30 seconds" }, { value = 60, text = "1 minute" },
             { value = 120, text = "2 minutes" }, { value = 300, text = "5 minutes" } }, "sbRepeat")
+        ui.Check("Again after each fight", "sbAfterCombat", "SmartBuff checks as soon as combat ends: what it reports then is sent even within the time above.")
         ui.Cycle("Show the team's alerts", { { value = "LEADER", text = "Only on the FTL leader" },
             { value = "ALL", text = "On every character" }, { value = "OFF", text = "Not on this character" } }, "sbShow")
         ui.Check("Raid warning text", "sbRaid", "The alert in the middle of the screen, like a raid warning.")
@@ -144,3 +170,6 @@ F = mod.Feature({
             tostring(ShowsHere()), tostring(M.db.sbShow)))
     end,
 })
+
+-- a fight starts: everything sent before it counts as new afterwards
+M:On("PLAYER_REGEN_DISABLED", function() combatStart = GetTime() end)
