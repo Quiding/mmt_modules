@@ -18,15 +18,35 @@ local to                  -- team key, nil = the online team
 local dockButton
 
 local expanded = {}       -- [group id] = true: its auras are listed (groups start closed; kept while the game runs)
+local shut = {}           -- [section row id] = true: "Loaded" / "Not loaded" closed (they start open, like ForeverAuras')
+local SECTIONS = { loaded = "Loaded", unloaded = "Not loaded" }
 
--- the rows shown: what's inside a closed group is left out (a filter shows every match)
+-- the rows shown, like ForeverAuras' list: "Loaded" and "Not loaded" sections,
+-- what's inside a closed group or section is left out (a filter shows every
+-- match of the open sections)
 local function Rows()
     local list = mod.AuraList()
     local filter = win and win.search:GetText():lower() or ""
     local out = { { id = ALL, depth = 0, text = ("All auras (%d)"):format(#list) } }
-    local closedAt   -- depth of the closed group whose auras are being skipped
+    local tops = {}
     for _, a in ipairs(list) do
-        if filter ~= "" then
+        if a.section and a.depth == 0 then tops[a.section] = (tops[a.section] or 0) + 1 end
+    end
+    local closedAt   -- depth of the closed group whose auras are being skipped
+    local section, sectionShut
+    for _, a in ipairs(list) do
+        if a.section ~= section then
+            section = a.section
+            local hid = "\001" .. tostring(section)
+            sectionShut = section and shut[hid] or false
+            closedAt = nil
+            if section then
+                out[#out + 1] = { id = hid, header = true, depth = 0, text = ("%s (%d)"):format(SECTIONS[section] or section, tops[section] or 0) }
+            end
+        end
+        if sectionShut then
+            -- skipped
+        elseif filter ~= "" then
             if a.id:lower():find(filter, 1, true) then out[#out + 1] = a end
         elseif not (closedAt and a.depth > closedAt) then
             closedAt = nil
@@ -38,8 +58,10 @@ local function Rows()
 end
 mod.AurasRows = Rows
 
+-- a group, or a section row ("\001loaded")
 local function Toggle(id)
-    expanded[id] = not expanded[id] or nil
+    if id:sub(1, 1) == "\001" then shut[id] = not shut[id] or nil
+    else expanded[id] = not expanded[id] or nil end
 end
 mod.AurasToggle = Toggle
 
@@ -61,10 +83,13 @@ local function Render()
             r.text:SetText(text)
             r.text:SetPoint("LEFT", 20 + a.depth * 12, 0)
             local filtered = win.search:GetText() ~= ""
-            r.toggle:SetShown(a.group and not filtered or false)
-            r.toggle.label:SetText(expanded[a.id] and "-" or "+")
+            r.toggle:SetShown(a.header or (a.group and not filtered) or false)
+            if a.header then r.toggle.label:SetText(shut[a.id] and "+" or "-")
+            else r.toggle.label:SetText(expanded[a.id] and "-" or "+") end
             r.toggle:SetPoint("LEFT", 2 + a.depth * 12, 0)
-            r.text:SetTextColor(a.id == ALL and A[1] or 1, a.id == ALL and A[2] or 1, a.id == ALL and A[3] or 1)
+            if a.id == ALL then r.text:SetTextColor(A[1], A[2], A[3])
+            elseif a.header then r.text:SetTextColor(1, 0.82, 0)
+            else r.text:SetTextColor(1, 1, 1) end
             r.sel:SetShown(a.id == selected)
             r:Show()
         else
@@ -139,8 +164,13 @@ local function Build()
         r.text:SetPoint("RIGHT", -4, 0)
         r.text:SetJustifyH("LEFT")
         r.text:SetWordWrap(false)
-        -- click selects; double-click (or the +/- in front) opens / closes a group
-        r:SetScript("OnClick", function(self) if self.aura then selected = self.aura.id; Render() end end)
+        -- click selects (a section row opens / closes); double-click (or the +/- in front) opens / closes a group
+        r:SetScript("OnClick", function(self)
+            local a = self.aura
+            if not a then return end
+            if a.header then Toggle(a.id) else selected = a.id end
+            Render()
+        end)
         r:SetScript("OnDoubleClick", function(self)
             if self.aura and self.aura.group then Toggle(self.aura.id); Render() end
         end)
@@ -174,7 +204,8 @@ local function Place()
     local api = mod.AurasAPI()
     local opts = api and api.GetConfigFrame and api:GetConfigFrame()
     win:ClearAllPoints()
-    if opts and opts:IsShown() then
+    win.docked = opts and opts:IsShown() and true or false
+    if win.docked then
         win:SetPoint("TOPLEFT", opts, "TOPRIGHT", 4, 0)
     else
         win:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
@@ -215,6 +246,8 @@ function mod.AurasDock()
         dockButton = UI.Button(opts, 120, "Send to team", function() mod.OpenAuras() end)
         dockButton:SetPoint("BOTTOMRIGHT", opts, "TOPRIGHT", 0, 2)
         UI.Tooltip(dockButton, "Send to team (MMT)", "Send auras to a team member or the whole online team (MMT Quality of life).")
+        -- the window opened beside the options closes with them
+        opts:HookScript("OnHide", function() if win and win.docked then win:Hide() end end)
     end
     dockButton:SetShown(M.db.waDock and mod.Active(mod.AurasFeature) or false)
 end

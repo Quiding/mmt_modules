@@ -52,8 +52,11 @@ end
 ---------------------------------------------------------------------------
 -- The auras here: a tree list for the send window
 ---------------------------------------------------------------------------
--- { { id, depth, group = true|nil, inside = auras inside it }, ... }: groups
--- before their children, top level sorted by name
+-- { { id, depth, group = true|nil, inside = auras inside it, section }, ... }:
+-- groups before their children, like ForeverAuras' own list: the top level
+-- split into "loaded" (ForeverAuras.IsAuraLoaded(id) ~= nil: loaded or on
+-- standby; a group when any aura inside it is) and "unloaded", each sorted by
+-- name. section = nil when this ForeverAuras can't tell (one plain list then).
 function mod.AuraList()
     local api = API()
     if not (api and api.GetAuras) then return {} end
@@ -68,21 +71,30 @@ function mod.AuraList()
         end
         return n
     end
-    local function Add(id, depth, seen)
+    local function Add(id, depth, seen, section)
         local a = auras[id]
         if not a or seen[id] then return end
         seen[id] = true
         local isGroup = type(a.children) == "table"
-        out[#out + 1] = { id = id, depth = depth, group = isGroup or nil, inside = isGroup and Count(id, {}) or 0, icon = a.icon }
-        for _, c in ipairs(isGroup and a.children or {}) do Add(c, depth + 1, seen) end
+        out[#out + 1] = { id = id, depth = depth, group = isGroup or nil, inside = isGroup and Count(id, {}) or 0, icon = a.icon, section = section }
+        for _, c in ipairs(isGroup and a.children or {}) do Add(c, depth + 1, seen, section) end
     end
-    local top = {}
+    local fa = rawget(_G, "ForeverAuras")
+    local IsLoaded = type(fa) == "table" and type(fa.IsAuraLoaded) == "function" and fa.IsAuraLoaded
+    local loaded, unloaded = {}, {}
     for id, a in pairs(auras) do
-        if type(id) == "string" and (a.parent == nil or not auras[a.parent]) then top[#top + 1] = id end
+        if type(id) == "string" and (a.parent == nil or not auras[a.parent]) then
+            local okL, state = true, true
+            if IsLoaded then okL, state = pcall(IsLoaded, id) end
+            if okL and state ~= nil then loaded[#loaded + 1] = id else unloaded[#unloaded + 1] = id end
+        end
     end
-    table.sort(top, function(a, b) return a:lower() < b:lower() end)
+    local function byName(a, b) return a:lower() < b:lower() end
+    table.sort(loaded, byName)
+    table.sort(unloaded, byName)
     local seen = {}
-    for _, id in ipairs(top) do Add(id, 0, seen) end
+    for _, id in ipairs(loaded) do Add(id, 0, seen, IsLoaded and "loaded" or nil) end
+    for _, id in ipairs(unloaded) do Add(id, 0, seen, "unloaded") end
     return out
 end
 

@@ -610,3 +610,17 @@ run(A, amod, r"""function(m)
   assert(ids() == "Big group,Solo; one", "closed again: " .. ids())
   return "Anna: send window groups start closed, open and close"
 end""")
+run(A, amod, r"""function(m)
+  -- loaded / not loaded like ForeverAuras' own list (a group counts as loaded when any aura inside it is)
+  ForeverAuras = { IsAuraLoaded = function(id) if id == "Solo; one" then return false end end }   -- false = standby = loaded section
+  local function ids() local t = {} for _, r in ipairs(m.AurasRows()) do t[#t + 1] = (r.id:gsub("\001", "#")) end return table.concat(t, ",", 2) end
+  assert(ids() == "#loaded,Solo; one,#unloaded,Big group", "sections: " .. ids())
+  local rows = m.AurasRows(); assert(rows[2].header and rows[2].text == "Loaded (1)" and rows[4].text == "Not loaded (1)", "headers")
+  m.AurasToggle("\001loaded")
+  assert(ids() == "#loaded,#unloaded,Big group", "loaded closed: " .. ids())
+  m.AurasToggle("\001loaded"); m.AurasToggle("Big group")
+  assert(ids() == "#loaded,Solo; one,#unloaded,Big group,Child 1,Child 2", "group open: " .. ids())
+  local top = m.TopAuras(); assert(#top == 2 and top[1] == "Solo; one" and top[2] == "Big group", "top")
+  ForeverAuras = nil
+  return "Anna: send window sorted into Loaded / Not loaded, sections close"
+end""")
