@@ -807,13 +807,13 @@ run(B, bmod, r"""function(m)
   -- after a fight: what SmartBuff still reports goes out again, even within the minute
   OUT = {}; NOW = NOW + 500
   SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
-  NOW = NOW + 5; EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10
+  NOW = NOW + 5; EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10; EVENTS.PLAYER_REGEN_ENABLED()
   SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
   assert(#OUT == 2, "not sent again after the fight: " .. #OUT)
   NOW = NOW + 5; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
   assert(#OUT == 2, "sent again without a fight")
   m.M.db.sbAfterCombat = false
-  EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10
+  EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 10; EVENTS.PLAYER_REGEN_ENABLED()
   SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Mark of the Wild", "icon", false, 0, nil, false)
   assert(#OUT == 2, "sent after a fight while the option is off")
   m.M.db.sbAfterCombat = true
@@ -858,7 +858,7 @@ run(B, bmod, r"""function(m)
   -- auto attack (PLAYER_ENTER_COMBAT) counts as a fight too: on Forever the in-combat event didn't show up
   OUT = {}; NOW = NOW + 500
   SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Fortitude", "icon", false, 0, nil, false)
-  NOW = NOW + 5; EVENTS.PLAYER_ENTER_COMBAT(); NOW = NOW + 10
+  NOW = NOW + 5; EVENTS.PLAYER_ENTER_COMBAT(); NOW = NOW + 10; EVENTS.PLAYER_LEAVE_COMBAT()
   SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Fortitude", "icon", false, 0, nil, false)
   assert(#OUT == 2, "not sent again after an auto attack fight: " .. #OUT)
   PRINTS = {}
@@ -867,4 +867,17 @@ run(B, bmod, r"""function(m)
   for _, x in ipairs(m.features) do if x.key == "smartbuff" then f = x end end
   assert(f.commands.combat() == nil and PRINTS[1]:find("auto attack 1", 1, true), tostring(PRINTS[1]))
   return "Bob: auto attack counts as a fight; /mmtqol smartbuff combat prints the combat state"
+end""")
+run(B, bmod, r"""function(m)
+  -- the same alert sent DURING the fight (SmartBuff can report then) doesn't hold back the one after it
+  OUT = {}; NOW = NOW + 500
+  EVENTS.PLAYER_REGEN_DISABLED(); NOW = NOW + 3
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Spirit", "icon", false, 0, nil, false)
+  NOW = NOW + 10; EVENTS.PLAYER_REGEN_ENABLED(); NOW = NOW + 4
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Spirit", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "held after the fight: " .. #OUT)
+  -- and only once: SmartBuff's next check 5 s later is held again
+  NOW = NOW + 5; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Spirit", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "sent twice after the fight")
+  return "Bob: an alert from during the fight doesn't hold back the one after it"
 end""")

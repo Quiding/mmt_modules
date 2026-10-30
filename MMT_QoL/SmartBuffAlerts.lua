@@ -32,11 +32,13 @@ mod.sbs = sbs
 local lastSent = {}          -- ["<target>\t<buff>"] = { kind, time }
 local lastShown = {}         -- ["<target>\t<buff>\t<kind>"] = time
 local combatStart = -1       -- GetTime() when the last fight began
+local combatEnd = -1         -- and when the last one ended: what was sent before that counts as new
 local fights = { regen = 0, attack = 0, tick = 0 }   -- what noticed the fights (debug report)
 local function FightStarted(source)
     combatStart = GetTime()
     fights[source] = fights[source] + 1
 end
+local function FightEnded() combatEnd = GetTime() end
 
 local RAID_WARNING_SOUND = (SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959
 
@@ -72,7 +74,8 @@ local function OnSmartBuffAlert(target, buff, _, canCharge, charges, timeLeft, e
     Clean(lastSent, now)
     local key = target .. "\t" .. name
     local last = lastSent[key]
-    local fresh = M.db.sbAfterCombat and last and last.time <= combatStart
+    -- after a fight: also what was sent DURING it (SmartBuff can report then) is new again
+    local fresh = M.db.sbAfterCombat and last and last.time < combatEnd
     if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then
         sbs.held = sbs.held + 1
         return
@@ -176,7 +179,7 @@ F = mod.Feature({
         ui.Check("Buffs running out too", "sbExpire", "Also SmartBuff's \"rebuff, 30 s left\" / low charges alerts. Off: only missing buffs.")
         ui.Cycle("Send the same alert again after", { { value = 30, text = "30 seconds" }, { value = 60, text = "1 minute" },
             { value = 120, text = "2 minutes" }, { value = 300, text = "5 minutes" } }, "sbRepeat")
-        ui.Check("Again after each fight", "sbAfterCombat", "After a fight (this character or anyone in the group in combat) the next thing SmartBuff reports is sent even within the time above.")
+        ui.Check("Again after each fight", "sbAfterCombat", "When a fight ends (this character or anyone in the group was in combat), what SmartBuff reports next is sent even within the time above - also if the same alert went out just before or during the fight.")
         ui.Cycle("Show the team's alerts", { { value = "LEADER", text = "Only on the FTL leader" },
             { value = "ALL", text = "On every character" }, { value = "OFF", text = "Not on this character" } }, "sbShow")
         ui.Check("Raid warning text", "sbRaid", "The alert in the middle of the screen, like a raid warning.")
@@ -185,7 +188,7 @@ F = mod.Feature({
     Report = function(add)
         add(("SmartBuff: hooked=%s seen=%d sent=%d held=%d shown=%d showsHere=%s show=%s fights=regen %d/attack %d/poll %d lastFight=%s"):format(tostring(sbs.hooked),
             sbs.seen, sbs.sent, sbs.held, sbs.shown, tostring(ShowsHere()), tostring(M.db.sbShow), fights.regen, fights.attack, fights.tick,
-            combatStart < 0 and "-" or ("%d s ago"):format(GetTime() - combatStart)))
+            combatEnd < 0 and "-" or ("ended %d s ago"):format(GetTime() - combatEnd)))
     end,
 })
 
@@ -211,6 +214,7 @@ function mod.SmartBuffCombatTick()
         end
     end
     if now and not fighting then FightStarted("tick") end
+    if fighting and not now then FightEnded() end
     fighting = now
 end
 
@@ -218,6 +222,9 @@ end
 -- Forever, PLAYER_ENTER_COMBAT (auto attack starts) did: either one counts
 M:On("PLAYER_REGEN_DISABLED", function() FightStarted("regen") end)
 M:On("PLAYER_ENTER_COMBAT", function() FightStarted("attack") end)
+-- the end: out of combat again; auto attack stopping counts only when the game says we're out of combat
+M:On("PLAYER_REGEN_ENABLED", FightEnded)
+M:On("PLAYER_LEAVE_COMBAT", function() if not Fighting("player") then FightEnded() end end)
 
 -- /mmtqol smartbuff combat: what this client says about combat right now
 local function CombatCheck()
@@ -227,9 +234,10 @@ local function CombatCheck()
         if MMT.IsSecret(v) then return "secret" end
         return tostring(v)
     end
-    MMT.Print("Quality of life: UnitAffectingCombat(player)=%s InCombatLockdown=%s party1=%s; fights seen: in-combat event %d, auto attack %d, poll %d; last %s",
+    MMT.Print("Quality of life: UnitAffectingCombat(player)=%s InCombatLockdown=%s party1=%s; fights seen: in-combat event %d, auto attack %d, poll %d; last %s%s",
         V(UnitAffectingCombat, "player"), V(InCombatLockdown), V(UnitAffectingCombat, "party1"),
         fights.regen, fights.attack, fights.tick,
-        combatStart < 0 and "never" or ("%d s ago"):format(GetTime() - combatStart))
+        combatStart < 0 and "never" or ("started %d s ago"):format(GetTime() - combatStart),
+        combatEnd < 0 and "" or (", ended %d s ago"):format(GetTime() - combatEnd))
 end
 F.commands = { combat = CombatCheck }
