@@ -18,7 +18,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.1 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras to the team *(new, not tested in game yet)* | 0.4.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras to the team *(new, not tested in game yet)* | 0.4.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -300,7 +300,7 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   own import (each character is asked first).
 - **ForeverAuras**: send an aura, a group (with everything inside it) or all your auras to one team member or the
   whole online team. Open the window with the **Send to team** button above ForeverAuras' options (it opens beside
-  them), `/mmtqol auras` or the settings page; pick the aura and who gets it, Send. The others are told it's coming,
+  them), `/mmtqol auras` or the settings page; pick the aura (groups start closed: + or double-click opens one) and who gets it, Send. The others are told it's coming,
   get a dialog (Import / Ignore; can be switched off), then ForeverAuras' own import window for each aura, one after
   the other - an aura they already have shows what changes, like pasting an import string. You hear back when they
   import or ignore it. Option: only the FTL leader may send you auras. Auras are a few KB each; a big group or "all"

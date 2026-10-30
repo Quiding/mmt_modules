@@ -17,15 +17,31 @@ local selected = ALL
 local to                  -- team key, nil = the online team
 local dockButton
 
+local expanded = {}       -- [group id] = true: its auras are listed (groups start closed; kept while the game runs)
+
+-- the rows shown: what's inside a closed group is left out (a filter shows every match)
 local function Rows()
     local list = mod.AuraList()
     local filter = win and win.search:GetText():lower() or ""
     local out = { { id = ALL, depth = 0, text = ("All auras (%d)"):format(#list) } }
+    local closedAt   -- depth of the closed group whose auras are being skipped
     for _, a in ipairs(list) do
-        if filter == "" or a.id:lower():find(filter, 1, true) then out[#out + 1] = a end
+        if filter ~= "" then
+            if a.id:lower():find(filter, 1, true) then out[#out + 1] = a end
+        elseif not (closedAt and a.depth > closedAt) then
+            closedAt = nil
+            out[#out + 1] = a
+            if a.group and not expanded[a.id] then closedAt = a.depth end
+        end
     end
     return out
 end
+mod.AurasRows = Rows
+
+local function Toggle(id)
+    expanded[id] = not expanded[id] or nil
+end
+mod.AurasToggle = Toggle
 
 local function TargetText()
     if to then return "To: " .. MMT.FullDisplay(to) end
@@ -43,7 +59,11 @@ local function Render()
             local text = a.text or a.id
             if a.group then text = text .. ("  |cff888888(group, %d)|r"):format(a.inside) end
             r.text:SetText(text)
-            r.text:SetPoint("LEFT", 6 + a.depth * 12, 0)
+            r.text:SetPoint("LEFT", 20 + a.depth * 12, 0)
+            local filtered = win.search:GetText() ~= ""
+            r.toggle:SetShown(a.group and not filtered or false)
+            r.toggle.label:SetText(expanded[a.id] and "-" or "+")
+            r.toggle:SetPoint("LEFT", 2 + a.depth * 12, 0)
             r.text:SetTextColor(a.id == ALL and A[1] or 1, a.id == ALL and A[2] or 1, a.id == ALL and A[3] or 1)
             r.sel:SetShown(a.id == selected)
             r:Show()
@@ -119,7 +139,14 @@ local function Build()
         r.text:SetPoint("RIGHT", -4, 0)
         r.text:SetJustifyH("LEFT")
         r.text:SetWordWrap(false)
+        -- click selects; double-click (or the +/- in front) opens / closes a group
         r:SetScript("OnClick", function(self) if self.aura then selected = self.aura.id; Render() end end)
+        r:SetScript("OnDoubleClick", function(self)
+            if self.aura and self.aura.group then Toggle(self.aura.id); Render() end
+        end)
+        r.toggle = UI.TextButton(r, "+", function() if r.aura then Toggle(r.aura.id); Render() end end, 16)
+        r.toggle:SetPoint("LEFT", 2, 0)
+        r.toggle:Hide()
         f.rows[i] = r
     end
     f.more = UI.Label(f, "")

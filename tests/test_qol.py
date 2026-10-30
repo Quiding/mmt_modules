@@ -600,3 +600,13 @@ run(B, bmod, r"""function(m)
   assert(#IMPORTS == 4 and OUT[1].msg:find("^QWAR:%d+:N:ignored$"), "ignore reply: " .. tostring(OUT[1] and OUT[1].msg))
   return "Bob: ignored the group, Anna is told"
 end""")
+run(A, amod, r"""function(m)
+  LOADED.ForeverAuras = true
+  local function ids() local t = {} for _, r in ipairs(m.AurasRows()) do t[#t + 1] = r.id end return table.concat(t, ",", 2) end
+  assert(ids() == "Big group,Solo; one", "closed: " .. ids())
+  m.AurasToggle("Big group")
+  assert(ids() == "Big group,Child 1,Child 2,Solo; one", "open: " .. ids())
+  m.AurasToggle("Big group")
+  assert(ids() == "Big group,Solo; one", "closed again: " .. ids())
+  return "Anna: send window groups start closed, open and close"
+end""")

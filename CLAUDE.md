@@ -465,7 +465,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.4.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.4.1) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -527,7 +527,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   name"), then a queue: one `ImportAura` at a time (next after cb, retry 2 s while another import window is open,
   PLAYER_REGEN_ENABLED after combat). Replies whispered: `QWAR:<batch>:A` importing, `:N:<why>` (ignored / not the
   leader / not an aura), `:D:<imported>:<total>`; every step prints a chat line on both sides. Window
-  `MMTQoLAurasWindow` (DIALOG, below MMT's dropdown lists): "All auras" + tree list with filter, target via
+  `MMTQoLAurasWindow` (DIALOG, below MMT's dropdown lists): "All auras" + tree list with filter (0.4.1: groups start closed, +/- or double-click opens one, `expanded[id]` session only, a filter shows every match flat; `mod.AurasRows`, `mod.AurasToggle`), target via
   `UI.OpenList` (online team | each online member), Send; placed beside the options frame when it's shown. The
   "Send to team" button is parented to ForeverAuras' options frame (above its top right), made on
   `hooksecurefunc(ForeverAuras, "OpenOptions")`.
