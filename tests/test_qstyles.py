@@ -463,6 +463,11 @@ assert(near(rowText._tc[2], 0.82), "a label coloured blue after it was built isn
 assert(type(mod.Describe()) == "table", "describe")
 assert(near(small._bdColor[1], 0.09) and near(small._bdColor[3], 0.19), "thin panel not the tooltip blue")
 assert(col(select(1, small:GetRegions()))[4] == 0, "thin panel: MMT's black fill still shown")
+-- a window built while Classic is on: Fill first, then Border (the Team Gear window)
+local gear = CreateFrame("Frame", "MMTTestGear", UIParent); gear:SetSize(540, 438)
+local gearFill = UI.Fill(gear, 0.05, 0.05, 0.06, 0.95)
+UI.Border(gear, 0.25, 0.25, 0.25, 1)
+assert(col(gearFill)[4] == 0 and gear._backdrop and gear._backdrop.bgFile, "a window built in Classic keeps a black fill over its background")
 -- a window sized after it was built (it grows with its content) becomes a dialog then
 local late = CreateFrame("Frame", nil, UIParent)
 UI.Fill(late, 0.05, 0.05, 0.06, 0.94)

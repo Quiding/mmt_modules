@@ -19,7 +19,7 @@ MODULES, with its own settings page.
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.6 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.5 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.6 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your

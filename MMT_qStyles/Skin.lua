@@ -372,6 +372,10 @@ local function AddBorder(frame, edges, r, g, b, a)
     end
     rec.r, rec.g, rec.b, rec.a = Num(r), Num(g), Num(b), tonumber(a) or 1
     PaintBorder(rec, mod.Current())
+    -- the fill came first (UI.Fill, then UI.Border): it was painted before the frame had edges, i.e. before
+    -- Classic knew it is a window (the Team Gear window kept a black fill over its stone)
+    local t = frame and fillOf[frame]
+    if t then PaintFill(t, fills[t], mod.Current()) end
     return rec
 end
 

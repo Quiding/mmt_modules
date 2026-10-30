@@ -590,7 +590,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.5) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.6) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -649,7 +649,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `/mmtstyle frame` = `mod.Describe()` (roles, Classic kind, fill / edge records, backdrop of the frame under the mouse
   and its parents). 0.2.4: the core's SyncButton runs `SetScript("OnShow", b.Update)` = the UNHOOKED Update (captured
   before our hook), so every show put its blue fill back over Classic's red button: HookScript OnShow too. 0.2.5: dialog only for frames whose parent is UIParent (or nil): Statistics' 800 x 210 gold
-  graph inside its page got the carved border over its axis labels. Open question: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  graph inside its page got the carved border over its axis labels. 0.2.6 (the "open question" of 0.2.3): windows call
+  UI.Fill BEFORE UI.Border, so the fill was painted while the frame had no edges yet = not a Classic window = black
+  colour fill, above the backdrop's background; AddBorder now repaints the frame's fill. Team bags / the overview only
+  looked right because they redraw / resize later. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
