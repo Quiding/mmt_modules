@@ -60,6 +60,15 @@ for d in ours:
     print("bindings %s: %s" % (d, "; ".join(problems) or "ok"))
     bad += len(problems)
 
+# off by default (MMT's CreateModules.md): "## DefaultState: disabled" and "## X-MMT-DefaultState: disabled" together
+for d in ours:
+    toc = open(os.path.join(root, d, d + ".toc"), encoding="utf-8").read()
+    a = re.search(r"^## DefaultState:\s*disabled\s*$", toc, re.M | re.I) is not None
+    b = re.search(r"^## X-MMT-DefaultState:\s*disabled\s*$", toc, re.M | re.I) is not None
+    if a != b:
+        bad += 1
+        print("DEFAULTSTATE %s: needs both DefaultState and X-MMT-DefaultState (or neither)" % d)
+
 here = os.path.dirname(os.path.abspath(__file__))
 for t in sorted(glob.glob(os.path.join(here, "test_*.py"))):
     r = subprocess.run([sys.executable, t, root], capture_output=True, text=True)

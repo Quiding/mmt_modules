@@ -43,6 +43,9 @@ Every module .toc has `## X-Repository: https://github.com/Quiding/mmt_modules` 
 ## Writing MMT modules
 A module is its own addon folder `MMT_<Name>` whose `.toc` has
 `## Interface: 16001`, `## Dependencies: MMT`, `## X-MMT-Module: 1`, `## X-MMT-Title: <Title>`.
+Off by default (the core's CreateModules.md): `## DefaultState: disabled` AND `## X-MMT-DefaultState: disabled` (the game may
+not hand DefaultState to addons; `MMT.ModuleDefaultOn` reads the X- one for "reset modules to defaults"). Since 2026-10-30
+(the user's choice) off by default: Styles, Totems, Quality of life, Pawn Compare. Only a fresh install sees it.
 The core finds it automatically (shown under /mmt > MODULES). New folders and changed files
 only need a `/reload` on this client (no game restart).
 
@@ -113,7 +116,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.15.0) / MMT_BuffTimers (v0.18.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.15.1) / MMT_BuffTimers (v0.18.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -210,7 +213,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`, `FramesTab`: `cmp` each pair);
-  bump VERSION on change (now 14: v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 15: v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5; own mode since 0.14.5 / 0.17.6 - tying it to "unlocked"
   showed everything on every profile: unlocked is the default): arrange mode = session-only `MMTIconBars.arrange[windowName]`
   (`lib.SetArrange(name, on)` refreshes that window, `lib.Arranging(name)`; shared ListKeys `mod.Arranging(name, ...)` = any
@@ -228,7 +231,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Test: test_bardrag.py (positions from SetPoint("TOPLEFT", x, y)).
 - Party frames (IconBars v14, Cooldowns 0.15.0 / Buffs 0.18.0): cfg `onFrames` = each member row beside their unit frame,
   `allOnFrames` (Buffs: the All bar = label rows) above the TOP frame (highest, then leftmost); `framesSide` RIGHT/LEFT/TOP/BOTTOM,
-  `framesX/Y`, `framesIconSize` (0 = iconSize), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.
+  `framesX/Y`, `framesIconSize` (0 = iconSize; slider 12-100), `framesFit` (v15, 0.15.1 / 0.18.1: member rows as high as their frame = `FrameHeight` in UIParent units, also in the poll signature so a resized frame redraws; All bar keeps framesIconSize), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.
   `lib.UnitFrames()` -> byKey, top, count per `lib.PROVIDERS` (first shown frame of a unit wins): EllesmereUI
   (`ERFPartySelfButton`, children `hdr[i]` / attribute `child<i>` of `ERFPartyHeader`, `ERFFlatHeader`, `ERFGroupHeader1-8`:
   SecureGroupHeaders, unit attribute), Blizzard compact (`CompactPartyFrameMember1-5`, `CompactRaidFrame1-40`,

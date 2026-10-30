@@ -6,6 +6,8 @@
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
+## DefaultState: disabled
+## X-MMT-DefaultState: disabled
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-MMT-Module: 1
 ## X-MMT-Title: Styles

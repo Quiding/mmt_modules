@@ -6,6 +6,8 @@
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
+## DefaultState: disabled
+## X-MMT-DefaultState: disabled
 ## OptionalDeps: Pawn, MMT_ItemCompare
 ## X-MMT-Module: 1
 ## X-MMT-Title: Pawn Compare
