@@ -17,7 +17,7 @@
 -- icon = { texture, state, start, duration, count, spell, item, tip,
 --          tally, tallyPos (corner, e.g. "BOTTOMLEFT"), tallySize, tallyColor {r,g,b}  (v12: a
 --          second number in its own corner, e.g. how many members have a buff),
---          missingAlpha, glowMissing, activeAlpha (override the window's cfg for
+--          readyAlpha, cdAlpha, glowActive (v17), missingAlpha, glowMissing, activeAlpha (override the window's cfg for
 --          "missing" / "buff"),
 --          tint = { r, g, b }, desaturate = true,
 --          glow = true (glow regardless of state),
@@ -69,7 +69,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 16
+local VERSION = 17
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -257,14 +257,17 @@ local function Paint(b, c)
     end
     if state == "cd" and not rem then state = "ready" end
     local alpha, glow = 1, false
-    if state == "ready" then alpha = c.readyAlpha or 1
-    elseif state == "cd" then alpha = c.cdAlpha or 1
+    -- (v17) icons from another module bring their own look for "ready" / "cd" / "active" too
+    if state == "ready" then alpha = i.readyAlpha or c.readyAlpha or 1
+    elseif state == "cd" then alpha = i.cdAlpha or c.cdAlpha or 1
     elseif state == "missing" then
         -- extras from another module bring their own look for "missing"
         alpha = i.missingAlpha or c.missingAlpha or 0.3
         if i.glowMissing ~= nil then glow = i.glowMissing else glow = c.glowMissing end
     elseif state == "buff" then alpha = i.activeAlpha or c.activeAlpha or 1
-    elseif state == "active" then glow = c.glowActive end
+    elseif state == "active" then
+        if i.glowActive ~= nil then glow = i.glowActive else glow = c.glowActive end
+    end
     if i.glow then glow = true end
     if drag and i.drag and i.drag.id == drag.src.id and b:GetParent() == drag.row then alpha = alpha * 0.4 end
     b:SetAlpha(alpha)

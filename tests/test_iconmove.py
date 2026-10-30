@@ -130,6 +130,10 @@ print(lua.eval(r'''function(cd, bf)
   Check(c3.host == "MMTBuffs" and c3.after == "^", "cooldown 3 not on the buff bar")
   Redraw(); cr, br = Rows()
   Check(Ids(cr) == "1,2" and Ids(br) == "3,12,11", "cooldown on the buff row: " .. Ids(cr) .. " / " .. Ids(br))
+  -- it keeps Cooldown Timers' opacity there (Buff Timers has no "ready" opacity)
+  CM.db.readyAlpha = 0.35
+  Redraw(); cr, br = Rows()
+  Check(br.icons[1].data.spell == 3 and br.icons[1].alpha == 0.35, "cooldown on the buff bar: alpha " .. tostring(br.icons[1].alpha))
   -- the Buffs window hidden: it comes back home
   BM.db.shown = false
   Redraw(); cr = RowOf(cw, "Bob-Stone")

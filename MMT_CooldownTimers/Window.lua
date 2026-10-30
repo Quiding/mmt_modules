@@ -52,6 +52,8 @@ local function Icons(key, host)
                     spell = e.t == "s" and e.id or nil, item = e.t == "i" and e.id or nil,
                     drag = arranging and mod.DragFor(from[n], e) or nil,
                     oid = oid, anchor = host and e.after or nil,
+                    -- our look, also on a Buff Timers bar (IconBars v17)
+                    readyAlpha = M.db.readyAlpha, cdAlpha = M.db.cdAlpha, glowActive = M.db.glowActive,
                 }
                 if bStart then
                     -- buff up: glow with its time left, then the cooldown
