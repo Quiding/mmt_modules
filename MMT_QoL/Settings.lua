@@ -1,6 +1,7 @@
 -- MMT Quality of life: settings page and debug report.
--- One column per feature: its on/off checkbox (greyed out with the reason
--- when its addon isn't loaded), then its options (greyed out while it is off).
+-- One tab per feature (SettingsKit's mod.Tabs): its on/off checkbox (greyed
+-- out with the reason when its addon isn't loaded), then its options (greyed
+-- out while it is off); f.notes = lines for a column on the right.
 
 local _, mod = ...
 local MMT = MMT
@@ -59,6 +60,11 @@ local function FeatureColumn(page, f, x, status)
     end
     function ui.Note(text) return col:Note(text) end
     f.Page(ui)
+    if f.notes then
+        local R = UI.Column(page, COL2_X, 0, COL_W)
+        R:Header("How it works")
+        for _, n in ipairs(f.notes) do R:Note(n) end
+    end
 
     return function()
         local ok, why = mod.AddonState(f.addon)
@@ -66,6 +72,7 @@ local function FeatureColumn(page, f, x, status)
         UI.Tooltip(main, f.checkText, ok and f.tip or ("Can't be switched on: " .. tostring(why)))
         local on = mod.Active(f)
         for _, w in ipairs(gated) do w:SetAlpha(on and 1 or 0.4) end
+        if f.Refresh then f.Refresh() end
     end
 end
 
@@ -75,10 +82,12 @@ M.Page = function(_, page)
     status:SetWidth(H.PAGE_W)
     ResetButton(page)
 
+    local tabs = {}
+    for _, f in ipairs(mod.features) do tabs[#tabs + 1] = { f.key, f.tabText or f.title } end
+    local panels = mod.Tabs(page, tabs)
     local refresh = {}
-    for i, f in ipairs(mod.features) do
-        -- two columns; a third feature needs tabs (SettingsKit's mod.Tabs, like the other modules)
-        refresh[#refresh + 1] = FeatureColumn(page, f, (i % 2 == 0) and COL2_X or 0, status)
+    for _, f in ipairs(mod.features) do
+        refresh[#refresh + 1] = FeatureColumn(panels[f.key], f, 0, status)
     end
 
     page.OnRefresh = function()

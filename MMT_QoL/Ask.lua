@@ -5,7 +5,7 @@
 local _, mod = ...
 local MMT = MMT
 
-local queue = {}   -- { from, feature, lines = {}, applies = {} }
+local queue = {}   -- { from, feature, lines = {}, applies = {}, ignores = {} }
 local showing
 
 local function ShowNext()
@@ -16,27 +16,34 @@ local function ShowNext()
         showing = nil
         if C_Timer and C_Timer.After then C_Timer.After(0, ShowNext) else ShowNext() end
     end
-    local text = ("%s sent %d %s change(s):\n%s"):format(MMT.FullDisplay(q.from), #q.lines, q.feature.title,
-        mod.Summary(q.lines, 4))
-    MMT.UI.Confirm(text, "Apply", function()
+    -- a feature may word the dialog itself: askText(who, n), askAccept
+    local f = q.feature
+    local head = f.askText and f.askText(MMT.FullDisplay(q.from), #q.lines)
+        or ("%s sent %d %s change(s):"):format(MMT.FullDisplay(q.from), #q.lines, f.title)
+    MMT.UI.Confirm(head .. "\n" .. mod.Summary(q.lines, 4), f.askAccept or "Apply", function()
         for _, fn in ipairs(q.applies) do
             local ok, err = pcall(fn)
             if not ok then mod.M:Debug("apply failed: %s", tostring(err)) end
         end
         done()
-    end, "Ignore", done)
+    end, "Ignore", function()
+        for _, fn in ipairs(q.ignores) do pcall(fn) end
+        done()
+    end)
 end
 
--- lines = what it does ("+ [Linen Cloth] to junk"), apply() does it
-function mod.Ask(from, feature, lines, apply)
+-- lines = what it does ("+ [Linen Cloth] to junk"), apply() does it,
+-- ignored() (optional) runs on Ignore
+function mod.Ask(from, feature, lines, apply, ignored)
     for _, q in ipairs(queue) do
         if q.from == from and q.feature == feature then
             for _, l in ipairs(lines) do q.lines[#q.lines + 1] = l end
             q.applies[#q.applies + 1] = apply
+            q.ignores[#q.ignores + 1] = ignored
             return
         end
     end
-    local q = { from = from, feature = feature, lines = {}, applies = { apply } }
+    local q = { from = from, feature = feature, lines = {}, applies = { apply }, ignores = { ignored } }
     for _, l in ipairs(lines) do q.lines[#q.lines + 1] = l end
     queue[#queue + 1] = q
     ShowNext()

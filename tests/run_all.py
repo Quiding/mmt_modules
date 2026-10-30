@@ -30,7 +30,7 @@ for d in ours:
                 bad += 1
                 print("LINT %s:%d two values from 'x and f()' - only the first survives" % (f, n))
 
-shared = [("IconBars", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("ListKeys", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("Specs", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("SettingsKit", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_TeamInventory"]),
+shared = [("IconBars", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("ListKeys", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("Specs", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("SettingsKit", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_TeamInventory", "MMT_QoL"]),
           ("Compat", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems"]), ("Search", ["MMT_CooldownTimers", "MMT_BuffTimers"]), ("Transfer", ["MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems"])]
 for name, dirs in shared:
     texts = {open(os.path.join(root, d, name + ".lua"), encoding="utf-8").read() for d in dirs}

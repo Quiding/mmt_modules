@@ -1,7 +1,11 @@
 """MMT_QoL: two clients, Anna and Bob, each with stand-ins for Dejunk (its saved
 state + DejunkApi listener, and its in-memory list copy that it saves over the
 state) and Baganator (its profile config + API). Changes on one reach the
-other, changes taken are not sent back, bulk changes aren't sent."""
+other, changes taken are not sent back, bulk changes aren't sent.
+ForeverAuras: a stand-in ForeverAurasAPI (GetAuras / ExportAura / DecodeAuraString /
+ImportAura, refusing while another import window is open or in combat): one aura, a
+group in two parts delivered out of order, "all" to the team, ask / straight import,
+waiting for an open import window and for combat, "only the FTL leader"."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -25,7 +29,7 @@ function MMT.NewModule(def)
   M.enabled = true
   M.db = copy(def.defaults)
   M.store = {}
-  function M:On(ev, fn) EVENTS[ev] = fn end
+  function M:On(ev, fn) local old = EVENTS[ev]; EVENTS[ev] = old and function(...) old(...); fn(...) end or fn end
   function M:Listen(ev, fn) LISTEN[ev] = fn end
   function M:Debug() end
   return M
@@ -388,7 +392,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 3, "report lines " .. n)
+  assert(n == 4, "report lines " .. n)
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -431,3 +435,168 @@ run(B, bmod, r'''function(m)
   assert(#SENT == 0, "sent: " .. table.concat(SENT, " | "))
   return "Bob: taken changes not linked again"
 end''')
+
+# --- ForeverAuras: send auras -------------------------------------------
+FA = r"""
+LOADED.ForeverAuras = true
+ONLINE = { ["Anna-Smith"] = true, ["Bob-Stone"] = true, ["Cara-Moon"] = false }
+function MMT.SortedMembers() return { "Anna-Smith", "Bob-Stone", "Cara-Moon" } end
+function MMT.IsSelf(k) return k == ME end
+function MMT.IsOnline(k) return ONLINE[k] == true end
+function MMT.WhisperTarget(k) return (k:gsub("-", " ")) end
+OUT = {}
+function MMT.SendLong(msg, target) OUT[#OUT + 1] = { msg = msg, to = target, long = true } end
+function MMT.SendAddon(msg, channel, target) assert(#msg < 250, "too long " .. #msg); OUT[#OUT + 1] = { msg = msg, to = target } end
+function MMT.SendToTeam(msg) assert(#msg < 250, "too long " .. #msg); OUT[#OUT + 1] = { msg = msg } end
+TIMERS = {}
+C_Timer.After = function(_, fn) TIMERS[#TIMERS + 1] = fn end
+function FLUSH() while #TIMERS > 0 do local t = TIMERS; TIMERS = {} for _, fn in ipairs(t) do fn() end end end
+FA_AURAS = { ["Big group"] = { children = { "Child 1", "Child 2" } }, ["Child 1"] = { parent = "Big group" },
+  ["Child 2"] = { parent = "Big group" }, ["Solo; one"] = {} }
+local function hex(s) return (s:gsub(".", function(c) return ("%02x"):format(c:byte()) end)) end
+local function unhex(s) return (s:gsub("%x%x", function(h) return string.char(tonumber(h, 16)) end)) end
+IMPORTS, FA_OPEN = {}, nil
+ForeverAurasAPI = {}
+function ForeverAurasAPI:GetAuras() return FA_AURAS end
+function ForeverAurasAPI:ExportAura(id)
+  local a = FA_AURAS[id]
+  if not a then return nil end
+  return "!WA:2!" .. hex(id) .. "(" .. string.rep("a", a.children and 9000 or 100)
+end
+function ForeverAurasAPI:DecodeAuraString(s)
+  local h = type(s) == "string" and s:match("^!WA:2!(%x+)%(")
+  if not h then return nil end
+  local id = unhex(h)
+  return { m = "d", d = { id = id }, c = FA_AURAS[id] and FA_AURAS[id].children and { {}, {} } or nil }
+end
+function ForeverAurasAPI:ImportAura(s, cb)
+  if COMBAT then return false, "in combat" end
+  if FA_OPEN then return false, "another import is still open" end
+  local d = self:DecodeAuraString(s)
+  if not d then return false, "not an aura import string" end
+  FA_OPEN = { id = d.d.id, cb = cb }
+  IMPORTS[#IMPORTS + 1] = d.d.id
+  return true
+end
+function FA_CLOSE(accepted) local o = FA_OPEN; FA_OPEN = nil; o.cb(accepted, accepted and o.id or nil) end
+function TAKE() local t = OUT; OUT = {} return t end
+function LAST() return PRINTS[#PRINTS] or "" end
+"""
+for lua in (A, B):
+    lua.execute(FA)
+
+def out(lua):
+    t = lua.eval('TAKE')()
+    return [(t[i].msg, t[i].to) for i in range(1, len(t) + 1)]
+
+def deliver_to(msgs, lua, frm, order=None):
+    for i in (order or range(len(msgs))): lua.eval('DELIVER')(frm, msgs[i][0])
+
+run(A, amod, r"""function(m)
+  local list = m.AuraList()
+  assert(#list == 4 and list[1].id == "Big group" and list[1].group and list[1].inside == 2, "list 1")
+  assert(list[2].depth == 1 and list[3].id == "Child 2" and list[4].id == "Solo; one" and list[4].depth == 0, "list order")
+  local top = m.TopAuras(); assert(#top == 2 and top[1] == "Big group" and top[2] == "Solo; one", "top")
+  local ok, why = m.SendAuras({ "Solo; one" }, "Cara-Moon"); assert(not ok and why:find("isn't online"), tostring(why))
+  ok, why = m.SendAuras({ "Nope" }, "Bob-Stone"); assert(not ok and why:find("nothing to send"), tostring(why))
+  ok, why = m.SendAuras({ "Solo; one" }, "Bob-Stone")
+  assert(ok and why:find("\"Solo; one\"", 1, true) and why:find("Bob Stone", 1, true), tostring(why))
+  assert(#OUT == 2 and OUT[1].msg:find("^QWAH:%d+:1:%d+:Solo%%3B one$") and OUT[1].to == "Bob Stone", "head: " .. OUT[1].msg)
+  assert(OUT[2].long and OUT[2].to == "Bob Stone" and OUT[2].msg:find("^QWA:%d+:1:1:Solo%%3B one=!WA:2!"), "part: " .. OUT[2].msg)
+  return "Anna: aura list, offline / unknown refused, one aura sent to Bob"
+end""")
+msgs = out(A)
+deliver_to(msgs[:1], B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(LAST():find("Anna Smith is sending you 1 aura(s) (", 1, true) and LAST():find("Solo; one", 1, true), LAST())
+  return "Bob: told it's coming"
+end""")
+deliver_to(msgs[1:], B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(DIALOG and DIALOG.text:find("Anna Smith sends you 1 ForeverAuras aura(s)", 1, true), "no dialog: " .. tostring(DIALOG and DIALOG.text))
+  assert(DIALOG.text:find("Solo; one - you have one by this name", 1, true), DIALOG.text)
+  assert(#IMPORTS == 0, "imported before asking")
+  DIALOG.ok(); DIALOG = nil
+  assert(#IMPORTS == 1 and IMPORTS[1] == "Solo; one", "not opened in ForeverAuras")
+  assert(#OUT == 1 and OUT[1].msg:find("^QWAR:%d+:A$") and OUT[1].to == "Anna-Smith", "ack: " .. tostring(OUT[1] and OUT[1].msg))
+  FA_CLOSE(true); FLUSH()
+  assert(OUT[2].msg:find("^QWAR:%d+:D:1:1$"), "done reply: " .. tostring(OUT[2] and OUT[2].msg))
+  assert(LAST():find("1 of 1 aura(s) from Anna Smith imported", 1, true), LAST())
+  return "Bob: asked, imported through ForeverAuras' window, replied"
+end""")
+deliver_to(out(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  assert(PRINTS[#PRINTS - 1]:find("Bob Stone is importing", 1, true), PRINTS[#PRINTS - 1])
+  assert(LAST():find("Bob Stone imported 1 of 1", 1, true), LAST())
+  -- "all" to the online team: the group is 9 KB, so two parts
+  ONLINE["Cara-Moon"] = true
+  local ok, why = m.SendAuras(m.TopAuras())
+  assert(ok and why:find("2 auras", 1, true) and why:find("online team (2)", 1, true), tostring(why))
+  assert(#OUT == 3 and OUT[1].to == nil and OUT[1].msg:find("^QWAH:%d+:2:"), "team head")
+  assert(OUT[2].msg:find("^QWA:%d+:1:2:") and OUT[3].msg:find("^QWA:%d+:2:2:") and OUT[3].to == nil, "parts")
+  return "Anna: all auras to the team in 2 parts"
+end""")
+msgs = out(A)
+run(B, bmod, r"""function(m)
+  m.M.db.waAsk = false
+  FA_OPEN = { id = "mine", cb = function() end }   -- Bob has an import window of his own open
+  return "Bob: no ask, an import window already open"
+end""")
+deliver_to(msgs, B, "Anna-Smith", order=[0, 2, 1])
+run(B, bmod, r"""function(m)
+  assert(DIALOG == nil, "asked while ask is off")
+  assert(#IMPORTS == 1 and LAST():find("waits until ForeverAuras' open import window is closed", 1, true), LAST())
+  FA_OPEN = nil; FLUSH()
+  assert(#IMPORTS == 2 and IMPORTS[2] == "Big group", "group not opened after the window closed")
+  FA_CLOSE(false); FLUSH()
+  assert(#IMPORTS == 3 and IMPORTS[3] == "Solo; one", "next one not opened")
+  FA_CLOSE(true); FLUSH()
+  local last = OUT[#OUT].msg
+  assert(last:find("^QWAR:%d+:D:1:2$"), "done: " .. last)
+  return "Bob: parts out of order, waited for his window, declined one, imported one"
+end""")
+out(B)
+run(B, bmod, r"""function(m) COMBAT = true return "Bob: in combat" end""")
+run(A, amod, r"""function(m) assert(m.SendAuras({ "Solo; one" }, "Bob-Stone")) return "Anna: sent again" end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(#IMPORTS == 3 and LAST():find("after combat", 1, true), LAST())
+  COMBAT = false; EVENTS.PLAYER_REGEN_ENABLED()
+  assert(#IMPORTS == 4, "not opened after combat")
+  FA_CLOSE(true); FLUSH(); OUT = {}
+  -- only the FTL leader may send
+  m.M.db.waFrom = "LEADER"
+  MMT.FTLLeader = function() return "Cara-Moon" end
+  return "Bob: opened after combat; only the leader may send now"
+end""")
+run(A, amod, r"""function(m) assert(m.SendAuras({ "Solo; one" }, "Bob-Stone")) return "Anna: sent once more" end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(#IMPORTS == 4 and DIALOG == nil, "taken from a non-leader")
+  assert(LAST():find("only the FTL leader may", 1, true), LAST())
+  assert(OUT[1].msg:find("^QWAR:%d+:N:only the FTL leader"), "refusal reply")
+  local n = 0
+  m.M.Report(m.M, function(l) if l:find("^ForeverAuras:") then n = n + 1; assert(l:find("imported=3", 1, true), l) end end)
+  assert(n == 1, "report")
+  -- ForeverAuras not loaded: off, nothing sent
+  LOADED.ForeverAuras = false
+  local ok, why = m.SendAuras({ "Solo; one" }, "Anna-Smith"); assert(not ok and why:find("switched off"), tostring(why))
+  return "Bob: refused a non-leader, report ok, off without ForeverAuras"
+end""")
+deliver_to(out(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  assert(LAST():find("Bob Stone didn't take the auras: only the FTL leader", 1, true), LAST())
+  return "Anna: heard Bob's refusal"
+end""")
+run(B, bmod, r"""function(m)
+  LOADED.ForeverAuras = true; m.M.db.waFrom = "TEAM"; m.M.db.waAsk = true; OUT = {}
+  return "Bob: anyone may send, asks again"
+end""")
+run(A, amod, r"""function(m) assert(m.SendAuras({ "Big group" }, "Bob-Stone")) return "Anna: sent the group" end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(DIALOG and DIALOG.text:find("Big group (group, 2 inside)", 1, true), "group line: " .. tostring(DIALOG and DIALOG.text))
+  DIALOG.no(); DIALOG = nil; FLUSH()
+  assert(#IMPORTS == 4 and OUT[1].msg:find("^QWAR:%d+:N:ignored$"), "ignore reply: " .. tostring(OUT[1] and OUT[1].msg))
+  return "Bob: ignored the group, Anna is told"
+end""")

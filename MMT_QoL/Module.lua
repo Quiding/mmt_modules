@@ -6,17 +6,18 @@
 --   Ask.lua        "ask before applying": one dialog per sender and feature
 --   Dejunk.lua     Dejunk's junk / not-junk lists, the same on the team
 --   Baganator.lua  Baganator's items put into categories, the same on the team
+--   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Settings.lua   settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.0"
+mod.VERSION = "0.4.0"
 
 local M = MMT.NewModule({
     name = "QoL",
     title = "Quality of life",
-    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character.",
+    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras to the team.",
     sync = true,
     defaults = {
         -- Dejunk
@@ -35,6 +36,11 @@ local M = MMT.NewModule({
         bgAsk = false,
         bgChat = true,
         junkLink = true,           -- Baganator's Junk <-> Dejunk's global junk list (on this character)
+        -- ForeverAuras
+        auras = true,              -- send / take auras
+        waAsk = true,              -- a dialog before ForeverAuras' import window
+        waFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
+        waDock = true,             -- "Send to team" button above ForeverAuras' options
     },
 })
 mod.M = M
@@ -115,10 +121,11 @@ SlashCmdList.MMTQOL = function(msg)
         local fn = which == f.slash and f.commands and f.commands[cmd]
         if fn then
             local ok, err = fn()
-            MMT.Print("%s: %s", f.title, ok and "sent to the team." or tostring(err))
+            -- a command that opens something returns nothing
+            if ok ~= nil or err ~= nil then MMT.Print("%s: %s", f.title, ok and "sent to the team." or tostring(err)) end
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send. Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end

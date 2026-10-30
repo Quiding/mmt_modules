@@ -165,7 +165,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   addon (EllesmereUI) uses an event before relying on it.
 - Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
   font is set errors ("Font not set"). The test stub enforces this.
-- Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all four: Cooldowns, Buffs, Totems, TeamInventory: `mod.Tabs`,
+- Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all five: Cooldowns, Buffs, Totems, TeamInventory, QoL: `mod.Tabs`,
   `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
   Status line just above the share bar. `mod.DragReorder(list, getData, moved)` = drag the rows of a core
@@ -465,15 +465,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.3.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.4.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
-  One TEAM_MESSAGE listener dispatches `^(Q[A-Z]+):` to the active feature's tag. Settings.lua: one column per feature
-  (main checkbox greyed with the reason as tooltip; `ui.Check/Cycle/Button/Confirm/Note` options greyed and ignored
-  while the feature is off); a 3rd feature needs tabs. `Ask.lua`: `mod.Ask(from, f, lines, apply)` queues one
-  `MMT.UI.Confirm` per sender + feature (a dialog replaced by another counts as Ignore).
-- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator). One message per change; > 10 changes at once
+  One TEAM_MESSAGE listener dispatches `^(Q[A-Z]+):` to the active feature's tag. Settings.lua: one TAB per feature
+  (0.4.0: SettingsKit.lua copied in, `mod.Tabs`, ids = `f.key`, label `f.tabText or f.title`; column left, `f.notes` =
+  "How it works" column right; main checkbox greyed with the reason as tooltip; `ui.Check/Cycle/Button/Confirm/Note`
+  options greyed and ignored while the feature is off; `f.Refresh()` runs on page refresh). `Ask.lua`:
+  `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
+  another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
+  Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.
+- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras). One message per change; > 10 changes at once
   (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
 - `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private
   addon table). Read + write `__DEJUNK_ADDON_V3_SAVED_VARIABLES__` (rewritten as a shallow copy on every state change;
@@ -508,7 +511,28 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   with `own = true`: no `expect`, so Dejunk's Check sends it like the player's; no button: state + QDJ sent directly).
   Dejunk Check sees a genuine removal from GI / PI (incl. a move to not junk) -> `mod.BaganatorUnjunk(id)` (in place,
   `changedHere` forces the next tick's full compare, which sends QBG "-"). Loops end because the other side is a no-op.
+- `ForeverAuras.lua` + `AurasWindow.lua` (0.4.0, key `auras`, options `waAsk` (default on), `waFrom` TEAM | LEADER
+  (`MMT.IsFTLLeader`), `waDock`): ForeverAuras (`ForeverAuras` = its `WeakAuras` table; global `WeakAuras` too) has a
+  PUBLIC API in ForeverAuras/API.lua, `ForeverAurasAPI`: `:GetAuras()` {parent, children, icon} by id, `:ExportAura(id)`
+  (= its export window's string, `Private.DisplayToString(id, true)`: "!WA:2!" + LibDeflate EncodeForPrint, chars
+  a-zA-Z0-9() only; a group includes its children), `:DecodeAuraString(s)` ({m="d", d, c} or nil), `:ImportAura(s, cb)`
+  (= `WeakAuras.Import` -> its own import / update window; false + "in combat" | "another import is still open" |
+  ...; cb(accepted, id) once), `:GetConfigFrame()` (`ForeverAurasOptions`, PortraitFrameTemplate, nil until the
+  options opened once). Its own transfer (chat link + "ForeverAuras" comm) only works from a chat link, one aura.
+  Wire: `QWAH:<batch>:<n auras>:<bytes>:<names>` (< 250, SendAddon whisper / SendToTeam online), then the payload
+  `<%XX id>=<string>;...` in parts of 6000 bytes, each `MMT.SendLong("QWA:<batch>:<i>:<n>:<part>", whisper target |
+  nil = online team)` - the core's MPT drops a text after 400 parts x 220 bytes or 2 minutes, and team BULK outside
+  instances is a whisper per member at ~800 B/s in all, so big single texts would time out; receiver joins parts
+  (any order, forgotten after 10 min idle), `mod.Ask` (lines: name, "(group, n inside)", "- you have one by this
+  name"), then a queue: one `ImportAura` at a time (next after cb, retry 2 s while another import window is open,
+  PLAYER_REGEN_ENABLED after combat). Replies whispered: `QWAR:<batch>:A` importing, `:N:<why>` (ignored / not the
+  leader / not an aura), `:D:<imported>:<total>`; every step prints a chat line on both sides. Window
+  `MMTQoLAurasWindow` (DIALOG, below MMT's dropdown lists): "All auras" + tree list with filter, target via
+  `UI.OpenList` (online team | each online member), Send; placed beside the options frame when it's shown. The
+  "Send to team" button is parented to ForeverAuras' options frame (above its top right), made on
+  `hooksecurefunc(ForeverAuras, "OpenOptions")`.
 - Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).
+  ForeverAuras: stand-in ForeverAurasAPI; one aura, a group in parts out of order, all to the team, ask / ignore, waiting for an open import window / combat, FTL-leader-only.
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between
