@@ -307,7 +307,7 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   can be 100 KB and more, which takes a minute or two (the team's messages share about 800 bytes a second).
 - **EllesmereUI profiles**: send one of your EllesmereUI profiles - complete, like its own export: every module,
   the layout, Cooldown Manager spells - or your **full account** export (account-wide settings + your active profile)
-  to one team member or the whole online team. **Send to team** above EllesmereUI's options, `/mmtqol eui` · `/mmtqol smartbuff combat` (what the client says about combat) or the
+  to one team member or the whole online team. **Send to team** above EllesmereUI's options, `/mmtqol eui` or the
   settings page. The others are told it's coming and asked (Import / Ignore), then EllesmereUI's own import page
   opens with the profile name filled in - they pick the modules and the name there, like pasting the string. A full
   account export is always asked, shows EllesmereUI's typed "Confirm" warning and reloads. A profile is tens of KB:
@@ -322,7 +322,7 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   take them right away, a chat line per change, and a button that sends your whole list once (the others
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.
 
-`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui`
+`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat`
 
 ---
 
