@@ -881,3 +881,17 @@ run(B, bmod, r"""function(m)
   assert(#OUT == 2, "sent twice after the fight")
   return "Bob: an alert from during the fight doesn't hold back the one after it"
 end""")
+
+# SmartBuff is only needed to SEND: a receiver without it still shows the team's alerts
+run(A, amod, r"""function(m)
+  LOADED.SmartBuff = false
+  local f
+  for _, x in ipairs(m.features) do if x.key == "smartbuff" then f = x end end
+  assert(f and f.sendOnly and m.Active(f), "SmartBuff alerts need SmartBuff on the receiver")
+  m.M.db.sbShow, m.M.db.sbRaid = "ALL", true
+  local before = #RAID
+  NOW = NOW + 30; DELIVER("Cara-Moon", "QSB:N:0:Cara Moon:Power Word: Fortitude")
+  assert(#RAID == before + 1, "alert not shown without SmartBuff")
+  LOADED.SmartBuff = true
+  return "Anna without SmartBuff: still receives and shows alerts"
+end""")

@@ -159,6 +159,7 @@ end
 
 F = mod.Feature({
     key = "smartbuff", slash = "smartbuff", addon = "SmartBuff", title = "SmartBuff alerts", tabText = "SmartBuff",
+    sendOnly = true,   -- SmartBuff is only needed to send: the leader shows alerts without it
     checkText = "Call out SmartBuff's alerts to the team",
     tip = "When SmartBuff on a character says a buff is missing (or runs out), the FTL leader - or everyone, see below - gets it as a chat line, raid warning text and sound.",
     notes = {

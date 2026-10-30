@@ -29,9 +29,9 @@ local function FeatureColumn(page, f, x, status)
     local col = UI.Column(page, x, 0, COL_W)
     col:Header(f.title)
     local main = col:Check(f.checkText,
-        function() return M.db[f.key] and (mod.AddonState(f.addon)) and true or false end,
+        function() return M.db[f.key] and (f.sendOnly or (mod.AddonState(f.addon))) and true or false end,
         function(v)
-            if not (mod.AddonState(f.addon)) then return end
+            if not f.sendOnly and not (mod.AddonState(f.addon)) then return end
             M.db[f.key] = v
             if v and M.enabled and f.OnEnable then f.OnEnable() end
             if not v and f.OnDisable then f.OnDisable() end
@@ -68,8 +68,10 @@ local function FeatureColumn(page, f, x, status)
 
     return function()
         local ok, why = mod.AddonState(f.addon)
-        main:SetAlpha(ok and 1 or 0.4)
-        UI.Tooltip(main, f.checkText, ok and f.tip or ("Can't be switched on: " .. tostring(why)))
+        main:SetAlpha((ok or f.sendOnly) and 1 or 0.4)
+        UI.Tooltip(main, f.checkText, ok and f.tip
+            or f.sendOnly and (f.tip .. "\n\n" .. tostring(why) .. " This character only receives.")
+            or ("Can't be switched on: " .. tostring(why)))
         local on = mod.Active(f)
         for _, w in ipairs(gated) do w:SetAlpha(on and 1 or 0.4) end
         if f.Refresh then f.Refresh() end
@@ -85,7 +87,7 @@ M.Page = function(_, page)
     local tabs = {}
     for _, f in ipairs(mod.features) do
         -- the tab of a feature whose addon isn't loaded is greyed and says why (SettingsKit)
-        tabs[#tabs + 1] = { f.key, f.tabText or f.title, blocked = f.addon and function()
+        tabs[#tabs + 1] = { f.key, f.tabText or f.title, blocked = f.addon and not f.sendOnly and function()
             local ok, why = mod.AddonState(f.addon)
             if not ok then return (why or "") .. " This tab needs it." end
         end or nil }
@@ -101,7 +103,7 @@ M.Page = function(_, page)
         local off = {}
         for _, f in ipairs(mod.features) do
             local ok, why = mod.AddonState(f.addon)
-            if not ok then off[#off + 1] = why end
+            if not ok and not f.sendOnly then off[#off + 1] = why end
         end
         status.Show_(#off > 0 and table.concat(off, " ") or "")
     end

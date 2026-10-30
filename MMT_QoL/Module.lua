@@ -86,7 +86,9 @@ function mod.AddonState(name)
 end
 
 -- a feature works when the module and its checkbox are on and its addon is loaded
+-- (f.sendOnly: the addon is only needed to SEND - SmartBuff alerts - so a character without it still receives)
 function mod.Active(f)
+    if f.sendOnly then return M.enabled and M.db[f.key] and true or false end
     return M.enabled and M.db[f.key] and (mod.AddonState(f.addon)) and true or false
 end
 
