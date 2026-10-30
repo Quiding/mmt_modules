@@ -295,9 +295,12 @@ local function InTrade()
     return t
 end
 
-local function FreeSlot()
-    for s = 1, MAX_SLOTS do
-        if not MMT.Safe(GetTradePlayerItemLink, s) then return s end
+-- a free trade slot, from the last one down: the core's own trade fill takes the free
+-- slots from the first one up, so both can fill at the same time. claimed = slots this
+-- fill already used (the game reports a filled slot only a moment later)
+local function FreeSlot(claimed)
+    for s = MAX_SLOTS, 1, -1 do
+        if not claimed[s] and not MMT.Safe(GetTradePlayerItemLink, s) then return s end
     end
 end
 
@@ -368,51 +371,69 @@ end
 
 local function ClearSoon() C_Timer.After(0.2, function() if CursorHasItem() then ClearCursor() end end) end
 
--- one stack into the trade. A trade slot holds a bag slot, not a loose item: a split
--- dropped on it puts the WHOLE stack in. So a split goes into an empty bag slot first,
--- and once the game made that stack, it goes into the trade. done() starts the next one.
-local function PutIn(st, mine, taken, done)
-    if mine ~= token or not tradeOpen then return end
-    local free = FreeSlot()
+-- one bag slot into a free trade slot
+local function PlaceStack(bag, slot, claimed)
+    local free = FreeSlot(claimed)
     if not free then return end
-    if not st.split then
-        ClearCursor()
-        C.PickupContainerItem(st.bag, st.slot)
-        ClickTradeButton(free)
-        ClearSoon()
-        return done()
-    end
-    local bag, slot = EmptyBagSlot(taken)
-    if not bag then
-        MMT.Print("Team Inventory: a free bag slot is needed to split %s for the trade.", ItemName(st.id))
-        return done()
-    end
-    taken[bag * 1000 + slot] = true
+    claimed[free] = true
     ClearCursor()
-    C.SplitContainerItem(st.bag, st.slot, st.split)
     C.PickupContainerItem(bag, slot)
+    ClickTradeButton(free)
+    ClearSoon()
+end
+
+-- the stacks into the trade. A trade slot holds a bag slot, not a loose item: a split
+-- dropped on it puts the WHOLE stack in. So every split goes into its own empty bag
+-- slot first, all at once (the game makes them together), and each goes into the trade
+-- as soon as it exists; meanwhile the whole stacks go in, a moment apart.
+local STEP_GAP = 0.05
+local function PutAll(steps, mine)
+    local claimed, taken, waiting, whole = {}, {}, {}, {}
+    for _, st in ipairs(steps) do
+        if not st.split then
+            whole[#whole + 1] = st
+        else
+            local bag, slot = EmptyBagSlot(taken)
+            if bag then
+                taken[bag * 1000 + slot] = true
+                ClearCursor()
+                C.SplitContainerItem(st.bag, st.slot, st.split)
+                C.PickupContainerItem(bag, slot)
+                waiting[#waiting + 1] = { bag = bag, slot = slot, id = st.id, n = st.split }
+            else
+                MMT.Print("Team Inventory: a free bag slot is needed to split %s for the trade.", ItemName(st.id))
+            end
+        end
+    end
+    local function Whole(i)
+        if mine ~= token or not tradeOpen or not whole[i] then return end
+        PlaceStack(whole[i].bag, whole[i].slot, claimed)
+        C_Timer.After(STEP_GAP, function() Whole(i + 1) end)
+    end
+    Whole(1)
+    if #waiting == 0 then return end
     local started = GetTime()
     local function Wait()
         if mine ~= token or not tradeOpen then return end
-        local info = C.GetContainerItemInfo and MMT.Safe(C.GetContainerItemInfo, bag, slot)
-        if type(info) == "table" and info.itemID == st.id and info.stackCount == st.split and not info.isLocked then
-            local f = FreeSlot()
-            if f then
-                ClearCursor()
-                C.PickupContainerItem(bag, slot)
-                ClickTradeButton(f)
-                ClearSoon()
+        for i = #waiting, 1, -1 do
+            local w = waiting[i]
+            local info = C.GetContainerItemInfo and MMT.Safe(C.GetContainerItemInfo, w.bag, w.slot)
+            if type(info) == "table" and info.itemID == w.id and info.stackCount == w.n and not info.isLocked then
+                PlaceStack(w.bag, w.slot, claimed)
+                table.remove(waiting, i)
             end
-            return done()
         end
+        if #waiting == 0 then return end
         if GetTime() - started > 3 then
             if CursorHasItem() then ClearCursor() end
-            MMT.Print("Team Inventory: couldn't split %s for the trade - put %d in by hand.", ItemName(st.id), st.split)
-            return done()
+            for _, w in ipairs(waiting) do
+                MMT.Print("Team Inventory: couldn't split %s for the trade - put %d in by hand.", ItemName(w.id), w.n)
+            end
+            return
         end
-        C_Timer.After(0.1, Wait)
+        C_Timer.After(STEP_GAP, Wait)
     end
-    C_Timer.After(0.1, Wait)
+    C_Timer.After(STEP_GAP, Wait)
 end
 
 -- puts this character's planned gifts for the partner into the trade window
@@ -437,13 +458,7 @@ function mod.FillTrade(manual)
         MMT.Print("Team Inventory: %d x %s for %s isn't in your bags (or is soulbound).", n, ItemName(id), MMT.FullDisplay(partner))
     end
     token = token + 1
-    local mine, taken = token, {}
-    -- one after the other (a split waits for the game to make the new stack)
-    local function Step(i)
-        if i > #steps then return end
-        PutIn(steps[i], mine, taken, function() C_Timer.After(0.3, function() Step(i + 1) end) end)
-    end
-    Step(1)
+    PutAll(steps, token)
     if #steps > 0 then
         MMT.Print("Team Inventory: %d planned stack(s) for %s go into the trade.", #steps, MMT.FullDisplay(partner))
     end
@@ -607,9 +622,9 @@ M:On("TRADE_SHOW", function()
     partner = Partner()
     ShowButton()
     if not M.db.giveTrade then return end
-    -- after the core's own trade items (it fills its slots one by one from the start)
-    local core = MMT.db and MMT.db.trade and MMT.db.trade.enabled
-    C_Timer.After(core and 2.2 or 0.3, function() mod.FillTrade(false) end)
+    -- right away: the core's own trade fill takes the free slots from the first one up, ours
+    -- from the last one down (FreeSlot), so they only meet when together they need more than 6
+    C_Timer.After(0.2, function() mod.FillTrade(false) end)
 end)
 
 -- lastTrade stays as last read while open: the slots may already be empty here

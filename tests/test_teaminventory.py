@@ -255,11 +255,12 @@ print("B:", B.eval(r"""function(m)
   C_Container.SplitContainerItem, C_Container.PickupContainerItem = C_SPLIT, C_PICKUP
   NUMSLOTS[0] = 4   -- two free slots in the backpack
   FIRE("TRADE_SHOW")
-  assert(TRADE[2] and TRADE[2].id == 2589 and TRADE[2].n == 10 and not TRADE[2].fromSplit, "not split into the trade: " .. tostring(TRADE[2] and TRADE[2].n))
+  -- ours fill from the last trade slot down (the core's from the first one up)
+  assert(TRADE[6] and TRADE[6].id == 2589 and TRADE[6].n == 10 and not TRADE[6].fromSplit, "not split into the trade: " .. tostring(TRADE[6] and TRADE[6].n))
   assert(BAGS[0][2].stackCount == 10 and BAGS[0][3] and BAGS[0][3].stackCount == 10, "split not made in a free bag slot")
-  assert(not TRADE[3], "too much put in")
+  assert(not TRADE[5] and not TRADE[2], "too much put in")
   -- the button under the trade window again: it counts what's already in, adds nothing
-  assert(m.FillTrade(true) == 0 and not TRADE[3], "filled twice")
+  assert(m.FillTrade(true) == 0 and not TRADE[5], "filled twice")
   -- the trade completes: 15 handed over, the plan is done and the team told
   TICK()
   SENT = {}
@@ -434,7 +435,7 @@ print("B:", B.eval(r"""function(m)
   m.SetGive("Bob-Stone", "Anna-Smith", 2589, 7)   -- part of the stack of 20
   PARTNER = "Anna"
   FIRE("TRADE_SHOW")
-  assert(TRADE[1] and TRADE[1].id == 2589 and TRADE[1].n == 7, "split not placed (the whole stack?): " .. tostring(TRADE[1] and TRADE[1].n))
+  assert(TRADE[6] and TRADE[6].id == 2589 and TRADE[6].n == 7, "split not placed (the whole stack?): " .. tostring(TRADE[6] and TRADE[6].n))
   -- nothing accepts by itself, ever
   TICK(); NOW = NOW + 2; TICK(); NOW = NOW + 2; TICK()
   assert(ACCEPTED == 0, "accepted without a key press")
@@ -448,7 +449,7 @@ print("B:", B.eval(r"""function(m)
   assert(MMTTeamInventory_AcceptPlanned() == nil and ACCEPTED == 1, "key didn't accept")
   FIRE("TRADE_CLOSED")
   -- the key refuses (and says why): more than planned on our side
-  TRADE, ACCEPTED, said = { [1] = { id = 2589, n = 20 } }, 0, {}
+  TRADE, ACCEPTED, said = { [1] = { id = 2589, n = 20 } }, 0, {}   -- (by hand, in slot 1)
   m.M.db.giveTrade = false
   FIRE("TRADE_SHOW")
   MMTTeamInventory_AcceptPlanned()
@@ -496,6 +497,45 @@ print("A:", A.eval(r"""function(m)
   TARGET = {}
   return "receiver accept key ok"
 end""")(amod))
+
+# fast fill: several splits made at once, each into its own bag slot, whole stacks in
+# between; every stack gets its own trade slot even before the game reports it filled
+print("B:", B.eval(r"""function(m)
+  TRADE, TARGET, ACCEPTED = {}, {}, 0
+  local saved0, saved1 = BAGS[0], BAGS[1]
+  BAGS[0] = { { itemID = 2589, stackCount = 20 }, { itemID = 13446, stackCount = 4 }, { itemID = 4306, stackCount = 20 } }
+  BAGS[1] = { { itemID = 2592, stackCount = 5 } }
+  NUMSLOTS[0], NUMSLOTS[1] = 6, 1
+  -- the game reports a filled trade slot only later: the fill must not count on it
+  local real = GetTradePlayerItemLink
+  local reported = false
+  GetTradePlayerItemLink = function(s) if reported then return real(s) end end
+  -- the game makes a split stack only after a few polls
+  local polls = 0
+  local info = C_Container.GetContainerItemInfo
+  C_Container.GetContainerItemInfo = function(bag, slot)
+    local i = info(bag, slot)
+    if i and bag == 0 and slot >= 4 then polls = polls + 1; if polls < 3 then return nil end end
+    return i
+  end
+  m.SetGive("Bob-Stone", "Anna-Smith", 2589, 5)    -- split
+  m.SetGive("Bob-Stone", "Anna-Smith", 4306, 8)    -- split
+  m.SetGive("Bob-Stone", "Anna-Smith", 13446, 4)   -- whole stack
+  m.SetGive("Bob-Stone", "Anna-Smith", 2592, 5)    -- whole stack
+  PARTNER = "Anna"
+  FIRE("TRADE_SHOW")
+  local got, slots = {}, 0
+  for s = 1, 6 do if TRADE[s] then got[TRADE[s].id] = TRADE[s].n; slots = slots + 1 end end
+  assert(slots == 4 and got[2589] == 5 and got[4306] == 8 and got[13446] == 4 and got[2592] == 5,
+    "fast fill: " .. slots .. " slots, " .. tostring(got[2589]) .. "/" .. tostring(got[4306]))
+  assert(TRADE[6] and TRADE[5] and TRADE[4] and TRADE[3] and not TRADE[1], "not from the last slot down")
+  assert(BAGS[0][4] and BAGS[0][5] and BAGS[0][4].itemID ~= BAGS[0][5].itemID, "splits not in their own bag slots")
+  FIRE("TRADE_CLOSED")
+  GetTradePlayerItemLink, C_Container.GetContainerItemInfo = real, info
+  BAGS[0], BAGS[1], NUMSLOTS[0], NUMSLOTS[1], TRADE = saved0, saved1, nil, nil, {}
+  for _, id in ipairs({ 2589, 4306, 13446, 2592 }) do m.SetGive("Bob-Stone", "Anna-Smith", id, 0) end
+  return "fast fill ok"
+end""")(bmod))
 
 # a split needs a free bag slot: with full bags it says so and puts nothing in (never the whole stack)
 print("B:", B.eval(r"""function(m)

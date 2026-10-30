@@ -371,7 +371,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.10.0)
+### MMT_TeamInventory (v0.10.1)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -405,8 +405,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   slots (giver's name, `b.tag`); both first in BYCHAR, right-click cancels. The panel's "Trade" button: `TIVT:<from>:<to>` -> the giver's client
   `InitiateTrade(unit)` (works from an addon message, user-tested with party1), unit from `mod.UnitOf`
   (partyN / raidN, then friendly nameplates, matched by `MMT.SplitUnit` key: same first names!); not found -> `TIVN` whispered back.
-  Trade: TRADE_SHOW -> `mod.FillTrade` after the CORE's own Trade.lua fill (it precomputes free slots: we wait
-  2.2 s when `MMT.db.trade.enabled`, read only), a trade slot holds a BAG SLOT: a split dropped on it puts the whole stack in, so a split goes into an empty bag slot first (Split + Pickup(empty)), wait until that stack exists, then Pickup + ClickTradeButton (one step after another; needs a free bag slot), skips bound/locked,
+  Trade: TRADE_SHOW -> `mod.FillTrade` after 0.2 s (0.10.1; was 2.2 s after the CORE's own Trade.lua fill): `FreeSlot(claimed)`
+  takes trade slots from 6 DOWN (the core takes its precomputed free slots from 1 up, so they only clash past 6 stacks together),
+  `claimed` = slots this fill used (the game reports them a moment later). A trade slot holds a BAG SLOT: a split dropped on it puts
+  the whole stack in, so `PutAll` first splits EVERY split into its own empty bag slot at once (Split + Pickup(empty); needs free
+  bag slots), whole stacks go in 0.05 s apart (`STEP_GAP`), each split stack goes in as soon as it exists (polled 0.05 s, 3 s max), skips bound/locked,
   counts what's already in the trade. Completion: our trade slots read every 0.25 s while open, applied on
   UI_INFO_MESSAGE == ERR_TRADE_COMPLETE (TRADE_ACCEPT_UPDATE etc. not confirmed on this client). Setting `giveTrade`;
   **AcceptTrade is PROTECTED for addons** (in game from OnUpdate / C_Timer: "The game blocked MMT_TeamInventory
