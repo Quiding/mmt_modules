@@ -32,6 +32,11 @@ mod.sbs = sbs
 local lastSent = {}          -- ["<target>\t<buff>"] = { kind, time }
 local lastShown = {}         -- ["<target>\t<buff>\t<kind>"] = time
 local combatStart = -1       -- GetTime() when the last fight began
+local fights = { regen = 0, attack = 0, tick = 0 }   -- what noticed the fights (debug report)
+local function FightStarted(source)
+    combatStart = GetTime()
+    fights[source] = fights[source] + 1
+end
 
 local RAID_WARNING_SOUND = (SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959
 
@@ -178,8 +183,8 @@ F = mod.Feature({
         ui.Check("Sound", "sbSound", "The raid warning sound with each alert shown.")
     end,
     Report = function(add)
-        add(("SmartBuff: hooked=%s seen=%d sent=%d held=%d shown=%d showsHere=%s show=%s lastFight=%s"):format(tostring(sbs.hooked),
-            sbs.seen, sbs.sent, sbs.held, sbs.shown, tostring(ShowsHere()), tostring(M.db.sbShow),
+        add(("SmartBuff: hooked=%s seen=%d sent=%d held=%d shown=%d showsHere=%s show=%s fights=regen %d/attack %d/poll %d lastFight=%s"):format(tostring(sbs.hooked),
+            sbs.seen, sbs.sent, sbs.held, sbs.shown, tostring(ShowsHere()), tostring(M.db.sbShow), fights.regen, fights.attack, fights.tick,
             combatStart < 0 and "-" or ("%d s ago"):format(GetTime() - combatStart)))
     end,
 })
@@ -205,8 +210,26 @@ function mod.SmartBuffCombatTick()
             if UnitExists(unit) and Fighting(unit) then now = true break end
         end
     end
-    if now and not fighting then combatStart = GetTime() end
+    if now and not fighting then FightStarted("tick") end
     fighting = now
 end
 
-M:On("PLAYER_REGEN_DISABLED", function() combatStart = GetTime() end)
+-- PLAYER_REGEN_DISABLED (in combat) didn't show up in the user's debug log on
+-- Forever, PLAYER_ENTER_COMBAT (auto attack starts) did: either one counts
+M:On("PLAYER_REGEN_DISABLED", function() FightStarted("regen") end)
+M:On("PLAYER_ENTER_COMBAT", function() FightStarted("attack") end)
+
+-- /mmtqol smartbuff combat: what this client says about combat right now
+local function CombatCheck()
+    local function V(fn, ...)
+        local ok, v = pcall(fn, ...)
+        if not ok then return "error" end
+        if MMT.IsSecret(v) then return "secret" end
+        return tostring(v)
+    end
+    MMT.Print("Quality of life: UnitAffectingCombat(player)=%s InCombatLockdown=%s party1=%s; fights seen: in-combat event %d, auto attack %d, poll %d; last %s",
+        V(UnitAffectingCombat, "player"), V(InCombatLockdown), V(UnitAffectingCombat, "party1"),
+        fights.regen, fights.attack, fights.tick,
+        combatStart < 0 and "never" or ("%d s ago"):format(GetTime() - combatStart))
+end
+F.commands = { combat = CombatCheck }

@@ -854,3 +854,17 @@ run(B, bmod, r"""function(m)
   assert(line:find("held=", 1, true) and line:find("lastFight=", 1, true), line)
   return "Bob: a group member's fight counts as a fight"
 end""")
+run(B, bmod, r"""function(m)
+  -- auto attack (PLAYER_ENTER_COMBAT) counts as a fight too: on Forever the in-combat event didn't show up
+  OUT = {}; NOW = NOW + 500
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Fortitude", "icon", false, 0, nil, false)
+  NOW = NOW + 5; EVENTS.PLAYER_ENTER_COMBAT(); NOW = NOW + 10
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Fortitude", "icon", false, 0, nil, false)
+  assert(#OUT == 2, "not sent again after an auto attack fight: " .. #OUT)
+  PRINTS = {}
+  function InCombatLockdown() return false end
+  local f
+  for _, x in ipairs(m.features) do if x.key == "smartbuff" then f = x end end
+  assert(f.commands.combat() == nil and PRINTS[1]:find("auto attack 1", 1, true), tostring(PRINTS[1]))
+  return "Bob: auto attack counts as a fight; /mmtqol smartbuff combat prints the combat state"
+end""")

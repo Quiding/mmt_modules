@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.6.2"
+mod.VERSION = "0.6.3"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -143,6 +143,6 @@ SlashCmdList.MMTQOL = function(msg)
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui. Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end
