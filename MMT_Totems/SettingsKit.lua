@@ -1,10 +1,13 @@
 -- Settings helpers shared by MMT_Cooldowns and MMT_Buffs (they ship the same
 -- copy of this file: KEEP BOTH IDENTICAL):
---   mod.Tabs(page, { {id, text}, ... })  -> panels[id]   tab buttons like /mmt > Help
+--   mod.Tabs(page, { {id, text}, ... } [, opts]) -> panels[id]   tab buttons like /mmt > Help
+--                                          (opts.key: remembers its own choice - sub-tabs inside a tab;
+--                                          opts.bottom: room below the panels, default 50; sub-tabs 0)
 --   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export,
 --                                          Reset to defaults, the core's "Sync to team"
 --   mod.ResetSettings()                    every setting of the module back to its default
---   mod.LookTab(panel, Opt, apply)         -> left column, for the module's own look options
+--   mod.LookTab(panel, Opt, apply [, opts]) -> left column, for the module's own look options
+--                                          (opts.timer = false: no timer size / colour, a Timer sub-tab has them)
 --   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
 --   mod.DragGrip(row)                      -> the dotted handle at a draggable row's left edge
 --   mod.MoveTab(frame, opts)               -> the move tab above a movable window's top-left corner
@@ -18,14 +21,16 @@ local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 
 -- list = { { id, text [, blocked = function() return why | nil end] }, ... }; a blocked tab
 -- is greyed, can't be opened and says why in its tooltip (e.g. the addon it needs is missing)
-function mod.Tabs(page, list)
+function mod.Tabs(page, list, opts)
     local UI = MMT.UI
+    local id0 = opts and opts.key or mod
+    local bottom = opts and opts.bottom or BOTTOM
     local W = MMT.ConfigHelpers.PAGE_W
     local panels, buttons = {}, {}
     local bw = math.floor((W - 8 * (#list - 1)) / #list)
     local function Blocked(t) return t.blocked and t.blocked() or nil end
     local function Show(id)
-        current[mod] = id
+        current[id0] = id
         for k, p in pairs(panels) do p:SetShown(k == id) end
         for _, t in ipairs(list) do
             local b = buttons[t[1]]
@@ -51,11 +56,11 @@ function mod.Tabs(page, list)
         buttons[t[1]] = b
         local p = CreateFrame("Frame", nil, page)
         p:SetPoint("TOPLEFT", 0, -30)
-        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30 - BOTTOM))
+        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30 - bottom))
         panels[t[1]] = p
     end
     -- the tab shown last, else the first one that isn't blocked
-    local start = current[mod] and panels[current[mod]] and current[mod]
+    local start = current[id0] and panels[current[id0]] and current[id0]
     for _, t in ipairs(list) do
         if t[1] == start and Blocked(t) then start = nil end
     end
@@ -180,7 +185,7 @@ local function Color(col, text, M, key, apply)
 end
 
 -- sizes, text, background, border, member rows; returns the left column
-function mod.LookTab(panel, Opt, apply)
+function mod.LookTab(panel, Opt, apply, opts)
     local UI, H = MMT.UI, MMT.ConfigHelpers
     local M = mod.M
     local COL_W, COL2_X = H.COL_W, H.COL2_X
@@ -202,9 +207,11 @@ function mod.LookTab(panel, Opt, apply)
         M.db.font = (v ~= "") and v or nil
         apply()
     end)
-    local gt, st = Opt("timerSize")
-    L:Slider("Timer size", 8, 32, 1, gt, st)
-    Color(L, "Timer colour", M, "timerColor", apply)
+    if not (opts and opts.timer == false) then
+        local gt, st = Opt("timerSize")
+        L:Slider("Timer size", 8, 32, 1, gt, st)
+        Color(L, "Timer colour", M, "timerColor", apply)
+    end
     local gn, sn = Opt("nameSize")
     L:Slider("Name size", 8, 20, 1, gn, sn)
 

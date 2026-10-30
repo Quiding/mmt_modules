@@ -7,7 +7,7 @@ local M = mod.M
 
 local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "attach", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
     "iconSize", "iconZoom", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
-    "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "glowAlerts", "allMissingLook", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers",
+    "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "glowAlerts", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor", "urgentSecs", "urgentTextColor", "urgentSwipeColor", "allMissingLook", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers",
     "allOnFrames", "allX", "allY" }
 local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { PLAIN = true, RED = true, GREY = true },
     framesSide = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }, framesOthers = { WINDOW = true, HIDE = true } }

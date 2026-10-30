@@ -159,6 +159,17 @@ print(lua.eval(r'''function(cd, bf)
   Redraw(); cr = RowOf(cw, "Bob-Stone")
   Check(Ids(cr) == "1,12,3", "hidden anchor: " .. Ids(cr))
   CM.db.hideReady = false
+  -- the countdown colours by time left (IconBars v19, Look > Timer): 59 s left -> plain, soon below 60, urgent below 10
+  CM.db.swipeColor, CM.db.swipeAlpha = { r = 0, g = 0, b = 1 }, 0.5
+  CM.db.soonSecs, CM.db.soonSwipeColor = 60, { r = 1, g = 1, b = 0 }
+  CM.db.urgentSecs, CM.db.urgentSwipeColor = 10, { r = 1, g = 0, b = 0 }
+  local left = 100
+  cd.State = function() return "cd", GetTime() - (60 - left), 60 end
+  local function Swipe() Redraw(); return RowOf(cw, "Bob-Stone").icons[1].swipeNow end
+  left = 59.5; Check(Swipe() == "1.000 1.000 0.000 0.500", "soon: " .. tostring(Swipe()))
+  left = 5;    Check(Swipe() == "1.000 0.000 0.000 0.500", "urgent: " .. tostring(Swipe()))
+  CM.db.soonSecs, CM.db.urgentSecs = 0, 0
+  Check(Swipe() == "0.000 0.000 1.000 0.500", "plain: " .. tostring(Swipe()))
   cd.State = function() return "ready" end
 
   -- attached: every buff on the cooldown row; placing one keeps host empty, detaching brings it home

@@ -59,6 +59,7 @@ local RED = { 1, 0.25, 0.25 }
 local function Look(i)
     local cfg = M.db
     i.missingAlpha, i.glowMissing, i.activeAlpha = cfg.missingAlpha, cfg.glowMissing, cfg.activeAlpha
+    i.look = cfg   -- countdown circle / timer colours (Timer tab)
     if i.state == "missing" then
         if cfg.allMissingLook == "RED" then i.tint = RED
         elseif cfg.allMissingLook == "GREY" then i.desaturate = true end

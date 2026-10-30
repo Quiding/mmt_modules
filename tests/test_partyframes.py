@@ -118,7 +118,7 @@ for folder in ['MMT_CooldownTimers', 'MMT_BuffTimers']:
 
 print(lua.eval(r'''function(cd, bf)
   local CM, BM = cd.M, bf.M
-  assert(MMTIconBars.version == 18, "IconBars version " .. tostring(MMTIconBars.version))
+  assert(MMTIconBars.version == 19, "IconBars version " .. tostring(MMTIconBars.version))
   -- Cooldowns: three ready spells for everyone; Buffs: off for now
   cd.State = function() return "ready" end
   CM.db.showBuffs, CM.db.hideReady = false, false

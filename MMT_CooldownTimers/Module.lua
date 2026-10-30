@@ -32,6 +32,9 @@ local M = MMT.NewModule({
         rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0, timerColor = { r = 1, g = 1, b = 1 },
         showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         readyAlpha = 0.35, cdAlpha = 1, glowActive = true,
+        swipeColor = { r = 0, g = 0, b = 0 }, swipeAlpha = 0.8,   -- the countdown circle on the icons (Timer tab)
+        soonSecs = 0, soonTextColor = { r = 1, g = 0.82, b = 0 }, soonSwipeColor = { r = 0.4, g = 0.3, b = 0 },     -- 0 = off
+        urgentSecs = 0, urgentTextColor = { r = 1, g = 0.2, b = 0.2 }, urgentSwipeColor = { r = 0.5, g = 0, b = 0 },
         hideReady = false,          -- only show icons while they are on cooldown
         showBuffs = true,           -- while the spell's buff is up: glow with the buff's time left
         hideUnknown = true,         -- spells a character hasn't learned (shared, Known.lua) / items you don't carry

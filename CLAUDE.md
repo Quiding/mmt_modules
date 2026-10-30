@@ -118,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.16.3) / MMT_BuffTimers (v0.20.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.17.0) / MMT_BuffTimers (v0.21.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -170,6 +170,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   addon (EllesmereUI) uses an event before relying on it.
 - Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
   font is set errors ("Font not set"). The test stub enforces this.
+- Look sub-tabs (Cooldowns 0.17.0 / Buffs 0.21.0): `mod.Tabs(panels.look, {window, icons, timer}, { key = "look", bottom = 0 })`
+  (SettingsKit: opts.key = own remembered choice, opts.bottom = room below; all five copies updated); Window = `mod.LookTab(...,
+  { timer = false })` (timer size / colour moved to Timer), Icons = the module's own columns (Cooldowns Opacity; Buffs "Buffs" +
+  "All bar counter"), Timer = `TimerTab.lua` (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' LookTab unchanged.
 - Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all five: Cooldowns, Buffs, Totems, TeamInventory, QoL: `mod.Tabs`,
   `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
@@ -215,7 +219,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`, `FramesTab`: `cmp` each pair);
-  bump VERSION on change (now 18: v18 while `lib.arrange[window]`, empty member rows stay (dropEmpty ignored, frame rows too) with `row.ph` = a faint 0.18 gold slot to drop on; v17 icon `readyAlpha` / `cdAlpha` / `glowActive` = Cooldowns icons keep their look on a Buffs bar (0.16.1); v16 guests, see "Icons between the bars"; v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 19: v19 countdown look - cfg `swipeColor` / `swipeAlpha`, `soonSecs` / `urgentSecs` (0 = off) + `soon|urgentTextColor` / `soon|urgentSwipeColor`; Paint picks the stage by time left (`Stage`, urgent wins), `cd:SetSwipeColor` only on change (`b.swipeNow`); icon `look` = the owning module's M.db, read first by `LookOf` (guests keep their module's look); v18 while `lib.arrange[window]`, empty member rows stay (dropEmpty ignored, frame rows too) with `row.ph` = a faint 0.18 gold slot to drop on; v17 icon `readyAlpha` / `cdAlpha` / `glowActive` = Cooldowns icons keep their look on a Buffs bar (0.16.1); v16 guests, see "Icons between the bars"; v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5; own mode since 0.14.5 / 0.17.6 - tying it to "unlocked"
   showed everything on every profile: unlocked is the default): arrange mode = session-only `MMTIconBars.arrange[windowName]`
   (`lib.SetArrange(name, on)` refreshes that window, `lib.Arranging(name)`; shared ListKeys `mod.Arranging(name, ...)` = any

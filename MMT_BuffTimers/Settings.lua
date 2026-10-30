@@ -1,6 +1,6 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
--- Tabs: Bars (what is shown) / Look (sizes, text, background, border,
--- missing buffs) / Buffs (the tracked lists, the All bar, sharing) /
+-- Tabs: Bars (what is shown) / Look (sub-tabs Window: sizes, text, background, border;
+-- Icons: missing buffs, All bar counter; Timer) / Buffs (the tracked lists, the All bar, sharing) /
 -- Roles (each member's player role for "Only for", Roles.lua) / Specs / Frames (FramesTab.lua).
 
 local _, mod = ...
@@ -250,7 +250,11 @@ M.Page = function(_, page)
 
 
     -- Look ------------------------------------------------------------------
-    local LL, LR = mod.LookTab(panels.look, Opt, Apply)
+    -- sub-tabs: Window (sizes, text, background, border), Icons (opacity, ...), Timer (TimerTab.lua)
+    local look = mod.Tabs(panels.look, { { "window", "Window" }, { "icons", "Icons" }, { "timer", "Timer" } }, { key = "look", bottom = 0 })
+    mod.LookTab(look.window, Opt, Apply, { timer = false })
+    mod.TimerTab(look.timer, Opt, Apply)
+    local LL, LR = UI.Column(look.icons, 0, 0, COL_W), UI.Column(look.icons, COL2_X, 0, COL_W)
     LR:Header("All bar counter")
     local gcp, scp = Opt("allCount")
     LR:Cycle("Have / checked (while missing)", {

@@ -17,6 +17,8 @@
 -- icon = { texture, state, start, duration, count, spell, item, tip,
 --          tally, tallyPos (corner, e.g. "BOTTOMLEFT"), tallySize, tallyColor {r,g,b}  (v12: a
 --          second number in its own corner, e.g. how many members have a buff),
+--          look = a cfg table (v19: the owning module's settings for the countdown look below, so an icon on
+--          another module's bar keeps them; else the window's cfg),
 --          readyAlpha, cdAlpha, glowActive (v17), missingAlpha, glowMissing, activeAlpha (override the window's cfg for
 --          "missing" / "buff"),
 --          tint = { r, g, b }, desaturate = true,
@@ -33,7 +35,10 @@
 --   glowActive, glowMissing, scale, bgAlpha, point = { point, relPoint, x, y },
 --   font (MMT font name), timerColor {r,g,b}, bgTexture / borderTexture (LibSharedMedia
 --   names, "FLAT" / "NONE"), bgColor, borderColor {r,g,b}, borderSize, rowColor, rowAlpha,
---   bgTint (0..1: how strongly bgColor / rowColor colour a texture; Flat always takes the colour)
+--   bgTint (0..1: how strongly bgColor / rowColor colour a texture; Flat always takes the colour),
+--   (v19) swipeColor {r,g,b} / swipeAlpha = the countdown circle (default black 0.8); soonSecs / urgentSecs
+--   (0 = off) with soonTextColor / soonSwipeColor, urgentTextColor / urgentSwipeColor: timer text and circle
+--   colours once that few seconds are left (urgent wins)
 --
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
@@ -69,7 +74,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 18
+local VERSION = 19
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -244,6 +249,22 @@ end
 
 local drag   -- { src = drag table, row, key, window } while an icon is dragged
 
+-- (v19) a countdown setting: the icon's own module's (icon.look), else the window's
+local function LookOf(i, c, k)
+    local l = i.look
+    local v = l and l[k]
+    if v == nil then v = c[k] end
+    return v
+end
+
+-- "urgent" / "soon" once that few seconds are left (0 = off), else nil
+local function Stage(i, c, rem)
+    local u = tonumber(LookOf(i, c, "urgentSecs")) or 0
+    if u > 0 and rem <= u then return "urgent" end
+    local s = tonumber(LookOf(i, c, "soonSecs")) or 0
+    if s > 0 and rem <= s then return "soon" end
+end
+
 -- alpha, glow and timer text of one icon (called on every tick)
 local function Paint(b, c)
     local i = b.data
@@ -276,9 +297,18 @@ local function Paint(b, c)
     elseif b.glow:IsShown() then
         b.pulse:Stop(); b.glow:Hide()
     end
+    -- (v19) colours by the time left: "soon" / "urgent" below their seconds
+    local stage = (rem and (state == "cd" or state == "buff")) and Stage(i, c, rem) or nil
+    local sc = stage and LookOf(i, c, stage .. "SwipeColor") or LookOf(i, c, "swipeColor")
+    local sa = tonumber(LookOf(i, c, "swipeAlpha")) or 0.8
+    local key = sc and ("%.3f %.3f %.3f %.3f"):format(sc.r or 0, sc.g or 0, sc.b or 0, sa) or ("default " .. sa)
+    if b.swipeNow ~= key and b.cd.SetSwipeColor then
+        b.swipeNow = key
+        b.cd:SetSwipeColor(sc and sc.r or 0, sc and sc.g or 0, sc and sc.b or 0, sa)
+    end
     if c.showTimers and rem and (state == "cd" or state == "buff") then
         b.timer:SetText(FormatTime(rem))
-        local tc = c.timerColor
+        local tc = stage and LookOf(i, c, stage .. "TextColor") or LookOf(i, c, "timerColor")
         if tc then b.timer:SetTextColor(tc.r or 1, tc.g or 1, tc.b or 1) end
         b.timer:Show()
     else
@@ -314,6 +344,7 @@ local function Setup(b, i, key, c)
         b.tally:SetText("")
         b.tally:Hide()
     end
+    b.swipeNow = nil   -- Paint sets the countdown circle's colour
     if (i.state == "cd" or i.state == "buff") and Remaining(i) then
         b.cd:SetCooldown(i.start, i.duration)
         b.cd:Show()

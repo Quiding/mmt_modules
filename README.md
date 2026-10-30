@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.16.3 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.20.1 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.17.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.21.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -72,6 +72,11 @@ with the most points, shared over MMT's heartbeat and once on a respec; a feral 
 while their role is Tank. On the Specs tab you can also set a member's spec by hand (a character without talents
 yet, or to see a spec in the preview); a spec set in one of the two modules counts in both. Members whose spec isn't
 known keep the class list.
+
+Cooldown Timers and Buff Timers split their **Look** tab into sub-tabs: **Window** (sizes, font, background,
+border), **Icons** (opacity, missing buffs, the All bar counter) and **Timer**: the timer text's size and colour, the
+colour and opacity of the countdown circle that runs round an icon, and other colours for both once only a few
+seconds are left ("soon" and "urgent", each with its own number of seconds; 0 = off).
 
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
 **Reset to defaults** (click twice). Cooldown Timers, Buff Timers and Totems also have **Import / Export** as a

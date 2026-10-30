@@ -54,6 +54,7 @@ local function Icons(key, host)
                     oid = oid, anchor = host and e.after or nil,
                     -- our look, also on a Buff Timers bar (IconBars v17)
                     readyAlpha = M.db.readyAlpha, cdAlpha = M.db.cdAlpha, glowActive = M.db.glowActive,
+                    look = M.db,   -- countdown circle / timer colours (Timer tab)
                 }
                 if bStart then
                     -- buff up: glow with its time left, then the cooldown
