@@ -9,7 +9,7 @@
 --   check    MMT's box fill becomes the check box, the mark the yellow tick
 --   dropdown the old dropdown frame (CharacterCreate-LabelFrame, 3 pieces) and
 --            the round arrow button; input = the old edit box (Common-Input-Border)
---   dialog   windows >= 300 x 100: the background picked on the page
+--   dialog   windows (parent UIParent) >= 300 x 100: the background picked on the page
 --            (mod.CLASSIC_BGS: stone by default) on the frame, the carved border
 --            on a child frame ABOVE it (so it also shows over the core's
 --            background pictures and the window's own pieces), full thickness
@@ -175,8 +175,11 @@ function mod.ArtKind(frame)
     end
     if not mod.borderOf[frame] or not CanBackdrop(frame) then return nil end
     if role then return "thin" end
+    -- only real windows (on the screen itself) get the carved border; a big panel inside a page (Statistics'
+    -- gold graph) or a window is "thin": the carved one would cover its labels
+    local parent = frame.GetParent and frame:GetParent()
     local w, h = mod.Size(frame)
-    if w >= 300 and h >= 100 then return "dialog" end
+    if (parent == nil or parent == UIParent) and w >= 300 and h >= 100 then return "dialog" end
     return "thin"
 end
 

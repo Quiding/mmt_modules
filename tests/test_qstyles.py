@@ -437,6 +437,9 @@ local small = CreateFrame("Frame", nil, UIParent); small:SetSize(150, 80)
 UI.Fill(small, 0.07, 0.07, 0.08, 0.98)
 UI.Border(small, A[1], A[2], A[3], 0.5)
 local secure = CreateFrame("Button", nil, UIParent); secure:SetSize(30, 30); secure._protected = true
+local graph = CreateFrame("Frame", nil, win); graph:SetSize(800, 210)   -- a big panel inside a page (Statistics' graph)
+UI.Fill(graph, 0.05, 0.05, 0.06, 0.9)
+UI.Border(graph, 0.22, 0.22, 0.24, 1)
 UI.Fill(secure, 0, 0, 0, 0.85)
 UI.Border(secure, 0.35, 0.35, 0.35, 1)
 mod.SetStyle("CLASSIC")
@@ -478,6 +481,7 @@ mod.Apply()
 assert(big._backdrop.bgFile:find("UI%-DialogBox%-Background"), "missing file: no fallback to the old dialog background")
 GetFileIDFromPath = nil
 mod.SetOpt("classicBg", "ROCK")
+assert(EdgeOf(graph) and EdgeOf(graph)._backdrop.edgeFile:find("Tooltip"), "a panel inside a page got the window border")
 assert(not secure._backdrop and eq(col(select(2, secure:GetRegions())), 0.6, 0.6, 0.6, 1), "a secure frame got a backdrop")
 -- buttons: three pieces of the red button file
 assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Up" and near(btnFill._coord[1], 0.09375), "Classic button middle: " .. tostring(btnFill._file))
