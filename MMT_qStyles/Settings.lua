@@ -39,7 +39,7 @@ M.Page = function(_, page)
         "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
     L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
         "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
-    L:Cycle("Classic: window background", function() return mod.CLASSIC_BGS end, function() return mod.Opt("classicBg") end, function(v)
+    L:Cycle("Classic: window background", mod.ClassicBgChoices, function() return mod.Opt("classicBg") end, function(v)
         mod.SetOpt("classicBg", v)
         status.Show_(mod.Opt("style") == "CLASSIC" and "Classic background changed." or "Used when the style is Classic.")
     end)
@@ -73,6 +73,9 @@ M.Report = function(_, add)
         tostring(mod.Opt("fonts")), tostring(mod.Opt("accent"))))
     add(("tracked: fills=%d edges=%d fonts=%d colours=%d texts=%d headers=%d widgets=%d"):format(c.fills, c.borders, c.fonts,
         c.colors, c.texts, c.headers, c.widgets))
+    local bgs = {}
+    for _, b in ipairs(mod.CLASSIC_BGS) do bgs[#bgs + 1] = b.value .. "=" .. tostring(mod.HasFile(b.file)) end
+    add(("classic background=%s (shown: %s) files: %s"):format(tostring(mod.Opt("classicBg")), mod.ClassicBg().value, table.concat(bgs, " ")))
     local hooks = {}
     for name, ok in pairs(mod.hooked) do hooks[#hooks + 1] = name .. (ok and "" or "(missing)") end
     table.sort(hooks)

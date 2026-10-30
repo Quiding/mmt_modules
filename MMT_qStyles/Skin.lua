@@ -135,6 +135,7 @@ end
 local function Plain(t)
     if t.SetTexCoord then t:SetTexCoord(0, 1, 0, 1) end
     if t.SetVertexColor then t:SetVertexColor(1, 1, 1, 1) end
+    if t.SetBlendMode then t:SetBlendMode("BLEND") end
 end
 mod.Plain = Plain
 
@@ -549,9 +550,8 @@ local function AddText(fs, kind)
         rec = { kind = kind }
         texts[fs] = rec
     end
-    -- buttons, dropdown values and headers are coloured again by their owner (selected tab, greyed out):
-    -- the style follows at once
-    if kind ~= "plain" and not rec.hooked then
+    -- labels are coloured again by their owner (a selected tab or row, greyed out): the style follows at once
+    if not rec.hooked then
         rec.hooked = true
         hooksecurefunc(fs, "SetTextColor", function()
             if painting then return end
@@ -795,6 +795,32 @@ function mod.Apply()
     for fs, rec in pairs(headers) do Try(PaintHeader, fs, rec, S) end
     if mod.ArtWidgets then Try(mod.ArtWidgets, S) end
     if mod.HoverStart then Try(mod.HoverStart, S) end
+end
+
+-- /mmtstyle frame: what Styles did to the window under the mouse (and the frames it sits in)
+function mod.Describe()
+    local f = GetMouseFoci and GetMouseFoci()[1] or (GetMouseFocus and GetMouseFocus())
+    local lines, n = {}, 0
+    while f and n < 8 do
+        n = n + 1
+        local name = (f.GetName and f:GetName()) or Type(f) or "?"
+        local w, h = mod.Size(f)
+        local parts = { ("%s %dx%d"):format(name, w, h) }
+        if mod.roles[f] then parts[#parts + 1] = "role=" .. mod.roles[f] end
+        if mod.ArtKind and mod.Current() and mod.Current().art then parts[#parts + 1] = "classic=" .. tostring(mod.ArtKind(f)) end
+        local t = fillOf[f]
+        if t then
+            local r = fills[t]
+            parts[#parts + 1] = ("fill %.2f/%.2f/%.2f/%.2f class=%s painted=%s"):format(r.r, r.g, r.b, r.a, tostring(FillClass(r)), tostring(r.painted))
+        end
+        local b = borderOf[f]
+        if b then parts[#parts + 1] = ("edges %.2f/%.2f/%.2f/%.2f painted=%s"):format(b.r, b.g, b.b, b.a, tostring(b.painted)) end
+        if f.GetBackdrop then parts[#parts + 1] = "backdrop=" .. tostring(f:GetBackdrop() and (f:GetBackdrop().bgFile or "edge only")) end
+        lines[#lines + 1] = table.concat(parts, "  ")
+        f = f.GetParent and f:GetParent()
+        if f == UIParent then break end
+    end
+    return lines
 end
 
 function mod.Counts()

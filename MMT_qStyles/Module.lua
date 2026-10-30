@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.2"
+mod.VERSION = "0.2.3"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
@@ -80,9 +80,15 @@ SlashCmdList.MMTQSTYLES = function(msg)
         MMT.ToggleConfig(M.name)
         return
     end
+    if arg == "frame" then
+        local lines = mod.Describe()
+        if #lines == 0 then MMT.Print("Styles: no frame under the mouse.") end
+        for _, l in ipairs(lines) do MMT.Print("Styles: %s", l) end
+        return
+    end
     local key = NAMES[arg]
     if not key then
-        MMT.Print("/mmtstyle - settings, /mmtstyle none | elvui | ellesmere | classic - switch the style")
+        MMT.Print("/mmtstyle - settings, /mmtstyle none | elvui | ellesmere | classic - switch the style, /mmtstyle frame - what the style did to the window under the mouse")
         return
     end
     if not M.enabled then MMT.Print("Styles is switched off (/mmt > Manage modules).") return end

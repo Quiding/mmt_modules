@@ -590,7 +590,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.2) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.3) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -640,6 +640,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   + UI-ChatIcon-ScrollDown-Up/-Down 24 px + UI-Common-MouseHilight; edit box = 3 Common-Input-Border pieces (texcoord
   height 0.625, 8 px caps 2 px outside). Plain labels in MMT's accent (nav CORE / MODULES) and the nav scroll marker
   (OVERLAY, <= 3 px) follow the style's accent (gold). The page greys "Use the style's font" for styles without a font.
+  0.2.3 (user: clipping + colours): the border frames sit OUTSIDE the window (`EdgeFrame(f, out)`: 10 px for edge 32,
+  7 for 24, 3 for the thin tooltip edge - MMT's windows keep only a few px between edge and content, an inside border
+  covered footers / labels / the Talents button); backgrounds fill the whole frame (no insets). Selected rows (fills in
+  MMT's accent) get UI-QuestTitleHighlight ADD (Plain resets the blend mode). EVERY recorded label gets the SetTextColor
+  hook now (a window colouring its selected row's text blue turned it gold only on the next Apply). `mod.HasFile` =
+  GetFileIDFromPath (nil = can't tell); the page marks backgrounds "(not on this client)", the debug report lists them;
+  `/mmtstyle frame` = `mod.Describe()` (roles, Classic kind, fill / edge records, backdrop of the frame under the mouse
+  and its parents). Open question: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's

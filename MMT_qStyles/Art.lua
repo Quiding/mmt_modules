@@ -41,6 +41,7 @@ local FILE = {
     dropdown = "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame",
     arrowDown = "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down",
     arrowHighlight = "Interface\\Buttons\\UI-Common-MouseHilight",
+    selected = "Interface\\QuestFrame\\UI-QuestTitleHighlight",
     input = "Interface\\Common\\Common-Input-Border",
 }
 mod.ART_FILES = FILE
@@ -49,22 +50,39 @@ local COORD = { Left = { 0, 0.09375, 0, 0.6875 }, Center = { 0.09375, 0.53125, 0
 
 -- one table per look: the game keeps the table a frame got (it is read again on every resize), never change one
 local DIALOG_EDGE = { [32] = { edgeFile = FILE.dialogEdge, edgeSize = 32 }, [24] = { edgeFile = FILE.dialogEdge, edgeSize = 24 } }
-local dialogBg = {}   -- [background file] = backdrop
+local dialogBg = {}   -- [background file] = backdrop (the whole window: the border is outside it)
 local function DialogBg(bg)
-    dialogBg[bg.file] = dialogBg[bg.file] or { bgFile = bg.file, tile = true, tileSize = bg.tile, insets = { left = 4, right = 4, top = 4, bottom = 4 } }
+    dialogBg[bg.file] = dialogBg[bg.file] or { bgFile = bg.file, tile = true, tileSize = bg.tile }
     return dialogBg[bg.file]
 end
-local THIN = { bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = FILE.tipEdge, tile = true, tileSize = 16, edgeSize = 12,
-    insets = { left = 3, right = 3, top = 3, bottom = 3 } }
+local THIN_BG = { bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 }
+local THIN_EDGE = { edgeFile = FILE.tipEdge, edgeSize = 12 }
 local TOOLTIP_BLUE = { 0.09, 0.09, 0.19 }   -- the game's classic tooltip background colour
 
 -- window backgrounds for Classic (the dialog background itself is almost black)
 mod.CLASSIC_BGS = {
-    { value = "ROCK", text = "Stone", file = "Interface\\FrameGeneral\\UI-Background-Rock", tile = 256, tint = { 0.6, 0.6, 0.6 } },
-    { value = "MARBLE", text = "Marble", file = "Interface\\FrameGeneral\\UI-Background-Marble", tile = 256, tint = { 0.5, 0.5, 0.5 } },
+    { value = "ROCK", text = "Stone", file = "Interface\\FrameGeneral\\UI-Background-Rock", tile = 256, tint = { 0.75, 0.75, 0.75 } },
+    { value = "MARBLE", text = "Marble", file = "Interface\\FrameGeneral\\UI-Background-Marble", tile = 256, tint = { 0.6, 0.6, 0.6 } },
     { value = "TOOLTIP", text = "Tooltip blue", file = "Interface\\Tooltips\\UI-Tooltip-Background", tile = 16, tint = TOOLTIP_BLUE },
     { value = "DARK", text = "Dark (old dialogs)", file = FILE.dialogBg, tile = 32, tint = { 1, 1, 1 } },
 }
+
+-- false when this client doesn't have the file (nil = can't tell)
+function mod.HasFile(file)
+    if not GetFileIDFromPath then return nil end
+    local ok, id = pcall(GetFileIDFromPath, file)
+    if not ok then return nil end
+    return id ~= nil
+end
+
+-- the page's choices, with the ones this client lacks marked
+function mod.ClassicBgChoices()
+    local t = {}
+    for _, b in ipairs(mod.CLASSIC_BGS) do
+        t[#t + 1] = { value = b.value, text = b.text .. (mod.HasFile(b.file) == false and " (not on this client)" or "") }
+    end
+    return t
+end
 
 -- the chosen one; a file this client doesn't have falls back to the old dialog background
 local function ClassicBg()
@@ -232,6 +250,13 @@ function mod.ArtFill(t, rec, S)
     if kind == "button" then
         ButtonFill(t, rec)
         return true
+    elseif mod.FillClass(rec) == "accent" then
+        -- a selected row (MMT's accent at low alpha): the quest log's selection glow
+        t:SetTexture(FILE.selected)
+        if t.SetBlendMode then t:SetBlendMode("ADD") end
+        t:SetVertexColor(1, 1, 1, math.min(1, rec.a * 4))
+        rec.art = true
+        return true
     elseif kind == "check" then
         t:SetTexture(FILE.checkBox)
         t:SetVertexColor(1, 1, 1, 1)
@@ -300,21 +325,27 @@ local function ShowPieces(f, kind)
 end
 
 -- the carved border, on a child frame above everything the window draws itself
-local function EdgeFrame(f)
+-- `out` px OUTSIDE the frame: the border frames the window's content instead of covering what sits near its edge
+-- (MMT's windows keep only a few px between their 1 px edge and the content)
+local function EdgeFrame(f, out)
     local s = State(f)
     if s.edge == nil then
         s.edge = false
         if BackdropTemplateMixin then
             local e = CreateFrame("Frame", nil, f, "BackdropTemplate")
             mod.seen[e] = true   -- not a widget of the page (the hooks look for the newest child)
-            e:SetAllPoints(f)
             if e.EnableMouse then e:EnableMouse(false) end
             e:Hide()
             s.edge = e
         end
     end
-    if s.edge then s.edge:SetFrameLevel(f:GetFrameLevel() + 20) end
-    return s.edge or nil
+    local e = s.edge
+    if not e then return nil end
+    e:ClearAllPoints()
+    e:SetPoint("TOPLEFT", f, "TOPLEFT", -out, out)
+    e:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", out, -out)
+    e:SetFrameLevel(f:GetFrameLevel() + 20)
+    return e
 end
 
 ---------------------------------------------------------------------------
@@ -345,16 +376,23 @@ function mod.ArtBorder(rec, S)
             local bg = ClassicBg()
             SetBackdrop(f, DialogBg(bg), bg.tint[1], bg.tint[2], bg.tint[3], math.max(a, 0.9))
         end
-        local e = EdgeFrame(f)
+        local w, h = mod.Size(f)
+        local size = (w >= 400 and h >= 200) and 32 or 24
+        local e = EdgeFrame(f, size == 32 and 10 or 7)   -- the art's visible border is about a third of its size
         if e then
-            local w, h = mod.Size(f)
-            e:SetBackdrop(DIALOG_EDGE[(w >= 400 and h >= 200) and 32 or 24])
+            e:SetBackdrop(DIALOG_EDGE[size])
             if e.SetBackdropBorderColor then e:SetBackdropBorderColor(1, 1, 1, 1) end
             e:Show()
         end
     elseif kind == "thin" then
         local c = TOOLTIP_BLUE
-        SetBackdrop(f, THIN, c[1], c[2], c[3], math.max(a, 0.9), 0.8, 0.8, 0.8, 1)
+        SetBackdrop(f, THIN_BG, c[1], c[2], c[3], math.max(a, 0.9))
+        local e = EdgeFrame(f, 3)
+        if e then
+            e:SetBackdrop(THIN_EDGE)
+            if e.SetBackdropBorderColor then e:SetBackdropBorderColor(0.8, 0.8, 0.8, 1) end
+            e:Show()
+        end
     end
     return true
 end
