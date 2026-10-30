@@ -136,13 +136,22 @@ end
 -- EllesmereUI's options window ("EllesmereUIFrame"), when it exists
 local function Options() return rawget(_G, "EllesmereUIFrame") end
 
+-- the part of it you SEE: EllesmereUIFrame is 1500 x 1154 with an empty margin (room for its
+-- shadow and glow); the panel is its child "EllesmereUIClickArea", 1300 x 946, centred.
+-- Anchoring to the outer frame left our button floating up and right of the panel.
+local function Visible()
+    local area = rawget(_G, "EllesmereUIClickArea")
+    if area and area.IsShown and area:IsShown() then return area end
+    return Options()
+end
+
 local function Place()
     local opts = Options()
     win:ClearAllPoints()
     win.docked = opts and opts:IsShown() and true or false
     if win.docked then
         -- MMT_qStyles' Classic draws the windows' borders outside them: keep the two borders apart
-        win:SetPoint("TOPLEFT", opts, "TOPRIGHT", 4 + ((QStyles and QStyles.WindowGap and tonumber(QStyles.WindowGap())) or 0), 0)
+        win:SetPoint("TOPLEFT", Visible(), "TOPRIGHT", 4 + ((QStyles and QStyles.WindowGap and tonumber(QStyles.WindowGap())) or 0), 0)
     else
         win:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     end
@@ -188,10 +197,12 @@ function mod.EuiDock()
     if not opts then return end
     if not dockButton then
         dockButton = UI.Button(opts, 120, "Send to team", function() mod.OpenEui() end)
-        dockButton:SetPoint("BOTTOMRIGHT", opts, "TOPRIGHT", 0, 2)
         UI.Tooltip(dockButton, "Send to team (MMT)", "Send an EllesmereUI profile to a team member or the whole online team (MMT Quality of life).")
         -- the window opened beside the options closes with them
         opts:HookScript("OnHide", function() if win and win.docked then win:Hide() end end)
     end
+    -- above the visible panel's top right (placed again on each open: the panel can be built later)
+    dockButton:ClearAllPoints()
+    dockButton:SetPoint("BOTTOMRIGHT", Visible(), "TOPRIGHT", 0, 2)
     dockButton:SetShown(M.db.euDock and mod.Active(mod.EuiFeature) or false)
 end
