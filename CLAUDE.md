@@ -17,7 +17,9 @@ other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules..
 - Before committing, run `git status` and make sure no other addon's files are staged.
 - Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md, README.md and the
   git / packager files (GitHub's Download ZIP, release archives). CurseForge zip: `python tools/make_release.py [ref]`
-  (git archive of every MMT_* folder -> `dist/QMMTModules-<date>-<sha>.zip`, prints each module's version);
+  (git archive of every MMT_* folder -> `dist/QMMTModules-<YYYY.MM.DD[.n]>.zip` + `dist/CHANGELOG-<name>.md` = module
+  versions + commit subjects since the last `release-*` tag or `--since "<date>"`; `--tag` tags `release-<name>` and pushes the
+  tag; the release name is CurseForge's display name, user's choice 2026-10-30 instead of upload dates like "29/10/2026 19:40");
   `.pkgmeta` (package-as QMMTModules + move-folders, one line per module) is for CurseForge's packager if it's ever
   hooked up - add new modules there too.
 
