@@ -116,7 +116,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.16.2) / MMT_BuffTimers (v0.20.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.16.3) / MMT_BuffTimers (v0.20.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -231,7 +231,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Test: test_bardrag.py (positions from SetPoint("TOPLEFT", x, y)).
 - Party frames (IconBars v14, Cooldowns 0.15.0 / Buffs 0.18.0): cfg `onFrames` = each member row beside their unit frame,
   `allOnFrames` (Buffs: the All bar = label rows) above the TOP frame (highest, then leftmost); `framesSide` RIGHT/LEFT/TOP/BOTTOM,
-  `framesX/Y`, `framesIconSize` (0 = iconSize; slider 12-100), `framesFit` (v15, 0.15.1 / 0.18.1: member rows as high as their frame = `FrameHeight` in UIParent units, also in the poll signature so a resized frame redraws; All bar keeps framesIconSize), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.
+  `framesX/Y`, `framesIconSize` (0 = iconSize; slider 12-100), `framesFit` (v15, 0.15.1 / 0.18.1: member rows as high as their frame = `FrameHeight` in UIParent units, also in the poll signature so a resized frame redraws; All bar keeps framesIconSize; the Icon size slider is greyed (alpha 0.4, its Slider child takes no mouse, wrapped `Refresh`) while framesFit and no All bar above the frames), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.
   `lib.UnitFrames()` -> byKey, top, count per `lib.PROVIDERS` (first shown frame of a unit wins): EllesmereUI
   (`ERFPartySelfButton`, children `hdr[i]` / attribute `child<i>` of `ERFPartyHeader`, `ERFFlatHeader`, `ERFGroupHeader1-8`:
   SecureGroupHeaders, unit attribute), Blizzard compact (`CompactPartyFrameMember1-5`, `CompactRaidFrame1-40`,

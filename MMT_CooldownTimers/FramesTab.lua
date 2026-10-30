@@ -34,7 +34,19 @@ function mod.FramesTab(panel, Opt, status, where)
     local gf, sf = Opt("framesFit")
     L:Check("Icons as high as the frame", gf, sf, "Each member's icons take the height of their party / raid frame (the icon size below is then only for the All bar).")
     local gz, sz = Opt("framesIconSize")
-    L:Slider("Icon size", 12, 100, 1, gz, sz)
+    local size = L:Slider("Icon size", 12, 100, 1, gz, sz)
+    -- greyed while every row takes its frame's height (Buff Timers: still the All bar's size above the frames)
+    local refresh = size.Refresh
+    size.Refresh = function(...)
+        if refresh then refresh(...) end
+        local used = not M.db.framesFit or M.db.allOnFrames
+        size:SetAlpha(used and 1 or 0.4)
+        local bar = size.GetChildren and size:GetChildren()
+        if bar and bar.EnableMouse then
+            bar:EnableMouse(used and true or false)
+            if bar.EnableMouseWheel then bar:EnableMouseWheel(used and true or false) end
+        end
+    end
     local gx, sx = Opt("framesX")
     L:Slider("X offset", -100, 100, 1, gx, sx)
     local gy, sy = Opt("framesY")
