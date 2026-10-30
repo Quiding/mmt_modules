@@ -610,7 +610,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.8) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.9) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -678,7 +678,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   290 wide). 0.2.8: windows side by side overlapped their outside borders: `QStyles.WindowGap()` (Classic 18 = `S.windowGap`,
   else 0) is added by Team Inventory's `mod.PlaceTeam` (2 + gap, cached in `f.team.gap`) and QoL's docked send windows
   (4 + gap beside ForeverAuras' / EllesmereUI's options); `QStyles.OnChange(fn)` runs fn(styleKey) at the end of every
-  Apply, both register one to place again. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  Apply, both register one to place again. 0.2.9 (user's idea): `mod.OfferStyle()` 5 s after OnEnable: while
+  `M.store.style == nil` (never picked; picking None counts as picked), the first LOADED of EllesmereUI / ElvUI not in
+  `M.store.offered` gets one `MMT.UI.Confirm` ("Use <style>" / "No thanks"); offered[addon] is set when asked, so each
+  addon is asked once ever (Reset to defaults keeps `offered`). Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's

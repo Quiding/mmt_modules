@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.8"
+mod.VERSION = "0.2.9"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
@@ -63,8 +63,41 @@ function mod.ResetSettings()
     mod.Apply()
 end
 
+-- A UI addon the player uses: its style is offered ONCE (only while no style was ever picked here).
+-- EllesmereUI first when both are loaded. The answer is remembered in M.store.offered[addon].
+local OFFERS = { { addon = "EllesmereUI", style = "ELLESMERE" }, { addon = "ElvUI", style = "ELVUI" } }
+
+local function Loaded(addon)
+    local fn = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    if not fn then return false end
+    local ok, loaded = pcall(fn, addon)
+    return ok and loaded and true or false
+end
+
+function mod.OfferStyle()
+    local s = M.store
+    if not (M.enabled and s) or s.style ~= nil then return end   -- a style was picked (None too): never ask
+    if not (MMT.UI and MMT.UI.Confirm) or (InCombatLockdown and InCombatLockdown()) then return end
+    s.offered = s.offered or {}
+    for _, o in ipairs(OFFERS) do
+        if Loaded(o.addon) and not s.offered[o.addon] then
+            s.offered[o.addon] = true
+            local title = mod.StyleTitle(o.style)
+            MMT.UI.Confirm(("%s is installed. Give MMT's settings and windows the %s style?\n\n"
+                .. "|cff999999You can change it any time: /mmt > Styles, or /mmtstyle.|r"):format(o.addon, title),
+                "Use " .. title, function()
+                    mod.SetStyle(o.style)
+                    MMT.Print("Style: %s. Change it under /mmt > Styles.", title)
+                end, "No thanks")
+            return
+        end
+    end
+end
+
 M.OnEnable = function()
     mod.Apply()
+    -- a moment after login, when the other addons' windows are set up
+    if C_Timer and C_Timer.After then C_Timer.After(5, function() pcall(mod.OfferStyle) end) end
 end
 
 M.OnDisable = function()

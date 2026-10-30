@@ -557,6 +557,33 @@ assert(Shown(dd, "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame"
 assert(not EdgeOf(big), "None: border frame still shown")
 assert(near(navHead._tc[1], A[1]), "None: blue label")
 
+-- EllesmereUI / ElvUI loaded: their style is offered once, only while no style was ever picked
+local saved = {}
+for k, v in pairs(M.store) do saved[k] = v end
+for k in pairs(saved) do M.store[k] = nil end
+local loaded = { EllesmereUI = true, ElvUI = true }
+C_AddOns = { IsAddOnLoaded = function(n) return loaded[n] end }
+MMTConfirmFrame:Hide()
+mod.OfferStyle()
+assert(MMTConfirmFrame:IsShown() and MMTConfirmFrame.text._text:find("EllesmereUI is installed"), "EllesmereUI's style not offered")
+MMTConfirmFrame.accept:GetScript("OnClick")(MMTConfirmFrame.accept)
+assert(M.store.style == "ELLESMERE" and QStyles.Current() == "ELLESMERE", "accepting didn't switch the style")
+MMTConfirmFrame:Hide()
+mod.OfferStyle()
+assert(not MMTConfirmFrame:IsShown(), "asked again although a style is picked")
+M.store.style = nil   -- ElvUI is offered next time (EllesmereUI was asked already); "No thanks" = still nothing picked
+mod.OfferStyle()
+assert(MMTConfirmFrame:IsShown() and MMTConfirmFrame.text._text:find("ElvUI is installed"), "ElvUI's style not offered after EllesmereUI's")
+MMTConfirmFrame.cancel:GetScript("OnClick")(MMTConfirmFrame.cancel)
+assert(M.store.style == nil and QStyles.Current() == "NONE", "No thanks changed the style")
+mod.OfferStyle()
+assert(not MMTConfirmFrame:IsShown(), "asked a second time for the same addon")
+loaded = {}
+C_AddOns = nil
+for k in pairs(M.store) do M.store[k] = nil end
+for k, v in pairs(saved) do M.store[k] = v end
+mod.Apply()
+
 -- the settings page (real Column / widgets), then reset to defaults: back to None, options on
 local page = CreateFrame("Frame", nil, UIParent); page:SetSize(518, 564); page.widgets = {}
 M.Page(M, page)

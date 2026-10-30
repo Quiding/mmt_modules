@@ -19,7 +19,7 @@ MODULES, with its own settings page.
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.3 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.7 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.8 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.9 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -356,6 +356,8 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
   lists, the old dropdowns with their round arrow button, the old edit boxes, the red panel buttons (darker while
   pressed), the yellow check mark, the metal slider knob, the round close button, gold where MMT is blue.
 - Options: the style's font, the style's accent colour. Saved per account (every character and profile).
+- With EllesmereUI or ElvUI installed, switching Styles on asks once whether MMT should match it (only while you
+  haven't picked a style yourself).
 - Made new from colours and WoW's own fonts: nothing of ElvUI or EllesmereUI is copied, and MMT's files aren't
   changed (the style is put on from outside). The Cooldown / Buff Timers and Totem bars keep their own Look tab.
 
