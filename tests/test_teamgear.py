@@ -348,3 +348,21 @@ print(lua.eval(r'''function(m)
   assert(n == 1, "no talents line in the report")
   return "team gear talents ok"
 end''')(mod))
+
+# the minimap button (an option, like Team Inventory's) and the key binding for the whole team
+print(lua.eval(r'''function(m)
+  Minimap = CreateFrame("Frame")
+  m.M.db.minimap = true
+  m.SetupMinimap()
+  assert(m.minimap and _G.MMTTeamGearMinimapButton == m.minimap, "no minimap button")
+  m.M.db.minimap = false
+  m.SetupMinimap()
+  assert(not m.minimap:IsShown(), "minimap button shown while off")
+  if m.overview then m.overview:Hide() end   -- the test above may have it open
+  MMTTeamGear_ToggleOverview()
+  assert(m.overview and m.overview:IsShown(), "key binding didn't open the whole team")
+  MMTTeamGear_ToggleOverview()
+  assert(not m.overview:IsShown(), "key binding didn't close it")
+  assert(BINDING_NAME_MMTTEAMGEAR_ALL and BINDING_HEADER_MMT_TEAMGEAR, "binding texts")
+  return "team gear minimap + key binding ok"
+end''')(mod))

@@ -7,10 +7,13 @@
 --   button   the red panel button: MMT's fill becomes its middle piece, two end
 --            pieces + a highlight are added; darker while pressed
 --   check    MMT's box fill becomes the check box, the mark the yellow tick
---   dialog   windows >= 300 x 100: stone dialog background + carved border
---            (Backdrop on the frame), MMT's fill and edges go transparent
+--   dialog   windows >= 300 x 100: carved dialog border over the background
+--            picked on the page (mod.CLASSIC_BGS: stone by default), MMT's
+--            fill and edges go transparent
 --   thin     everything else with edges (lists, dropdowns, edit boxes, small
---            panels): the thin tooltip border over the style's dark fill
+--            panels): the thin tooltip border on the classic tooltip blue
+-- A frame that is sized later (windows that grow with their content) is
+-- checked again on OnSizeChanged: it may become a dialog.
 -- Frames that already have a backdrop of their own or are protected (secure)
 -- keep the colour look. Undo = ClearBackdrop + the saved points / sizes.
 
@@ -39,7 +42,34 @@ local COORD = { Left = { 0, 0.09375, 0, 0.6875 }, Center = { 0.09375, 0.53125, 0
 local DIALOG = { bgFile = FILE.dialogBg, edgeFile = FILE.dialogEdge, tile = true, tileSize = 32, edgeSize = 24,
     insets = { left = 6, right = 6, top = 6, bottom = 6 } }
 local DIALOG_EDGE = { edgeFile = FILE.dialogEdge, edgeSize = 24, insets = { left = 6, right = 6, top = 6, bottom = 6 } }
-local THIN = { edgeFile = FILE.tipEdge, edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } }
+local THIN = { bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = FILE.tipEdge, tile = true, tileSize = 16, edgeSize = 12,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 } }
+local TOOLTIP_BLUE = { 0.09, 0.09, 0.19 }   -- the game's classic tooltip background colour
+
+-- window backgrounds for Classic (the dialog background itself is almost black)
+mod.CLASSIC_BGS = {
+    { value = "ROCK", text = "Stone", file = "Interface\\FrameGeneral\\UI-Background-Rock", tile = 256, tint = { 0.6, 0.6, 0.6 } },
+    { value = "MARBLE", text = "Marble", file = "Interface\\FrameGeneral\\UI-Background-Marble", tile = 256, tint = { 0.5, 0.5, 0.5 } },
+    { value = "TOOLTIP", text = "Tooltip blue", file = "Interface\\Tooltips\\UI-Tooltip-Background", tile = 16, tint = TOOLTIP_BLUE },
+    { value = "DARK", text = "Dark (old dialogs)", file = FILE.dialogBg, tile = 32, tint = { 1, 1, 1 } },
+}
+
+-- the chosen one; a file this client doesn't have falls back to the old dialog background
+local function ClassicBg()
+    local key = mod.Opt("classicBg")
+    local pick, dark
+    for _, b in ipairs(mod.CLASSIC_BGS) do
+        if b.value == key then pick = b end
+        if b.value == "DARK" then dark = b end
+    end
+    pick = pick or mod.CLASSIC_BGS[1]
+    if GetFileIDFromPath then
+        local ok, id = pcall(GetFileIDFromPath, pick.file)
+        if ok and not id then return dark end
+    end
+    return pick
+end
+mod.ClassicBg = ClassicBg
 local SLIDER = { bgFile = FILE.sliderBg, edgeFile = FILE.sliderEdge, tile = true, tileSize = 8, edgeSize = 8,
     insets = { left = 3, right = 3, top = 3, bottom = 3 } }
 
@@ -194,11 +224,11 @@ function mod.ArtFill(t, rec, S)
         t:SetSize(24, 24)
         rec.art = true
         return true
-    elseif kind == "dialog" then
-        t:SetColorTexture(0, 0, 0, 0)   -- the backdrop's stone is the background
+    elseif kind == "dialog" or kind == "thin" then
+        t:SetColorTexture(0, 0, 0, 0)   -- the backdrop is the background
         return true
     end
-    return false   -- thin / nothing: the style's dark colour
+    return false   -- nothing: the style's colour
 end
 
 function mod.ArtUndoFill(t, rec)
@@ -218,19 +248,33 @@ function mod.ArtBorder(rec, S)
     local f = rec.frame
     local kind = mod.ArtKind(f)
     if not kind then return false end   -- the colour look with Classic's grey edges
+    local s = State(f)
+    s.kind = kind
+    if not s.sizeHook and f.HookScript then
+        s.sizeHook = true
+        -- sized later (or resized): a small "thin" frame may now be a window, or the other way round
+        f:HookScript("OnSizeChanged", function()
+            if s.kind and mod.Current() and mod.Current().art and mod.ArtKind(f) ~= s.kind then mod.Try(mod.Repaint, f) end
+        end)
+    end
     for _, t in ipairs(rec.edges) do t:SetColorTexture(rec.r, rec.g, rec.b, 0) end
+    local fill = mod.fillOf[f]
+    local a = fill and mod.records.fills[fill] and mod.records.fills[fill].a or 1
     if kind == "dialog" then
-        local fill = mod.fillOf[f]
-        local a = fill and mod.records.fills[fill] and mod.records.fills[fill].a or 1
         local picture = f.GetName and f:GetName() == "MMTConfigFrame" and mod.BackgroundShown()
-        SetBackdrop(f, picture and DIALOG_EDGE or DIALOG, 1, 1, 1, math.max(a, 0.9), 1, 1, 1, 1)
+        local bg = ClassicBg()
+        DIALOG.bgFile, DIALOG.tileSize = bg.file, bg.tile
+        SetBackdrop(f, picture and DIALOG_EDGE or DIALOG, bg.tint[1], bg.tint[2], bg.tint[3], math.max(a, 0.9), 1, 1, 1, 1)
     elseif kind == "thin" then
-        SetBackdrop(f, THIN, 0, 0, 0, 0, 0.8, 0.8, 0.8, 1)
+        local c = TOOLTIP_BLUE
+        SetBackdrop(f, THIN, c[1], c[2], c[3], math.max(a, 0.9), 0.8, 0.8, 0.8, 1)
     end
     return true
 end
 
 function mod.ArtUndoBorder(rec)
+    local s = state[rec.frame]
+    if s then s.kind = nil end
     ClearBackdrop(rec.frame)
 end
 

@@ -1,0 +1,6 @@
+<Bindings>
+	<!-- In the key binding menu under "MMT (Manage My Team)" > "Team Gear" (texts in Minimap.lua). Not in the TOC. -->
+	<Binding name="MMTTEAMGEAR_ALL" header="MMT_TEAMGEAR" category="BINDING_CATEGORY_MMT">
+		MMTTeamGear_ToggleOverview()
+	</Binding>
+</Bindings>

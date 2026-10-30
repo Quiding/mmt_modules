@@ -15,11 +15,11 @@ MODULES, with its own settings page.
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.17.11 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
-| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.2.1 |
+| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.6 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.0 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -198,7 +198,9 @@ while they're offline. The items come from Item Compare's stored gear (needs Ite
 - **Talents**: the Talents button shows a member's three talent trees with every talent and its rank, and the
   points per tree (e.g. "Retribution 5 / 11 / 35"). Each client tells the team its talents when they change; the
   last ones known stay for offline members.
-- **Whole team**: one row per member with every slot.
+- **Whole team**: one row per member with every slot. A key binding opens and closes it (Key Bindings > MMT > Team Gear).
+- **Minimap button** (an option, on by default): left-click picks a member, right-click shows the whole team; drag it
+  around the minimap.
 - Option: your other profiles' teams and every other character Item Compare stored on this account.
 - Hover for the tooltip, Shift-click to link, Ctrl-click to try on, `<` `>` to step through.
 
@@ -337,8 +339,9 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
 - **EllesmereUI**: warm dark glassy panels with a soft light at the top, faint white edges with soft corners and a
   shadow, EllesmereUI's accent colour (its own when it's installed) and its Expressway font when it's installed.
   Dimmed text that lights up under the mouse, faint capital section headers, see-through buttons.
-- **Classic**: the game's own old window art - stone dialog backgrounds with the carved border, thin tooltip borders
-  on lists and boxes, the red panel buttons (darker while pressed), the yellow check mark, the metal slider knob,
+- **Classic**: the game's own old window art - the carved dialog border on windows (background: stone, marble,
+  tooltip blue or the old dark dialog - pick it on the page), thin tooltip borders on the classic tooltip blue for
+  lists and boxes, the red panel buttons (darker while pressed), the yellow check mark, the metal slider knob,
   the round close button, gold button text.
 - Options: the style's font, the style's accent colour. Saved per account (every character and profile).
 - Made new from colours and WoW's own fonts: nothing of ElvUI or EllesmereUI is copied, and MMT's files aren't

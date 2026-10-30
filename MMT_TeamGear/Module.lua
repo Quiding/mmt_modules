@@ -9,21 +9,24 @@
 --   Talents.lua   own talents read and sent to the team, the team's stored
 --   TalentsView.lua  the talents view of the window
 --   Button.lua    the button on the character panel and the member list
+--   Minimap.lua   the minimap button, the key binding for the whole team (Bindings.xml)
 --   Settings.lua  settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.1"
+mod.VERSION = "0.3.0"
 
 local M = MMT.NewModule({
     name = "TeamGear",
     title = "Team Gear",
     description = "A button on the character panel shows any team member's equipped items, like inspecting them, and their talents. Needs Item Compare for the gear.",
     sync = true,
-    syncExclude = { "buttonPoint", "windowPoint", "overviewPoint", "windowScale", "overviewScale" },   -- positions belong to each screen
+    syncExclude = { "buttonPoint", "windowPoint", "overviewPoint", "windowScale", "overviewScale", "minimapAngle" },   -- positions belong to each screen
     defaults = {
         button = true,         -- button on the character panel
+        minimap = true,        -- minimap button: left-click a member, right-click the whole team
+        minimapAngle = 220,    -- beside Team Inventory's (200)
         includeSelf = false,   -- you in the member list too
         names = true,          -- item names beside the slots
         windowScale = 1,       -- the gear window
@@ -165,16 +168,19 @@ end
 M.OnEnable = function()
     mod.RememberUnit(MMT.PlayerFull(), "player")
     mod.SetupButton()
+    mod.SetupMinimap()
 end
 
 M.OnDisable = function()
     if mod.button then mod.button:Hide() end
+    if mod.minimap then mod.minimap:Hide() end
     if mod.window then mod.window:Hide() end
     if mod.overview then mod.overview:Hide() end
 end
 
 M.OnProfileChanged = function()
     mod.SetupButton()
+    mod.SetupMinimap()
     if mod.window and mod.window:IsShown() then mod.Refresh() end
 end
 

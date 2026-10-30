@@ -21,7 +21,8 @@ end
 function Object:GetObjectType() return self._kind end
 function Object:GetParent() return self._parent end
 function Object:GetName() return self._name end
-function Object:SetSize(w, h) self._w, self._h = w, h end
+local function Sized(self) local fn = self._scripts and self._scripts.OnSizeChanged; if fn then fn(self, self._w, self._h) end end
+function Object:SetSize(w, h) self._w, self._h = w, h; Sized(self) end
 function Object:SetWidth(w) self._w = w end
 function Object:SetHeight(h) self._h = h end
 function Object:GetWidth() return self._w end
@@ -45,7 +46,7 @@ function Object:GetChildren() return unpack(self._children) end
 function Object:GetNumChildren() return #self._children end
 function Object:SetScript(k, fn) self._scripts[k] = fn end
 function Object:GetScript(k) return self._scripts[k] end
-function Object:HookScript(k, fn) local old = self._scripts[k]; self._scripts[k] = function(...) if old then old(...) end fn(...) end end
+function Object:HookScript(k, fn) self._scripts = self._scripts or {}; local old = self._scripts[k]; self._scripts[k] = function(...) if old then old(...) end fn(...) end end
 function Object:GetFrameLevel() return 1 end
 function Object:GetEffectiveScale() return 1 end
 function Object:GetBottom() return 300 end
@@ -435,10 +436,28 @@ local secure = CreateFrame("Button", nil, UIParent); secure:SetSize(30, 30); sec
 UI.Fill(secure, 0, 0, 0, 0.85)
 UI.Border(secure, 0.35, 0.35, 0.35, 1)
 mod.SetStyle("CLASSIC")
-assert(big._backdrop and big._backdrop.edgeFile:find("UI%-DialogBox%-Border") and big._backdrop.bgFile:find("UI%-DialogBox%-Background"), "Classic window: no dialog backdrop")
+assert(big._backdrop and big._backdrop.edgeFile:find("UI%-DialogBox%-Border") and big._backdrop.bgFile:find("UI%-Background%-Rock"), "Classic window: no stone dialog backdrop")
+assert(near(big._bdColor[1], 0.6), "stone not dimmed")
 assert(eq(col(bigFill), 0, 0, 0, 0), "Classic window fill not see-through")
 assert(col(select(2, big:GetRegions()))[4] == 0, "Classic window: MMT's edges still shown")
-assert(small._backdrop and small._backdrop.edgeFile:find("UI%-Tooltip%-Border") and not small._backdrop.bgFile, "Classic small panel: thin border")
+assert(small._backdrop and small._backdrop.edgeFile:find("UI%-Tooltip%-Border") and small._backdrop.bgFile:find("UI%-Tooltip%-Background"), "Classic small panel: thin border")
+assert(near(small._bdColor[1], 0.09) and near(small._bdColor[3], 0.19), "thin panel not the tooltip blue")
+assert(col(select(1, small:GetRegions()))[4] == 0, "thin panel: MMT's black fill still shown")
+-- a window sized after it was built (it grows with its content) becomes a dialog then
+local late = CreateFrame("Frame", nil, UIParent)
+UI.Fill(late, 0.05, 0.05, 0.06, 0.94)
+UI.Border(late, 0.22, 0.22, 0.24, 1)
+assert(late._backdrop and late._backdrop.edgeFile:find("Tooltip"), "unsized frame: thin first")
+late:SetSize(600, 400)
+assert(late._backdrop.edgeFile:find("DialogBox"), "resized window didn't become a dialog")
+-- the background choice, and a file the client doesn't have
+mod.SetOpt("classicBg", "MARBLE")
+assert(big._backdrop.bgFile:find("Marble"), "marble background")
+GetFileIDFromPath = function(p) if p:find("Marble") then return nil end return 1 end
+mod.Apply()
+assert(big._backdrop.bgFile:find("UI%-DialogBox%-Background"), "missing file: no fallback to the old dialog background")
+GetFileIDFromPath = nil
+mod.SetOpt("classicBg", "ROCK")
 assert(not secure._backdrop and eq(col(select(2, secure:GetRegions())), 0.6, 0.6, 0.6, 1), "a secure frame got a backdrop")
 -- buttons: three pieces of the red button file
 assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Up" and near(btnFill._coord[1], 0.09375), "Classic button middle: " .. tostring(btnFill._file))

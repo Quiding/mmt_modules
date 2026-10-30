@@ -39,6 +39,10 @@ M.Page = function(_, page)
         "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
     L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
         "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
+    L:Cycle("Classic: window background", function() return mod.CLASSIC_BGS end, function() return mod.Opt("classicBg") end, function(v)
+        mod.SetOpt("classicBg", v)
+        status.Show_(mod.Opt("style") == "CLASSIC" and "Classic background changed." or "Used when the style is Classic.")
+    end)
     L:Space(8)
     L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere | classic.")
 

@@ -23,13 +23,17 @@ local function ResetButton(page, done)
 end
 
 M.Page = function(_, page)
-    ResetButton(page, function() mod.SetupButton() end)
+    ResetButton(page, function() mod.SetupButton(); mod.SetupMinimap() end)
     local L = UI.Column(page, 0, 0, COL_W)
     L:Header("Team Gear")
     L:Check("Button on the character panel", function() return M.db.button end, function(v)
         M.db.button = v
         mod.SetupButton()
     end, "Click it to pick a team member. Shift-drag moves it.")
+    L:Check("Minimap button", function() return M.db.minimap end, function(v)
+        M.db.minimap = v
+        mod.SetupMinimap()
+    end, "Left-click: pick a team member, right-click: the whole team. Drag it around the minimap. The whole team also has a key binding (Key Bindings > MMT > Team Gear).")
     L:Button("Put the button and windows back", function()
         mod.ResetButton()
         M.db.windowPoint, M.db.overviewPoint = nil, nil

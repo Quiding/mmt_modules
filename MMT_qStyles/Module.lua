@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.0"
+mod.VERSION = "0.2.1"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
@@ -29,6 +29,7 @@ mod.DEFAULTS = {
     style = "NONE",    -- NONE | ELVUI | ELLESMERE | CLASSIC
     fonts = true,      -- the style's font on MMT's labels and edit boxes
     accent = true,     -- the style's accent colour instead of MMT's blue
+    classicBg = "ROCK", -- Classic's window background: ROCK | MARBLE | TOOLTIP | DARK (Art.lua)
 }
 
 function mod.Opt(key)

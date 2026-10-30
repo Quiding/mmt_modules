@@ -342,13 +342,16 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
 
-### MMT_TeamGear (v0.2.1)
+### MMT_TeamGear (v0.3.0)
 - Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
   members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
   window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
   Item Compare's `EQUIPMENT_CHANGED`), `Button.lua` (button on `CharacterFrame`, shift-drag, `buttonPoint`
   offsets from its TOPLEFT; member list via `MMT.UI.OpenList`), `Settings.lua`, `Talents.lua` + `TalentsView.lua`.
   Gear: sends nothing (Item Compare's data). Talents: see below.
+- `Minimap.lua` (0.3.0): minimap button `MMTTeamGearMinimapButton` like Team Inventory's (`minimap` default on,
+  `minimapAngle` 220 = beside Team Inventory's 200, in syncExclude; left = `mod.OpenMemberList`, right = whole team), and
+  the key binding `MMTTEAMGEAR_ALL` (Bindings.xml, header MMT_TEAMGEAR) -> global `MMTTeamGear_ToggleOverview()`.
 - Item Compare's store is account-wide per character and never pruned (only its Clear), so `mod.Groups()`
   lists: this team, other profiles' teams (`MMTDB.profiles[name].team`, read only, skips `MMT.profileName`),
   then every other stored character (`others` setting, default off; headers "Team N (<profile>)",
@@ -587,7 +590,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.0) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.1) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -628,8 +631,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Classic (Art.lua, `S.art`): `mod.ArtKind(frame)` = button / check (role) | dialog (has edges, >= 300 x 100) | thin (other
   edged frames) | nil (protected = secure frames, or a frame with its own SetBackdrop: colour look). Backdrop =
   `Mixin(frame, BackdropTemplateMixin)` + HookScript OnSizeChanged OnBackdropSizeChanged (like ElvUI), undone with
-  ClearBackdrop. dialog: UI-DialogBox-Background/-Border edgeSize 24, MMT's fill alpha 0 (edge only while the core's
-  background picker shows a picture); thin: UI-Tooltip-Border edgeSize 12 over the style's dark fill. Buttons: MMT's fill
+  ClearBackdrop. dialog: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
+  FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
+  user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
+  background picker shows a picture; thin: UI-Tooltip-Border edgeSize 12 + UI-Tooltip-Background in the classic tooltip blue
+  (0.09, 0.09, 0.19). MMT's fill is alpha 0 under both. `s.kind` + a HookScript OnSizeChanged per edged frame: a frame
+  sized after it was built (Team bags, Team Gear overview: thin at size 0) is repainted when its kind changes. Buttons: MMT's fill
   becomes the middle piece + 2 end caps + HIGHLIGHT texture: atlases 128-RedButton-Left/Center/Right(-Pressed) /
   -Highlight when `C_Texture.GetAtlasInfo` has them (Baganator uses 128-RedButton-Highlight on Forever), else the old
   UI-Panel-Button-Up/-Down/-Highlight files with texcoords; pressed via HookScript OnMouseDown/Up. Check: box fill ->

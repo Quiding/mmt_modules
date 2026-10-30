@@ -604,6 +604,8 @@ local function Repaint(frame)
     if t then Try(PaintFill, t, fills[t], S) end
 end
 
+mod.Repaint = Repaint
+
 local function SetRole(frame, role)
     if not frame then return end
     mod.roles[frame] = role
