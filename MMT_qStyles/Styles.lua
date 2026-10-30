@@ -23,6 +23,7 @@
 --   hover             { edge = {r, g, b, a} | "ACCENT", label = {r, g, b, a} }: the widget under the mouse
 --   chevron           dropdowns get a drawn chevron instead of MMT's "v"
 --   art               Classic: the game's own window textures (Art.lua) instead of colours
+--   modern            with art: the client's current art (metal rim, ...) where it has it (Art.lua)
 --   windowGap         px our modules add between windows placed side by side (QStyles.WindowGap)
 
 local _, mod = ...
@@ -95,6 +96,25 @@ mod.STYLES = {
         hover = { edge = { 1, 1, 1, 0.45 }, label = { 1, 1, 1, 1 } },
         chevron = true,
     },
+    MODERN = {
+        key = "MODERN",
+        title = "Modern Blizzard",
+        description = "The game's own current window art: the metal window rim, the red buttons and close button, the settings list's highlight, the minimal slider, gold text - like the client's own windows.",
+        art = true,
+        modern = true,
+        panel = { 0.08, 0.08, 0.09 },
+        panelAlpha = function(a) return math.max(a, 0.95) end,
+        control = { 0.12, 0.12, 0.13 },
+        controlAlpha = function(a) return a end,
+        border = { 0.32, 0.32, 0.34, 1 },
+        controlBorder = { 0.32, 0.32, 0.34, 1 },
+        accentBorder = "ACCENT",
+        track = { 0.2, 0.2, 0.2, 1 },
+        accent = function() return 1, 0.82, 0 end,
+        buttonText = { 1, 0.82, 0, 1 },
+        headerLine = { 1, 0.82, 0, 0.25 },
+        windowGap = 16,   -- the metal rims of two windows side by side
+    },
     CLASSIC = {
         key = "CLASSIC",
         title = "Classic",
@@ -115,7 +135,7 @@ mod.STYLES = {
     },
 }
 
-mod.ORDER = { "NONE", "ELVUI", "ELLESMERE", "CLASSIC" }
+mod.ORDER = { "NONE", "ELVUI", "ELLESMERE", "MODERN", "CLASSIC" }
 
 function mod.StyleTitle(key)
     local s = mod.STYLES[key]

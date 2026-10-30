@@ -540,6 +540,42 @@ local b2Fill = select(1, b2:GetRegions())
 assert(b2Fill._atlas == "128-RedButton-Center", "atlas not used: " .. tostring(b2Fill._atlas))
 ATLASES = {}
 QS.ResetArtCache()
+-- Modern Blizzard: the client's current art where it has it
+NineSliceUtil = { ApplyLayout = function(c, layout) c._layout = layout end }
+for _, n in ipairs({ "UI-Frame-Metal-CornerTopLeft", "_UI-Frame-Metal-EdgeTop", "Options_List_Active", "Minimal_SliderBar_Button",
+    "Minimal_SliderBar_Left", "Minimal_SliderBar_Right", "_Minimal_SliderBar_Middle", "common-dropdown-a-button", "RedButton-Exit",
+    "128-RedButton-Left", "128-RedButton-Center", "128-RedButton-Right" }) do ATLASES[n] = { width = 12, height = 22 } end
+QS.ResetArtCache()
+mod.SetStyle("MODERN")
+assert(QStyles.Current() == "MODERN" and QStyles.WindowGap() == 16, "Modern not current")
+local function MetalOf(f) for _, c in ipairs(f._children) do if c._layout and c._shown then return c end end end
+local metal = MetalOf(big)
+assert(metal and metal._layout.TopLeftCorner.atlas == "UI-Frame-Metal-CornerTopLeft" and metal._points[1][5] == 22, "Modern window: no metal rim (title band above)")
+assert(not EdgeOf(big) and not big._backdrop, "Modern window still has Classic's border / background")
+assert(eq(col(bigFill), 0.08, 0.08, 0.09, 0.95), "Modern window: not the dark colour")
+assert(col(select(2, big:GetRegions()))[4] == 0, "Modern window: MMT's 1 px edges under the rim")
+assert(not EdgeOf(small) and not small._backdrop and eq(col(select(2, small:GetRegions())), 1, 0.82, 0, 0.5), "Modern panel: not dark with a (gold accent) edge")
+assert(btnFill._atlas == "128-RedButton-Center", "Modern button: not the red button atlas")
+assert(rowSel._atlas == "Options_List_Active", "Modern selected row: " .. tostring(rowSel._atlas))
+assert(thumb._atlas == "Minimal_SliderBar_Button" and thumb._w == 20, "Modern slider knob")
+local barShown = 0
+for _, r in ipairs({ s:GetRegions() }) do if r ~= thumb and r._atlas and r._atlas:find("Minimal_SliderBar") and r._shown then barShown = barShown + 1 end end
+assert(barShown == 3 and not s._backdrop, "Modern slider bar")
+local arrowTex
+for _, r in ipairs({ dd:GetRegions() }) do if r._atlas == "common-dropdown-a-button" and r._shown then arrowTex = r end end
+assert(arrowTex and arrow._alpha == 0, "Modern dropdown arrow")
+assert(Shown(dd, "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame") == 0 and not EdgeOf(dd), "Modern dropdown: Classic's frame")
+local closeTex
+for _, r in ipairs({ close:GetRegions() }) do if r._atlas == "RedButton-Exit" and r._shown then closeTex = r end end
+assert(closeTex and close.label._alpha == 0, "Modern close button")
+-- a client without the metal rim: the window keeps the colour look (no Classic border either)
+ATLASES["UI-Frame-Metal-CornerTopLeft"] = nil
+mod.Apply()
+assert(not MetalOf(big) and not EdgeOf(big) and col(select(2, big:GetRegions()))[4] == 1, "no metal rim: window not in the colour look")
+ATLASES = {}
+QS.ResetArtCache()
+mod.SetStyle("CLASSIC")
+
 -- None again: no art left
 mod.SetStyle("NONE")
 assert(not big._backdrop and eq(col(bigFill), 0.05, 0.05, 0.06, 0.94), "None: window backdrop")
@@ -555,6 +591,10 @@ assert(near(btn.label._tc[1], 1) and near(btn.label._tc[4], 1) and near(plain._t
 assert(not edit._backdrop and Shown(edit, "Interface\\Common\\Common-Input-Border") == 0, "None: edit box")
 assert(Shown(dd, "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame") == 0, "None: dropdown pieces")
 assert(not EdgeOf(big), "None: border frame still shown")
+assert(not MetalOf(big), "None: metal rim still shown")
+local barLeft = 0
+for _, r in ipairs({ s:GetRegions() }) do if r ~= thumb and r._atlas and r._atlas:find("Minimal_SliderBar") and r._shown then barLeft = barLeft + 1 end end
+assert(barLeft == 0, "None: Modern's slider bar still shown")
 assert(near(navHead._tc[1], A[1]), "None: blue label")
 
 -- EllesmereUI / ElvUI loaded: their style is offered once, only while no style was ever picked

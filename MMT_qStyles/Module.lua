@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.2.9"
+mod.VERSION = "0.3.0"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
@@ -26,7 +26,7 @@ local M = MMT.NewModule({
 mod.M = M
 
 mod.DEFAULTS = {
-    style = "NONE",    -- NONE | ELVUI | ELLESMERE | CLASSIC
+    style = "NONE",    -- NONE | ELVUI | ELLESMERE | MODERN | CLASSIC
     fonts = true,      -- the style's font on MMT's labels and edit boxes
     accent = true,     -- the style's accent colour instead of MMT's blue
     classicBg = "ROCK", -- Classic's window background: ROCK | MARBLE | TOOLTIP | DARK (Art.lua)
@@ -104,8 +104,8 @@ M.OnDisable = function()
     mod.Apply()   -- Current() is nil now: everything goes back
 end
 
--- /mmtstyle [none | elvui | ellesmere | classic]
-local NAMES = { none = "NONE", elvui = "ELVUI", elv = "ELVUI", ellesmere = "ELLESMERE", ellesmereui = "ELLESMERE", eui = "ELLESMERE", classic = "CLASSIC" }
+-- /mmtstyle [none | elvui | ellesmere | modern | classic]
+local NAMES = { none = "NONE", elvui = "ELVUI", elv = "ELVUI", ellesmere = "ELLESMERE", ellesmereui = "ELLESMERE", eui = "ELLESMERE", classic = "CLASSIC", modern = "MODERN", blizzard = "MODERN" }
 SLASH_MMTQSTYLES1 = "/mmtstyle"
 SlashCmdList.MMTQSTYLES = function(msg)
     local arg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -121,7 +121,7 @@ SlashCmdList.MMTQSTYLES = function(msg)
     end
     local key = NAMES[arg]
     if not key then
-        MMT.Print("/mmtstyle - settings, /mmtstyle none | elvui | ellesmere | classic - switch the style, /mmtstyle frame - what the style did to the window under the mouse")
+        MMT.Print("/mmtstyle - settings, /mmtstyle none | elvui | ellesmere | modern | classic - switch the style, /mmtstyle frame - what the style did to the window under the mouse")
         return
     end
     if not M.enabled then MMT.Print("Styles is switched off (/mmt > Manage modules).") return end

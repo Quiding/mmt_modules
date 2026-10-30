@@ -21,6 +21,14 @@
 -- checked again on OnSizeChanged: it may become a dialog.
 -- Frames that already have a backdrop of their own or are protected (secure)
 -- keep the colour look. Undo = ClearBackdrop + the saved points / sizes.
+--
+-- Modern Blizzard (S.modern, also S.art): the client's current UI art, each
+-- piece only when C_Texture.GetAtlasInfo has it (else Classic's): windows get
+-- the metal rim (UI-Frame-Metal atlases laid out by the game's NineSliceUtil on
+-- a child frame, its title band ABOVE the window so it covers nothing) over the
+-- style's dark colour; the red buttons; Options_List_Active for selected rows;
+-- the minimal slider; the common-dropdown arrow; RedButton-Exit to close. Thin
+-- frames keep the colour look (dark with a grey edge, like the game's menus).
 
 local _, mod = ...
 local MMT = MMT
@@ -154,6 +162,34 @@ local function Tex(f, layer, sub)
     return t
 end
 
+-- the first of these atlases the client has (nil: none)
+local function FirstAtlas(...)
+    for i = 1, select("#", ...) do
+        local name = select(i, ...)
+        if Atlas(name) then return name end
+    end
+    return nil
+end
+
+-- the game's metal window rim without its portrait (piece offsets as the game's own
+-- portrait-less button frames place them); the top pieces carry the title band
+local METAL = {
+    disableSharpening = true,
+    TopLeftCorner = { layer = "OVERLAY", atlas = "UI-Frame-Metal-CornerTopLeft", x = -13, y = 16 },
+    TopRightCorner = { layer = "OVERLAY", atlas = "UI-Frame-Metal-CornerTopRight", x = 4, y = 16 },
+    BottomLeftCorner = { layer = "OVERLAY", atlas = "UI-Frame-Metal-CornerBottomLeft", x = -13, y = -3 },
+    BottomRightCorner = { layer = "OVERLAY", atlas = "UI-Frame-Metal-CornerBottomRight", x = 4, y = -3 },
+    TopEdge = { layer = "OVERLAY", atlas = "_UI-Frame-Metal-EdgeTop", x = 0, y = 0, x1 = 0, y1 = 0 },
+    BottomEdge = { layer = "OVERLAY", atlas = "_UI-Frame-Metal-EdgeBottom", x = 0, y = 0, x1 = 0, y1 = 0 },
+    LeftEdge = { layer = "OVERLAY", atlas = "!UI-Frame-Metal-EdgeLeft", x = 0, y = 0, x1 = 0, y1 = 0 },
+    RightEdge = { layer = "OVERLAY", atlas = "!UI-Frame-Metal-EdgeRight", x = 0, y = 0, x1 = 0, y1 = 0 },
+}
+local METAL_TITLE = 22   -- px of the rim's title band: placed above the window
+
+local function MetalOK()
+    return NineSliceUtil and NineSliceUtil.ApplyLayout and Atlas("UI-Frame-Metal-CornerTopLeft") and Atlas("_UI-Frame-Metal-EdgeTop") and true or false
+end
+
 ---------------------------------------------------------------------------
 -- What a frame becomes
 ---------------------------------------------------------------------------
@@ -274,6 +310,13 @@ function mod.ArtFill(t, rec, S)
     if kind == "button" then
         ButtonFill(t, rec)
         return true
+    elseif S.modern and mod.FillClass(rec) == "accent" and Atlas("Options_List_Active") then
+        t:SetAtlas("Options_List_Active")   -- a selected row: the settings list's
+        t:SetVertexColor(1, 1, 1, 1)
+        rec.art = true
+        return true
+    elseif S.modern and (kind == "dialog" or kind == "thin" or kind == "dropdown") then
+        return false   -- the style's dark colour (the rim is a frame of its own)
     elseif mod.FillClass(rec) == "accent" then
         -- a selected row (MMT's accent at low alpha): the quest log's selection glow
         t:SetTexture(FILE.selected)
@@ -372,6 +415,29 @@ local function EdgeFrame(f, out)
     return e
 end
 
+-- Modern's metal rim: the game's NineSlice on a child frame above the window, its title band above the top edge
+local function MetalFrame(f)
+    local s = State(f)
+    if s.metal == nil then
+        s.metal = false
+        local ok, m = pcall(CreateFrame, "Frame", nil, f, "NineSlicePanelTemplate")
+        if not ok or not m then ok, m = pcall(CreateFrame, "Frame", nil, f) end
+        if ok and m then
+            mod.seen[m] = true
+            if m.EnableMouse then m:EnableMouse(false) end
+            if pcall(NineSliceUtil.ApplyLayout, m, METAL) then s.metal = m end
+            m:Hide()
+        end
+    end
+    local m = s.metal
+    if not m then return nil end
+    m:ClearAllPoints()
+    m:SetPoint("TOPLEFT", f, "TOPLEFT", 0, METAL_TITLE)
+    m:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+    m:SetFrameLevel(f:GetFrameLevel() + 20)
+    return m
+end
+
 ---------------------------------------------------------------------------
 -- Edges
 ---------------------------------------------------------------------------
@@ -379,6 +445,9 @@ function mod.ArtBorder(rec, S)
     local f = rec.frame
     local kind = mod.ArtKind(f)
     if not kind then return false end   -- the colour look with Classic's grey edges
+    -- Modern: lists, panels and dropdowns dark with a grey edge, like the game's menus
+    if S.modern and (kind == "thin" or kind == "dropdown") then return false end
+    if S.modern and kind == "dialog" and not MetalOK() then return false end
     local s = State(f)
     s.kind = kind
     if not s.sizeHook and f.HookScript then
@@ -394,6 +463,9 @@ function mod.ArtBorder(rec, S)
     if kind == "dropdown" or kind == "input" then
         Pieces(f, kind)
         ShowPieces(f, kind)
+    elseif kind == "dialog" and S.modern then
+        local m = MetalFrame(f)
+        if m then m:Show() end
     elseif kind == "dialog" then
         local picture = f.GetName and f:GetName() == "MMTConfigFrame" and mod.BackgroundShown()
         if not picture then
@@ -426,6 +498,7 @@ function mod.ArtUndoBorder(rec)
     if s then
         s.kind = nil
         if s.edge then s.edge:Hide() end
+        if s.metal then s.metal:Hide() end
         ShowPieces(rec.frame, nil)
     end
     ClearBackdrop(rec.frame)
@@ -443,10 +516,32 @@ function mod.ArtColor(t, rec, S)
         t:SetPoint("CENTER", box, "CENTER", 0, 0)
         t:SetSize(24, 24)
         return true
+    elseif rec.kind == "thumb" and S.modern and Atlas("Minimal_SliderBar_Button") then
+        t:SetAtlas("Minimal_SliderBar_Button")
+        t:SetVertexColor(1, 1, 1, 1)
+        t:SetSize(20, 20)
+        return true
     elseif rec.kind == "thumb" then
         t:SetTexture(FILE.thumb)
         t:SetVertexColor(1, 1, 1, 1)
         t:SetSize(32, 32)
+        return true
+    elseif rec.kind == "track" and S.modern and Atlas("Minimal_SliderBar_Left") and Atlas("Minimal_SliderBar_Right") then
+        local sl = t.GetParent and t:GetParent()
+        local st = State(sl)
+        if not st.bar then
+            st.bar = { Tex(sl, "BACKGROUND", 1), Tex(sl, "BACKGROUND", 1), Tex(sl, "BACKGROUND", 1) }
+            local l, m, r = st.bar[1], st.bar[2], st.bar[3]
+            l:SetPoint("LEFT", sl, "LEFT", 0, 0); l:SetSize(11, 18)
+            r:SetPoint("RIGHT", sl, "RIGHT", 0, 0); r:SetSize(11, 18)
+            m:SetPoint("TOPLEFT", l, "TOPRIGHT", 0, 0); m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT", 0, 0)
+        end
+        st.bar[1]:SetAtlas("Minimal_SliderBar_Left")
+        st.bar[3]:SetAtlas("Minimal_SliderBar_Right")
+        local mid = FirstAtlas("_Minimal_SliderBar_Middle", "Minimal_SliderBar_Middle")
+        if mid then st.bar[2]:SetAtlas(mid) else st.bar[2]:SetColorTexture(0.2, 0.2, 0.2, 1) end
+        for _, p in ipairs(st.bar) do p:Show() end
+        t:SetColorTexture(0, 0, 0, 0)
         return true
     elseif rec.kind == "track" then
         local s = t.GetParent and t:GetParent()
@@ -459,7 +554,11 @@ function mod.ArtColor(t, rec, S)
 end
 
 function mod.ArtUndoColor(t, rec)
-    if rec.kind == "track" then ClearBackdrop(t:GetParent()) end
+    if rec.kind ~= "track" then return end
+    local sl = t:GetParent()
+    ClearBackdrop(sl)
+    local st = state[sl]
+    if st and st.bar then for _, p in ipairs(st.bar) do p:Hide() end end
 end
 
 ---------------------------------------------------------------------------
@@ -488,13 +587,26 @@ local function PaintWidget(f, w, S)
     local s = State(f)
     if w.arrow then
         local tex, lines = nil, nil
-        if S and S.art then
+        local modernArrow = S and S.modern and Atlas("common-dropdown-a-button")
+        if modernArrow then
+            s.arrowTex = s.arrowTex or Tex(f, "OVERLAY")
+            s.arrowHl = s.arrowHl or Tex(f, "HIGHLIGHT")
+            tex = s.arrowTex
+            tex:SetAtlas("common-dropdown-a-button")
+            tex:ClearAllPoints()
+            tex:SetPoint("RIGHT", f, "RIGHT", -2, 0)
+            tex:SetSize(18, 18)
+            local hover = Atlas("common-dropdown-a-button-hover") and "common-dropdown-a-button-hover"
+            if hover then s.arrowHl:SetAtlas(hover) else s.arrowHl:SetTexture(FILE.arrowHighlight) end
+            s.arrowHl:ClearAllPoints()
+            s.arrowHl:SetAllPoints(tex)
+        elseif S and S.art then
             if not s.arrowTex then
                 s.arrowTex = Tex(f, "OVERLAY")
                 s.arrowHl = Tex(f, "HIGHLIGHT")
                 if f.HookScript then
-                    f:HookScript("OnMouseDown", function() if s.arrowTex:IsShown() then s.arrowTex:SetTexture(FILE.arrowDown) end end)
-                    f:HookScript("OnMouseUp", function() if s.arrowTex:IsShown() then s.arrowTex:SetTexture(FILE.arrow) end end)
+                    f:HookScript("OnMouseDown", function() if s.arrowTex:IsShown() and not s.modernArrow then s.arrowTex:SetTexture(FILE.arrowDown) end end)
+                    f:HookScript("OnMouseUp", function() if s.arrowTex:IsShown() and not s.modernArrow then s.arrowTex:SetTexture(FILE.arrow) end end)
                 end
             end
             tex = s.arrowTex
@@ -509,6 +621,7 @@ local function PaintWidget(f, w, S)
         elseif S and S.chevron then
             lines = Chevron(f) or nil
         end
+        s.modernArrow = modernArrow and true or nil
         if s.arrowTex then s.arrowTex:SetShown(tex ~= nil); s.arrowHl:SetShown(tex ~= nil) end
         if type(s.chevron) == "table" then
             for _, l in ipairs(s.chevron) do
@@ -520,10 +633,15 @@ local function PaintWidget(f, w, S)
     if w.close then
         if S and S.art then
             s.closeTex = s.closeTex or Tex(f, "ARTWORK")
-            s.closeTex:SetTexture(FILE.close)
+            if S.modern and Atlas("RedButton-Exit") then
+                s.closeTex:SetAtlas("RedButton-Exit")
+                s.closeTex:SetSize(20, 20)
+            else
+                s.closeTex:SetTexture(FILE.close)
+                s.closeTex:SetSize(26, 26)
+            end
             s.closeTex:ClearAllPoints()
             s.closeTex:SetPoint("CENTER", f, "CENTER", 0, 0)
-            s.closeTex:SetSize(26, 26)
             s.closeTex:Show()
             w.close:SetAlpha(0)
         else

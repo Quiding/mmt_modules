@@ -44,14 +44,14 @@ M.Page = function(_, page)
         status.Show_(mod.Opt("style") == "CLASSIC" and "Classic background changed." or "Used when the style is Classic.")
     end)
     L:Space(8)
-    L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere | classic.")
+    L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere | modern | classic.")
 
     local R = UI.Column(page, COL2_X, 0, COL_W)
     R:Header("What gets the style")
     R:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
         .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
         .. "Item Compare's tooltips, the death panel and more.")
-    R:Note("ElvUI and EllesmereUI light up the widget under the mouse; Classic uses the game's own window art.")
+    R:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
     R:Header("What keeps its look")
     R:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's XP window and distance display "
         .. "(built before Styles loads). Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")

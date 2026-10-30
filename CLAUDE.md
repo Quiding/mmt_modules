@@ -629,7 +629,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.9) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.3.0) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -700,7 +700,16 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Apply, both register one to place again. 0.2.9 (user's idea): `mod.OfferStyle()` 5 s after OnEnable: while
   `M.store.style == nil` (never picked; picking None counts as picked), the first LOADED of EllesmereUI / ElvUI not in
   `M.store.offered` gets one `MMT.UI.Confirm` ("Use <style>" / "No thanks"); offered[addon] is set when asked, so each
-  addon is asked once ever (Reset to defaults keeps `offered`). Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  addon is asked once ever (Reset to defaults keeps `offered`). 0.3.0: MODERN ("Modern Blizzard", `S.art` + `S.modern`):
+  the client's current art, each piece behind `Atlas()` (C_Texture.GetAtlasInfo) with Classic's as fallback - windows:
+  `METAL` layout (UI-Frame-Metal corners / edges, offsets as Baganator's Forever skin uses them) applied with the game's
+  `NineSliceUtil.ApplyLayout` to a child frame (`MetalFrame`, NineSlicePanelTemplate, level +20, seen) whose TOP is
+  METAL_TITLE 22 px ABOVE the window (the top pieces carry the title band: inside it would cover the window's top row),
+  over the style's dark colour (no Classic background); thin frames and dropdowns: the colour look (ArtBorder / ArtFill
+  return false); buttons: 128-RedButton atlases; selected rows: Options_List_Active; slider: Minimal_SliderBar_Left /
+  _Minimal_SliderBar_Middle / _Right pieces on the slider + Minimal_SliderBar_Button 20 px; arrow common-dropdown-a-button
+  (+ -hover); close RedButton-Exit. No metal atlases or NineSliceUtil: windows keep the colour look. windowGap 16.
+  Atlas names verified only by other addons' use on Forever (Baganator, EllesmereUI). Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
