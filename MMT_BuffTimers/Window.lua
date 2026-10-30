@@ -90,6 +90,7 @@ local function Icons(key, host)
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id, drag = arranging and mod.DragFor(from[n], e) or nil,
                 oid = oid, anchor = host and e.after or nil,
+                glow = mod.Alerted(key, e, state, start) or nil,   -- SmartBuff says it's missing (Alerts.lua)
                 tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")")
                         or state == "missing" and ("None of " .. e.name) or e.name)
                     or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
@@ -124,11 +125,12 @@ local function AllRow()
         if not e.off and (arranging or mod.Castable(e)) then
             for _, key in ipairs(members) do if arranging or mod.Applies(e, key) then forThem[#forThem + 1] = key end end
         end
-        local missingBy, noData, have, covered = {}, 0, 0, 0
+        local missingBy, noData, have, covered, alerted = {}, 0, 0, 0, false
         local minStart, minDur, minLeft
         if #forThem > 0 then
         for _, key in ipairs(forThem) do
             local state, start, dur = mod.State(key, e)
+            if mod.Alerted(key, e, state, start) then alerted = true end   -- SmartBuff (Alerts.lua)
             -- a blessing they can't get (one per paladin, Casters.lua): not counted
             if not arranging and state == "missing" and mod.BlessingCovered(key, e) then state = "covered" end
             if state == "covered" then
@@ -167,6 +169,10 @@ local function AllRow()
         if cfg.allCount and cfg.allCount ~= "OFF" and #missingBy > 0 and checked > 0 then
             i.tally, i.tallyPos, i.tallySize, i.tallyColor = have .. "/" .. checked, cfg.allCount, cfg.allCountSize, cfg.allCountColor
             i.tip = i.tip .. ("\n%d of %d have it."):format(have, checked)
+        end
+        if alerted then
+            i.glow = true
+            i.tip = i.tip .. "\nSmartBuff: someone needs it."
         end
         icons[#icons + 1] = Look(i)
         end

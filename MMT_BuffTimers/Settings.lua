@@ -245,6 +245,8 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
     R:Add(who, UI.ROW + 2)
     R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
+    R:Header("SmartBuff")
+    Check(R, "Glow on SmartBuff alerts", "glowAlerts", "When SmartBuff says a member needs a buff (your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts), that buff's icon - theirs and the All bar's - glows until they have it again.")
 
 
     -- Look ------------------------------------------------------------------

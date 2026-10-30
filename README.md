@@ -12,7 +12,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.16.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.19.2 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.20.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -113,6 +113,10 @@ important spells, trinkets and potions.
 | <img src="media/cooldowns_settings.png" alt="Cooldown Timers: the Bars tab and the bars" width="420"> | <img src="media/cooldowns_presets.png" alt="Cooldown Timers: tracked spells and the presets" width="420"> |
 
 ## Buff Timers
+
+**SmartBuff alerts glow** (Bars tab, "Glow on SmartBuff alerts", on by default): when SmartBuff says a member needs a
+buff - your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts - that buff's icon glows in
+the member's row and on the All bar until they have it again (a greater blessing counts as the single one).
 
 Port of [EMA Buffs](https://github.com/Quiding/ema_buffs): which group members have or miss the buffs
 tracked for them, with exact timers.

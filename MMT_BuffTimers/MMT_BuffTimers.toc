@@ -1,12 +1,12 @@
 ## Interface: 16001
 ## Title: MMT - Buff Timers
 ## Notes: MMT module: which team members have (or miss) the buffs you track. Port of EMA Buffs.
-## Version: 0.19.2
+## Version: 0.20.0
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
-## OptionalDeps: MMT_CooldownTimers
+## OptionalDeps: MMT_CooldownTimers, SmartBuff
 ## X-MMT-Module: 1
 ## X-MMT-Title: Buff Timers
 ## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
@@ -20,6 +20,7 @@ ListKeys.lua
 Specs.lua
 Tracker.lua
 Weapons.lua
+Alerts.lua
 Roles.lua
 Casters.lua
 Known.lua

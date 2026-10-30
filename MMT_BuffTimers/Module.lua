@@ -33,6 +33,7 @@ local M = MMT.NewModule({
         rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0, timerColor = { r = 1, g = 1, b = 1 },
         showNames = true, fullNames = false, nameSize = 11, showTimers = true, timerSize = 13,
         missingAlpha = 0.25, activeAlpha = 1, glowMissing = false,
+        glowAlerts = true,         -- a SmartBuff alert (own or the team's) makes the buff's icon glow (Alerts.lua)
         point = { "CENTER", "CENTER", -200, 0 },
         onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
         framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22, framesFit = false,
@@ -92,6 +93,7 @@ M.OnEnable = function()
     mod.BuildIndex()
     mod.ScanGroup()
     mod.StartWeapons()
+    mod.AlertHook()   -- our own SmartBuff's alerts (Alerts.lua)
     mod.Apply()
     C_Timer.After(1, function() if M.enabled then mod.Apply() end end) -- Cooldowns starts after us
 end

@@ -116,7 +116,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.16.2) / MMT_BuffTimers (v0.19.2) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.16.2) / MMT_BuffTimers (v0.20.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -262,6 +262,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   another window in `src.hosts` under the cursor (`row.member`, `Over` by GetLeft/Right/Top/Bottom) -> drop anywhere there;
   a guest in its own row -> anywhere (`Gap(row, skip)`, `d.pos` = its own spot = no move); else the old group drop.
   Exports keep host / after (validated). A guest is painted with the HOST's cfg except what the icon carries: Buffs icons carry missingAlpha / glowMissing / activeAlpha / tint (Look), Cooldowns icons readyAlpha / cdAlpha / glowActive (v17). Test: test_iconmove.py.
+- Buffs `Alerts.lua` (0.20.0, `glowAlerts` default on, Bars tab right column): SmartBuff alerts -> icon `glow`. Sources: QoL's
+  team messages `QSB:<N|E|C>:<value>:<target>:<buff>` (%XX, read in our own TEAM_MESSAGE listener, whatever QoL shows here)
+  and our own SmartBuff (`mod.AlertHook()` in OnEnable: hooksecurefunc SMARTBUFF_SetMissingBuffMessage; OptionalDeps SmartBuff).
+  Target -> key by full / first name (QoL's Shown logic; a shared first name = unknown); buff -> `mod.Canonical` (+ "Greater
+  Blessing of" -> "Blessing of" while spell data is missing). `mod.alerts[key][name] = {kind, time}`; `mod.Alerted(key, e, state,
+  start)`: 90 s, cleared when state == "buff" (kind N) or the buff started after the alert (E / C). Member icons and the All bar
+  (any counted member alerted; tip line). Test: test_buffbar.py "SmartBuff alerts glow".
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
   corner; Buffs AllRow sets it to "have/checked" (e.g. "3/5", only while someone misses it; no separate missing count since 0.16.6) from `allCount` (corner | "OFF"), `allCountSize`,
   `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with

@@ -1,5 +1,5 @@
 """MMT_BuffTimers: the All bar's counter (how many members have a buff, in its own
-corner) - the whole module loaded with test_settings' stand-in API."""
+corner), SmartBuff alerts making icons glow, ... - the whole module loaded with test_settings' stand-in API."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -585,4 +585,54 @@ print(lua.eval(r"""function(m)
   for _, s in ipairs(SENT) do if s == "WHISPER:Cid:MBWQ" then n = n + 1 end end
   assert(n == 1, "MBWQ whispers: " .. n)
   return "weapon enchants after a reload ok"
+end""")(mod))
+
+# SmartBuff alerts (Alerts.lua): the team's QSB message makes the member's icon and the All bar's glow
+# until they have the buff (a greater blessing counts as the single one); own SmartBuff the same
+print(lua.eval(r"""function(m)
+  local c = m.M.db
+  local oldState, oldInfo, oldCast = m.State, m.SpellInfo, m.Castable
+  m.SpellInfo = function(id) return ({ [19740] = "Blessing of Might", [25782] = "Greater Blessing of Might" })[id] end
+  m.Castable = function() return true end
+  MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone" } end
+  MMT.RealFirst = function(k) return k:match("^[^-]+") end
+  MMT.RealName = function(k) return (k:gsub("-", " ")) end
+  MMT.db.team["Bob-Stone"] = { class = "WARRIOR" }
+  c.hideUnlearned, c.allBar, c.glowAlerts = false, true, true
+  c.lists.ALL = { { id = 19740 } }
+  local have = false
+  m.State = function(key, e) if key == "Bob-Stone" and not have then return "missing" end return "buff", GetTime() - 10, 300 end
+  m.BuildIndex()
+  local function AllIcon()
+    for _, r in ipairs(m.window.def.rows()) do if r.label then return r.icons[1] end end
+  end
+  assert(not AllIcon().glow, "glows before any alert")
+  -- the team's alert, Bob as SmartBuff writes him, the greater blessing
+  TEAM_MESSAGE("Anna-Smith", "QSB:N:0:Bob Stone:Greater Blessing of Might")
+  local i = AllIcon()
+  assert(i.glow and i.tip:find("SmartBuff"), "All bar icon not glowing after the alert")
+  -- the same buff in Bob's own row
+  c.allBar = false
+  local bob
+  for _, r in ipairs(m.window.def.rows()) do if r.key == "Bob-Stone" then bob = r end end
+  assert(bob and bob.icons[1].glow, "Bob's icon not glowing")
+  c.allBar = true
+  -- the setting off: no glow
+  c.glowAlerts = false
+  assert(not AllIcon().glow, "glow with glowAlerts off")
+  c.glowAlerts = true
+  -- he has it again: the glow ends (and the alert is forgotten)
+  have = true
+  assert(not AllIcon().glow, "still glowing with the buff back")
+  have = false
+  assert(not AllIcon().glow, "the old alert came back")
+  -- an unknown target or someone else's name: nothing
+  TEAM_MESSAGE("Anna-Smith", "QSB:N:0:Zed:Greater Blessing of Might")
+  assert(not AllIcon().glow, "glow for a stranger")
+  -- own SmartBuff's alert (the hook), first name only
+  m.NoteAlert("N", "Bob", "Blessing of Might")
+  assert(AllIcon().glow, "own SmartBuff alert didn't glow")
+  m.alerts = {}
+  m.State, m.SpellInfo, m.Castable = oldState, oldInfo, oldCast
+  return "SmartBuff alerts glow ok"
 end""")(mod))
