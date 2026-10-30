@@ -126,8 +126,9 @@ C_Texture = { GetAtlasInfo = function(n) return ATLASES[n] end }
 MOUSE = nil
 function GetMouseFoci() return { MOUSE } end
 
-function CreateFrame(kind, name, parent)
+function CreateFrame(kind, name, parent, template)
   local f = new(kind, parent)
+  if template == "BackdropTemplate" then for k, v in pairs(BackdropTemplateMixin) do f[k] = v end end
   f._name = name
   if parent then parent._children[#parent._children + 1] = f end
   if kind == "EditBox" then f._font = { "Fonts\\FRIZQT__.TTF", 10, "" }; f._shadow = { 0, 0 } end
@@ -320,9 +321,11 @@ local tab = CreateFrame("Button", nil, w); tab:SetSize(150, 26)
 UI.Fill(tab, 1, 1, 1, 0)
 local bar = tab:CreateTexture(nil, "ARTWORK"); bar:SetColorTexture(A[1], A[2], A[3], 1); bar:SetWidth(2)
 w.tabs[1] = tab
+local navThumb = w:CreateTexture(nil, "OVERLAY"); navThumb:SetColorTexture(A[1], A[2], A[3], 0.6); navThumb:SetWidth(2)
 MMT.ToggleConfig()
 mod.SetStyle("ELVUI")
 assert(eq(col(bar), 0.09, 0.52, 0.82, 1), "nav bar not in the accent")
+assert(eq(col(navThumb), 0.09, 0.52, 0.82, 0.6), "nav scroll marker not in the accent")
 assert(eq(col(w.baseFill), 0.06, 0.06, 0.06, 0.9), "base fill not styled with no background")
 MMT.ApplyBackground(w)   -- opening the window again
 assert(eq(col(w.baseFill), 0.06, 0.06, 0.06, 0.9), "the background picker's colour stayed over the style")
@@ -389,6 +392,7 @@ local grey = UI.Label(win, "grey note"); grey:SetTextColor(0.6, 0.6, 0.6)
 local arrow
 for _, r in ipairs({ dd:GetRegions() }) do if r._kind == "FontString" and r._text == "v" then arrow = r end end
 local close = UI.TextButton(win, "x", function() end, 20)
+local navHead = UI.Label(win, "MODULES"); navHead:SetTextColor(A[1], A[2], A[3], 0.8)
 mod.SetStyle("ELLESMERE")
 assert(head._text == "SECTION" and near(head._tc[4], 0.45), "Ellesmere header: " .. tostring(head._text))
 assert(near(plain._tc[4], 0.8) and near(grey._tc[1], 0.6) and near(grey._tc[4], 1), "Ellesmere text levels (a grey note stays grey) " .. table.concat(plain._tc, ",") .. " / " .. table.concat(grey._tc, ","))
@@ -436,7 +440,11 @@ local secure = CreateFrame("Button", nil, UIParent); secure:SetSize(30, 30); sec
 UI.Fill(secure, 0, 0, 0, 0.85)
 UI.Border(secure, 0.35, 0.35, 0.35, 1)
 mod.SetStyle("CLASSIC")
-assert(big._backdrop and big._backdrop.edgeFile:find("UI%-DialogBox%-Border") and big._backdrop.bgFile:find("UI%-Background%-Rock"), "Classic window: no stone dialog backdrop")
+local function EdgeOf(f) for _, c in ipairs(f._children) do if c._backdrop and c._backdrop.edgeFile and c._shown then return c end end end
+assert(big._backdrop and big._backdrop.bgFile:find("UI%-Background%-Rock") and not big._backdrop.edgeFile, "Classic window: no stone background")
+local bigEdge = EdgeOf(big)
+assert(bigEdge and bigEdge._backdrop.edgeFile:find("UI%-DialogBox%-Border") and bigEdge._backdrop.edgeSize == 32, "Classic window: the carved border isn't on its own frame above")
+assert(mod.seen[bigEdge], "the border frame would count as a widget")
 assert(near(big._bdColor[1], 0.6), "stone not dimmed")
 assert(eq(col(bigFill), 0, 0, 0, 0), "Classic window fill not see-through")
 assert(col(select(2, big:GetRegions()))[4] == 0, "Classic window: MMT's edges still shown")
@@ -449,7 +457,10 @@ UI.Fill(late, 0.05, 0.05, 0.06, 0.94)
 UI.Border(late, 0.22, 0.22, 0.24, 1)
 assert(late._backdrop and late._backdrop.edgeFile:find("Tooltip"), "unsized frame: thin first")
 late:SetSize(600, 400)
-assert(late._backdrop.edgeFile:find("DialogBox"), "resized window didn't become a dialog")
+assert(not late._backdrop.edgeFile and EdgeOf(late), "resized window didn't become a dialog")
+-- widgets built on a window after its border frame are still found
+local afterEdge = UI.Button(late, 100, "After", function() end)
+assert(mod.roles[afterEdge] == "button", "the border frame hid a new widget from its hook")
 -- the background choice, and a file the client doesn't have
 mod.SetOpt("classicBg", "MARBLE")
 assert(big._backdrop.bgFile:find("Marble"), "marble background")
@@ -474,7 +485,13 @@ assert(thumb._file and thumb._file:find("SliderBar%-Button") and thumb._w == 32,
 assert(s._backdrop and s._backdrop.edgeFile:find("SliderBar%-Border"), "Classic slider bar")
 assert(arrow._alpha == 0 and not lines[1]._shown, "Classic dropdown arrow")
 assert(close.label._alpha == 0, "Classic close button")
-assert(edit._backdrop and edit._backdrop.edgeFile:find("Tooltip"), "Classic edit box")
+local function Shown(f, file) local n = 0 for _, r in ipairs({ f:GetRegions() }) do if r._file == file and r._shown then n = n + 1 end end return n end
+assert(Shown(edit, "Interface\\Common\\Common-Input-Border") == 3 and not edit._backdrop, "Classic edit box: not the old input box")
+assert(Shown(dd, "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame") == 3, "Classic dropdown: not the old dropdown frame")
+assert(col(select(1, dd:GetRegions()))[4] == 0 and col(select(2, dd:GetRegions()))[4] == 0, "Classic dropdown: MMT's box still shown")
+assert(area._backdrop and area._backdrop.edgeFile:find("Tooltip"), "Classic text area: thin border")
+-- MMT-blue plain labels (the nav list's CORE / MODULES) are gold
+assert(near(navHead._tc[1], 1) and near(navHead._tc[2], 0.82) and near(navHead._tc[4], 0.8), "a blue label isn't gold in Classic")
 assert(head._text == "Section" and near(head._tc[2], 0.82), "Classic header gold")
 -- the modern client's atlases win when it has them
 ATLASES["128-RedButton-Left"] = { width = 12, height = 22 }; ATLASES["128-RedButton-Center"] = {}; ATLASES["128-RedButton-Right"] = {}
@@ -494,7 +511,10 @@ assert(eq(col(thumb), A[1], A[2], A[3], 1) and thumb._w == 8 and thumb._h == 12 
 assert(arrow._alpha == 1 and close.label._alpha == 1 and not lines[1]._shown, "None: arrow / close")
 assert(head._text == "Section" and near(head._tc[2], 0.82) and eq(col(hline), 1, 1, 1, 0.08), "None: header")
 assert(near(btn.label._tc[1], 1) and near(btn.label._tc[4], 1) and near(plain._tc[4], 1) and near(grey._tc[1], 0.6), "None: text colours")
-assert(not edit._backdrop, "None: edit box")
+assert(not edit._backdrop and Shown(edit, "Interface\\Common\\Common-Input-Border") == 0, "None: edit box")
+assert(Shown(dd, "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame") == 0, "None: dropdown pieces")
+assert(not EdgeOf(big), "None: border frame still shown")
+assert(near(navHead._tc[1], A[1]), "None: blue label")
 
 -- the settings page (real Column / widgets), then reset to defaults: back to None, options on
 local page = CreateFrame("Frame", nil, UIParent); page:SetSize(518, 564); page.widgets = {}

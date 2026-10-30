@@ -79,7 +79,11 @@ mod.Regions = Regions
 
 local function Children(frame)
     if not (frame and frame.GetChildren) then return {} end
-    return { frame:GetChildren() }
+    local out = {}
+    for _, c in ipairs({ frame:GetChildren() }) do
+        if not seen[c] then out[#out + 1] = c end   -- our own (Classic's border frames) are no widgets
+    end
+    return out
 end
 
 local function Type(o) return o and o.GetObjectType and o:GetObjectType() end
@@ -461,9 +465,9 @@ local function AddColor(kind, t, r, g, b, a)
     return rec
 end
 
-local function AddAccentTexture(t, kind)
+local function AddAccentTexture(t, kind, a)
     local A = MMT.UI.ACCENT
-    return AddColor(kind or "accent", t, A[1], A[2], A[3], 1)
+    return AddColor(kind or "accent", t, A[1], A[2], A[3], a or 1)
 end
 
 ---------------------------------------------------------------------------
@@ -481,7 +485,13 @@ local function TextWant(rec, S)
         return { r, g, b, o[4] }
     end
     local white = Near(o, 1, 1, 1)
-    if rec.kind == "plain" then return white and S.plainText or nil end
+    if rec.kind == "plain" then
+        if IsAccent(Num(o[1]), Num(o[2]), Num(o[3])) and AccentOn() then   -- e.g. the nav list's CORE / MODULES
+            local r, g, b = S.accent()
+            return { r, g, b, o[4] }
+        end
+        return white and S.plainText or nil
+    end
     if rec.kind == "button" then
         if white then return S.buttonText end
         if IsAccent(Num(o[1]), Num(o[2]), Num(o[3])) and AccentOn() and S.buttonText then   -- a selected tab
@@ -577,6 +587,13 @@ function mod.ScanConfig()
             if not seen[t] and Type(t) == "Texture" and Layer(t) == "ARTWORK" and t.GetWidth and Num(t:GetWidth()) > 0 and Num(t:GetWidth()) <= 3 then
                 AddAccentTexture(t)
             end
+        end
+    end
+    -- the nav list's scroll position marker (2 px, accent at 0.6)
+    local nav = w.tabs[1] and w.tabs[1].GetParent and w.tabs[1]:GetParent()
+    for _, t in ipairs(nav and Regions(nav) or {}) do
+        if not seen[t] and Type(t) == "Texture" and Layer(t) == "OVERLAY" and t.GetWidth and Num(t:GetWidth()) > 0 and Num(t:GetWidth()) <= 3 then
+            AddAccentTexture(t, nil, 0.6)
         end
     end
 end
@@ -716,7 +733,7 @@ local function Install()
         local holder = NewestChild(parent)
         local e = holder and rawget(holder, "edit")
         if e then AddFont(e) end
-        SetRole(holder, "input")
+        SetRole(holder, "area")
     end)
     H("TextButton", function(parent)
         local b = NewestChild(parent)

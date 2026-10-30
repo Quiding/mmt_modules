@@ -35,7 +35,7 @@ M.Page = function(_, page)
         status.Show_(v == "NONE" and "MMT's own look again." or ("Style: " .. mod.StyleTitle(v) .. "."))
     end)
     local desc = L:Note(mod.STYLES.ELLESMERE.description)   -- the longest: room for every one
-    L:Check("Use the style's font", function() return mod.Opt("fonts") end, function(v) mod.SetOpt("fonts", v and true or false) end,
+    local fontCheck = L:Check("Use the style's font", function() return mod.Opt("fonts") end, function(v) mod.SetOpt("fonts", v and true or false) end,
         "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
     L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
         "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
@@ -59,6 +59,10 @@ M.Page = function(_, page)
     page.OnRefresh = function()
         local S = mod.STYLES[mod.Opt("style")]
         desc:SetText(S and S.description or "MMT's own flat look.")
+        -- Classic keeps MMT's (the game's) font: the option does nothing then
+        local noFont = S and not S.font
+        fontCheck.label:SetText(noFont and "Use the style's font (Classic keeps it)" or "Use the style's font")
+        fontCheck.label:SetTextColor(noFont and 0.45 or 1, noFont and 0.45 or 1, noFont and 0.45 or 1)
     end
     mod.ScanConfig()
 end

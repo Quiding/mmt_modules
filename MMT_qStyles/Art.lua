@@ -7,9 +7,13 @@
 --   button   the red panel button: MMT's fill becomes its middle piece, two end
 --            pieces + a highlight are added; darker while pressed
 --   check    MMT's box fill becomes the check box, the mark the yellow tick
---   dialog   windows >= 300 x 100: carved dialog border over the background
---            picked on the page (mod.CLASSIC_BGS: stone by default), MMT's
---            fill and edges go transparent
+--   dropdown the old dropdown frame (CharacterCreate-LabelFrame, 3 pieces) and
+--            the round arrow button; input = the old edit box (Common-Input-Border)
+--   dialog   windows >= 300 x 100: the background picked on the page
+--            (mod.CLASSIC_BGS: stone by default) on the frame, the carved border
+--            on a child frame ABOVE it (so it also shows over the core's
+--            background pictures and the window's own pieces), full thickness
+--            (32) on windows >= 400 x 200; MMT's fill and edges go transparent
 --   thin     everything else with edges (lists, dropdowns, edit boxes, small
 --            panels): the thin tooltip border on the classic tooltip blue
 -- A frame that is sized later (windows that grow with their content) is
@@ -34,14 +38,22 @@ local FILE = {
     buttonUp = "Interface\\Buttons\\UI-Panel-Button-Up",
     buttonDown = "Interface\\Buttons\\UI-Panel-Button-Down",
     buttonHighlight = "Interface\\Buttons\\UI-Panel-Button-Highlight",
+    dropdown = "Interface\\Glues\\CharacterCreate\\CharacterCreate-LabelFrame",
+    arrowDown = "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down",
+    arrowHighlight = "Interface\\Buttons\\UI-Common-MouseHilight",
+    input = "Interface\\Common\\Common-Input-Border",
 }
 mod.ART_FILES = FILE
 -- the old button file: Left / Middle / Right of the 80 x 22 button in a 128 x 32 texture
 local COORD = { Left = { 0, 0.09375, 0, 0.6875 }, Center = { 0.09375, 0.53125, 0, 0.6875 }, Right = { 0.53125, 0.625, 0, 0.6875 } }
 
-local DIALOG = { bgFile = FILE.dialogBg, edgeFile = FILE.dialogEdge, tile = true, tileSize = 32, edgeSize = 24,
-    insets = { left = 6, right = 6, top = 6, bottom = 6 } }
-local DIALOG_EDGE = { edgeFile = FILE.dialogEdge, edgeSize = 24, insets = { left = 6, right = 6, top = 6, bottom = 6 } }
+-- one table per look: the game keeps the table a frame got (it is read again on every resize), never change one
+local DIALOG_EDGE = { [32] = { edgeFile = FILE.dialogEdge, edgeSize = 32 }, [24] = { edgeFile = FILE.dialogEdge, edgeSize = 24 } }
+local dialogBg = {}   -- [background file] = backdrop
+local function DialogBg(bg)
+    dialogBg[bg.file] = dialogBg[bg.file] or { bgFile = bg.file, tile = true, tileSize = bg.tile, insets = { left = 4, right = 4, top = 4, bottom = 4 } }
+    return dialogBg[bg.file]
+end
 local THIN = { bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = FILE.tipEdge, tile = true, tileSize = 16, edgeSize = 12,
     insets = { left = 3, right = 3, top = 3, bottom = 3 } }
 local TOOLTIP_BLUE = { 0.09, 0.09, 0.19 }   -- the game's classic tooltip background colour
@@ -139,6 +151,10 @@ function mod.ArtKind(frame)
         if frame.IsProtected and frame:IsProtected() then return nil end
         return role
     end
+    if role == "dropdown" or role == "input" then
+        if frame.IsProtected and frame:IsProtected() then return nil end
+        if mod.borderOf[frame] then return role end
+    end
     if not mod.borderOf[frame] or not CanBackdrop(frame) then return nil end
     if role then return "thin" end
     local w, h = mod.Size(frame)
@@ -224,7 +240,7 @@ function mod.ArtFill(t, rec, S)
         t:SetSize(24, 24)
         rec.art = true
         return true
-    elseif kind == "dialog" or kind == "thin" then
+    elseif kind == "dialog" or kind == "thin" or kind == "dropdown" or kind == "input" then
         t:SetColorTexture(0, 0, 0, 0)   -- the backdrop is the background
         return true
     end
@@ -239,6 +255,66 @@ function mod.ArtUndoFill(t, rec)
         for _, c in ipairs(s.caps) do c:Hide() end
         if s.highlight then s.highlight:Hide() end
     end
+end
+
+---------------------------------------------------------------------------
+-- Dropdown / edit box pieces, the dialog's border frame
+---------------------------------------------------------------------------
+local function Pieces(f, kind)
+    local s = State(f)
+    s.pieces = s.pieces or {}
+    local p = s.pieces[kind]
+    if p then return p end
+    p = { Tex(f, "BACKGROUND", 2), Tex(f, "BACKGROUND", 2), Tex(f, "BACKGROUND", 2) }
+    local left, mid, right = p[1], p[2], p[3]
+    if kind == "dropdown" then
+        -- the art is 64 px high for a ~26 px box: scaled to the widget
+        local _, h = mod.Size(f)
+        local k = ((h > 0) and h or 20) / 26
+        for i, c in ipairs({ { 0, 0.1953125 }, { 0.1953125, 0.8046875 }, { 0.8046875, 1 } }) do
+            p[i]:SetTexture(FILE.dropdown)
+            p[i]:SetTexCoord(c[1], c[2], 0, 1)
+            p[i]:SetHeight(64 * k)
+        end
+        left:SetWidth(25 * k); left:SetPoint("LEFT", f, "LEFT", -16 * k, -2 * k)
+        right:SetWidth(25 * k); right:SetPoint("RIGHT", f, "RIGHT", 16 * k, -2 * k)
+    else
+        for i, c in ipairs({ { 0, 0.0625 }, { 0.0625, 0.9375 }, { 0.9375, 1 } }) do
+            p[i]:SetTexture(FILE.input)
+            p[i]:SetTexCoord(c[1], c[2], 0, 0.625)
+        end
+        left:SetPoint("TOPLEFT", f, "TOPLEFT", -2, 0); left:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", -2, 0); left:SetWidth(8)
+        right:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 0); right:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 2, 0); right:SetWidth(8)
+    end
+    mid:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+    mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
+    s.pieces[kind] = p
+    return p
+end
+
+local function ShowPieces(f, kind)
+    local s = state[f]
+    for k, p in pairs(s and s.pieces or {}) do
+        for _, t in ipairs(p) do t:SetShown(k == kind) end
+    end
+end
+
+-- the carved border, on a child frame above everything the window draws itself
+local function EdgeFrame(f)
+    local s = State(f)
+    if s.edge == nil then
+        s.edge = false
+        if BackdropTemplateMixin then
+            local e = CreateFrame("Frame", nil, f, "BackdropTemplate")
+            mod.seen[e] = true   -- not a widget of the page (the hooks look for the newest child)
+            e:SetAllPoints(f)
+            if e.EnableMouse then e:EnableMouse(false) end
+            e:Hide()
+            s.edge = e
+        end
+    end
+    if s.edge then s.edge:SetFrameLevel(f:GetFrameLevel() + 20) end
+    return s.edge or nil
 end
 
 ---------------------------------------------------------------------------
@@ -260,11 +336,22 @@ function mod.ArtBorder(rec, S)
     for _, t in ipairs(rec.edges) do t:SetColorTexture(rec.r, rec.g, rec.b, 0) end
     local fill = mod.fillOf[f]
     local a = fill and mod.records.fills[fill] and mod.records.fills[fill].a or 1
-    if kind == "dialog" then
+    if kind == "dropdown" or kind == "input" then
+        Pieces(f, kind)
+        ShowPieces(f, kind)
+    elseif kind == "dialog" then
         local picture = f.GetName and f:GetName() == "MMTConfigFrame" and mod.BackgroundShown()
-        local bg = ClassicBg()
-        DIALOG.bgFile, DIALOG.tileSize = bg.file, bg.tile
-        SetBackdrop(f, picture and DIALOG_EDGE or DIALOG, bg.tint[1], bg.tint[2], bg.tint[3], math.max(a, 0.9), 1, 1, 1, 1)
+        if not picture then
+            local bg = ClassicBg()
+            SetBackdrop(f, DialogBg(bg), bg.tint[1], bg.tint[2], bg.tint[3], math.max(a, 0.9))
+        end
+        local e = EdgeFrame(f)
+        if e then
+            local w, h = mod.Size(f)
+            e:SetBackdrop(DIALOG_EDGE[(w >= 400 and h >= 200) and 32 or 24])
+            if e.SetBackdropBorderColor then e:SetBackdropBorderColor(1, 1, 1, 1) end
+            e:Show()
+        end
     elseif kind == "thin" then
         local c = TOOLTIP_BLUE
         SetBackdrop(f, THIN, c[1], c[2], c[3], math.max(a, 0.9), 0.8, 0.8, 0.8, 1)
@@ -274,7 +361,11 @@ end
 
 function mod.ArtUndoBorder(rec)
     local s = state[rec.frame]
-    if s then s.kind = nil end
+    if s then
+        s.kind = nil
+        if s.edge then s.edge:Hide() end
+        ShowPieces(rec.frame, nil)
+    end
     ClearBackdrop(rec.frame)
 end
 
@@ -336,16 +427,27 @@ local function PaintWidget(f, w, S)
     if w.arrow then
         local tex, lines = nil, nil
         if S and S.art then
-            s.arrowTex = s.arrowTex or Tex(f, "OVERLAY")
+            if not s.arrowTex then
+                s.arrowTex = Tex(f, "OVERLAY")
+                s.arrowHl = Tex(f, "HIGHLIGHT")
+                if f.HookScript then
+                    f:HookScript("OnMouseDown", function() if s.arrowTex:IsShown() then s.arrowTex:SetTexture(FILE.arrowDown) end end)
+                    f:HookScript("OnMouseUp", function() if s.arrowTex:IsShown() then s.arrowTex:SetTexture(FILE.arrow) end end)
+                end
+            end
             tex = s.arrowTex
             tex:SetTexture(FILE.arrow)
             tex:ClearAllPoints()
-            tex:SetPoint("RIGHT", f, "RIGHT", -2, 0)
-            tex:SetSize(18, 18)
+            tex:SetPoint("RIGHT", f, "RIGHT", 2, 0)
+            tex:SetSize(24, 24)
+            s.arrowHl:SetTexture(FILE.arrowHighlight)
+            if s.arrowHl.SetBlendMode then s.arrowHl:SetBlendMode("ADD") end
+            s.arrowHl:ClearAllPoints()
+            s.arrowHl:SetAllPoints(tex)
         elseif S and S.chevron then
             lines = Chevron(f) or nil
         end
-        if s.arrowTex then s.arrowTex:SetShown(tex ~= nil) end
+        if s.arrowTex then s.arrowTex:SetShown(tex ~= nil); s.arrowHl:SetShown(tex ~= nil) end
         if type(s.chevron) == "table" then
             for _, l in ipairs(s.chevron) do
                 if lines then l:SetColorTexture(1, 1, 1, 0.6); l:Show() else l:Hide() end

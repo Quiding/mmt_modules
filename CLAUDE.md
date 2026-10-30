@@ -590,7 +590,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.1) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.2) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -628,10 +628,19 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Hover (Hover.lua): one driver frame's OnUpdate compares `GetMouseFoci()[1]` (else GetMouseFocus) with
   `mod.widgets` - no OnEnter hooks (a later SetScript, e.g. UI.Tooltip, would drop them). Enter = `mod.SetEdgeColor` +
   label colour; leave = `mod.PaintBorder` + label back. `mod.HoverReset` at the start of every Apply. Classic has none.
-- Classic (Art.lua, `S.art`): `mod.ArtKind(frame)` = button / check (role) | dialog (has edges, >= 300 x 100) | thin (other
-  edged frames) | nil (protected = secure frames, or a frame with its own SetBackdrop: colour look). Backdrop =
+- Classic (Art.lua, `S.art`): `mod.ArtKind(frame)` = button / check / dropdown / input (role) | dialog (has edges, >= 300 x
+  100) | thin (other edged frames, text areas = role "area") | nil (protected = secure frames, or a frame with its own SetBackdrop: colour look). Backdrop =
   `Mixin(frame, BackdropTemplateMixin)` + HookScript OnSizeChanged OnBackdropSizeChanged (like ElvUI), undone with
-  ClearBackdrop. dialog: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
+  ClearBackdrop. 0.2.2 (the user: the border didn't show over the core's background picture and was too thin): the
+  dialog BORDER is a child frame (`EdgeFrame`, BackdropTemplate, level +20, marked `seen` - Skin's `Children` skips seen
+  frames so the widget hooks' "newest child" stays right) above the window's own pieces, edgeSize 32 on windows >= 400 x
+  200 else 24; the background is a bg-only backdrop on the frame. NEVER change a backdrop table after SetBackdrop: the
+  mixin keeps the reference and reads it again on resize (a shared DIALOG table flipped other windows to 24 - one table per
+  look now). Dropdown = 3 CharacterCreate-LabelFrame pieces scaled to the widget (64 x 25 art for a ~26 px box, k = h / 26)
+  + UI-ChatIcon-ScrollDown-Up/-Down 24 px + UI-Common-MouseHilight; edit box = 3 Common-Input-Border pieces (texcoord
+  height 0.625, 8 px caps 2 px outside). Plain labels in MMT's accent (nav CORE / MODULES) and the nav scroll marker
+  (OVERLAY, <= 3 px) follow the style's accent (gold). The page greys "Use the style's font" for styles without a font.
+  Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
   background picker shows a picture; thin: UI-Tooltip-Border edgeSize 12 + UI-Tooltip-Background in the classic tooltip blue
