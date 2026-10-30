@@ -35,7 +35,7 @@ function Object:SetAllPoints() self:SetPoint("TOPLEFT"); self:SetPoint("BOTTOMRI
 function Object:ClearAllPoints() self._points = {} end
 function Object:GetNumPoints() return #self._points end
 function Object:GetPoint(i) local p = self._points[i or 1]; if p then return p[1], p[2], p[3], p[4], p[5] end end
-function Object:Show() self._shown = true end
+function Object:Show() self._shown = true; if self._scripts.OnShow then self._scripts.OnShow(self) end end
 function Object:Hide() self._shown = false; if self._scripts.OnHide then self._scripts.OnHide(self) end end
 function Object:SetShown(v) if v then self:Show() else self:Hide() end end
 function Object:IsShown() return self._shown end
@@ -489,6 +489,9 @@ assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Down", "Classic but
 btn:GetScript("OnMouseUp")(btn)
 assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Up", "Classic button stays pressed")
 assert(near(btn.label._tc[1], 1) and near(btn.label._tc[2], 0.82), "Classic button text not gold")
+-- the Sync button: the core colours it again on every show (OnShow holds its unhooked Update)
+sync:Hide(); sync:Show()
+assert(syncFill._file == "Interface\\Buttons\\UI-Panel-Button-Up" and not syncFill._color, "Sync button: the core's colour came back over the red button")
 assert(boxMark._file == "Interface\\Buttons\\UI-CheckBox-Check" and select(1, box:GetRegions())._file == "Interface\\Buttons\\UI-CheckBox-Up", "Classic check box")
 assert(thumb._file and thumb._file:find("SliderBar%-Button") and thumb._w == 32, "Classic slider knob")
 assert(s._backdrop and s._backdrop.edgeFile:find("SliderBar%-Border"), "Classic slider bar")

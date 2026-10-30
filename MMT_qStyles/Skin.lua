@@ -744,13 +744,16 @@ local function Install()
         local b = NewestChild(page)
         if not (b and type(rawget(b, "Update")) == "function") then return end
         SetRole(b, "button")
-        -- its Update colours the fill again: paint it after that
-        hooksecurefunc(b, "Update", function()
+        -- its Update colours the fill again: paint it after that. OnShow runs the Update it got when it
+        -- was built (SetScript("OnShow", b.Update), not our hooked one): hook the script too
+        local function Again()
             Try(function()
                 local t = fillOf[b]
                 if t then fills[t].painted = true; PaintFill(t, fills[t], mod.Current()) end
             end)
-        end)
+        end
+        hooksecurefunc(b, "Update", Again)
+        if b.HookScript then b:HookScript("OnShow", Again) end
     end)
     -- Column:Header (the Column metatable is the core's: its methods are looked up at call time)
     local probe = UI.Column and UI.Column(UIParent, 0, 0, 10)

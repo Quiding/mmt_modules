@@ -590,7 +590,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.3) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.4) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -647,7 +647,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   hook now (a window colouring its selected row's text blue turned it gold only on the next Apply). `mod.HasFile` =
   GetFileIDFromPath (nil = can't tell); the page marks backgrounds "(not on this client)", the debug report lists them;
   `/mmtstyle frame` = `mod.Describe()` (roles, Classic kind, fill / edge records, backdrop of the frame under the mouse
-  and its parents). Open question: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  and its parents). 0.2.4: the core's SyncButton runs `SetScript("OnShow", b.Update)` = the UNHOOKED Update (captured
+  before our hook), so every show put its blue fill back over Classic's red button: HookScript OnShow too. Open question: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
