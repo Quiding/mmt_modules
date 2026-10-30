@@ -80,6 +80,15 @@ print(lua.eval(r'''function(m)
   local p = m.TreePoints()
   assert(p and p[1] == 0 and p[2] == 32 and p[3] == 19, "trait groups: " .. tostring(p and table.concat(p, "/")))
   assert(m.OwnTree() == 2, "own tree from the trait groups")
+  -- a read before the trait config is ready isn't kept: known on the next call
+  C_ClassTalents.GetActiveConfigID = function() return nil end
+  NOW = NOW + 20
+  assert(m.OwnTree() == nil, "no config yet")
+  C_ClassTalents.GetActiveConfigID = function() return 7 end
+  assert(m.OwnTree() == 2, "an empty read was cached")
+  local lines = {}
+  m.SpecReport(function(l) lines[#lines + 1] = l end)
+  assert(#lines == 2 and lines[2]:find("0/32/19 from trait groups", 1, true) and lines[2]:find("tabs 0/0/0", 1, true), "spec report: " .. tostring(lines[2]))
   -- groups and tabs all 0: the node column bands still count
   C_Traits.GetGroupCurrencyInfo = function() return { { currencyInfos = { { spent = 0 } } } } end
   p = m.TreePoints()

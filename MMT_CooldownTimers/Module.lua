@@ -123,7 +123,9 @@ SlashCmdList.MMTCOOLDOWNTIMERS = function(msg)
         MMT.Print("Cooldowns window %s.", M.db.locked and "locked" or "unlocked")
     elseif msg == "arrange" then
         mod.ToggleArrange()
+    elseif msg == "spec" then
+        mod.SpecReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     else
-        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct arrange, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
+        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct arrange, /mmtct spec, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
     end
 end

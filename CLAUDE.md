@@ -113,7 +113,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.9) / MMT_BuffTimers (v0.17.10) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.10) / MMT_BuffTimers (v0.17.11) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -189,7 +189,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.OwnTree`; 0.14.9 / 0.17.10: Forever's trait groups first = `C_Traits.GetGroupDisplayInfoByTreeID` by orderIndex,
   points `GetGroupCurrencyInfo(config, {groupID})[1].currencyInfos[1].spent` like EllesmereUI's LibSpecialization, then
   the classic tabs, each only when the sum > 0 - **Forever HAS GetTalentTabInfo but it reads 0 for every tree** -, then
-  the node-column bands), heartbeat `cts` (Cooldowns) / `bts` (Buffs, only while Cooldowns is off) + `MSPC:<tree>` once on
+  the node-column bands; 0.14.10 / 0.17.11: `OwnTree` keeps only a KNOWN tree for 10 s (a read before the trait config
+  is ready no longer sticks), re-read on PLAYER_ENTERING_WORLD / TRAIT_CONFIG_LIST_UPDATED; `/mmtct spec` / `/mmtbt spec`
+  and the debug dump print `mod.SpecReport`: points per source), heartbeat `cts` (Cooldowns) / `bts` (Buffs, only while Cooldowns is off) + `MSPC:<tree>` once on
   change; druid Feral + `mod.PlayerRole` TANK (Buffs only) = BEAR. Preview ALL/MIXED: made-up tree from a hash.
   Set by hand: `M.db.specSet[key]` (Specs tab = `mod.SpecsTab(panel, status, changed)` in Specs.lua, both modules;
   holds the "Use spec lists" check), else the OTHER module's `MMT.db.modules[OTHER].specSet` (read only); must fit

@@ -264,6 +264,7 @@ M.Page = function(_, page)
 end
 
 M.Report = function(_, add)
+    mod.SpecReport(add)
     local n = 0
     for _, l in pairs(M.db.lists or {}) do n = n + #l end
     add(("-- Cooldowns %s: shown=%s entries=%d"):format(mod.VERSION, tostring(M.db.shown), n))

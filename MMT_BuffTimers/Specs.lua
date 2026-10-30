@@ -138,17 +138,30 @@ end
 function mod.TreePoints()
     local config, tree = TraitTree()
     local groups = config and GroupPoints(config, tree)
-    if Sum(groups) > 0 then return groups end
+    if Sum(groups) > 0 then return groups, "trait groups" end
     local tabs = TabPoints()
-    if Sum(tabs) > 0 then return tabs end
+    if Sum(tabs) > 0 then return tabs, "talent tabs" end
     local bands = config and C_Traits.GetTreeNodes and C_Traits.GetNodeInfo and BandPoints(config, tree)
-    return bands or groups or tabs
+    return bands or groups or tabs, bands and "node bands" or groups and "trait groups" or tabs and "talent tabs" or nil
 end
 
--- this character's talent tree with the most points (1-3), or nil (no points yet)
+-- one line per source, for /mmtct spec and the debug dump
+function mod.SpecReport(add)
+    local function P(t) return t and table.concat(t, "/") or "none" end
+    local config, tree = TraitTree()
+    add(("spec: own=%s config=%s tree=%s"):format(tostring(mod.SpecOf(MMT.PlayerFull() or "")), tostring(config), tostring(tree)))
+    local points, from = mod.TreePoints()
+    add(("spec points: %s from %s; groups %s, tabs %s, bands %s"):format(P(points), tostring(from),
+        P(config and GroupPoints(config, tree)), P(TabPoints()),
+        P(config and C_Traits.GetTreeNodes and C_Traits.GetNodeInfo and BandPoints(config, tree))))
+end
+
+-- this character's talent tree with the most points (1-3), or nil (no points
+-- yet). Only a known tree is kept for 10 s: right after login the trait config
+-- may not be ready yet.
 local cache, cacheTime
 function mod.OwnTree()
-    if cacheTime and GetTime() - cacheTime < 10 then return cache end
+    if cache and cacheTime and GetTime() - cacheTime < 10 then return cache end
     cacheTime = GetTime()
     local points = mod.TreePoints()
     cache = nil
@@ -191,7 +204,7 @@ local function TalentsChanged()
 end
 local frame = CreateFrame("Frame")
 for _, ev in ipairs({ "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED", "TRAIT_CONFIG_UPDATED",
-    "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_SPECIALIZATION_CHANGED" }) do
+    "TRAIT_CONFIG_LIST_UPDATED", "PLAYER_ENTERING_WORLD", "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_SPECIALIZATION_CHANGED" }) do
     pcall(frame.RegisterEvent, frame, ev)
 end
 frame:SetScript("OnEvent", TalentsChanged)

@@ -451,6 +451,7 @@ M.Page = function(_, page)
 end
 
 M.Report = function(_, add)
+    mod.SpecReport(add)
     -- buffs not learned yet (Known.lua): own, and as the team told us
     local own = {}
     for _, id in ipairs(mod.OwnUnlearned() or {}) do own[#own + 1] = tostring(mod.SpellInfo(id) or id) end
