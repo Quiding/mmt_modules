@@ -120,6 +120,13 @@ M.Page = function(_, page)
     mod.LookText(WL, Opt, Apply, false)   -- the timer's size and colour: Timer sub-tab
     mod.LookFrame(UI.Column(look.window, COL2_X, 0, COL_W), Opt, Apply)
     mod.TimerTab(look.timer, Opt, Apply)
+    mod.WindowShade(look.window, function()
+        if not M.db.onFrames then return "ALL" end
+        if M.db.framesOthers == "HIDE" then
+            return "NONE", "Every icon sits beside the party frames and members without a frame are hidden (Frames tab): the window isn't used."
+        end
+        return "SOME", "Beside the party frames: these only change the window with the members who have no frame."
+    end)
     local LL = UI.Column(look.icons, 0, 0, COL_W)
     LL:Header("Icons")
     mod.LookIconSizes(LL, Opt)

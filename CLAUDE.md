@@ -118,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.17.1) / MMT_BuffTimers (v0.22.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.17.2) / MMT_BuffTimers (v0.22.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -174,7 +174,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (SettingsKit: opts.key = own remembered choice, opts.bottom = room below; all five copies updated). SettingsKit's LookTab
   is built from pieces (`mod.LookIconSizes`, `LookWindowSizes`, `LookText(col, Opt, apply, timer)`, `LookFrame`; 0.17.1 / 0.22.1):
   Window = window sizes + text without the timer + LookFrame, Icons = "Icons" (LookIconSizes) + the module's own (Cooldowns
-  Opacity; Buffs "Buffs" + "All bar counter"), Timer = `TimerTab.lua` (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' LookTab unchanged.
+  Opacity; Buffs "Buffs" + "All bar counter"), Timer = `TimerTab.lua`. `mod.WindowShade(panel, state)` (FramesTab.lua, 0.17.2 / 0.22.2): state() -> "ALL" | "SOME", why
+  (yellow line at the sub-panel's bottom) | "NONE", why (panel alpha 0.4 + a mouse-eating cover with the why as tooltip);
+  updated on OnShow + M:Listen("REFRESH"). Cooldowns: NONE = onFrames + framesOthers HIDE; Buffs also counts attached and the
+  free All bar (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' LookTab unchanged.
 - Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all five: Cooldowns, Buffs, Totems, TeamInventory, QoL: `mod.Tabs`,
   `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.

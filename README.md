@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.17.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.22.1 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.17.2 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.22.2 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -75,7 +75,8 @@ known keep the class list.
 
 Cooldown Timers and Buff Timers split their **Look** tab into sub-tabs: **Window** (scale, row spacing, font,
 name size, background, border, member rows), **Icons** (icon size, zoom and spacing, opacity, missing buffs, the
-All bar counter) and **Timer**: the timer text's size and colour, the
+All bar counter; Window is greyed out while nothing can show in the window - everything beside the party frames
+or on the Cooldowns bars - and says what still uses it otherwise) and **Timer**: the timer text's size and colour, the
 colour and opacity of the countdown circle that runs round an icon, and other colours for both once only a few
 seconds are left ("soon" and "urgent", each with its own number of seconds; 0 = off).
 

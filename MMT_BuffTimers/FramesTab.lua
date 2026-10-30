@@ -66,3 +66,35 @@ function mod.FramesTab(panel, Opt, status, where)
     R:Add(check, UI.ROW + 2)
     return L, R
 end
+
+-- The Look > Window sub-tab only matters while something can show in the window. state() returns
+-- "ALL" (in use), "SOME", text (partly: the line under it says what still uses it) or "NONE", text
+-- (greyed, an overlay takes the clicks and says why). Redrawn on every settings change (REFRESH).
+function mod.WindowShade(panel, state)
+    local cover = CreateFrame("Frame", nil, panel)
+    cover:SetAllPoints()
+    cover:SetFrameLevel((panel.GetFrameLevel and panel:GetFrameLevel() or 1) + 50)
+    cover:EnableMouse(true)
+    cover:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+        GameTooltip:SetText("Window", 1, 1, 1)
+        GameTooltip:AddLine(self.why or "", 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    cover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    local line = UI.Label(panel, "")
+    line:SetPoint("BOTTOMLEFT", 0, 4)
+    line:SetWidth(H.PAGE_W)
+    line:SetJustifyH("LEFT")
+    line:SetTextColor(1, 0.82, 0)
+    local function Update()
+        local s, why = state()
+        cover.why = why
+        cover:SetShown(s == "NONE")
+        panel:SetAlpha(s == "NONE" and 0.4 or 1)
+        line:SetText(s ~= "ALL" and why or "")
+    end
+    Update()
+    panel:HookScript("OnShow", Update)
+    M:Listen("REFRESH", Update)
+end
