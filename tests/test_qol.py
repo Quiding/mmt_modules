@@ -8,7 +8,9 @@ group in two parts delivered out of order, "all" to the team, ask / straight imp
 waiting for an open import window and for combat, "only the FTL leader".
 EllesmereUI: a stand-in with its profile export / interactive import / full account
 functions: a profile in parts, a busy import page, the full account always asked and
-confirmed in its own popup, straight import without ask."""
+confirmed in its own popup, straight import without ask.
+SmartBuff: its alert function hooked, once a minute per target + buff, shown on the
+leader / everyone / nowhere."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -395,7 +397,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 5, "report lines " .. n)
+  assert(n == 6, "report lines " .. n)
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -722,4 +724,82 @@ run(B, bmod, r"""function(m)
   LOADED.EllesmereUI = false
   local ok, why = m.SendEui("Default", "Anna-Smith"); assert(not ok and why:find("switched off"), tostring(why))
   return "Bob: profile straight to the import page, declined, report ok, off without EllesmereUI"
+end""")
+
+# --- SmartBuff alerts ------------------------------------------------------
+SB = r"""
+LOADED.SmartBuff = true
+SB_SPLASH = 0
+function SMARTBUFF_SetMissingBuffMessage(target, buff) SB_SPLASH = SB_SPLASH + 1 end
+function hooksecurefunc(name, fn)
+  local orig = _G[name]
+  _G[name] = function(...) local r = orig(...); fn(...); return r end
+end
+function MMT.SendAlert(msg) assert(#msg < 250, "too long"); OUT[#OUT + 1] = { msg = msg, alert = true } end
+RAID, SOUNDS = {}, 0
+RaidWarningFrame = {}
+function RaidNotice_AddMessage(_, text) RAID[#RAID + 1] = text end
+function PlaySound() SOUNDS = SOUNDS + 1 end
+function IsInGroup() return true end
+function UnitIsGroupLeader() return LEADS == true end
+function MMT.FirstName(k) return (k:match("^[^-]+")) end
+"""
+for lua in (A, B):
+    lua.execute(SB)
+    lua.execute("MMT.FTLLeader = function() return nil end")
+
+run(B, bmod, r"""function(m)
+  assert(m.SmartBuffHook(), "not hooked"); OUT = {}
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Arcane Intellect", "icon", false, 0, nil, false)
+  assert(SB_SPLASH == 1, "SmartBuff's own function didn't run")
+  assert(#OUT == 1 and OUT[1].alert and OUT[1].msg == "QSB:N:0:Bob Stone:Arcane Intellect", "alert: " .. tostring(OUT[1] and OUT[1].msg))
+  -- SmartBuff checks every 5 s: the same alert not again within a minute
+  NOW = NOW + 5; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Arcane Intellect", "icon", false, 0, nil, false)
+  assert(#OUT == 1, "sent again within the minute")
+  -- a change (running out) goes right away; names with ":" are escaped
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Arcane Intellect", "icon", false, 0, 28.6, true)
+  SMARTBUFF_SetMissingBuffMessage("Pet: Fluffy", "Blessing of Might", "icon", false, 0, nil, false)
+  assert(#OUT == 3 and OUT[2].msg == "QSB:E:28:Bob Stone:Arcane Intellect" and OUT[3].msg == "QSB:N:0:Pet%3A Fluffy:Blessing of Might", "change: " .. tostring(OUT[2] and OUT[2].msg))
+  NOW = NOW + 61; SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Arcane Intellect", "icon", false, 0, 20, true)
+  assert(#OUT == 4, "not sent again after the minute")
+  -- running out off: only missing buffs; sending off: nothing
+  m.M.db.sbExpire = false; NOW = NOW + 100
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Arcane Intellect", "icon", false, 0, 20, true)
+  assert(#OUT == 4, "running out sent while off")
+  m.M.db.sbExpire = true; m.M.db.sbSend = false
+  SMARTBUFF_SetMissingBuffMessage("Bob Stone", "Thorns", "icon", false, 0, nil, false)
+  assert(#OUT == 4, "sent while sending is off")
+  m.M.db.sbSend = true
+  return "Bob: SmartBuff's alerts sent once a minute, changes right away"
+end""")
+msgs = out(B)
+run(A, amod, r"""function(m)
+  -- not the leader (no FTL leader, group leader is someone else): nothing shown
+  LEADS = false; PRINTS = {}
+  DELIVER("Bob-Stone", "QSB:N:0:Bob Stone:Arcane Intellect")
+  assert(#RAID == 0 and #PRINTS == 0, "shown on a follower")
+  LEADS = true
+  return "Anna: not shown while not the leader"
+end""")
+deliver_to(msgs, A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  -- (the 4th, the same "runs out" again, comes within 10 s on this clock: shown once)
+  assert(#RAID == 3 and RAID[1] == "Bob: Bob Stone needs Arcane Intellect", "raid text: " .. tostring(RAID[1]))
+  assert(RAID[2] == "Bob: Bob Stone - Arcane Intellect runs out in 28 s" and RAID[3] == "Bob: Pet: Fluffy needs Blessing of Might", tostring(RAID[2]))
+  assert(SOUNDS == 3 and PRINTS[1]:find("needs Arcane Intellect", 1, true), "sound / chat")
+  -- the same alert from another character within 10 s: once
+  DELIVER("Cara-Moon", "QSB:N:0:Bob Stone:Arcane Intellect")
+  NOW = NOW + 11; DELIVER("Cara-Moon", "QSB:N:0:Bob Stone:Arcane Intellect")
+  assert(#RAID == 4, "repeat: " .. #RAID)
+  -- the FTL leader decides when one is known; raid text / sound off; everywhere / nowhere
+  MMT.FTLLeader = function() return "Bob-Stone" end
+  NOW = NOW + 11; DELIVER("Cara-Moon", "QSB:N:0:Cara Moon:Thorns"); assert(#RAID == 4, "shown on a non-FTL-leader")
+  m.M.db.sbShow = "ALL"; m.M.db.sbRaid = false; m.M.db.sbSound = false; PRINTS = {}
+  DELIVER("Cara-Moon", "QSB:N:0:Cara Moon:Thorns")
+  assert(#RAID == 4 and SOUNDS == 4 and #PRINTS == 1, "ALL / raid / sound options")
+  m.M.db.sbShow = "OFF"; NOW = NOW + 11; DELIVER("Cara-Moon", "QSB:N:0:Cara Moon:Thorns"); assert(#PRINTS == 1, "shown while OFF")
+  local n = 0
+  m.M.Report(m.M, function(l) if l:find("^SmartBuff:") then n = n + 1 end end)
+  assert(n == 1, "report")
+  return "Anna (leader): alerts shown with raid text + sound, repeats once, leader / ALL / OFF"
 end""")

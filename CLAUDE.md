@@ -465,7 +465,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.5.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -476,7 +476,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
   another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
   Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.
-- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI). One message per change; > 10 changes at once
+- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI), `QSB` (SmartBuff). One message per change; > 10 changes at once
   (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
 - `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private
   addon table). Read + write `__DEJUNK_ADDON_V3_SAVED_VARIABLES__` (rewritten as a shallow copy on every state change;
@@ -553,6 +553,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   messages of its own. Window `MMTQoLEllesmereWindow`: profiles in its order (active marked, default selection) +
   "Full account" row, target, Send; "Send to team" above `EllesmereUIFrame` (built one frame after
   `EllesmereUI:Show()` on the first open: hooks on Show / Toggle look again now and 0.5 s later).
+- `SmartBuffAlerts.lua` (0.6.0, key `smartbuff`, options `sbSend`, `sbExpire`, `sbRepeat` (s), `sbShow` LEADER | ALL | OFF,
+  `sbRaid`, `sbSound`): SmartBuff Forever builds every missing / running-out alert in the GLOBAL
+  `SMARTBUFF_SetMissingBuffMessage(target, buff, icon, canCharge, charges, timeLeft, expiring)` (SmartBuff/Buff.lua;
+  splash, chat line and sound all come from it, every AutoTimer = 5 s while missing). `hooksecurefunc` on it
+  (`mod.SmartBuffHook()`, OnEnable) -> one `MMT.SendAlert("QSB:<N|E|C>:<seconds|charges>:<target>:<buff>")` (fields
+  %XX escaped incl. ":"; "item:ID" buffs -> `mod.ItemText`) per target + buff and `sbRepeat`, at once on a kind change.
+  Receiver (`mod.SmartBuffShowsHere`): LEADER = this is the FTL leader (`MMT.FTLLeader`), without one the group leader
+  (solo: yes); chat line + `RaidNotice_AddMessage(RaidWarningFrame)` + `PlaySound(SOUNDKIT.RAID_WARNING)` like the core's
+  Warnings.lua (its display only knows its own NOTE:WARN kinds); the same target + buff + kind once per 10 s from anyone.
 - Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).
   ForeverAuras: stand-in ForeverAurasAPI; one aura, a group in parts out of order, all to the team, ask / ignore,
   waiting for an open import window / combat, FTL-leader-only, the window's rows. EllesmereUI: stand-in with export /

@@ -9,17 +9,18 @@
 --   Bulk.lua       sending big import strings (chunks, ask, one import at a time)
 --   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Ellesmere.lua  send EllesmereUI profiles to the team (EllesmereWindow.lua: the window)
+--   SmartBuffAlerts.lua  SmartBuff's missing-buff alerts called out to the team
 --   Settings.lua   settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.5.0"
+mod.VERSION = "0.6.0"
 
 local M = MMT.NewModule({
     name = "QoL",
     title = "Quality of life",
-    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team.",
+    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team.",
     sync = true,
     defaults = {
         -- Dejunk
@@ -48,6 +49,14 @@ local M = MMT.NewModule({
         euAsk = true,              -- a dialog before EllesmereUI's import page (a full account: always)
         euFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
         euDock = true,             -- "Send to team" button above EllesmereUI's options
+        -- SmartBuff alerts
+        smartbuff = true,
+        sbSend = true,             -- send what SmartBuff reports here
+        sbExpire = true,           -- "runs out" / low charges too (else only missing buffs)
+        sbRepeat = 60,             -- the same alert again after (s)
+        sbShow = "LEADER",         -- show the team's alerts: LEADER (FTL leader) | ALL | OFF
+        sbRaid = true,             -- raid warning text
+        sbSound = true,            -- raid warning sound
     },
 })
 mod.M = M
