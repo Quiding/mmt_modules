@@ -24,6 +24,9 @@
 --   QStyles.Paint(texture, r, g, b, a)            a fill, painted for the style
 --   QStyles.PaintEdges(frame, edges, r, g, b, a)  the 4 edge textures of a frame
 --   QStyles.Current()                             "NONE" | "ELVUI" | "ELLESMERE" | "CLASSIC"
+--   QStyles.WindowGap()                           extra px between windows placed side by side (Classic's
+--                                                 borders sit outside the windows)
+--   QStyles.OnChange(fn)                          fn(styleKey) after every switch (to place windows again)
 
 local _, mod = ...
 local MMT = MMT
@@ -802,7 +805,9 @@ function mod.Apply()
     for fs, rec in pairs(headers) do Try(PaintHeader, fs, rec, S) end
     if mod.ArtWidgets then Try(mod.ArtWidgets, S) end
     if mod.HoverStart then Try(mod.HoverStart, S) end
+    for _, fn in ipairs(mod.listeners) do Try(fn, S and S.key or "NONE") end
 end
+mod.listeners = {}
 
 -- /mmtstyle frame: what Styles did to the window under the mouse (and the frames it sits in)
 function mod.Describe()
@@ -844,7 +849,7 @@ mod.PaintBorder, mod.PaintFill, mod.PaintText = PaintBorder, PaintFill, PaintTex
 -- Public API for modules that colour textures themselves
 ---------------------------------------------------------------------------
 QStyles = QStyles or {}
-QStyles.VERSION = 2
+QStyles.VERSION = 3
 
 -- instead of texture:SetColorTexture(r, g, b, a) for a window's background
 function QStyles.Paint(t, r, g, b, a)
@@ -865,4 +870,13 @@ end
 function QStyles.Current()
     local S = mod.Current()
     return S and S.key or "NONE"
+end
+
+function QStyles.WindowGap()
+    local S = mod.Current()
+    return S and S.windowGap or 0
+end
+
+function QStyles.OnChange(fn)
+    if type(fn) == "function" then mod.listeners[#mod.listeners + 1] = fn end
 end

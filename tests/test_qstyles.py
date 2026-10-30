@@ -470,6 +470,14 @@ assert(near(rowText._tc[2], 0.82), "a label coloured blue after it was built isn
 assert(type(mod.Describe()) == "table", "describe")
 assert(near(small._bdColor[1], 0.09) and near(small._bdColor[3], 0.19), "thin panel not the tooltip blue")
 assert(col(select(1, small:GetRegions()))[4] == 0, "thin panel: MMT's black fill still shown")
+-- side by side: our modules add QStyles.WindowGap() and place again on QStyles.OnChange
+assert(QStyles.WindowGap() == 18, "Classic's window gap")
+local changed
+QStyles.OnChange(function(key) changed = key end)
+mod.SetStyle("ELVUI")
+assert(changed == "ELVUI" and QStyles.WindowGap() == 0, "OnChange / gap after a switch")
+mod.SetStyle("CLASSIC")
+assert(changed == "CLASSIC", "OnChange back to Classic")
 -- a window built while Classic is on: Fill first, then Border (the Team Gear window)
 local gear = CreateFrame("Frame", "MMTTestGear", UIParent); gear:SetSize(540, 438)
 local gearFill = UI.Fill(gear, 0.05, 0.05, 0.06, 0.95)

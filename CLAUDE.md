@@ -396,7 +396,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.10.2)
+### MMT_TeamInventory (v0.10.3)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -486,7 +486,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.6.6) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.7) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -607,7 +607,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.2.7) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.2.8) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -672,7 +672,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   looked right because they redraw / resize later. 0.2.7: `mod.IsWindow` = parent UIParent, or a side panel anchored
   OUTSIDE its parent (a point relative to the parent with opposite sides, e.g. TOPLEFT to TOPRIGHT: Team Inventory's Team
   panel), never MMTDropdownList / MMTColorPopup (lists: thin); dialog from 150 x 100 (the ForeverAuras send window is
-  290 wide). Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  290 wide). 0.2.8: windows side by side overlapped their outside borders: `QStyles.WindowGap()` (Classic 18 = `S.windowGap`,
+  else 0) is added by Team Inventory's `mod.PlaceTeam` (2 + gap, cached in `f.team.gap`) and QoL's docked send windows
+  (4 + gap beside ForeverAuras' / EllesmereUI's options); `QStyles.OnChange(fn)` runs fn(styleKey) at the end of every
+  Apply, both register one to place again. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's
@@ -689,7 +692,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Core background picker (PR bnetworking/MMT#2, `MMT.ConfigBackground` / `ApplyBackground`): the settings window's
   base fill is skipped while a picture is chosen (`skip`), and fill + edges are repainted after each ApplyBackground.
 - Public API for modules that colour textures themselves: `QStyles.Paint(tex, r, g, b, a)` / `QStyles.PaintEdges(frame,
-  edges, r, g, b, a)` (call INSTEAD of SetColorTexture: the colours are the originals), `QStyles.Current()`. Used by Team
+  edges, r, g, b, a)` (call INSTEAD of SetColorTexture: the colours are the originals), `QStyles.Current()`,
+  `QStyles.WindowGap()` / `QStyles.OnChange(fn)` (windows placed side by side). Used by Team
   Inventory's SkinFrame. Not styled on purpose: Cooldown / Buff Timers IconBars and Totem bars (own Look tabs).
 - Test: `tests/test_qstyles.py` loads the REAL `MMT/Widgets.lua` (read only) on stand-in frames that keep regions /
   children in order, colours, anchors, fonts, backdrops, atlases; skipped if MMT isn't there. Stand-in method lookups

@@ -842,6 +842,7 @@ local function Build()
     -- item on a name = a planned gift) and the trades to do
     f.team = CreateFrame("Frame", nil, f)
     f.team:SetWidth(TEAM_W)
+    if QStyles and QStyles.OnChange then QStyles.OnChange(function() mod.PlaceTeam(f) end) end
     SkinFrame(f.team)
     f.team:EnableMouse(true)
     -- section titles like MMT's settings: gold text, a thin line under it
@@ -881,14 +882,16 @@ end
 -- the side panel: right of the window, or left of it when the screen ends there
 function mod.PlaceTeam(f)
     if not f.team then return end
+    -- MMT_qStyles' Classic draws the windows' borders outside them: keep the two borders apart
+    local gap = 2 + ((QStyles and QStyles.WindowGap and tonumber(QStyles.WindowGap())) or 0)
     local right, es = tonumber(f:GetRight()), tonumber(f:GetEffectiveScale())
     local screen, ues = tonumber(UIParent:GetRight()), tonumber(UIParent:GetEffectiveScale())
-    local left = (right and es and screen and ues and (right + TEAM_W + 2) * es > screen * ues) or false
-    if left == f.team.left and f.team.placed then return end
-    f.team.left, f.team.placed = left, true
+    local left = (right and es and screen and ues and (right + TEAM_W + gap) * es > screen * ues) or false
+    if left == f.team.left and gap == f.team.gap and f.team.placed then return end
+    f.team.left, f.team.gap, f.team.placed = left, gap, true
     f.team:ClearAllPoints()
-    if left then f.team:SetPoint("TOPRIGHT", f, "TOPLEFT", -2, 0)
-    else f.team:SetPoint("TOPLEFT", f, "TOPRIGHT", 2, 0) end
+    if left then f.team:SetPoint("TOPRIGHT", f, "TOPLEFT", -gap, 0)
+    else f.team:SetPoint("TOPLEFT", f, "TOPRIGHT", gap, 0) end
 end
 
 local function MiniIcon(parent)

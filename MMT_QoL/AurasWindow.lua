@@ -206,7 +206,8 @@ local function Place()
     win:ClearAllPoints()
     win.docked = opts and opts:IsShown() and true or false
     if win.docked then
-        win:SetPoint("TOPLEFT", opts, "TOPRIGHT", 4, 0)
+        -- MMT_qStyles' Classic draws the windows' borders outside them: keep the two borders apart
+        win:SetPoint("TOPLEFT", opts, "TOPRIGHT", 4 + ((QStyles and QStyles.WindowGap and tonumber(QStyles.WindowGap())) or 0), 0)
     else
         win:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     end
@@ -218,7 +219,10 @@ function mod.OpenAuras()
         MMT.Print("Quality of life: sending auras is %s", ok and "switched off (/mmt > Quality of life > ForeverAuras)." or why)
         return
     end
-    if not win then Build() end
+    if not win then
+        Build()
+        if QStyles and QStyles.OnChange then QStyles.OnChange(function() if win:IsShown() and win.docked then Place() end end) end
+    end
     if win:IsShown() then win:Hide() return end
     win.status:SetText("")
     Place()

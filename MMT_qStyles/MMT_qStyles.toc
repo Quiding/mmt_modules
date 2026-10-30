@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Styles
 ## Notes: MMT module: gives MMT's settings window and the windows of MMT and its modules another look - ElvUI-like, EllesmereUI-like or Classic (the game's old window art) - picked on its settings page, switched right away.
-## Version: 0.2.7
+## Version: 0.2.8
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0

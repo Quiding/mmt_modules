@@ -23,6 +23,7 @@
 --   hover             { edge = {r, g, b, a} | "ACCENT", label = {r, g, b, a} }: the widget under the mouse
 --   chevron           dropdowns get a drawn chevron instead of MMT's "v"
 --   art               Classic: the game's own window textures (Art.lua) instead of colours
+--   windowGap         px our modules add between windows placed side by side (QStyles.WindowGap)
 
 local _, mod = ...
 
@@ -110,6 +111,7 @@ mod.STYLES = {
         accent = function() return 1, 0.82, 0 end,
         buttonText = { 1, 0.82, 0, 1 },
         headerLine = { 1, 0.82, 0, 0.25 },
+        windowGap = 18,   -- two carved borders (outside the windows) side by side
     },
 }
 
