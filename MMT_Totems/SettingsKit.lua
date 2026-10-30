@@ -6,8 +6,9 @@
 --   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export,
 --                                          Reset to defaults, the core's "Sync to team"
 --   mod.ResetSettings()                    every setting of the module back to its default
---   mod.LookTab(panel, Opt, apply [, opts]) -> left column, for the module's own look options
---                                          (opts.timer = false: no timer size / colour, a Timer sub-tab has them)
+--   mod.LookTab(panel, Opt, apply)         -> left, right column, for the module's own look options
+--   mod.LookIconSizes / LookWindowSizes(col, Opt), LookText(col, Opt, apply, timer), LookFrame(col, Opt, apply)
+--                                          the pieces of LookTab, for modules that split Look into sub-tabs
 --   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
 --   mod.DragGrip(row)                      -> the dotted handle at a draggable row's left edge
 --   mod.MoveTab(frame, opts)               -> the move tab above a movable window's top-left corner
@@ -184,55 +185,71 @@ local function Color(col, text, M, key, apply)
     end)
 end
 
--- sizes, text, background, border, member rows; returns the left column
-function mod.LookTab(panel, Opt, apply, opts)
-    local UI, H = MMT.UI, MMT.ConfigHelpers
-    local M = mod.M
-    local COL_W, COL2_X = H.COL_W, H.COL2_X
-
-    local L = UI.Column(panel, 0, 0, COL_W)
-    L:Header("Size")
+-- the pieces of the Look tab (column `col`), for modules that place them on sub-tabs
+function mod.LookIconSizes(col, Opt)   -- icon size, zoom, spacing
     local gi, si = Opt("iconSize")
-    L:Slider("Icon size", 16, 64, 1, gi, si)
+    col:Slider("Icon size", 16, 64, 1, gi, si)
     local gz, sz = Opt("iconZoom")
-    L:Slider("Icon zoom", 0, 30, 1, function() return gz() or 8 end, sz, "%d%%")
-    local gs, ss = Opt("scale")
-    L:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
+    col:Slider("Icon zoom", 0, 30, 1, function() return gz() or 8 end, sz, "%d%%")
     local gsp, ssp = Opt("spacing")
-    L:Slider("Icon spacing", 0, 20, 1, gsp, ssp)
+    col:Slider("Icon spacing", 0, 20, 1, gsp, ssp)
+end
+
+function mod.LookWindowSizes(col, Opt)   -- scale, row spacing
+    local gs, ss = Opt("scale")
+    col:Slider("Scale", 0.5, 2, 0.05, gs, ss, "%.2f")
     local grg, srg = Opt("rowGap")
-    L:Slider("Row spacing", 0, 30, 1, grg, srg)
-    L:Header("Text")
-    L:Cycle("Font", FontChoices, function() return M.db.font or "" end, function(v)
+    col:Slider("Row spacing", 0, 30, 1, grg, srg)
+end
+
+function mod.LookText(col, Opt, apply, timer)   -- font, [timer size / colour], name size
+    local M = mod.M
+    col:Cycle("Font", FontChoices, function() return M.db.font or "" end, function(v)
         M.db.font = (v ~= "") and v or nil
         apply()
     end)
-    if not (opts and opts.timer == false) then
+    if timer then
         local gt, st = Opt("timerSize")
-        L:Slider("Timer size", 8, 32, 1, gt, st)
-        Color(L, "Timer colour", M, "timerColor", apply)
+        col:Slider("Timer size", 8, 32, 1, gt, st)
+        Color(col, "Timer colour", M, "timerColor", apply)
     end
     local gn, sn = Opt("nameSize")
-    L:Slider("Name size", 8, 20, 1, gn, sn)
+    col:Slider("Name size", 8, 20, 1, gn, sn)
+end
 
-    local R = UI.Column(panel, COL2_X, 0, COL_W)
-    R:Header("Background")
-    R:Cycle("Texture", function() return mod.MediaChoices("background", "FLAT", "Flat") end, Opt("bgTexture"))
-    Color(R, "Colour", M, "bgColor", apply)
+function mod.LookFrame(col, Opt, apply)   -- background, border, member rows
+    local M = mod.M
+    col:Header("Background")
+    col:Cycle("Texture", function() return mod.MediaChoices("background", "FLAT", "Flat") end, Opt("bgTexture"))
+    Color(col, "Colour", M, "bgColor", apply)
     local gti, sti = Opt("bgTint")
-    R:Slider("Colour strength", 0, 1, 0.05, gti, sti, "%.2f")
+    col:Slider("Colour strength", 0, 1, 0.05, gti, sti, "%.2f")
     local gb, sb = Opt("bgAlpha")
-    R:Slider("Opacity", 0, 1, 0.05, gb, sb, "%.2f")
-    R:Header("Border")
-    R:Cycle("Texture", function() return mod.MediaChoices("border", "NONE", "None") end, Opt("borderTexture"))
-    Color(R, "Colour", M, "borderColor", apply)
+    col:Slider("Opacity", 0, 1, 0.05, gb, sb, "%.2f")
+    col:Header("Border")
+    col:Cycle("Texture", function() return mod.MediaChoices("border", "NONE", "None") end, Opt("borderTexture"))
+    Color(col, "Colour", M, "borderColor", apply)
     local gz, sz = Opt("borderSize")
-    R:Slider("Size", 4, 32, 1, gz, sz)
-    R:Header("Member rows")
-    Color(R, "Row background", M, "rowColor", apply)
+    col:Slider("Size", 4, 32, 1, gz, sz)
+    col:Header("Member rows")
+    Color(col, "Row background", M, "rowColor", apply)
     local gr, sr = Opt("rowAlpha")
-    R:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
-    R:Note("Textures come from LibSharedMedia.")
+    col:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
+    col:Note("Textures come from LibSharedMedia.")
+end
+
+-- sizes, text, background, border, member rows in one tab; returns both columns
+function mod.LookTab(panel, Opt, apply)
+    local UI, H = MMT.UI, MMT.ConfigHelpers
+    local COL_W, COL2_X = H.COL_W, H.COL2_X
+    local L = UI.Column(panel, 0, 0, COL_W)
+    L:Header("Size")
+    mod.LookIconSizes(L, Opt)
+    mod.LookWindowSizes(L, Opt)
+    L:Header("Text")
+    mod.LookText(L, Opt, apply, true)
+    local R = UI.Column(panel, COL2_X, 0, COL_W)
+    mod.LookFrame(R, Opt, apply)
     return L, R
 end
 

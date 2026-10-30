@@ -1,6 +1,6 @@
 -- MMT Buffs: settings page (MODULES > Buffs in /mmt) and debug report.
--- Tabs: Bars (what is shown) / Look (sub-tabs Window: sizes, text, background, border;
--- Icons: missing buffs, All bar counter; Timer) / Buffs (the tracked lists, the All bar, sharing) /
+-- Tabs: Bars (what is shown) / Look (sub-tabs Window: scale, text, background, border;
+-- Icons: size, zoom, missing buffs, All bar counter; Timer) / Buffs (the tracked lists, the All bar, sharing) /
 -- Specs / Frames (FramesTab.lua). "Only for" (the cog of a buff): OnlyFor.lua.
 
 local _, mod = ...
@@ -249,11 +249,18 @@ M.Page = function(_, page)
 
 
     -- Look ------------------------------------------------------------------
-    -- sub-tabs: Window (sizes, text, background, border), Icons (opacity, ...), Timer (TimerTab.lua)
+    -- sub-tabs: Window (scale, text, background, border), Icons (size, zoom, opacity, ...), Timer (TimerTab.lua)
     local look = mod.Tabs(panels.look, { { "window", "Window" }, { "icons", "Icons" }, { "timer", "Timer" } }, { key = "look", bottom = 0 })
-    mod.LookTab(look.window, Opt, Apply, { timer = false })
+    local WL = UI.Column(look.window, 0, 0, COL_W)
+    WL:Header("Window")
+    mod.LookWindowSizes(WL, Opt)
+    WL:Header("Text")
+    mod.LookText(WL, Opt, Apply, false)   -- the timer's size and colour: Timer sub-tab
+    mod.LookFrame(UI.Column(look.window, COL2_X, 0, COL_W), Opt, Apply)
     mod.TimerTab(look.timer, Opt, Apply)
     local LL, LR = UI.Column(look.icons, 0, 0, COL_W), UI.Column(look.icons, COL2_X, 0, COL_W)
+    LL:Header("Icons")
+    mod.LookIconSizes(LL, Opt)
     LR:Header("All bar counter")
     local gcp, scp = Opt("allCount")
     LR:Cycle("Have / checked (while missing)", {
