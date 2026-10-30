@@ -15,7 +15,7 @@ other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules..
   folder in MMT-src) belong to the friend: never edit or commit them. Read them for reference only.
 - **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, a move-folders line to `.pkgmeta`, list it in README.md.
 - Before committing, run `git status` and make sure no other addon's files are staged.
-- Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md and the
+- Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md, README.md and the
   git / packager files (GitHub's Download ZIP, release archives). CurseForge zip: `python tools/make_release.py [ref]`
   (git archive of every MMT_* folder -> `dist/QMMTModules-<date>-<sha>.zip`, prints each module's version);
   `.pkgmeta` (package-as QMMTModules + move-folders, one line per module) is for CurseForge's packager if it's ever
