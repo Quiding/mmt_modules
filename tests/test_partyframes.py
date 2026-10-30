@@ -55,6 +55,7 @@ function UnitButton(name, unit, l, b, byField)
   rawset(f, "u", unit)
   rawset(f, "GetRect", function(self) return self.l, self.b, 80, 36 end)
   rawset(f, "GetLeft", function(self) return self.l end)
+  rawset(f, "GetHeight", function() return 36 end)
   rawset(f, "GetTop", function(self) return self.b + 36 end)
   if byField then
     rawset(f, "unit", unit)
@@ -117,7 +118,7 @@ for folder in ['MMT_CooldownTimers', 'MMT_BuffTimers']:
 
 print(lua.eval(r'''function(cd, bf)
   local CM, BM = cd.M, bf.M
-  assert(MMTIconBars.version == 14, "IconBars version " .. tostring(MMTIconBars.version))
+  assert(MMTIconBars.version == 15, "IconBars version " .. tostring(MMTIconBars.version))
   -- Cooldowns: three ready spells for everyone; Buffs: off for now
   cd.State = function() return "ready" end
   CM.db.showBuffs, CM.db.hideReady = false, false
@@ -152,6 +153,14 @@ print(lua.eval(r'''function(cd, bf)
   w:Refresh()
   Check(not w.frame.shown, "HIDE: window still shown")
   CM.db.framesOthers = "WINDOW"
+  w:Refresh()
+  -- icons as high as the frame (36 px), centred on it
+  CM.db.framesFit = true
+  w:Refresh()
+  bob = FRow(w, "Bob-Stone")
+  x, y = XY(bob)
+  Check(bob.h == 36 and bob.icons[1].w == 36 and bob.w == 3 * 36 + 2 * 2 and y == 460, "framesFit: size / place")
+  CM.db.framesFit = false
   w:Refresh()
 
   -- other sides and offsets

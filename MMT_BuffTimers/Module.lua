@@ -35,7 +35,7 @@ local M = MMT.NewModule({
         missingAlpha = 0.25, activeAlpha = 1, glowMissing = false,
         point = { "CENTER", "CENTER", -200, 0 },
         onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
-        framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22,
+        framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22, framesFit = false,
         framesOthers = "WINDOW",   -- members without a frame: WINDOW (own window) | HIDE
         allOnFrames = false,       -- the All bar above the top party / raid frame (else free, in the window)
         allX = 0, allY = 0,

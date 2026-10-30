@@ -38,7 +38,7 @@ local M = MMT.NewModule({
         hideUnseenItems = false,    -- other members' items only after you saw them used
         point = { "CENTER", "CENTER", 200, 0 },
         onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
-        framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22,
+        framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22, framesFit = false,
         framesOthers = "WINDOW",   -- members without a frame: WINDOW (own window) | HIDE
         hidden = {},                -- [teamKey] = true: no row for this member
         lists = mod.DEFAULT_LISTS,

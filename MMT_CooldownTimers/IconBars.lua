@@ -52,14 +52,15 @@
 -- (EllesmereUI's party / raid frames, Blizzard's compact party / raid frames, Blizzard's party
 -- frames + PlayerFrame; lib.UnitFrames() finds them), cfg.allOnFrames does the same for label rows
 -- (e.g. an All bar: above the top frame). Fields: framesSide ("RIGHT" | "LEFT" | "TOP" | "BOTTOM"),
--- framesX, framesY (offsets, + = right / up), framesIconSize (0 = iconSize), framesOthers ("WINDOW":
+-- framesX, framesY (offsets, + = right / up), framesIconSize (0 = iconSize), framesFit (v15: member icons
+-- as high as their unit frame, instead of framesIconSize), framesOthers ("WINDOW":
 -- members without a frame stay in the window | "HIDE"), allX, allY. The rows are our own frames on
 -- UIParent, placed at the unit frame's screen position (read, never anchored: the unit frames are
 -- secure, and anchoring to them would make our frames protected in combat); a poll every 0.25 s
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 14
+local VERSION = 15
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -541,6 +542,13 @@ function lib.UnitFrames()
     return byKey, top, count
 end
 
+-- height of a unit frame in UIParent's units (frame rows sit on UIParent), 0 if unknown
+local function FrameHeight(f)
+    local ok, h = pcall(f.GetHeight, f)
+    if not ok or type(h) ~= "number" then return 0 end
+    return math.floor(h * f:GetEffectiveScale() / UIParent:GetEffectiveScale() + 0.5)
+end
+
 local GAP = 2
 local SIDES = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }
 
@@ -603,7 +611,7 @@ function lib.CheckFrames()
     if not any then fdrive:Hide() return end
     local byKey, top = lib.UnitFrames()
     local parts = {}
-    for k, f in pairs(byKey) do parts[#parts + 1] = k .. "=" .. tostring(f) end
+    for k, f in pairs(byKey) do parts[#parts + 1] = k .. "=" .. tostring(f) .. ":" .. FrameHeight(f) end
     table.sort(parts)
     local sig = table.concat(parts, ",") .. "|" .. tostring(top)
     if sig ~= builtFor and not drag then   -- (while an icon is dragged: after it)
@@ -747,11 +755,19 @@ function Window:LayoutFramed(list, c)
         local size = tonumber(c.framesIconSize) or 0
         if size <= 0 then size = c.iconSize or 28 end
         local gap = c.spacing or 2
-        local fc = setmetatable({ iconSize = size }, { __index = c })
+        local looks = {}   -- [icon size] = cfg with that size
         for _, it in ipairs(list) do
             local r = it.row
             local icons = r.key and WithExtras(self.def.name, r.key, r.icons or {}) or (r.icons or {})
             if #icons > 0 then
+                -- "same height as the frame": member rows only (an All bar keeps the icon size)
+                local size = size
+                if c.framesFit and r.key then
+                    local h = FrameHeight(it.frame)
+                    if h > 0 then size = h end
+                end
+                local fc = looks[size] or setmetatable({ iconSize = size }, { __index = c })
+                looks[size] = fc
                 used = used + 1
                 local row = self:FrameRow(used)
                 row.key, row.vertical, row.unitFrame, row.label = r.key or r.label, false, it.frame, r.key == nil

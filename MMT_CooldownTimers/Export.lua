@@ -8,7 +8,7 @@ local M = mod.M
 local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
     "iconSize", "iconZoom", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
     "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
-    "hideUnseenItems", "showBuffs", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesOthers" }
+    "hideUnseenItems", "showBuffs", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers" }
 local CHOICES = { framesSide = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }, framesOthers = { WINDOW = true, HIDE = true } }
 
 local function GetKeys(keys)

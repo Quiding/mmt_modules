@@ -31,8 +31,10 @@ function mod.FramesTab(panel, Opt, status, where)
         { value = "TOP", text = "Above" },
         { value = "BOTTOM", text = "Below" },
     }, gs, ss)
+    local gf, sf = Opt("framesFit")
+    L:Check("Icons as high as the frame", gf, sf, "Each member's icons take the height of their party / raid frame (the icon size below is then only for the All bar).")
     local gz, sz = Opt("framesIconSize")
-    L:Slider("Icon size", 12, 48, 1, gz, sz)
+    L:Slider("Icon size", 12, 100, 1, gz, sz)
     local gx, sx = Opt("framesX")
     L:Slider("X offset", -100, 100, 1, gx, sx)
     local gy, sy = Opt("framesY")
