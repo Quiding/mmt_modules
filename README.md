@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.16.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.19.1 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.16.2 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.19.2 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -46,7 +46,8 @@ paladin, hide ready, ...) wait - and each icon gets dots in its corner: drag it 
 within the list it comes from (class, All bar, race, role, character), so a line shows where it can land and dropping
 it past the others of its list puts it at that list's end. Arrange mode covers both modules' bars at once: drag a
 buff onto a member's Cooldown Timers bar (or a cooldown onto a Buff Timers bar) and that buff shows there for
-everyone, at the spot you dropped it; drag it back onto its own bar to bring it home. Buff icons on the Cooldown
+everyone, at the spot you dropped it; drag it back onto its own bar to bring it home (while arranging, a member's bar stays up even with nothing left
+in it, as a faint slot to drop on). Buff icons on the Cooldown
 Timers bars - moved one by one, or all of them with "Where: On the Cooldowns bars" - can be dropped anywhere in the
 row, between the cooldowns; switching "Where" back to its own window brings them all home.
 

@@ -124,12 +124,21 @@ print(lua.eval(r'''function(cd, bf)
   Redraw(); cr, br = Rows()
   Check(Ids(cr) == "1,2,3" and Ids(br) == "12,11" and ListIds(BM.db.lists.SHAMAN) == "12,11", "home: " .. Ids(cr) .. " / " .. Ids(br))
 
+  -- every buff moved away while arranging: the buff row stays (a slot), and one can come back onto it
+  Drag(br, 1, 3, cr); Redraw(); cr, br = Rows()
+  Drag(br, 1, 3, cr); Redraw(); cr, br = Rows()
+  Check(br and Ids(br) == "" and br.ph and br.ph.shown, "empty buff row not kept while arranging")
+  Drag(cr, 4, 0, br); Redraw(); cr, br = Rows()
+  Drag(cr, 4, 1, br); Redraw(); cr, br = Rows()
+  -- (11 was dropped right before 12 on the cooldown row, so its list order became 11, 12)
+  Check(Ids(cr) == "1,2,3" and Ids(br) == "11,12" and not br.ph.shown, "back onto the empty row: " .. Ids(cr) .. " / " .. Ids(br))
+
   -- a cooldown onto the buff row, first
   Drag(cr, 3, 0, br)
   local c3 = CM.db.lists.SHAMAN[3]
   Check(c3.host == "MMTBuffs" and c3.after == "^", "cooldown 3 not on the buff bar")
   Redraw(); cr, br = Rows()
-  Check(Ids(cr) == "1,2" and Ids(br) == "3,12,11", "cooldown on the buff row: " .. Ids(cr) .. " / " .. Ids(br))
+  Check(Ids(cr) == "1,2" and Ids(br) == "3,11,12", "cooldown on the buff row: " .. Ids(cr) .. " / " .. Ids(br))
   -- it keeps Cooldown Timers' opacity there (Buff Timers has no "ready" opacity)
   CM.db.readyAlpha = 0.35
   Redraw(); cr, br = Rows()
@@ -154,6 +163,7 @@ print(lua.eval(r'''function(cd, bf)
 
   -- attached: every buff on the cooldown row; placing one keeps host empty, detaching brings it home
   b12.host, b12.after = nil, nil
+  BM.db.lists.SHAMAN = { b12, Find(BM.db.lists.SHAMAN, 11) }   -- list order 12, 11 again
   BM.db.attach = "RIGHT"
   bf.ToggleArrange()
   Redraw(); cr = RowOf(cw, "Bob-Stone")

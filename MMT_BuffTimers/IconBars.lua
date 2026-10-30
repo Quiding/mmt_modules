@@ -69,7 +69,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 17
+local VERSION = 18
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -445,6 +445,15 @@ local function DropLine(row)
     l:Hide()
     row.drop = l
     return l
+end
+
+-- (v18) an empty member row while arranging: a faint slot to drop icons on (dropEmpty rows stay up then)
+local function Placeholder(row)
+    if not row.ph then
+        row.ph = row:CreateTexture(nil, "ARTWORK")
+        row.ph:SetColorTexture(1, 0.82, 0, 0.18)
+    end
+    return row.ph
 end
 
 -- the drop line at gap k of a row's icons (0 = before the first)
@@ -827,7 +836,7 @@ function Window:Row(i)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.icons = {}
-    row.window, row.framed = self, false
+    row.window, row.framed, row.ph = self, false, false
     row:RegisterForDrag("LeftButton")
     local f = self.frame
     row:SetScript("OnDragStart", function() f:GetScript("OnDragStart")(f) end)
@@ -888,7 +897,7 @@ function Window:FrameRow(i)
     if row then return row end
     row = CreateFrame("Frame", nil, UIParent)
     row:SetFrameStrata("MEDIUM")
-    row.icons, row.window, row.framed = {}, self, true
+    row.icons, row.window, row.framed, row.ph = {}, self, true, false
     row:Hide()
     self.frows[i] = row
     return row
@@ -906,7 +915,8 @@ function Window:LayoutFramed(list, c)
         for _, it in ipairs(list) do
             local r = it.row
             local icons = r.all or r.icons or {}
-            if #icons > 0 then
+            local empty = #icons == 0 and r.key and lib.arrange[self.def.name]
+            if #icons > 0 or empty then
                 -- "same height as the frame": member rows only (an All bar keeps the icon size)
                 local size = size
                 if c.framesFit and r.key then
@@ -928,7 +938,11 @@ function Window:LayoutFramed(list, c)
                     b:SetPoint("TOPLEFT", (j - 1) * (size + gap), 0)
                 end
                 for j = #icons + 1, #row.icons do row.icons[j]:Hide(); row.icons[j].data = nil end
-                row.fw, row.fh = #icons * size + (#icons - 1) * gap, size
+                row.fw, row.fh = math.max(1, #icons) * size + math.max(0, #icons - 1) * gap, size
+                local ph = Placeholder(row)
+                if empty then
+                    ph:ClearAllPoints(); ph:SetPoint("TOPLEFT", 0, 0); ph:SetSize(size, size); ph:Show()
+                else ph:Hide() end
                 row:SetSize(row.fw, row.fh)
                 row:EnableMouse(false)
                 row:Show()
@@ -975,7 +989,8 @@ function Window:Refresh()
     local kept = {}
     for _, r in ipairs(rows) do
         r.all = r.key and WithExtras(def.name, r.key, r.icons or {}, r.order) or (r.icons or {})
-        if #r.all > 0 or not r.dropEmpty then kept[#kept + 1] = r end
+        -- (arranging: kept, a slot to drop icons back on)
+        if #r.all > 0 or not r.dropEmpty or (r.key and lib.arrange[def.name]) then kept[#kept + 1] = r end
     end
     rows = kept
     -- members with a party / raid frame get their row beside it (v14); the others stay here
@@ -1040,6 +1055,13 @@ function Window:Refresh()
             end
         end
         for j = #icons + 1, #row.icons do row.icons[j]:Hide(); row.icons[j].data = nil end
+        local ph = Placeholder(row)
+        if #icons == 0 and r.key and lib.arrange[def.name] then
+            ph:ClearAllPoints()
+            if vertical then ph:SetPoint("TOPLEFT", colX, -nameH) else ph:SetPoint("TOPLEFT", nameW, 0) end
+            ph:SetSize(size, size)
+            ph:Show()
+        else ph:Hide() end
         local n = math.max(1, #icons)
         local w, h
         row.name:ClearAllPoints()
