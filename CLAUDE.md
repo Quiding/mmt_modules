@@ -399,7 +399,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.10.3)
+### MMT_TeamInventory (v0.10.4)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -474,6 +474,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   window never narrower than `MIN_W`), `bagBgTexture` (LSM) / `bagBgColor` / `bagBgAlpha` / `bagBorderColor`
   (`mod.SkinFrame`, window + side panel; flat colours go through `QStyles.Paint` / `QStyles.PaintEdges` when MMT_qStyles
   is loaded (0.10.2): the Look colours are the originals, a style repaints them), `bagQuality`, `bagFont`, `bagCountSize`.
+  The side panel is as wide as its widest row needs (`mod.TeamWidth` after each RefreshTeam: name + gold, group titles,
+  the total; min TEAM_W 200; 0.10.4: Styles' bigger EllesmereUI font squeezed name and gold together), laid out again on
+  `QStyles.OnChange`; PlaceTeam uses the panel's real width.
 - Filters `bagFilters` = { boe / bound / reagent / quest / consumable = "HIDE" | "ONLY" } ("ONLY" shown as Include;
   `mod.Filters()`, old single `bagFilter` converted once; window: `f.filter` toggles the sticky panel `f.filters` /
   `f.filterRows`, click cycles Show/Hide/Include, right-click Show, `f.filters.only` = "Showing only: ..." line;

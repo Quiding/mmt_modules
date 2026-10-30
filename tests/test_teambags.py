@@ -735,6 +735,17 @@ print(lua.eval(r'''function(m)
   for _, tb in ipairs(f.teamButtons) do if tb:IsShown() then names[#names + 1] = tb.key end end
   assert(table.concat(names, ",") == "Anna-Smith,Bob-Stone", "panel: " .. table.concat(names, ","))
   assert(f.teamButtons[1].count:GetText():find("123", 1, true), "row gold: " .. f.teamButtons[1].count:GetText())
+  -- the panel is as wide as its widest row needs (a bigger font: name and gold were squeezed together)
+  assert(f.team.width == nil or f.team.width == 200, "panel wider than needed: " .. tostring(f.team.width))
+  local row = f.teamButtons[1]
+  rawset(row.label, "GetStringWidth", function() return 150 end)
+  rawset(row.count, "GetStringWidth", function() return 120 end)
+  m.TeamWidth(f, 2, 0, 0)
+  assert(f.team.width == 12 + 10 + 150 + 12 + 120 + 8, "panel not widened for a wide row: " .. tostring(f.team.width))
+  rawset(row.label, "GetStringWidth", function() return 40 end)
+  rawset(row.count, "GetStringWidth", function() return 40 end)
+  m.TeamWidth(f, 2, 0, 0)
+  assert(f.team.width == 200, "panel not back to its width: " .. tostring(f.team.width))
   for _, key in ipairs(m.BagOwners()) do assert(key ~= "Cara-Sun", "Cara in the picker") end
   for _, s in ipairs(m.BagSlots("__ALL__", "b", "")) do if s.id == 2589 then assert(s.count == 20, "Cara's cloth counted") end end
   -- by character: gold in each header

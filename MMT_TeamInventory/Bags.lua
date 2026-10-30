@@ -842,7 +842,10 @@ local function Build()
     -- item on a name = a planned gift) and the trades to do
     f.team = CreateFrame("Frame", nil, f)
     f.team:SetWidth(TEAM_W)
-    if QStyles and QStyles.OnChange then QStyles.OnChange(function() mod.PlaceTeam(f) end) end
+    -- MMT_qStyles: another font (wider rows) or border gap: lay the panel out again
+    if QStyles and QStyles.OnChange then
+        QStyles.OnChange(function() if f:IsShown() and f.team:IsShown() then mod.RefreshTeam(f) else mod.PlaceTeam(f) end end)
+    end
     SkinFrame(f.team)
     f.team:EnableMouse(true)
     -- section titles like MMT's settings: gold text, a thin line under it
@@ -886,7 +889,8 @@ function mod.PlaceTeam(f)
     local gap = 2 + ((QStyles and QStyles.WindowGap and tonumber(QStyles.WindowGap())) or 0)
     local right, es = tonumber(f:GetRight()), tonumber(f:GetEffectiveScale())
     local screen, ues = tonumber(UIParent:GetRight()), tonumber(UIParent:GetEffectiveScale())
-    local left = (right and es and screen and ues and (right + TEAM_W + gap) * es > screen * ues) or false
+    local tw = tonumber(f.team:GetWidth()) or TEAM_W
+    local left = (right and es and screen and ues and (right + tw + gap) * es > screen * ues) or false
     if left == f.team.left and gap == f.team.gap and f.team.placed then return end
     f.team.left, f.team.gap, f.team.placed = left, gap, true
     f.team:ClearAllPoints()
@@ -1066,7 +1070,38 @@ function mod.RefreshTeam(f)
     end
     for i = #trades + 1, #f.pairRows do f.pairRows[i]:Hide() end
     f.team:SetHeight(-y + 6)
+    mod.TeamWidth(f, #keys, nTitle, #trades)
     mod.PlaceTeam(f)
+end
+
+-- as wide as its widest row needs (name + gold; a bigger font, e.g. MMT_qStyles' EllesmereUI, squeezed them
+-- together), never narrower than TEAM_W
+local function TextW(fs) return (fs and fs:IsShown() and tonumber(fs:GetStringWidth())) or 0 end
+function mod.TeamWidth(f, nKeys, nTitles, nTrades)
+    local need = TEAM_W
+    for i = 1, nKeys do
+        local b = f.teamButtons[i]
+        need = math.max(need, 12 + 10 + TextW(b.label) + 12 + TextW(b.count) + 8)
+    end
+    for i = 1, nTitles do
+        local t = f.teamTitles[i]
+        need = math.max(need, 10 + TextW(t.label) + 6 + TextW(t.gold) + 14)
+    end
+    need = math.max(need, 16 + TextW(f.team.totalLabel) + 12 + TextW(f.team.total) + 14)
+    local w = math.ceil(need)
+    if w == f.team.width then return end
+    f.team.width = w
+    f.team:SetWidth(w)
+    for i = 1, #f.teamButtons do f.teamButtons[i]:SetWidth(w - 12) end
+    f.team.title.line:SetWidth(w - 16)
+    f.team.tradesTitle.line:SetWidth(w - 16)
+    f.team.empty:SetWidth(w - 16)
+    for i = 1, #f.pairRows do
+        local r = f.pairRows[i]
+        r:SetWidth(w - 12)
+        r.label:SetWidth(w - 12 - TRADE_W - CANCEL_W - 8)
+    end
+    f.team.placed = nil   -- its width may move it to the other side of the window
 end
 
 -- anchored by its top-left corner: the height follows the items (filters, search,
