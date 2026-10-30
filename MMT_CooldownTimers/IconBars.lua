@@ -38,6 +38,11 @@
 -- Extras: other modules can add icons to a window's rows:
 --   MMTIconBars.SetExtra(windowName, id, fn(key) -> icons | nil, side "LEFT"|"RIGHT")
 --   MMTIconBars.SetExtra(windowName, id, nil)   removes it
+-- (v16) Such "guest" icons can sit anywhere in the row: icon.oid = an id of the icon's entry (any string),
+-- a guest's icon.anchor = the oid of the row's own icon it follows ("^" = first; nil or unknown = its side).
+-- A row's `order` = every oid of its own entries, shown or not: a guest whose anchor icon isn't shown
+-- follows the nearest shown one before it. A row with dropEmpty is left out when it has no icons
+-- (extras included). lib.CanHost(name): the window is shown and takes guests (def.guests() optional).
 --
 -- Dragging icons (v13): an icon with `drag` can be dragged along its own row (modules give icons
 -- `drag` only in their arrange mode: MMTIconBars.SetArrange(windowName, on), MMTIconBars.Arranging(name),
@@ -47,6 +52,10 @@
 -- group icon it lands before (after = false) or after (after = true); `id` tells icons apart (the
 -- dragged one is dimmed, dropping it on its own spot does nothing). Dragging an icon without `drag`
 -- moves the window like its background (when unlocked).
+-- (v16) drag.place = fn(src, windowName, anchor, nbr, after) + drag.hosts = { [windowName] = true }: the icon
+-- can also be dropped on a member row of one of those windows (another module's bar), and a guest icon
+-- anywhere in its row. anchor = oid of the row's own icon before the drop spot ("^" = none), nbr / after =
+-- the drag table of a same-group icon right before (after = true) / after the spot, to keep the list order.
 --
 -- Party / raid frames (v14): cfg.onFrames puts each member's row beside that member's unit frame
 -- (EllesmereUI's party / raid frames, Blizzard's compact party / raid frames, Blizzard's party
@@ -60,7 +69,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 15
+local VERSION = 16
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -363,6 +372,63 @@ local function NoMove(d, dst, after)
     end
 end
 
+-- (v16) the shown icons of a row but `skip`, and how many of them lie before the cursor
+local function Gap(row, skip)
+    local icons = {}
+    for _, b in ipairs(row.icons) do if b ~= skip and b:IsShown() and b.data then icons[#icons + 1] = b end end
+    local scale = row:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    cx, cy = cx / scale, cy / scale
+    local gap = 0
+    for k, b in ipairs(icons) do
+        local l, r, t, bt = b:GetLeft(), b:GetRight(), b:GetTop(), b:GetBottom()
+        if l and r and t and bt then
+            if row.vertical then
+                if cy < (t + bt) / 2 then gap = k end
+            elseif cx > (l + r) / 2 then gap = k end
+        end
+    end
+    return icons, gap
+end
+
+local function Over(row)
+    local l, r, t, b = row:GetLeft(), row:GetRight(), row:GetTop(), row:GetBottom()
+    if not (l and r and t and b) then return false end
+    local scale = row:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    cx, cy = cx / scale, cy / scale
+    return cx >= l and cx <= r and cy >= b and cy <= t
+end
+
+-- a member row of another window the dragged icon may go to, under the cursor
+local function OtherRow(d)
+    if not (d.src.place and d.src.hosts) then return nil end
+    for name in pairs(d.src.hosts) do
+        local w = lib.windows[name]
+        if w and w ~= d.window then
+            for _, list in ipairs({ w.rows, w.frows or {} }) do
+                for _, row in ipairs(list) do
+                    if row.member and row:IsShown() and (row.framed or w.frame:IsShown()) and Over(row) then return row end
+                end
+            end
+        end
+    end
+end
+
+-- where the drag would land now: on another bar, free in its own row (a guest), or among its group
+local function Spot(d)
+    local other = OtherRow(d)
+    if other then
+        local icons, gap = Gap(other)
+        return { row = other, icons = icons, gap = gap }
+    end
+    if d.guest and d.src.place then
+        local icons, gap = Gap(d.row, d.b)
+        return { row = d.row, icons = icons, gap = gap, own = true }
+    end
+    return { row = d.row, group = true }
+end
+
 local driver = CreateFrame("Frame")
 driver:Hide()
 
@@ -378,7 +444,35 @@ local function DropLine(row)
     return l
 end
 
+-- the drop line at gap k of a row's icons (0 = before the first)
+local function LineAt(row, icons, gap)
+    local line = DropLine(row)
+    local c = row.window.def.cfg() or {}
+    local size, half = row.iconSize or c.iconSize or 28, (c.spacing or 2) / 2
+    local dst, after = icons[gap], true
+    if not dst then dst, after = icons[1], false end
+    line:ClearAllPoints()
+    if row.vertical then
+        line:SetSize(size, 2)
+        if dst then line:SetPoint("CENTER", dst, after and "BOTTOM" or "TOP", 0, after and -half or half)
+        else line:SetPoint("TOP", row, "TOP", 0, 0) end
+    else
+        line:SetSize(2, size)
+        if dst then line:SetPoint("CENTER", dst, after and "RIGHT" or "LEFT", after and half or -half, 0)
+        else line:SetPoint("LEFT", row, "LEFT", 0, 0) end
+    end
+    line:Show()
+end
+
 local function ShowLine(d)
+    local spot = Spot(d)
+    if d.lineRow and d.lineRow ~= spot.row and d.lineRow.drop then d.lineRow.drop:Hide() end
+    d.lineRow = spot.row
+    if not spot.group then
+        if spot.own and spot.gap == d.pos then DropLine(spot.row):Hide() return end
+        LineAt(spot.row, spot.icons, spot.gap)
+        return
+    end
     local line = DropLine(d.row)
     local dst, after = Target(d)
     if not dst or NoMove(d, dst, after) then line:Hide() return end
@@ -414,11 +508,30 @@ local function FinishDrag()
     drag = nil
     driver:Hide()
     if d.row.drop then d.row.drop:Hide() end
+    if d.lineRow and d.lineRow.drop then d.lineRow.drop:Hide() end
     Repaint(d.window)
     -- the row shows someone else now (team changed while dragging): nothing to drop on
     if d.row.key ~= d.key or not d.row:IsShown() then return end
-    local dst, after = Target(d)
-    if dst and not NoMove(d, dst, after) then d.src.move(d.src, dst.data.drag, after) end
+    local spot = Spot(d)
+    if spot.group then
+        local dst, after = Target(d)
+        if dst and not NoMove(d, dst, after) then d.src.move(d.src, dst.data.drag, after) end
+        return
+    end
+    if spot.own and spot.gap == d.pos then return end
+    local icons, gap = spot.icons, spot.gap
+    -- follows the row's own icon before the spot (guests skipped), or goes first
+    local anchor = "^"
+    for k = gap, 1, -1 do
+        local i = icons[k].data
+        if not i.guest and i.oid then anchor = i.oid break end
+    end
+    -- keeps its list order next to an icon of its own list
+    local nbr, after
+    local prev, nxt = icons[gap], icons[gap + 1]
+    if prev and InGroup(prev, d.src.group) then nbr, after = prev.data.drag, true
+    elseif nxt and InGroup(nxt, d.src.group) then nbr, after = nxt.data.drag, false end
+    d.src.place(d.src, spot.row.window.def.name, anchor, nbr, after)
 end
 
 driver:SetScript("OnUpdate", function()
@@ -434,7 +547,14 @@ function IconDragStart(b)
     local c = w.def.cfg()
     if b.data and b.data.drag and c and not drag then
         GameTooltip:Hide()
-        drag = { src = b.data.drag, row = row, key = row.key, window = w }
+        drag = { src = b.data.drag, row = row, key = row.key, window = w, b = b, guest = b.data.guest }
+        -- its own spot among the other icons (dropping it there does nothing)
+        local pos = 0
+        for _, o in ipairs(row.icons) do
+            if o == b then break end
+            if o:IsShown() and o.data then pos = pos + 1 end
+        end
+        drag.pos = pos
         Repaint(w)
         driver:Show()
         return
@@ -715,23 +835,47 @@ function Window:Row(i)
 end
 
 -- icons of a row including the other modules' extras
-local function WithExtras(name, key, icons)
+local function WithExtras(name, key, icons, order)
     local ex = lib.extras[name]
     if not ex then return icons end
-    local left, right = {}, {}
-    for _, e in pairs(ex) do
+    local here, pos = {}, {}
+    for _, i in ipairs(icons) do if i.oid then here[i.oid] = true end end
+    for k, oid in ipairs(order or {}) do pos[oid] = k end
+    -- the row's own icon a guest goes after: its anchor, else the nearest shown one before it
+    local function Follow(a)
+        if a == "^" or here[a] then return a end
+        local k = pos[a]
+        if not k then return nil end
+        for j = k - 1, 1, -1 do if here[order[j]] then return order[j] end end
+        return "^"
+    end
+    local ids = {}
+    for id in pairs(ex) do ids[#ids + 1] = id end
+    table.sort(ids)
+    local first, last, follow, any = {}, {}, {}, false
+    for _, id in ipairs(ids) do
+        local e = ex[id]
         local ok, list = pcall(e.fn, key)
         if ok and type(list) == "table" then
             for _, i in ipairs(list) do
-                if e.side == "LEFT" then left[#left + 1] = i else right[#right + 1] = i end
+                any = true
+                i.guest = true
+                local a = i.anchor and Follow(i.anchor)
+                if a == "^" then first[#first + 1] = i
+                elseif a then follow[a] = follow[a] or {}; table.insert(follow[a], i)
+                elseif e.side == "LEFT" then first[#first + 1] = i
+                else last[#last + 1] = i end
             end
         end
     end
-    if #left == 0 and #right == 0 then return icons end
+    if not any then return icons end
     local all = {}
-    for _, i in ipairs(left) do all[#all + 1] = i end
-    for _, i in ipairs(icons) do all[#all + 1] = i end
-    for _, i in ipairs(right) do all[#all + 1] = i end
+    for _, i in ipairs(first) do all[#all + 1] = i end
+    for _, i in ipairs(icons) do
+        all[#all + 1] = i
+        for _, g in ipairs(i.oid and follow[i.oid] or {}) do all[#all + 1] = g end
+    end
+    for _, i in ipairs(last) do all[#all + 1] = i end
     return all
 end
 
@@ -758,7 +902,7 @@ function Window:LayoutFramed(list, c)
         local looks = {}   -- [icon size] = cfg with that size
         for _, it in ipairs(list) do
             local r = it.row
-            local icons = r.key and WithExtras(self.def.name, r.key, r.icons or {}) or (r.icons or {})
+            local icons = r.all or r.icons or {}
             if #icons > 0 then
                 -- "same height as the frame": member rows only (an All bar keeps the icon size)
                 local size = size
@@ -771,6 +915,7 @@ function Window:LayoutFramed(list, c)
                 used = used + 1
                 local row = self:FrameRow(used)
                 row.key, row.vertical, row.unitFrame, row.label = r.key or r.label, false, it.frame, r.key == nil
+                row.member = r.key ~= nil
                 row.fc, row.iconSize = fc, size
                 for j, data in ipairs(icons) do
                     local b = row.icons[j] or NewIcon(row)
@@ -795,8 +940,25 @@ function Window:LayoutFramed(list, c)
     lib.PlaceFramed()
 end
 
+-- (v16) the window is shown and takes other modules' icons
+function lib.CanHost(name)
+    local w = lib.windows[name]
+    if not w then return false end
+    local def = w.def
+    local c = def.cfg()
+    if not (c and c.shown) or (def.active and not def.active()) then return false end
+    if def.guests and not def.guests() then return false end
+    return true
+end
+
 function Window:Refresh()
     local def, f = self.def, self.frame
+    -- it started / stopped taking guests: the other windows show those icons at home or here now
+    local can = lib.CanHost(def.name)
+    if can ~= self.hosting then
+        self.hosting = can
+        for _, w in pairs(lib.windows) do if w ~= self then w:Refresh() end end
+    end
     local c = def.cfg()
     if not c or not c.shown or (def.active and not def.active()) then
         f:Hide()
@@ -806,6 +968,13 @@ function Window:Refresh()
     end
     local ok, rows = pcall(def.rows)
     if not ok then rows = {} end
+    -- the other modules' icons go in now (v16); a row asking for it is left out when still empty
+    local kept = {}
+    for _, r in ipairs(rows) do
+        r.all = r.key and WithExtras(def.name, r.key, r.icons or {}, r.order) or (r.icons or {})
+        if #r.all > 0 or not r.dropEmpty then kept[#kept + 1] = r end
+    end
+    rows = kept
     -- members with a party / raid frame get their row beside it (v14); the others stay here
     local framed = {}
     self.onFrames = (c.onFrames or c.allOnFrames) and true or false
@@ -851,8 +1020,8 @@ function Window:Refresh()
     local x, y, maxW, maxH = PAD, -PAD, 0, 0
     for i, r in ipairs(rows) do
         local row = self:Row(i)
-        row.key, row.vertical, row.iconSize = r.key or r.label, vertical, size
-        local icons = r.key and WithExtras(def.name, r.key, r.icons or {}) or (r.icons or {})
+        row.key, row.vertical, row.iconSize, row.member = r.key or r.label, vertical, size, r.key ~= nil
+        local icons = r.all or r.icons or {}
         -- vertical: a column as wide as the name, icons centred in it
         local colW = vertical and math.max(size, c.showNames and (row.name:GetStringWidth() + 2) or 0) or 0
         local colX = vertical and math.floor((colW - size) / 2 + 0.5) or 0

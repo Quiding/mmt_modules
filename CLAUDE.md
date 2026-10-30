@@ -116,7 +116,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.15.1) / MMT_BuffTimers (v0.18.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.16.0) / MMT_BuffTimers (v0.19.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -213,7 +213,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`, `FramesTab`: `cmp` each pair);
-  bump VERSION on change (now 15: v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 16: v16 guests, see "Icons between the bars"; v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5; own mode since 0.14.5 / 0.17.6 - tying it to "unlocked"
   showed everything on every profile: unlocked is the default): arrange mode = session-only `MMTIconBars.arrange[windowName]`
   (`lib.SetArrange(name, on)` refreshes that window, `lib.Arranging(name)`; shared ListKeys `mod.Arranging(name, ...)` = any
@@ -246,6 +246,22 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   or FRAMES (attach OFF + onFrames); attached buffs ride on Cooldowns' frame rows via WithExtras. Settings tab: `FramesTab.lua`
   (identical in both: `mod.FramesTab(panel, Opt, status, where)`, `mod.FramesFound()`). Test: test_partyframes.py (both modules
   in one Lua state, EllesmereUI-like headers + Blizzard compact stand-ins, re-sort, leaving, stacking, All bar).
+- Icons between the bars (IconBars v16, Cooldowns 0.16.0 / Buffs 0.19.0): arrange mode is shared (ListKeys `mod.SetArrangeAll`:
+  every flag first, then redraw both - one at a time left the first one arranging). Entry fields `host` (the OTHER window:
+  "MMTBuffs" on a cooldown, "MMTCooldowns" on a buff) + `after` (oid of the host row's icon it follows, "^" = first);
+  oids "c:" .. EntryKey / "b:" .. EntryKey. ListKeys (shared): `mod.HostOf(e)` (mod.ImpliedHost() = Buffs attached -> always
+  CD; else e.host when `MMTIconBars.CanHost(host)`; else nil = home), `mod.Guesting()` (redraw the other window with ours),
+  `DragFor` adds `place = PlaceIcon` + `hosts`; PlaceIcon: own window = host/after cleared, implied host = only `after`
+  (detaching brings everything home), else host + after; a same-list neighbour also moves it in the list. Each Window.lua
+  `Icons(key, host)` returns icons + `order` (every entry's oid); rows carry `order`; Cooldowns registers
+  `SetExtra("MMTBuffs", "cooldowns")` at load, Buffs `SetExtra(CD, "buffs", fn, attach side)` in every Apply (always, not only
+  attached). Buffs member rows `dropEmpty` (lib drops rows still empty after extras); Buffs def `guests` = not attached.
+  Lib: `WithExtras(name, key, icons, order)` -> guests marked `guest`, placed after their anchor, a hidden anchor = the
+  nearest shown oid before it in `order`, none / unknown = the extra's side; computed once per Refresh into `r.all`.
+  `lib.CanHost(name)`; a window whose CanHost changes refreshes the others first. Drag: `Spot(d)` = a member row of
+  another window in `src.hosts` under the cursor (`row.member`, `Over` by GetLeft/Right/Top/Bottom) -> drop anywhere there;
+  a guest in its own row -> anywhere (`Gap(row, skip)`, `d.pos` = its own spot = no move); else the old group drop.
+  Exports keep host / after (validated). Test: test_iconmove.py.
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
   corner; Buffs AllRow sets it to "have/checked" (e.g. "3/5", only while someone misses it; no separate missing count since 0.16.6) from `allCount` (corner | "OFF"), `allCountSize`,
   `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with

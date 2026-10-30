@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.15.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.18.1 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.16.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.19.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -44,8 +44,11 @@ its top-left corner when the mouse is over it - drag the tab to move the window 
 everything their lists track - the hide options (not learned, nobody here can cast it, Only for, one blessing per
 paladin, hide ready, ...) wait - and each icon gets dots in its corner: drag it along its row to move it. It moves
 within the list it comes from (class, All bar, race, role, character), so a line shows where it can land and dropping
-it past the others of its list puts it at that list's end. Buff icons on the Cooldown Timers bars follow either
-module's arrange mode.
+it past the others of its list puts it at that list's end. Arrange mode covers both modules' bars at once: drag a
+buff onto a member's Cooldown Timers bar (or a cooldown onto a Buff Timers bar) and that buff shows there for
+everyone, at the spot you dropped it; drag it back onto its own bar to bring it home. Buff icons on the Cooldown
+Timers bars - moved one by one, or all of them with "Where: On the Cooldowns bars" - can be dropped anywhere in the
+row, between the cooldowns; switching "Where" back to its own window brings them all home.
 
 **Beside the party frames** (Cooldown Timers and Buff Timers, **Frames** tab): each member's icons sit next
 to their own party or raid frame instead of in the window - right, left, above or below it, with X / Y offsets and

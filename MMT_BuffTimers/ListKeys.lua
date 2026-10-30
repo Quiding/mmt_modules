@@ -141,20 +141,66 @@ end
 
 -- an icon dragged on the bars: move its entry in its list (mod.MoveEntry: SettingsKit), then the
 -- module's mod.ListsChanged() redraws like the list editor does
-local function MoveIcon(src, dst, after)
+local function Move(src, dst, after)
     local l = src.group
     local from, to
     for i, e in ipairs(l) do
         if e == src.id then from = i end
         if e == dst.id then to = i end
     end
-    if from and to and mod.MoveEntry(l, from, after and to + 1 or to) then mod.ListsChanged() end
+    return from and to and mod.MoveEntry(l, from, after and to + 1 or to)
+end
+
+local function MoveIcon(src, dst, after)
+    if Move(src, dst, after) then mod.ListsChanged() end
+end
+
+-- the bars an icon can be dragged to: Cooldown Timers' and Buff Timers' (IconBars v16 drag.place)
+local HOSTS = { MMTCooldowns = true, MMTBuffs = true }
+
+-- an icon dropped on a bar: on the other module's bar it stays there (e.host, e.after = the icon there it
+-- follows), on our own bar it comes home; next to an icon of its own list it also moves in that list.
+-- mod.WINDOW = our window's name; mod.ImpliedHost() = the window all our icons go to anyway (Buff Timers
+-- attached to the Cooldowns bars): there only the spot is kept, so detaching brings everything home
+local function PlaceIcon(src, win, anchor, nbr, after)
+    local e = src.id
+    if win == mod.WINDOW then
+        e.host, e.after = nil, nil
+    elseif mod.ImpliedHost and mod.ImpliedHost() == win then
+        e.after = anchor
+    else
+        e.host, e.after = win, anchor
+    end
+    if nbr and nbr.group == src.group then Move(src, nbr, after) end
+    mod.ListsChanged()
+end
+
+-- the window an entry's icon shows in: ours (nil) or the other module's bar it was dragged to
+function mod.HostOf(e)
+    if mod.ImpliedHost and mod.ImpliedHost() then return mod.ImpliedHost() end
+    if e.host and e.host ~= mod.WINDOW and HOSTS[e.host] and MMTIconBars.CanHost(e.host) then return e.host end
+end
+
+-- an entry of ours shows on the other module's bar (that bar needs redrawing with ours)
+function mod.Guesting()
+    if mod.ImpliedHost and mod.ImpliedHost() then return true end
+    for _, l in pairs(mod.M.db.lists or {}) do
+        for _, e in ipairs(l) do if e.host and e.host ~= mod.WINDOW and not e.off then return true end end
+    end
+    return false
+end
+
+-- arrange mode is shared by both modules' bars (icons can move between them)
+function mod.SetArrangeAll(on)
+    -- every flag first: a bar redrawn while the other's flag is still set would keep arranging
+    for name in pairs(HOSTS) do MMTIconBars.arrange[name] = on and true or nil end
+    for name in pairs(HOSTS) do MMTIconBars.Refresh(name) end
 end
 
 -- icon.drag for an entry of list lk (only while arranging)
 function mod.DragFor(lk, e)
     local l = lk and mod.M.db.lists[lk]
-    if l then return { group = l, id = e, move = MoveIcon } end
+    if l then return { group = l, id = e, move = MoveIcon, place = PlaceIcon, hosts = HOSTS } end
 end
 
 function mod.ListLabel(k)

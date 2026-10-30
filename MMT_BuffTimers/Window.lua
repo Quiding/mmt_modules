@@ -11,6 +11,7 @@ local MMT = MMT
 local M = mod.M
 
 local CD_WINDOW = "MMTCooldowns"
+mod.WINDOW = "MMTBuffs"
 
 function mod.Members()
     if mod.preview == "ALL" then return mod.PreviewMembers() end   -- made-up characters (ListKeys.lua)
@@ -47,10 +48,9 @@ local function EntriesFor(key)
     return out, outFrom
 end
 
--- arrange mode for the member rows (ListKeys.lua): ours, or the Cooldowns window's while attached
+-- arrange mode for the member rows (ListKeys.lua): shared by our bars and the Cooldowns bars
 local function ArrangingRows()
-    if mod.Attached() then return mod.Arranging("MMTBuffs", CD_WINDOW) end
-    return mod.Arranging("MMTBuffs")
+    return mod.Arranging("MMTBuffs", CD_WINDOW)
 end
 
 -- look of a buff icon (missing: normal / red / grey, glow; active: opacity),
@@ -66,13 +66,17 @@ local function Look(i)
     return i
 end
 
--- icons of one member
-local function Icons(key)
-    local icons = {}
+-- icons of one member: the ones shown here (host nil), or the ones on another bar (host = its window: the
+-- Cooldowns bars, all of them while attached; ListKeys mod.HostOf); second value: every entry's id, in order
+local function Icons(key, host)
+    local icons, order = {}, {}
     local arranging = ArrangingRows()
     local entries, from = EntriesFor(key)
     for n, e in ipairs(entries) do
+        local oid = "b:" .. tostring(mod.EntryKey(e))
+        order[#order + 1] = oid
         local state, start, dur, count, matched, micon
+        if mod.HostOf(e) == host then
         -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
         if arranging or (mod.Applies(e, key) and mod.Castable(e)
             and not (M.db.hideUnlearned and mod.Unlearned(key, e))) then
@@ -81,16 +85,18 @@ local function Icons(key)
             if not arranging and state == "missing" and mod.BlessingCovered(key, e) then state = nil end
             if arranging and not state then state = "ready" end
         end
+        end
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
                 count = count, spell = e.id, drag = arranging and mod.DragFor(from[n], e) or nil,
+                oid = oid, anchor = host and e.after or nil,
                 tip = mod.IsPattern(e) and (matched and (matched .. "  (" .. e.name .. ")")
                         or state == "missing" and ("None of " .. e.name) or e.name)
                     or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
                         or state == "missing" and ("No " .. mod.EntryName(e):lower()) or mod.EntryName(e)) or nil })
         end
     end
-    return icons
+    return icons, order
 end
 
 ---------------------------------------------------------------------------
@@ -188,17 +194,17 @@ mod.window = MMTIconBars.NewWindow({
         end
         if not mod.Attached() then
             for _, key in ipairs(mod.Members()) do
-                -- a member with nothing tracked (or nothing readable) gets no empty row
-                local icons = Icons(key)
-                if #icons > 0 then
-                    rows[#rows + 1] = { key = key, icons = icons, color = mod.preview and mod.PreviewColor(key) or nil }
-                end
+                -- a member with nothing tracked (or nothing readable, Cooldowns' icons dragged here included) gets no empty row
+                local icons, order = Icons(key, nil)
+                rows[#rows + 1] = { key = key, icons = icons, order = order, dropEmpty = true,
+                    color = mod.preview and mod.PreviewColor(key) or nil }
             end
         end
         return rows
     end,
     config = function() MMT.ToggleConfig(M.name) end,
     active = function() return M.enabled end,
+    guests = function() return not mod.Attached() end,   -- attached: no member rows to take Cooldowns' icons
 })
 
 -- move tab above the window's corner while unlocked (SettingsKit), always while arranging
@@ -228,27 +234,26 @@ function mod.Detach()
     MMTIconBars.SetExtra(CD_WINDOW, "buffs", nil)
 end
 
--- apply the attach setting and redraw
+-- attached: every buff icon goes on the Cooldowns bars (ListKeys mod.HostOf / PlaceIcon)
+function mod.ImpliedHost() return mod.Attached() and CD_WINDOW or nil end
+
+-- apply the attach setting and redraw; our icons on the Cooldowns bars (all of them while attached,
+-- else the ones dragged there) ride on its rows, by default at the attach side
 function mod.Apply()
-    if mod.Attached() then
-        mod.window:Refresh()   -- only the All classes row, if on
-        MMTIconBars.SetExtra(CD_WINDOW, "buffs", function(key)
-            if not (M.enabled and M.db.shown) then return nil end
-            return Icons(key)
-        end, M.db.attach)
-    else
-        mod.Detach()
-        mod.window:Refresh()
-    end
+    mod.window:Refresh()   -- attached: only the All classes row, if on
+    MMTIconBars.SetExtra(CD_WINDOW, "buffs", function(key)
+        if not (M.enabled and M.db.shown) then return nil end
+        return (Icons(key, CD_WINDOW))
+    end, M.db.attach == "LEFT" and "LEFT" or "RIGHT")
 end
 
 -- arrange mode on / off (session only); attached, it covers our icons on the Cooldowns bars too
 function mod.ToggleArrange()
-    local on = not mod.Arranging("MMTBuffs")
-    MMTIconBars.SetArrange("MMTBuffs", on)
+    local on = not mod.Arranging("MMTBuffs", CD_WINDOW)
+    mod.SetArrangeAll(on)   -- the Cooldowns bars too (ListKeys.lua)
     mod.Apply()
     if on and not M.db.shown then MMT.Print("%s: the window is hidden (/mmtbt shows it).", M.title) end
-    MMT.Print("%s: %s", M.title, on and "arranging - every tracked buff shows; drag icons by their dots to reorder. /mmtbt arrange again to stop."
+    MMT.Print("%s: %s", M.title, on and "arranging - every tracked buff shows; drag icons by their dots to reorder, or onto a Cooldown Timers bar. /mmtbt arrange again to stop."
         or "arranging off.")
     if MMT.RefreshConfig then MMT.RefreshConfig() end
 end
@@ -266,6 +271,6 @@ end
 M:Listen("REFRESH", function() mod.Apply() end)
 
 function mod.Redraw()
-    if mod.Attached() then MMTIconBars.Refresh(CD_WINDOW) end
+    if mod.Guesting() then MMTIconBars.Refresh(CD_WINDOW) end   -- our icons on its bars
     mod.window:Refresh()
 end

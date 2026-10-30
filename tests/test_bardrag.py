@@ -151,7 +151,7 @@ print(lua.eval(r'''function(m)
   assert(not Driver(w.frame).shown, "drag not ended")
   -- arrange off: hidden again, no dots, and a drag moves the window instead
   m.ToggleArrange()
-  assert(not row.shown or Ids(row) == "", "arrange off: still everything shown")
+  assert(not row.shown or Ids(row) == "", "arrange off: still everything shown: " .. Ids(row) .. " " .. tostring(MMTIconBars.Arranging("MMTCooldowns")) .. tostring(M.db.hideReady) .. tostring(w.frame.shown))
   local moved = false
   w.frame.scripts.OnDragStart = function() moved = true end
   M.db.hideReady, M.db.locked, M.db.clickThrough = false, false, false

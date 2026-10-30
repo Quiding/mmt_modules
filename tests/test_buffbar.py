@@ -305,7 +305,8 @@ print(lua.eval(r"""function(m)
   m.State = function(key) if key == "Anna-Smith" then return "buff", 100, 300, 1 end end
   MMT.SortedMembers = function() return { "Anna-Smith", "Bob-Stone" } end
   local keys = {}
-  for _, row in ipairs(m.window.def.rows()) do if row.key then keys[#keys + 1] = row.key end end
+  -- (an empty member row asks IconBars to leave it out: dropEmpty, v16)
+  for _, row in ipairs(m.window.def.rows()) do if row.key and (#row.icons > 0 or not row.dropEmpty) then keys[#keys + 1] = row.key end end
   assert(#keys == 1 and keys[1] == "Anna-Smith", "empty row: " .. table.concat(keys, ","))
   m.State = oldState
   return "empty rows hidden ok"

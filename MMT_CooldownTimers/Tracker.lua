@@ -305,7 +305,10 @@ function mod.Refresh()
     queued = true
     C_Timer.After(0.15, function()
         queued = false
-        if M.enabled then mod.window:Refresh() end
+        if M.enabled then
+            mod.window:Refresh()
+            if mod.Guesting() then MMTIconBars.Refresh("MMTBuffs") end   -- our icons on its bars
+        end
     end)
 end
 

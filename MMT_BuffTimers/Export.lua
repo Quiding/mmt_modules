@@ -42,6 +42,13 @@ local function SetKeys(keys, data)
 end
 
 -- replaces the lists (class, role, character) in the string, keeps the others
+-- where an icon was dragged on the bars (ListKeys PlaceIcon): onto the Cooldowns bars, after the icon `after`
+local function Place(t, e)
+    t.host = e.host == "MMTCooldowns" and e.host or nil
+    t.after = type(e.after) == "string" and #e.after <= 80 and e.after or nil
+    return t
+end
+
 local function SetLists(data)
     if type(data) ~= "table" then return false, "unreadable" end
     local n = 0
@@ -51,13 +58,13 @@ local function SetLists(data)
             for _, e in ipairs(list) do
                 local only = type(e) == "table" and mod.CleanFilter and mod.CleanFilter(e.only) or nil
                 if type(e) == "table" and type(e.id) == "number" then
-                    clean[#clean + 1] = { id = e.id, off = (e.off == true) or nil, only = only }
+                    clean[#clean + 1] = Place({ id = e.id, off = (e.off == true) or nil, only = only }, e)
                 elseif type(e) == "table" and mod.ParsePattern and mod.ParsePattern(e.name) then
-                    clean[#clean + 1] = { name = mod.ParsePattern(e.name), off = (e.off == true) or nil, only = only,
+                    clean[#clean + 1] = Place({ name = mod.ParsePattern(e.name), off = (e.off == true) or nil, only = only,
                         caster = type(e.caster) == "string" and e.caster:match("^%u+$") or nil,
-                        icon = type(e.icon) == "number" and e.icon or nil }
+                        icon = type(e.icon) == "number" and e.icon or nil }, e)
                 elseif type(e) == "table" and (e.weapon == "MH" or e.weapon == "OH") then
-                    clean[#clean + 1] = { weapon = e.weapon, off = (e.off == true) or nil, only = only }
+                    clean[#clean + 1] = Place({ weapon = e.weapon, off = (e.off == true) or nil, only = only }, e)
                 end
             end
             M.db.lists[class] = clean

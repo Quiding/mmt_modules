@@ -48,7 +48,10 @@ local function SetLists(data)
             for _, e in ipairs(list) do
                 if type(e) == "table" and (e.t == "s" or e.t == "i") and type(e.id) == "number"
                     and type(e.cd) == "number" and e.cd >= 0 then
-                    clean[#clean + 1] = { t = e.t, id = e.id, cd = e.cd, off = (e.off == true) or nil }
+                    clean[#clean + 1] = { t = e.t, id = e.id, cd = e.cd, off = (e.off == true) or nil,
+                        -- dragged onto a Buff Timers bar, after its icon `after` (ListKeys PlaceIcon)
+                        host = e.host == "MMTBuffs" and e.host or nil,
+                        after = type(e.after) == "string" and #e.after <= 80 and e.after or nil }
                 end
             end
             M.db.lists[class] = clean

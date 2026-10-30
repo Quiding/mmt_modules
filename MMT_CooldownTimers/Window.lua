@@ -28,14 +28,20 @@ function mod.EntriesFor(key)
     return mod.CollectEntries(key, true, mod.EntryKey)
 end
 
-local function Rows()
-    local rows = {}
-    -- arrange mode: every tracked icon shows (not learned, not carried, ready), draggable (ListKeys.lua)
-    local arranging = mod.Arranging("MMTCooldowns")
-    for _, key in ipairs(mod.Members()) do
-        local icons = {}
-        local entries, from = mod.EntriesFor(key)
-        for n, e in ipairs(entries) do
+mod.WINDOW = "MMTCooldowns"
+local BF_WINDOW = "MMTBuffs"
+
+-- icons of a member: the ones shown here (host nil), or the ones dragged onto another bar (host = its
+-- window: a Buff Timers bar, ListKeys mod.HostOf); second value: the id of every entry, in order
+local function Icons(key, host)
+    local icons, order = {}, {}
+    -- arrange mode (shared with Buff Timers' bars): every tracked icon shows (not learned, not carried, ready), draggable (ListKeys.lua)
+    local arranging = mod.Arranging("MMTCooldowns", BF_WINDOW)
+    local entries, from = mod.EntriesFor(key)
+    for n, e in ipairs(entries) do
+        local oid = "c:" .. mod.EntryKey(e)
+        order[#order + 1] = oid
+        if mod.HostOf(e) == host then
             local state, start, dur = mod.State(key, e)
             if arranging and not state then state = "ready" end
             local bStart, bDur
@@ -45,6 +51,7 @@ local function Rows()
                     texture = mod.EntryIcon(e), state = state, start = start, duration = dur,
                     spell = e.t == "s" and e.id or nil, item = e.t == "i" and e.id or nil,
                     drag = arranging and mod.DragFor(from[n], e) or nil,
+                    oid = oid, anchor = host and e.after or nil,
                 }
                 if bStart then
                     -- buff up: glow with its time left, then the cooldown
@@ -54,17 +61,31 @@ local function Rows()
                 icons[#icons + 1] = icon
             end
         end
-        rows[#rows + 1] = { key = key, icons = icons, color = mod.preview and mod.PreviewColor(key) or nil }
+    end
+    return icons, order
+end
+
+local function Rows()
+    local rows = {}
+    for _, key in ipairs(mod.Members()) do
+        local icons, order = Icons(key, nil)
+        rows[#rows + 1] = { key = key, icons = icons, order = order, color = mod.preview and mod.PreviewColor(key) or nil }
     end
     return rows
 end
 
--- arrange mode on / off (session only)
+-- our icons dragged onto Buff Timers' bars ride on its rows
+MMTIconBars.SetExtra(BF_WINDOW, "cooldowns", function(key)
+    if not (M.enabled and M.db and M.db.shown) then return nil end
+    return (Icons(key, BF_WINDOW))
+end, "RIGHT")
+
+-- arrange mode on / off (session only), for Buff Timers' bars too
 function mod.ToggleArrange()
-    local on = not mod.Arranging("MMTCooldowns")
-    MMTIconBars.SetArrange("MMTCooldowns", on)
+    local on = not mod.Arranging("MMTCooldowns", BF_WINDOW)
+    mod.SetArrangeAll(on)
     if on and not M.db.shown then MMT.Print("%s: the window is hidden (/mmtct shows it).", M.title) end
-    MMT.Print("%s: %s", M.title, on and "arranging - every tracked icon shows; drag icons by their dots to reorder. /mmtct arrange again to stop."
+    MMT.Print("%s: %s", M.title, on and "arranging - every tracked icon shows; drag icons by their dots to reorder, or onto a Buff Timers bar. /mmtct arrange again to stop."
         or "arranging off.")
     if MMT.RefreshConfig then MMT.RefreshConfig() end
 end
@@ -73,6 +94,7 @@ end
 function mod.ListsChanged()
     mod.BuildIndex()
     mod.window:Refresh()
+    MMTIconBars.Refresh(BF_WINDOW)   -- icons may have moved to / from its bars
     if MMT.RefreshConfig then MMT.RefreshConfig() end   -- the list editor, if it's open
 end
 
