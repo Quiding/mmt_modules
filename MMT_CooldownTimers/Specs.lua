@@ -55,28 +55,56 @@ end
 ---------------------------------------------------------------------------
 local function Readable(v) return v ~= nil and not MMT.IsSecret(v) end
 
--- points per tree, or nil. Classic talent tabs where the client has them; on
--- Forever the talents are one trait tree, whose three classic trees are the
--- three bands of node columns (left to right = tab order).
-function mod.TreePoints()
-    local n = GetNumTalentTabs and MMT.Safe(GetNumTalentTabs)
-    if type(n) == "number" and n >= 3 then
-        local t = {}
-        for tab = 1, 3 do
-            local ok, a, b, c, d, e = pcall(GetTalentTabInfo, tab)
-            local spent = ok and (type(a) == "string" and c or e)
-            if not Readable(spent) or type(spent) ~= "number" then t = nil break end
-            t[tab] = spent
-        end
-        if t then return t end
-    end
-    if not (C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_Traits and C_Traits.GetConfigInfo
-        and C_Traits.GetTreeNodes and C_Traits.GetNodeInfo) then return nil end
+local function Sum(t) return t and t[1] + t[2] + t[3] or 0 end
+
+-- Forever's one trait tree: its config and tree ID, or nil
+local function TraitTree()
+    if not (C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_Traits and C_Traits.GetConfigInfo) then return nil end
     local config = MMT.Safe(C_ClassTalents.GetActiveConfigID)
-    if type(config) ~= "number" then return nil end
+    if not Readable(config) or type(config) ~= "number" then return nil end
     local info = MMT.Safe(C_Traits.GetConfigInfo, config)
     local tree = type(info) == "table" and type(info.treeIDs) == "table" and info.treeIDs[1]
-    if type(tree) ~= "number" then return nil end
+    if not Readable(tree) or type(tree) ~= "number" then return nil end
+    return config, tree
+end
+
+-- points spent in each of the trait groups (= the three classic trees, in
+-- orderIndex order), like LibSpecialization reads Forever
+local function GroupPoints(config, tree)
+    if not (C_Traits.GetGroupDisplayInfoByTreeID and C_Traits.GetGroupCurrencyInfo) then return nil end
+    local groups = MMT.Safe(C_Traits.GetGroupDisplayInfoByTreeID, tree)
+    if type(groups) ~= "table" or #groups < 3 then return nil end
+    local sorted = {}
+    for i, g in ipairs(groups) do sorted[i] = g end
+    table.sort(sorted, function(a, b) return (tonumber(a.orderIndex) or 0) < (tonumber(b.orderIndex) or 0) end)
+    local t = {}
+    for i = 1, 3 do
+        local id = type(sorted[i]) == "table" and sorted[i].groupID
+        if not Readable(id) then return nil end
+        local cur = MMT.Safe(C_Traits.GetGroupCurrencyInfo, config, { id })
+        local infos = type(cur) == "table" and type(cur[1]) == "table" and cur[1].currencyInfos
+        local spent = type(infos) == "table" and type(infos[1]) == "table" and infos[1].spent
+        t[i] = Readable(spent) and type(spent) == "number" and spent or 0
+    end
+    return t
+end
+
+-- classic talent tabs (Forever has them too, but they read 0 everywhere)
+local function TabPoints()
+    local n = GetNumTalentTabs and MMT.Safe(GetNumTalentTabs)
+    if type(n) ~= "number" or n < 3 or not GetTalentTabInfo then return nil end
+    local t = {}
+    for tab = 1, 3 do
+        local ok, a, b, c, d, e = pcall(GetTalentTabInfo, tab)
+        local spent = ok and (type(a) == "string" and c or e)
+        if not Readable(spent) or type(spent) ~= "number" then return nil end
+        t[tab] = spent
+    end
+    return t
+end
+
+-- the three bands of node columns of the trait tree, by ranks bought
+local function BandPoints(config, tree)
     local nodes = MMT.Safe(C_Traits.GetTreeNodes, tree)
     if type(nodes) ~= "table" then return nil end
     local cols, xs = {}, {}
@@ -102,6 +130,19 @@ function mod.TreePoints()
         t[#t] = t[#t] + cols[xs[i]]
     end
     return #t == 3 and t or nil
+end
+
+-- points per tree, or nil. Forever's trait groups first, then the classic
+-- talent tabs, each only when it has points; last the bands of node columns
+-- (left to right = tab order).
+function mod.TreePoints()
+    local config, tree = TraitTree()
+    local groups = config and GroupPoints(config, tree)
+    if Sum(groups) > 0 then return groups end
+    local tabs = TabPoints()
+    if Sum(tabs) > 0 then return tabs end
+    local bands = config and C_Traits.GetTreeNodes and C_Traits.GetNodeInfo and BandPoints(config, tree)
+    return bands or groups or tabs
 end
 
 -- this character's talent tree with the most points (1-3), or nil (no points yet)

@@ -66,6 +66,28 @@ print(lua.eval(r'''function(m)
     nodes[id] = { posX = col * 100, ranksPurchased = pts }
   end
   assert(m.OwnTalentRole() == "HEALER", "trait bands: " .. tostring(m.OwnTalentRole()))
+  -- Forever: the classic tabs exist but read 0; the trait groups (orderIndex
+  -- order) have the points, like a paladin's Holy 0 / Protection 32 / Retribution 19
+  GetNumTalentTabs = function() return 3 end
+  GetTalentTabInfo = function(t) return "Tree" .. t, "icon", 0 end
+  C_Traits.GetGroupDisplayInfoByTreeID = function() return { { groupID = 12, orderIndex = 3 },
+    { groupID = 10, orderIndex = 1 }, { groupID = 11, orderIndex = 2 } } end
+  C_Traits.GetGroupCurrencyInfo = function(config, ids)
+    assert(config == 7, "config")
+    return { { currencyInfos = { { spent = ({ [10] = 0, [11] = 32, [12] = 19 })[ids[1]] } } } }
+  end
+  NOW = NOW + 20
+  local p = m.TreePoints()
+  assert(p and p[1] == 0 and p[2] == 32 and p[3] == 19, "trait groups: " .. tostring(p and table.concat(p, "/")))
+  assert(m.OwnTree() == 2, "own tree from the trait groups")
+  -- groups and tabs all 0: the node column bands still count
+  C_Traits.GetGroupCurrencyInfo = function() return { { currencyInfos = { { spent = 0 } } } } end
+  p = m.TreePoints()
+  assert(p[1] == 5 and p[2] == 0 and p[3] == 21, "bands after zero groups / tabs")
+  NOW = NOW + 20
+  assert(m.OwnTalentRole() == "HEALER", "bands after zero groups / tabs: role")
+  GetNumTalentTabs, GetTalentTabInfo = nil, nil
+  C_Traits.GetGroupDisplayInfoByTreeID, C_Traits.GetGroupCurrencyInfo = nil, nil
   -- a respec: one BPR message at once, not again for the same role
   SENT = {}
   m.OwnRoleSent()

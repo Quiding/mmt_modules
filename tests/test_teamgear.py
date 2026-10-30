@@ -325,6 +325,13 @@ print(lua.eval(r'''function(m)
   p = m.TreePoints(own)
   assert(own and p[1] == 8 and p[2] == 1 and p[3] == 9 and own.names[1] == nil, "bands")
   assert(m.TreeName(own, "PALADIN", 3) == "Retribution", "classic tree name")
+  -- Forever: the classic API exists but every rank reads 0 -> the trait tree
+  function GetNumTalentTabs() return 3 end
+  function GetTalentTabInfo(t) return ({ "Arms", "Fury", "Protection" })[t], 1, 0 end
+  function GetNumTalents() return 2 end
+  function GetTalentInfo(t, i) return "Zero" .. t .. i, 4000 + i, i, t, 0, 3 end
+  own = m.ReadOwnTalents()
+  assert(own and own.source == "traits" and m.TreePoints(own)[3] == 9, "classic zeros won over the traits: " .. tostring(own and own.source))
   -- the classic talent API where the client has it (names travel along, cleaned)
   function GetNumTalentTabs() return 3 end
   function GetTalentTabInfo(t) return ({ "Arms", "Fury", "Protection" })[t], 1, 0 end

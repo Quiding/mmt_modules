@@ -5,7 +5,8 @@
 -- (C_Traits.GetGroupDisplayInfoByTreeID, in orderIndex order; the node's
 -- groupIDs say which one it belongs to). Without groups the three bands of node
 -- columns are the trees (like Buff Timers' Specs.lua). The classic talent API
--- (GetTalentTabInfo / GetTalentInfo) is used where the client has it. A
+-- (GetTalentTabInfo / GetTalentInfo) is used where it has points (Forever has
+-- it too, but every rank reads 0). A
 -- talent's place on the grid (row, column inside its tree) comes from the node
 -- positions.
 --
@@ -215,12 +216,22 @@ local function Sorted(data)
     return data
 end
 
--- this character's talents { names, talents, source }, or nil
+local function Spent(data)
+    local n = 0
+    for _, t in ipairs(data and data.talents or {}) do n = n + t.rank end
+    return n
+end
+
+-- this character's talents { names, talents, source }, or nil. The classic
+-- API only when it has points: Forever has it too, but every rank reads 0.
 function mod.ReadOwnTalents()
-    local ok, data = pcall(ReadClassic)
-    if not (ok and data) then ok, data = pcall(ReadTraits) end
-    if not ok then mod.talentError = data end
-    return ok and data and Sorted(data) or nil
+    local ok, classic = pcall(ReadClassic)
+    if not ok then mod.talentError, classic = classic, nil end
+    if Spent(classic) > 0 then return Sorted(classic) end
+    local ok2, traits = pcall(ReadTraits)
+    if not ok2 then mod.talentError, traits = traits, nil end
+    local data = traits or classic
+    return data and Sorted(data) or nil
 end
 
 ---------------------------------------------------------------------------

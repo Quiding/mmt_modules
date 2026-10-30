@@ -113,7 +113,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.14.8) / MMT_BuffTimers (v0.17.9) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.14.9) / MMT_BuffTimers (v0.17.10) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -186,7 +186,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Spec lists (`Specs.lua`, identical in both; setting `specLists`, default off): list key "SPEC:<CLASS>:<SPEC>" (same
   keys as the spec presets) replaces the class key in `ListKeysFor` when `mod.SpecOf(key)` is known; `EnsureSpecLists`
   fills missing spec lists from the presets. Spec = tree with most points (`mod.TreePoints`, moved here from Roles.lua;
-  `mod.OwnTree`), heartbeat `cts` (Cooldowns) / `bts` (Buffs, only while Cooldowns is off) + `MSPC:<tree>` once on
+  `mod.OwnTree`; 0.14.9 / 0.17.10: Forever's trait groups first = `C_Traits.GetGroupDisplayInfoByTreeID` by orderIndex,
+  points `GetGroupCurrencyInfo(config, {groupID})[1].currencyInfos[1].spent` like EllesmereUI's LibSpecialization, then
+  the classic tabs, each only when the sum > 0 - **Forever HAS GetTalentTabInfo but it reads 0 for every tree** -, then
+  the node-column bands), heartbeat `cts` (Cooldowns) / `bts` (Buffs, only while Cooldowns is off) + `MSPC:<tree>` once on
   change; druid Feral + `mod.PlayerRole` TANK (Buffs only) = BEAR. Preview ALL/MIXED: made-up tree from a hash.
   Set by hand: `M.db.specSet[key]` (Specs tab = `mod.SpecsTab(panel, status, changed)` in Specs.lua, both modules;
   holds the "Use spec lists" check), else the OTHER module's `MMT.db.modules[OTHER].specSet` (read only); must fit
@@ -337,7 +340,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
 
-### MMT_TeamGear (v0.2.0)
+### MMT_TeamGear (v0.2.1)
 - Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
   members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
   window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
@@ -356,8 +359,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - New frames start SHOWN: `f:Hide()` at the end of Build, and place a window when it has no point yet
   (`not f:GetPoint(1)`), or it is "shown" without an anchor and invisible (test stub frames start shown too).
 - Never add frames to `UISpecialFrames` (taints the game menu): `MMT.UI.CloseOnEscape`.
-- Talents (0.2.0): `Talents.lua` reads OWN talents: classic `GetTalentTabInfo`/`GetTalentInfo` when the client has
-  them, else Forever's ONE trait tree (`C_ClassTalents.GetActiveConfigID`, `C_Traits.GetConfigInfo` treeIDs[1],
+- Talents (0.2.0): `Talents.lua` reads OWN talents: classic `GetTalentTabInfo`/`GetTalentInfo` when they have points
+  (0.2.1: Forever has them, every rank 0), else Forever's ONE trait tree (`C_ClassTalents.GetActiveConfigID`, `C_Traits.GetConfigInfo` treeIDs[1],
   `GetTreeNodes`, `GetNodeInfo` posX/posY/activeRank/maxRanks/groupIDs/isVisible, `activeEntry` or entryIDs[1] ->
   `GetEntryInfo` -> `GetDefinitionInfo` spellID/overrideIcon). The 3 trees = `C_Traits.GetGroupDisplayInfoByTreeID`
   sorted by orderIndex (names = displayName; how EllesmereUI's Forever ClassicTalents does it), else the 3 bands of node
