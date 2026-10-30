@@ -465,7 +465,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.4.2) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.5.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -476,7 +476,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
   another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
   Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.
-- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras). One message per change; > 10 changes at once
+- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI). One message per change; > 10 changes at once
   (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
 - `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private
   addon table). Read + write `__DEJUNK_ADDON_V3_SAVED_VARIABLES__` (rewritten as a shallow copy on every state change;
@@ -511,28 +511,53 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   with `own = true`: no `expect`, so Dejunk's Check sends it like the player's; no button: state + QDJ sent directly).
   Dejunk Check sees a genuine removal from GI / PI (incl. a move to not junk) -> `mod.BaganatorUnjunk(id)` (in place,
   `changedHere` forces the next tick's full compare, which sends QBG "-"). Loops end because the other side is a no-op.
-- `ForeverAuras.lua` + `AurasWindow.lua` (0.4.0, key `auras`, options `waAsk` (default on), `waFrom` TEAM | LEADER
-  (`MMT.IsFTLLeader`), `waDock`): ForeverAuras (`ForeverAuras` = its `WeakAuras` table; global `WeakAuras` too) has a
-  PUBLIC API in ForeverAuras/API.lua, `ForeverAurasAPI`: `:GetAuras()` {parent, children, icon} by id, `:ExportAura(id)`
-  (= its export window's string, `Private.DisplayToString(id, true)`: "!WA:2!" + LibDeflate EncodeForPrint, chars
-  a-zA-Z0-9() only; a group includes its children), `:DecodeAuraString(s)` ({m="d", d, c} or nil), `:ImportAura(s, cb)`
-  (= `WeakAuras.Import` -> its own import / update window; false + "in combat" | "another import is still open" |
-  ...; cb(accepted, id) once), `:GetConfigFrame()` (`ForeverAurasOptions`, PortraitFrameTemplate, nil until the
-  options opened once). Its own transfer (chat link + "ForeverAuras" comm) only works from a chat link, one aura.
-  Wire: `QWAH:<batch>:<n auras>:<bytes>:<names>` (< 250, SendAddon whisper / SendToTeam online), then the payload
-  `<%XX id>=<string>;...` in parts of 6000 bytes, each `MMT.SendLong("QWA:<batch>:<i>:<n>:<part>", whisper target |
-  nil = online team)` - the core's MPT drops a text after 400 parts x 220 bytes or 2 minutes, and team BULK outside
-  instances is a whisper per member at ~800 B/s in all, so big single texts would time out; receiver joins parts
-  (any order, forgotten after 10 min idle), `mod.Ask` (lines: name, "(group, n inside)", "- you have one by this
-  name"), then a queue: one `ImportAura` at a time (next after cb, retry 2 s while another import window is open,
-  PLAYER_REGEN_ENABLED after combat). Replies whispered: `QWAR:<batch>:A` importing, `:N:<why>` (ignored / not the
-  leader / not an aura), `:D:<imported>:<total>`; every step prints a chat line on both sides. Window
-  `MMTQoLAurasWindow` (DIALOG, below MMT's dropdown lists): "All auras" + tree list with filter (0.4.1: groups start closed, +/- or double-click opens one, `expanded[id]` session only, a filter shows every match flat; `mod.AurasRows`, `mod.AurasToggle`; 0.4.2: sorted like ForeverAuras' list = "Loaded" (public `ForeverAuras.IsAuraLoaded(id) ~= nil`: loaded or standby; a group = any aura inside) then "Not loaded", each by name, closable section rows "`mod.AurasRows`, `mod.AurasToggle`),01loaded" / "`mod.AurasRows`, `mod.AurasToggle`),01unloaded" (open by default); `mod.AuraList` entries carry `section`, nil = no IsAuraLoaded = one plain list), target via
-  `UI.OpenList` (online team | each online member), Send; placed beside the options frame when it's shown (`win.docked`: then it closes with them, 0.4.2: OnHide hooked on the options frame). The
-  "Send to team" button is parented to ForeverAuras' options frame (above its top right), made on
+- `Bulk.lua` (0.5.0): `mod.Bulk{ tag, noun, plural, where, fromKey, settings, process(t, entries), ready(), open(item,
+  done) -> opened, why, busy = {[why] = true} }` = big import strings to one member / the online team, used by
+  ForeverAuras (tag QWA) and EllesmereUI (QEU). Wire: `<tag>H:<batch>:<count>:<bytes>:<names>` (< 250, SendAddon whisper
+  / SendToTeam online) then the payload `<%XX name>=<string>;...` in parts of 6000 bytes, each
+  `MMT.SendLong("<tag>:<batch>:<i>:<n>:<part>", whisper target | nil = online team)` - the core's MPT drops a text after
+  400 parts x 220 bytes or 2 minutes, and team BULK outside instances is a whisper per member at ~800 B/s in all, so
+  big single texts would time out. Receiver: refuses when `M.db[fromKey] == "LEADER"` and the sender isn't the FTL
+  leader (`MMT.IsFTLLeader`); joins parts (any order, forgotten after 10 min idle) -> `process`; the feature asks
+  (`mod.Ask`) then `b:Queue(t, items)` = replies A, one `open` at a time (`importing` set BEFORE open: done may come at
+  once), retry 2 s while `busy[why]`, after combat (`b:InCombatEnded()` on PLAYER_REGEN_ENABLED), else skipped. Replies
+  whispered `<tag>R:<batch>:A` | `:N:<why>` (ignored / not the leader / not one of ours) | `:D:<imported>:<total>`;
+  every step prints a chat line on both sides. `b.stats`, `b:Waiting()`, `b:Count()` for the report. Strings are
+  printable (LibDeflate EncodeForPrint, no ; or =).
+- `ForeverAuras.lua` + `AurasWindow.lua` (0.4.0, key `auras`, options `waAsk` (default on), `waFrom` TEAM | LEADER,
+  `waDock`): ForeverAuras (`ForeverAuras` = its `WeakAuras` table; global `WeakAuras` too) has a PUBLIC API in
+  ForeverAuras/API.lua, `ForeverAurasAPI`: `:GetAuras()` {parent, children, icon} by id, `:ExportAura(id)` (= its export
+  window's string, "!WA:2!" + EncodeForPrint; a group includes its children), `:DecodeAuraString(s)` ({m="d", d, c} or
+  nil), `:ImportAura(s, cb)` (= `WeakAuras.Import` -> its own import / update window; false + "in combat" | "another
+  import is still open" | ...; cb(accepted, id) once), `:GetConfigFrame()` (`ForeverAurasOptions`, nil until the options
+  opened once). Its own transfer (chat link + "ForeverAuras" comm) only works from a chat link, one aura. Ask lines:
+  name, "(group, n inside)", "- you have one by this name". Window `MMTQoLAurasWindow` (DIALOG, below MMT's dropdown
+  lists): "All auras" + tree list with filter; groups start closed (+/- or double-click, `expanded[id]` session only; a
+  filter shows every match flat; `mod.AurasRows`, `mod.AurasToggle`); sorted like ForeverAuras' list (0.4.2): "Loaded"
+  (public `ForeverAuras.IsAuraLoaded(id) ~= nil`: loaded or standby; a group = any aura inside) then "Not loaded", each
+  by name, closable section rows (ids "\001loaded" / "\001unloaded", open by default); `mod.AuraList` entries carry
+  `section` (nil = no IsAuraLoaded = one plain list). Target via `UI.OpenList` (online team | each online member).
+  Placed beside the options frame when it's shown (`win.docked`: then it closes with them, OnHide hooked on the options
+  frame). "Send to team" button parented to the options frame (above its top right), made on
   `hooksecurefunc(ForeverAuras, "OpenOptions")`.
+- `Ellesmere.lua` + `EllesmereWindow.lua` (0.5.0, key `eui`, options `euAsk`, `euFrom`, `euDock`): EllesmereUI (9.7) public
+  profile functions in EllesmereUI/EllesmereUI_Profiles.lua: `GetProfileList()` -> profileOrder, profiles,
+  `GetActiveProfileName()`, `ExportProfile(name)` (a bare call = COMPLETE profile: every module, layout, CDM spells for
+  every spec, overrides, globals - what Wago packs use), `ExportFullAccountData()` (account-wide settings + the active
+  profile only), `ImportProfileInteractive{ importString, profileName, source, callback }` (its own Profiles import page;
+  false + "in combat" | "an interactive import is already pending"; callback(accepted)). That API page does NOT route
+  full account strings: like its paste flow we `DecodeImportStringAsync`, check `IsFullAccountPayload`, show its own
+  `EllesmereUI:ShowConfirmPopup{ typeToConfirm = "Confirm", onConfirm, onCancel }` and call `ImportFullAccountData`
+  (ReloadUI first thing - must run inside the click; our done(true) = the D reply is queued before it). Entry names
+  `P|<profile>` / `F|<active profile>`; a full account is always asked (whatever euAsk says). EllesmereUI sends no addon
+  messages of its own. Window `MMTQoLEllesmereWindow`: profiles in its order (active marked, default selection) +
+  "Full account" row, target, Send; "Send to team" above `EllesmereUIFrame` (built one frame after
+  `EllesmereUI:Show()` on the first open: hooks on Show / Toggle look again now and 0.5 s later).
 - Test: `tests/test_qol.py` (two clients; stand-ins for Dejunk's state / its own list copy and Baganator's config).
-  ForeverAuras: stand-in ForeverAurasAPI; one aura, a group in parts out of order, all to the team, ask / ignore, waiting for an open import window / combat, FTL-leader-only.
+  ForeverAuras: stand-in ForeverAurasAPI; one aura, a group in parts out of order, all to the team, ask / ignore,
+  waiting for an open import window / combat, FTL-leader-only, the window's rows. EllesmereUI: stand-in with export /
+  interactive import / full account functions; profile in parts, busy import page, full account always asked +
+  confirmed in its popup, straight import without ask.
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between

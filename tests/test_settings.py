@@ -113,6 +113,7 @@ for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_T
       for _, use in ipairs(USES) do use() end
       if rawget(page, "OnRefresh") then page.OnRefresh() end
       if m.OpenScales then m.OpenScales() end  -- Pawn Compare's scale window
-      if m.OpenAuras then m.OpenAuras() end    -- Quality of life's send window
+      if m.OpenAuras then m.OpenAuras() end    -- Quality of life's send windows
+      if m.OpenEui then m.OpenEui() end
       return folder .. ": settings page built, " .. #USES .. " options read and set"
     end''')(mod, folder))

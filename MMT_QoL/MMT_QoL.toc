@@ -1,12 +1,12 @@
 ## Interface: 16001
 ## Title: MMT - Quality of life
-## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team. Sends ForeverAuras auras to the team.
-## Version: 0.4.2
+## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team. Sends ForeverAuras auras and EllesmereUI profiles to the team.
+## Version: 0.5.0
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
-## OptionalDeps: Dejunk, Baganator, ForeverAuras
+## OptionalDeps: Dejunk, Baganator, ForeverAuras, EllesmereUI
 ## X-MMT-Module: 1
 ## X-MMT-Title: Quality of life
 ## IconTexture: Interface\Icons\INV_Misc_Bag_10
@@ -15,7 +15,10 @@ Module.lua
 Ask.lua
 Dejunk.lua
 Baganator.lua
+Bulk.lua
 ForeverAuras.lua
 AurasWindow.lua
+Ellesmere.lua
+EllesmereWindow.lua
 SettingsKit.lua
 Settings.lua

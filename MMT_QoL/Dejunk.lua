@@ -449,7 +449,7 @@ local function ReloadTeam()
 end
 
 F = mod.Feature({
-    key = "dejunk", slash = "dejunk", addon = "Dejunk", title = "Dejunk lists",
+    key = "dejunk", slash = "dejunk", addon = "Dejunk", title = "Dejunk lists", tabText = "Dejunk",
     checkText = "Sync Dejunk's lists",
     tip = "Items you put on or take off Dejunk's junk / not junk lists here are put on or taken off the same lists on the team's characters. Baganator's junk follows Dejunk, so that syncs too. The team's changes count in Dejunk after a /reload on that character.",
     tags = { QDJ = OnChange, QDJL = OnAll, QDJR = OnReload },

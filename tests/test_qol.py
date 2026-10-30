@@ -5,7 +5,10 @@ other, changes taken are not sent back, bulk changes aren't sent.
 ForeverAuras: a stand-in ForeverAurasAPI (GetAuras / ExportAura / DecodeAuraString /
 ImportAura, refusing while another import window is open or in combat): one aura, a
 group in two parts delivered out of order, "all" to the team, ask / straight import,
-waiting for an open import window and for combat, "only the FTL leader"."""
+waiting for an open import window and for combat, "only the FTL leader".
+EllesmereUI: a stand-in with its profile export / interactive import / full account
+functions: a profile in parts, a busy import page, the full account always asked and
+confirmed in its own popup, straight import without ask."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -392,7 +395,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 4, "report lines " .. n)
+  assert(n == 5, "report lines " .. n)
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -545,7 +548,7 @@ end""")
 deliver_to(msgs, B, "Anna-Smith", order=[0, 2, 1])
 run(B, bmod, r"""function(m)
   assert(DIALOG == nil, "asked while ask is off")
-  assert(#IMPORTS == 1 and LAST():find("waits until ForeverAuras' open import window is closed", 1, true), LAST())
+  assert(#IMPORTS == 1 and LAST():find("waits until ForeverAuras' import window is free", 1, true), LAST())
   FA_OPEN = nil; FLUSH()
   assert(#IMPORTS == 2 and IMPORTS[2] == "Big group", "group not opened after the window closed")
   FA_CLOSE(false); FLUSH()
@@ -623,4 +626,100 @@ run(A, amod, r"""function(m)
   local top = m.TopAuras(); assert(#top == 2 and top[1] == "Solo; one" and top[2] == "Big group", "top")
   ForeverAuras = nil
   return "Anna: send window sorted into Loaded / Not loaded, sections close"
+end""")
+
+# --- EllesmereUI: send profiles ------------------------------------------
+EU = r"""
+LOADED.EllesmereUI = true
+local function hex(s) return (s:gsub(".", function(c) return ("%02x"):format(c:byte()) end)) end
+local function unhex(s) return (s:gsub("%x%x", function(h) return string.char(tonumber(h, 16)) end)) end
+EUI_IMPORTS, EUI_SESSION, EUI_POPUP, EUI_FULL_DONE = {}, nil, nil, 0
+EllesmereUI = {}
+function EllesmereUI.GetProfileList() return { "Default", "Healer; mine", "Gone" }, { Default = {}, ["Healer; mine"] = {} } end
+function EllesmereUI.GetActiveProfileName() return "Healer; mine" end
+function EllesmereUI.ExportProfile(name) return "!EUI_P" .. hex(name) .. "(" .. string.rep("b", 7000) end
+function EllesmereUI.ExportFullAccountData() return "!EUI_F" .. hex("Healer; mine") .. "(" .. string.rep("c", 200) end
+function EllesmereUI.ImportProfileInteractive(o)
+  if COMBAT then return false, "in combat" end
+  if EUI_SESSION then return false, "an interactive import is already pending" end
+  assert(o.importString:sub(1, 6) == "!EUI_P", "not a profile string")
+  EUI_SESSION = o
+  EUI_IMPORTS[#EUI_IMPORTS + 1] = o.profileName
+  return true
+end
+function EUI_CLOSE(ok) local s = EUI_SESSION; EUI_SESSION = nil; s.callback(ok) end
+function EllesmereUI.DecodeImportStringAsync(str, onDone)
+  local kind, h = str:match("^!EUI_(%a)(%x+)%(")
+  onDone({ fullExport = kind == "F", profileName = unhex(h) })
+end
+function EllesmereUI.IsFullAccountPayload(p) return p.fullExport == true end
+function EllesmereUI.ImportFullAccountData(p) EUI_FULL_DONE = EUI_FULL_DONE + 1 end
+function EllesmereUI:ShowConfirmPopup(o) assert(self == EllesmereUI); EUI_POPUP = o end
+"""
+for lua in (A, B):
+    lua.execute(EU)
+
+run(A, amod, r"""function(m)
+  local p = m.EuiProfiles()
+  assert(#p == 2 and p[1].name == "Default" and p[2].active, "profiles")
+  local rows = m.EuiRows(); assert(#rows == 3 and rows[3].id == m.EUI_FULL, "rows")
+  OUT = {}
+  local ok, why = m.SendEui("Healer; mine", "Bob-Stone")
+  assert(ok and why:find("\"Healer; mine\"", 1, true), tostring(why))
+  assert(OUT[1].msg:find("^QEUH:%d+:1:%d+:Healer%%3B mine$") and OUT[1].to == "Bob Stone", "head: " .. OUT[1].msg)
+  assert(#OUT == 3 and OUT[2].msg:find("^QEU:%d+:1:2:P%%7CHealer%%3B mine=!EUI_P") and OUT[3].msg:find("^QEU:%d+:2:2:"), "parts")
+  return "Anna: EllesmereUI profiles listed, one sent to Bob in 2 parts"
+end""")
+msgs = out(A)
+deliver_to(msgs, B, "Anna-Smith", order=[0, 2, 1])
+run(B, bmod, r"""function(m)
+  DIALOG = DIALOG   -- the aura ask is done with
+  assert(DIALOG and DIALOG.text:find("sends you 1 EllesmereUI export", 1, true), "no dialog: " .. tostring(DIALOG and DIALOG.text))
+  assert(DIALOG.text:find("profile \"Healer; mine\" - you have one by this name", 1, true), DIALOG.text)
+  assert(#EUI_IMPORTS == 0, "opened before asking")
+  EUI_SESSION = { callback = function() end }   -- an import of Bob's own is open
+  DIALOG.ok(); DIALOG = nil
+  assert(#EUI_IMPORTS == 0 and LAST():find("waits until EllesmereUI's import page is free", 1, true), LAST())
+  EUI_SESSION = nil; FLUSH()
+  assert(#EUI_IMPORTS == 1 and EUI_IMPORTS[1] == "Healer; mine" and EUI_SESSION.source:find("Anna Smith", 1, true), "import page")
+  OUT = {}
+  EUI_CLOSE(true); FLUSH()
+  assert(OUT[1].msg:find("^QEUR:%d+:D:1:1$") and OUT[1].to == "Anna-Smith", "done reply: " .. tostring(OUT[1] and OUT[1].msg))
+  return "Bob: asked, waited for his own import, EllesmereUI's import page opened, replied"
+end""")
+deliver_to(out(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  assert(LAST():find("Bob Stone imported 1 of 1 EllesmereUI profile(s)", 1, true), LAST())
+  local ok = m.SendEui(m.EUI_FULL, "Bob-Stone"); assert(ok, "full not sent")
+  return "Anna: heard back, sent her full account"
+end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  m.M.db.euAsk = false
+  return "Bob: ask off (a full account is asked anyway)"
+end""")
+run(B, bmod, r"""function(m)
+  assert(DIALOG and DIALOG.text:find("FULL ACCOUNT settings + profile \"Healer; mine\"", 1, true), "full not asked: " .. tostring(DIALOG and DIALOG.text))
+  DIALOG.ok(); DIALOG = nil
+  assert(EUI_POPUP and EUI_POPUP.typeToConfirm == "Confirm" and EUI_POPUP.message:find("Anna Smith sends you a FULL ACCOUNT", 1, true), "EllesmereUI's confirm")
+  assert(EUI_FULL_DONE == 0, "imported before Confirm")
+  OUT = {}
+  EUI_POPUP.onConfirm(); EUI_POPUP.onCancel()   -- a close after the confirm counts nothing
+  assert(EUI_FULL_DONE == 1, "full account not imported")
+  assert(#OUT == 1 and OUT[1].msg:find("^QEUR:%d+:D:1:1$"), "reply before the reload: " .. tostring(OUT[1] and OUT[1].msg))
+  return "Bob: full account always asked, EllesmereUI's typed Confirm, imported, replied first"
+end""")
+run(A, amod, r"""function(m) OUT = {}; assert(m.SendEui("Default")); return "Anna: Default to the team" end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  assert(DIALOG == nil and #EUI_IMPORTS == 2 and EUI_IMPORTS[2] == "Default", "no ask: straight to the import page")
+  OUT = {}
+  EUI_CLOSE(false); FLUSH()
+  assert(OUT[1].msg:find("^QEUR:%d+:D:0:1$"), "declined reply")
+  local n = 0
+  m.M.Report(m.M, function(l) if l:find("^EllesmereUI:") then n = n + 1; assert(l:find("imported=2", 1, true) and l:find("declined=1", 1, true), l) end end)
+  assert(n == 1, "report")
+  LOADED.EllesmereUI = false
+  local ok, why = m.SendEui("Default", "Anna-Smith"); assert(not ok and why:find("switched off"), tostring(why))
+  return "Bob: profile straight to the import page, declined, report ok, off without EllesmereUI"
 end""")

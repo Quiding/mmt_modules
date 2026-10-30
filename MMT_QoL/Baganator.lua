@@ -357,7 +357,7 @@ local function OnSetup(from, _, text)
 end
 
 F = mod.Feature({
-    key = "baganator", slash = "baganator", addon = "Baganator", title = "Baganator categories",
+    key = "baganator", slash = "baganator", addon = "Baganator", title = "Baganator categories", tabText = "Baganator",
     checkText = "Sync Baganator's categories",
     tip = "Items you put into a Baganator category by hand (or take out of it) go into the same category on the team's characters, right away. Custom categories are matched by name.",
     tags = { QBG = OnChange, QBGL = OnAll, QBGF = OnSetup },
