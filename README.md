@@ -19,7 +19,7 @@ MODULES, with its own settings page.
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.2 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.6 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like or EllesmereUI-like *(new, not tested in game yet)* | 0.1.0 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like or Classic (the game's old window art) *(new, not tested in game yet)* | 0.2.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -333,13 +333,18 @@ Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import 
 dropdown; it switches right away, no `/reload`, and **None** gives MMT's own look back exactly.
 
 - **ElvUI**: flat dark panels, 1 pixel black edges with a faint line inside, ElvUI's blue, a narrow outlined font.
+  Section headers in the accent colour; the widget under the mouse gets accent-coloured edges; a drawn dropdown arrow.
 - **EllesmereUI**: warm dark glassy panels with a soft light at the top, faint white edges with soft corners and a
   shadow, EllesmereUI's accent colour (its own when it's installed) and its Expressway font when it's installed.
+  Dimmed text that lights up under the mouse, faint capital section headers, see-through buttons.
+- **Classic**: the game's own old window art - stone dialog backgrounds with the carved border, thin tooltip borders
+  on lists and boxes, the red panel buttons (darker while pressed), the yellow check mark, the metal slider knob,
+  the round close button, gold button text.
 - Options: the style's font, the style's accent colour. Saved per account (every character and profile).
 - Made new from colours and WoW's own fonts: nothing of ElvUI or EllesmereUI is copied, and MMT's files aren't
   changed (the style is put on from outside). The Cooldown / Buff Timers and Totem bars keep their own Look tab.
 
-`/mmtstyle` · `/mmtstyle none | elvui | ellesmere`
+`/mmtstyle` · `/mmtstyle none | elvui | ellesmere | classic`
 
 ---
 

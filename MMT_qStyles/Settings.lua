@@ -40,16 +40,17 @@ M.Page = function(_, page)
     L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
         "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
     L:Space(8)
-    L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere.")
+    L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere | classic.")
 
     local R = UI.Column(page, COL2_X, 0, COL_W)
     R:Header("What gets the style")
     R:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
         .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
         .. "Item Compare's tooltips, the death panel and more.")
+    R:Note("ElvUI and EllesmereUI light up the widget under the mouse; Classic uses the game's own window art.")
     R:Header("What keeps its look")
     R:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's XP window and distance display "
-        .. "(built before Styles loads). Coloured pieces like item quality borders.")
+        .. "(built before Styles loads). Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
 
     page.OnRefresh = function()
         local S = mod.STYLES[mod.Opt("style")]
@@ -62,7 +63,8 @@ M.Report = function(_, add)
     local c = mod.Counts()
     add(("style=%s (shown: %s) fonts=%s accent=%s"):format(tostring(mod.Opt("style")), QStyles.Current(),
         tostring(mod.Opt("fonts")), tostring(mod.Opt("accent"))))
-    add(("tracked: fills=%d edges=%d fonts=%d accents=%d tracks=%d texts=%d"):format(c.fills, c.borders, c.fonts, c.accents, c.tracks, c.texts))
+    add(("tracked: fills=%d edges=%d fonts=%d colours=%d texts=%d headers=%d widgets=%d"):format(c.fills, c.borders, c.fonts,
+        c.colors, c.texts, c.headers, c.widgets))
     local hooks = {}
     for name, ok in pairs(mod.hooked) do hooks[#hooks + 1] = name .. (ok and "" or "(missing)") end
     table.sort(hooks)

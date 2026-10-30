@@ -71,7 +71,7 @@ function Object:CreateFontString(_, layer, template)
   local f = assert(FONTS[template or "GameFontHighlightSmall"], "no template " .. tostring(template))
   fs._font = { f[1], f[2], f[3] }
   fs._shadow = { 1, -1 }
-  fs._tc = { 1, 0.82, 0, 1 }
+  fs._tc = (template or "GameFontHighlightSmall"):find("Highlight") and { 1, 1, 1, 1 } or { 1, 0.82, 0, 1 }
   self._regions[#self._regions + 1] = fs
   return fs
 end
@@ -92,10 +92,38 @@ function Object:GetTextColor() return self._tc[1], self._tc[2], self._tc[3], sel
 function Object:GetStringHeight() return 12 end
 function Object:GetStringWidth() return 50 end
 -- any other method: a no-op (fields stay nil)
-setmetatable(Object, { __index = function(_, k) if type(k) == "string" and k:match("^%u") then return function() end end end })
+setmetatable(Object, { __index = function(_, k) if type(k) == "string" and k:match("^%u") and not k:find("Backdrop") then return function() end end end })
 -- sliders
 function Object:SetThumbTexture(t) self._thumb = t end
 function Object:GetThumbTexture() return self._thumb end
+-- textures for Classic
+function Object:SetTexture(f) self._file = f; self._atlas = nil; self._color = nil end
+function Object:SetAtlas(a) self._atlas = a; self._file = nil; self._color = nil end
+function Object:SetTexCoord(...) self._coord = { ... } end
+function Object:SetBlendMode(m) self._blend = m end
+function Object:SetAlpha(a) self._alpha = a end
+function Object:GetAlpha() return self._alpha or 1 end
+function Object:IsProtected() return self._protected or false end
+function Object:CreateLine(_, layer)
+  local l = new("Line", self, layer)
+  self._regions[#self._regions + 1] = l
+  return l
+end
+function Object:SetStartPoint(...) self._start = { ... } end
+function Object:SetEndPoint(...) self._end = { ... } end
+function Object:SetThickness(t) self._thick = t end
+BackdropTemplateMixin = {
+  SetBackdrop = function(self, def) self._backdrop = def end,
+  ClearBackdrop = function(self) self._backdrop = nil end,
+  SetBackdropColor = function(self, ...) self._bdColor = { ... } end,
+  SetBackdropBorderColor = function(self, ...) self._bdEdge = { ... } end,
+  OnBackdropSizeChanged = function() end,
+}
+function Mixin(o, m) for k, v in pairs(m) do o[k] = v end return o end
+ATLASES = {}
+C_Texture = { GetAtlasInfo = function(n) return ATLASES[n] end }
+MOUSE = nil
+function GetMouseFoci() return { MOUSE } end
 
 function CreateFrame(kind, name, parent)
   local f = new(kind, parent)
@@ -199,8 +227,9 @@ assert(eq(col(winFill), 0.05, 0.05, 0.06, 0.94), "style None changed a fill")
 assert(eq(col(winEdges[1]), 0.22, 0.22, 0.24, 1), "style None changed an edge")
 assert(title._font[1] == "Fonts\\FRIZQT__.TTF" and title._font[2] == 16, "style None changed a font")
 local c = mod.Counts()
-assert(c.fills >= 8 and c.borders >= 6 and c.fonts >= 8 and c.accents >= 2 and c.tracks == 1 and c.texts == 2,
-  ("not everything recorded: fills %d edges %d fonts %d accents %d tracks %d texts %d"):format(c.fills, c.borders, c.fonts, c.accents, c.tracks, c.texts))
+assert(c.fills >= 8 and c.borders >= 6 and c.fonts >= 8 and c.colors >= 3 and c.texts >= 8 and c.widgets >= 4,
+  ("not everything recorded: fills %d edges %d fonts %d colours %d texts %d widgets %d"):format(c.fills, c.borders, c.fonts, c.colors, c.texts, c.widgets))
+assert(mod.roles[btn] == "button" and mod.roles[box] == "check" and mod.roles[dd] == "dropdown" and mod.roles[edit] == "input", "roles")
 
 -- the module goes on with ElvUI chosen (stored per account)
 M.store.style = "ELVUI"
@@ -348,6 +377,105 @@ function odd:GetRegions() error("boom") end
 local t = UI.Fill(odd, 0.05, 0.05, 0.05, 1)
 assert(t and eq(col(t), 0.05, 0.05, 0.05, 1), "UI.Fill broke because of the hook")
 assert(#DEBUGS > 0, "hook error not reported in debug")
+
+-- text levels, headers, hover, arrows (ElvUI / EllesmereUI)
+local column = UI.Column(win, 0, 0, 200)
+local head = column:Header("Section")
+local hline
+for _, r in ipairs({ win:GetRegions() }) do if r._layer == "ARTWORK" and r._color and near(r._color[4], 0.08) then hline = r end end
+local plain = UI.Label(win, "plain text")
+local grey = UI.Label(win, "grey note"); grey:SetTextColor(0.6, 0.6, 0.6)
+local arrow
+for _, r in ipairs({ dd:GetRegions() }) do if r._kind == "FontString" and r._text == "v" then arrow = r end end
+local close = UI.TextButton(win, "x", function() end, 20)
+mod.SetStyle("ELLESMERE")
+assert(head._text == "SECTION" and near(head._tc[4], 0.45), "Ellesmere header: " .. tostring(head._text))
+assert(near(plain._tc[4], 0.8) and near(grey._tc[1], 0.6) and near(grey._tc[4], 1), "Ellesmere text levels (a grey note stays grey) " .. table.concat(plain._tc, ",") .. " / " .. table.concat(grey._tc, ","))
+assert(near(btn.label._tc[4], 0.7), "Ellesmere button text")
+assert(arrow._alpha == 0, "the v is still shown")
+local lines = {}
+for _, r in ipairs({ dd:GetRegions() }) do if r._kind == "Line" then lines[#lines + 1] = r end end
+assert(#lines == 2 and lines[1]._shown, "no chevron")
+-- hover: the widget under the mouse
+local btnEdge = select(2, btn:GetRegions())
+MOUSE = btn; mod.HoverTick()
+assert(eq(col(btnEdge), 1, 1, 1, 0.45) and near(btn.label._tc[4], 1), "Ellesmere hover")
+MOUSE = nil; mod.HoverTick()
+assert(eq(col(btnEdge), 1, 1, 1, 0.25) and near(btn.label._tc[4], 0.7), "Ellesmere hover not undone")
+MOUSE = check; mod.HoverTick()
+local boxEdge = select(2, box:GetRegions())
+assert(eq(col(boxEdge), 1, 1, 1, 0.45), "check box edge on hover")
+mod.SetStyle("ELVUI")   -- switching while hovered: the light goes, ElvUI's look comes
+assert(eq(col(boxEdge), 0, 0, 0, 1), "hover light left after a switch")
+MOUSE = nil; mod.HoverTick()
+MOUSE = dd; mod.HoverTick()
+local ddEdge = select(2, dd:GetRegions())
+assert(eq(col(ddEdge), 0.09, 0.52, 0.82, 1), "ElvUI hover: accent edge")
+MOUSE = nil; mod.HoverTick()
+assert(eq(col(ddEdge), 0, 0, 0, 1), "ElvUI hover not undone")
+assert(head._text == "Section" and near(head._tc[1], 0.09), "ElvUI header in the accent")
+assert(near(plain._tc[4], 1), "ElvUI keeps plain text")
+-- a tab label the page colours again (selected tab): the style follows at once
+btn.label:SetTextColor(A[1], A[2], A[3])
+assert(near(btn.label._tc[1], A[1]), "ElvUI has no button text colour: the owner's stays")
+mod.SetStyle("ELLESMERE")
+btn.label:SetTextColor(A[1], A[2], A[3])
+assert(near(btn.label._tc[1], 0.05), "selected tab label not in the style's accent: " .. btn.label._tc[1])
+btn.label:SetTextColor(1, 1, 1)
+assert(near(btn.label._tc[4], 0.7), "tab label back to the style's button text")
+
+-- Classic: the game's own art (the old button file: no atlases on this stand-in client)
+local big = CreateFrame("Frame", nil, UIParent); big:SetSize(500, 400)
+local bigFill = UI.Fill(big, 0.05, 0.05, 0.06, 0.94)
+UI.Border(big, 0.22, 0.22, 0.24, 1)
+local small = CreateFrame("Frame", nil, UIParent); small:SetSize(150, 80)
+UI.Fill(small, 0.07, 0.07, 0.08, 0.98)
+UI.Border(small, A[1], A[2], A[3], 0.5)
+local secure = CreateFrame("Button", nil, UIParent); secure:SetSize(30, 30); secure._protected = true
+UI.Fill(secure, 0, 0, 0, 0.85)
+UI.Border(secure, 0.35, 0.35, 0.35, 1)
+mod.SetStyle("CLASSIC")
+assert(big._backdrop and big._backdrop.edgeFile:find("UI%-DialogBox%-Border") and big._backdrop.bgFile:find("UI%-DialogBox%-Background"), "Classic window: no dialog backdrop")
+assert(eq(col(bigFill), 0, 0, 0, 0), "Classic window fill not see-through")
+assert(col(select(2, big:GetRegions()))[4] == 0, "Classic window: MMT's edges still shown")
+assert(small._backdrop and small._backdrop.edgeFile:find("UI%-Tooltip%-Border") and not small._backdrop.bgFile, "Classic small panel: thin border")
+assert(not secure._backdrop and eq(col(select(2, secure:GetRegions())), 0.6, 0.6, 0.6, 1), "a secure frame got a backdrop")
+-- buttons: three pieces of the red button file
+assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Up" and near(btnFill._coord[1], 0.09375), "Classic button middle: " .. tostring(btnFill._file))
+local caps = {}
+for _, r in ipairs({ btn:GetRegions() }) do if r._file == "Interface\\Buttons\\UI-Panel-Button-Up" and r ~= btnFill then caps[#caps + 1] = r end end
+assert(#caps == 2 and caps[1]._shown and caps[2]._shown, "Classic button: no end pieces")
+btn:GetScript("OnMouseDown")(btn)
+assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Down", "Classic button not pressed")
+btn:GetScript("OnMouseUp")(btn)
+assert(btnFill._file == "Interface\\Buttons\\UI-Panel-Button-Up", "Classic button stays pressed")
+assert(near(btn.label._tc[1], 1) and near(btn.label._tc[2], 0.82), "Classic button text not gold")
+assert(boxMark._file == "Interface\\Buttons\\UI-CheckBox-Check" and select(1, box:GetRegions())._file == "Interface\\Buttons\\UI-CheckBox-Up", "Classic check box")
+assert(thumb._file and thumb._file:find("SliderBar%-Button") and thumb._w == 32, "Classic slider knob")
+assert(s._backdrop and s._backdrop.edgeFile:find("SliderBar%-Border"), "Classic slider bar")
+assert(arrow._alpha == 0 and not lines[1]._shown, "Classic dropdown arrow")
+assert(close.label._alpha == 0, "Classic close button")
+assert(edit._backdrop and edit._backdrop.edgeFile:find("Tooltip"), "Classic edit box")
+assert(head._text == "Section" and near(head._tc[2], 0.82), "Classic header gold")
+-- the modern client's atlases win when it has them
+ATLASES["128-RedButton-Left"] = { width = 12, height = 22 }; ATLASES["128-RedButton-Center"] = {}; ATLASES["128-RedButton-Right"] = {}
+QS.ResetArtCache()
+local b2 = UI.Button(win, 100, "Atlas", function() end)
+local b2Fill = select(1, b2:GetRegions())
+assert(b2Fill._atlas == "128-RedButton-Center", "atlas not used: " .. tostring(b2Fill._atlas))
+ATLASES = {}
+QS.ResetArtCache()
+-- None again: no art left
+mod.SetStyle("NONE")
+assert(not big._backdrop and eq(col(bigFill), 0.05, 0.05, 0.06, 0.94), "None: window backdrop")
+assert(eq(col(btnFill), 0.12, 0.12, 0.12, 1) and btnFill._points[1][4] == 0 and near(btnFill._coord[2], 1), "None: button middle")
+for _, c in ipairs(caps) do assert(not c._shown, "None: button end pieces") end
+assert(eq(col(boxMark), A[1], A[2], A[3], 1) and boxMark._points[1][1] == "TOPLEFT" and #boxMark._points == 2, "None: check mark")
+assert(eq(col(thumb), A[1], A[2], A[3], 1) and thumb._w == 8 and thumb._h == 12 and not s._backdrop, "None: slider")
+assert(arrow._alpha == 1 and close.label._alpha == 1 and not lines[1]._shown, "None: arrow / close")
+assert(head._text == "Section" and near(head._tc[2], 0.82) and eq(col(hline), 1, 1, 1, 0.08), "None: header")
+assert(near(btn.label._tc[1], 1) and near(btn.label._tc[4], 1) and near(plain._tc[4], 1) and near(grey._tc[1], 0.6), "None: text colours")
+assert(not edit._backdrop, "None: edit box")
 
 -- the settings page (real Column / widgets), then reset to defaults: back to None, options on
 local page = CreateFrame("Frame", nil, UIParent); page:SetSize(518, 564); page.widgets = {}

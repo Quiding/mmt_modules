@@ -17,6 +17,12 @@
 --   track             {r, g, b, a}: slider track
 --   accent()          r, g, b
 --   font()            font file; fontDelta = size added; fontFlags (nil = keep); noShadow
+--   plainText / buttonText   {r, g, b, a} for MMT's plain white labels / button labels (nil = keep)
+--   headerText        {r, g, b, a} | "ACCENT" for section headers, headerUpper = in capitals,
+--                     headerLine = the line under them ({r, g, b, a} | "ACCENT")
+--   hover             { edge = {r, g, b, a} | "ACCENT", label = {r, g, b, a} }: the widget under the mouse
+--   chevron           dropdowns get a drawn chevron instead of MMT's "v"
+--   art               Classic: the game's own window textures (Art.lua) instead of colours
 
 local _, mod = ...
 
@@ -58,6 +64,10 @@ mod.STYLES = {
         fontDelta = 2,
         fontFlags = "OUTLINE",
         noShadow = true,
+        headerText = "ACCENT",
+        headerLine = "ACCENT",
+        hover = { edge = "ACCENT" },
+        chevron = true,
     },
     ELLESMERE = {
         key = "ELLESMERE",
@@ -77,10 +87,33 @@ mod.STYLES = {
         accent = EllesmereAccent,
         font = function() return LSMFont("Expressway") or ARIAL_NARROW end,
         fontDelta = 2,
+        plainText = { 1, 1, 1, 0.8 },
+        buttonText = { 1, 1, 1, 0.7 },
+        headerText = { 1, 1, 1, 0.45 },
+        headerUpper = true,
+        hover = { edge = { 1, 1, 1, 0.45 }, label = { 1, 1, 1, 1 } },
+        chevron = true,
+    },
+    CLASSIC = {
+        key = "CLASSIC",
+        title = "Classic",
+        description = "The game's own old window art: stone dialog backgrounds with carved borders, red buttons, the yellow check mark, the metal slider knob, gold text.",
+        art = true,
+        panel = { 0, 0, 0 },
+        panelAlpha = function(a) return math.min(1, a) end,
+        control = { 0.05, 0.05, 0.05 },
+        controlAlpha = function(a) return a end,
+        border = { 0.6, 0.6, 0.6, 1 },
+        controlBorder = { 0.6, 0.6, 0.6, 1 },
+        accentBorder = "ACCENT",
+        track = { 0.2, 0.2, 0.2, 1 },
+        accent = function() return 1, 0.82, 0 end,
+        buttonText = { 1, 0.82, 0, 1 },
+        headerLine = { 1, 0.82, 0, 0.25 },
     },
 }
 
-mod.ORDER = { "NONE", "ELVUI", "ELLESMERE" }
+mod.ORDER = { "NONE", "ELVUI", "ELLESMERE", "CLASSIC" }
 
 function mod.StyleTitle(key)
     local s = mod.STYLES[key]

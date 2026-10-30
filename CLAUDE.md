@@ -587,39 +587,64 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.1.0) – "Styles": another look for MMT's windows
-- Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere]`.
+### MMT_qStyles (v0.2.0) – "Styles": another look for MMT's windows
+- Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
-  `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE: panel / control colours, panelTop = gradient, border / controlBorder,
-  accentBorder BLACK | ACCENT, inner line, shadow rings, round, pixel, track, accent(), font(), fontDelta, fontFlags,
-  noShadow), `Skin.lua` (hooks + painting + API), `Settings.lua`.
+  `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
+  plainText / buttonText / headerText / headerUpper / headerLine, hover, chevron, art), `Skin.lua` (hooks, records,
+  painting, API), `Art.lua` (Classic's game textures + dropdown arrow / close button of every style), `Hover.lua`, `Settings.lua`.
 - Saved PER ACCOUNT in `M.store` (style, fonts, accent; `mod.DEFAULTS`): a look is the screen's / player's, not a team
   profile's (like the core's configScale). No sync. M.db stays empty. Reset = `mod.ResetSettings()` (store keys cleared).
-- How it skins without touching the core: `hooksecurefunc` on `MMT.UI.Fill / Border / Label / Check / Slider / Dropdown /
-  Cycle (the alias holds the unhooked function) / EditBox / TextArea / SyncButton` and `MMT.ToggleConfig` /
-  `MMT.ApplyBackground` (only if present), installed when Skin.lua loads (MMT is a dependency, so before every lazy
-  build; frames built at the core's load - XP window, distance frame - are missed). A post-hook gets the arguments, not
-  the result: the new texture / font string = the NEWEST not-yet-recorded region of that kind (and layer) on the frame,
-  a widget = the parent's newest child (WoW keeps creation order). Records keep the originals (fill colour from the
-  args, edge anchors + thickness from GetPoint / GetHeight, font from GetFont + GetShadowOffset, text colour from
-  GetTextColor; the slider track has no colour getter: MMT's 0.18 constant), `rec.painted` = changed by us; None restores
-  only painted ones. Every hook body runs in pcall (`Try`, errors to M:Debug): a hook problem never breaks the core.
+- How it skins without touching the core: `hooksecurefunc` on `MMT.UI.Fill / Border / Label / Button / Check / Slider /
+  Dropdown / Cycle (the alias holds the unhooked function) / Color / EditBox / TextArea / TextButton / SyncButton`, on the
+  core's Column metatable `Header` (reached via `getmetatable(UI.Column(...))`), and `MMT.ToggleConfig` / `MMT.ApplyBackground`
+  (only if present), installed when Skin.lua loads (MMT is a dependency, so before every lazy build; frames built at the
+  core's load - XP window, distance frame - are missed). A post-hook gets the arguments, not the result: the new texture /
+  font string = the NEWEST not-yet-recorded region of that kind (and layer) on the frame, a widget = the parent's newest
+  child (WoW keeps creation order). Fill / Border record the colours; the widget hooks add a ROLE (`mod.roles[frame]`:
+  button | check | dropdown | input) and `mod.widgets[frame]` = { role, edge = frame with the edges, label, arrow, close }.
+  Records keep the originals (fill colour from the args + points, edge anchors + thickness from GetPoint / GetHeight, font
+  from GetFont + GetShadowOffset; the slider track has no colour getter: MMT's 0.18 constant), `rec.painted` = changed by
+  us; None restores only painted ones. Every hook body runs in pcall (`mod.Try`, errors to M:Debug): a hook problem never
+  breaks the core.
 - What gets painted: neutral dark fills (< 0.085 panel, < 0.2 control), fills in MMT's accent (UI.ACCENT), neutral
-  (< 0.6) or accent edges, check marks, slider thumb / track, dropdown value text, the nav bars of `MMTConfigFrame.tabs`
-  (ARTWORK texture <= 3 px wide, `mod.ScanConfig`). Coloured fills (quality, warnings) and white tints stay. Small frames
-  (height <= 32, or unknown size and edge >= 0.28 grey) use controlBorder and get no shadow. EllesmereUI gradient =
+  (< 0.6) or accent edges, check marks, slider thumb / track, the nav bars of `MMTConfigFrame.tabs` (ARTWORK texture
+  <= 3 px wide, `mod.ScanConfig`), header lines. Coloured fills (quality, warnings) and white tints stay. Small frames (a
+  role, or height <= 32, or unknown size and edge >= 0.28 grey) use controlBorder and get no shadow. EllesmereUI gradient =
   SetColorTexture(1,1,1,1) + SetGradient("VERTICAL", CreateColor bottom, top); undone with SetVertexColor(1,1,1,1).
   ElvUI edges via PixelUtil (1 screen pixel). Fonts: ElvUI = LSM "PT Sans Narrow" or Fonts\ARIALN.TTF +2 OUTLINE no
-  shadow; EllesmereUI = LSM "Expressway" (EllesmereUI registers it) or ARIALN +2; a SetFont that fails keeps MMT's.
-  EllesmereUI accent = `EllesmereUI.ELLESMERE_GREEN` (read only) else its Forever bronze #DCA77F. Nothing of
-  ElvUI / EllesmereUI is copied (EllesmereUI is all rights reserved).
+  shadow; EllesmereUI = LSM "Expressway" (EllesmereUI registers it) or ARIALN +2; Classic keeps MMT's; a SetFont that
+  fails keeps MMT's. EllesmereUI accent = `EllesmereUI.ELLESMERE_GREEN` (read only) else its Forever bronze #DCA77F.
+  Nothing of ElvUI / EllesmereUI is copied (EllesmereUI is all rights reserved).
+- Text colours (`texts[fs]` kind plain | button | accent | header): only labels whose colour is plain white (plain /
+  button), MMT's accent (dropdown values, a selected tab) or gold / white (headers) change. The owner may colour a label
+  again any time: what we set is kept in `rec.set`; a colour that's no longer ours is the owner's new original. Button,
+  accent and header labels get a per-object `hooksecurefunc(fs, "SetTextColor")` so the style follows at once (guard
+  `painting`; hover uses `mod.QuietTextColor`). Headers: `headerUpper` SetText(upper) and back (only while the text is
+  still ours).
+- Hover (Hover.lua): one driver frame's OnUpdate compares `GetMouseFoci()[1]` (else GetMouseFocus) with
+  `mod.widgets` - no OnEnter hooks (a later SetScript, e.g. UI.Tooltip, would drop them). Enter = `mod.SetEdgeColor` +
+  label colour; leave = `mod.PaintBorder` + label back. `mod.HoverReset` at the start of every Apply. Classic has none.
+- Classic (Art.lua, `S.art`): `mod.ArtKind(frame)` = button / check (role) | dialog (has edges, >= 300 x 100) | thin (other
+  edged frames) | nil (protected = secure frames, or a frame with its own SetBackdrop: colour look). Backdrop =
+  `Mixin(frame, BackdropTemplateMixin)` + HookScript OnSizeChanged OnBackdropSizeChanged (like ElvUI), undone with
+  ClearBackdrop. dialog: UI-DialogBox-Background/-Border edgeSize 24, MMT's fill alpha 0 (edge only while the core's
+  background picker shows a picture); thin: UI-Tooltip-Border edgeSize 12 over the style's dark fill. Buttons: MMT's fill
+  becomes the middle piece + 2 end caps + HIGHLIGHT texture: atlases 128-RedButton-Left/Center/Right(-Pressed) /
+  -Highlight when `C_Texture.GetAtlasInfo` has them (Baganator uses 128-RedButton-Highlight on Forever), else the old
+  UI-Panel-Button-Up/-Down/-Highlight files with texcoords; pressed via HookScript OnMouseDown/Up. Check: box fill ->
+  UI-CheckBox-Up, mark -> UI-CheckBox-Check (24 px, centred; MMT still shows / hides the mark). Slider: track alpha 0 +
+  slider backdrop UI-SliderBar-Background/-Border, thumb UI-SliderBar-Button-Horizontal 32 px. Dropdown "v" -> alpha 0 +
+  UI-ChatIcon-ScrollDown-Up (Classic) or a 2-line chevron (CreateLine, ElvUI / EllesmereUI). TextButton "x" -> Classic
+  UI-Panel-MinimizeButton-Up. NOT verified in game yet which of these textures the Forever client has.
 - Core background picker (PR bnetworking/MMT#2, `MMT.ConfigBackground` / `ApplyBackground`): the settings window's
-  base fill is skipped while a picture is chosen (`skip`), and repainted after each ApplyBackground when it's NONE.
+  base fill is skipped while a picture is chosen (`skip`), and fill + edges are repainted after each ApplyBackground.
 - Public API for modules that colour textures themselves: `QStyles.Paint(tex, r, g, b, a)` / `QStyles.PaintEdges(frame,
   edges, r, g, b, a)` (call INSTEAD of SetColorTexture: the colours are the originals), `QStyles.Current()`. Used by Team
   Inventory's SkinFrame. Not styled on purpose: Cooldown / Buff Timers IconBars and Totem bars (own Look tabs).
 - Test: `tests/test_qstyles.py` loads the REAL `MMT/Widgets.lua` (read only) on stand-in frames that keep regions /
-  children in order, colours, anchors, fonts; skipped if MMT isn't there.
+  children in order, colours, anchors, fonts, backdrops, atlases; skipped if MMT isn't there. Stand-in method lookups
+  return a no-op only for capitalised names without "Backdrop" (a plain frame has no SetBackdrop).
 
 ### Reset to defaults (every module)
 - Cooldowns / Buffs / Totems: `mod.ResetSettings()` + the button in `mod.ShareBar` (SettingsKit), between

@@ -1,15 +1,18 @@
 -- MMT Styles: the skinning.
 --
 -- How it finds things: MMT's windows (the core's, the friend's modules', ours)
--- are built from MMT.UI. hooksecurefunc on MMT.UI.Fill / Border / Label and on
--- the widget builders (Check, Slider, Dropdown, EditBox, TextArea, SyncButton)
--- runs after each call; the new texture / font string / widget is the newest
--- region or child of the frame it was made on (WoW keeps them in creation
--- order), and the call's arguments are its original colour. Each one is
--- remembered with what it had, so a style can be put on and taken off any time:
--- None puts back exactly what MMT set. Only dark neutral fills, neutral or
--- accent-coloured edges and MMT's accent pieces are touched; coloured fills
--- (quality colours, warnings, tints) stay as they are.
+-- are built from MMT.UI. hooksecurefunc on MMT.UI.Fill / Border / Label, on the
+-- widget builders (Button, Check, Slider, Dropdown, Color, EditBox, TextArea,
+-- TextButton, SyncButton) and on Column:Header runs after each call; the new
+-- texture / font string / widget is the newest region or child of the frame it
+-- was made on (WoW keeps them in creation order), and the call's arguments are
+-- its original colour. Each one is remembered with what it had, so a style can
+-- be put on and taken off any time: None puts back exactly what MMT set. Only
+-- dark neutral fills, neutral or accent-coloured edges, MMT's accent pieces and
+-- plain white / gold text are touched; coloured fills (quality colours,
+-- warnings, tints) stay as they are. The widget hooks only add a ROLE (button,
+-- check, dropdown, input) to what Fill / Border recorded: Art.lua (Classic's
+-- game textures) and Hover.lua use it.
 --
 -- Hooks are installed when this file loads (MMT is loaded before: dependency),
 -- so only frames built before that keep MMT's look. Every hook runs in pcall: a
@@ -18,22 +21,25 @@
 --
 -- Modules that colour textures themselves (Team Inventory's bags window: its
 -- own Look settings) call the public API instead of SetColorTexture:
---   QStyles.Paint(texture, r, g, b, a)        a fill, painted for the style
+--   QStyles.Paint(texture, r, g, b, a)            a fill, painted for the style
 --   QStyles.PaintEdges(frame, edges, r, g, b, a)  the 4 edge textures of a frame
---   QStyles.Current()                         "NONE" | "ELVUI" | "ELLESMERE"
+--   QStyles.Current()                             "NONE" | "ELVUI" | "ELLESMERE" | "CLASSIC"
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
 local weak = { __mode = "k" }
-local fills = setmetatable({}, weak)     -- [texture] = { r, g, b, a, frame, painted, gradient, skip }
-local borders = setmetatable({}, weak)   -- [first edge] = { frame, edges, points, thick, r, g, b, a, rings, painted }
+local fills = setmetatable({}, weak)     -- [texture] = { r, g, b, a, frame, role, painted, gradient, art, skip }
+local fillOf = setmetatable({}, weak)    -- [frame] = its (first) fill texture
+local borders = setmetatable({}, weak)   -- [first edge] = { frame, edges, points, horizontal, thick, r, g, b, a, role, rings, painted }
+local borderOf = setmetatable({}, weak)  -- [frame] = its edge record
 local fonts = setmetatable({}, weak)     -- [font string / edit box] = { path, size, flags, sx, sy, painted }
-local accents = setmetatable({}, weak)   -- [texture] = { r, g, b, a, painted }: MMT's accent pieces
-local tracks = setmetatable({}, weak)    -- [texture] = { r, g, b, a, painted }: slider tracks
-local texts = setmetatable({}, weak)     -- [font string] = { r, g, b, a, painted }: accent-coloured text
-local seen = setmetatable({}, weak)      -- regions already recorded
+local colors = setmetatable({}, weak)    -- [texture] = { kind = accent | mark | thumb | track, r, g, b, a, points, w, h, painted }
+local texts = setmetatable({}, weak)     -- [font string] = { kind = accent | plain | button | header, orig, set, painted }
+local headers = setmetatable({}, weak)   -- [font string] = { line, text, upper }: Column:Header
+local seen = setmetatable({}, weak)      -- regions already recorded (or made by us)
+mod.fillOf, mod.borderOf, mod.seen = fillOf, borderOf, seen
 
 -- MMT's slider track (MMT/Widgets.lua: UI.Slider); there is no getter for a colour texture
 local TRACK = { 0.18, 0.18, 0.18, 1 }
@@ -41,7 +47,9 @@ local TRACK = { 0.18, 0.18, 0.18, 1 }
 local function Try(fn, ...)
     local ok, err = pcall(fn, ...)
     if not ok and M.Debug then M:Debug("Styles: %s", tostring(err)) end
+    return ok
 end
+mod.Try = Try
 
 local function Num(v) return tonumber(v) or 0 end
 
@@ -49,18 +57,25 @@ local function Neutral(r, g, b)
     return math.abs(r - g) < 0.03 and math.abs(g - b) < 0.03 and math.abs(r - b) < 0.03
 end
 
+local function Near(c, r, g, b)
+    return c and math.abs(Num(c[1]) - r) < 0.02 and math.abs(Num(c[2]) - g) < 0.02 and math.abs(Num(c[3]) - b) < 0.02
+end
+
 local function IsAccent(r, g, b)
     local A = MMT.UI and MMT.UI.ACCENT
     if type(A) ~= "table" then return false end
-    return math.abs(r - Num(A[1])) < 0.01 and math.abs(g - Num(A[2])) < 0.01 and math.abs(b - Num(A[3])) < 0.01
+    return Near({ r, g, b }, Num(A[1]), Num(A[2]), Num(A[3]))
 end
+mod.IsAccent = IsAccent
 
 local function AccentOn() return mod.Opt("accent") and true or false end
+mod.AccentOn = AccentOn
 
 local function Regions(frame)
     if not (frame and frame.GetRegions) then return {} end
     return { frame:GetRegions() }
 end
+mod.Regions = Regions
 
 local function Children(frame)
     if not (frame and frame.GetChildren) then return {} end
@@ -75,11 +90,11 @@ local function Layer(t)
 end
 
 -- the newest `count` regions of frame of a kind, not recorded yet, oldest first
-local function Newest(frame, kind, count, layer)
+local function Newest(frame, kind, count, layer, any)
     local list, out = Regions(frame), {}
     for i = #list, 1, -1 do
         local r = list[i]
-        if not seen[r] and Type(r) == kind and (not layer or Layer(r) == layer) then
+        if (any or not seen[r]) and Type(r) == kind and (not layer or Layer(r) == layer) then
             table.insert(out, 1, r)
             if #out == count then return out end
         end
@@ -92,10 +107,32 @@ local function NewestChild(parent)
     return list[#list]
 end
 
-local function Size(frame)
-    local h = frame and frame.GetHeight and Num(frame:GetHeight()) or 0
-    return h
+function mod.Size(frame)
+    if not frame then return 0, 0 end
+    return Num(frame.GetWidth and frame:GetWidth()), Num(frame.GetHeight and frame:GetHeight())
 end
+
+function mod.SavePoints(t)
+    local p = {}
+    for i = 1, Num(t.GetNumPoints and t:GetNumPoints()) do
+        local a, rel, b, x, y = t:GetPoint(i)
+        p[#p + 1] = { a, rel, b, Num(x), Num(y) }
+    end
+    return p
+end
+
+function mod.RestorePoints(t, points)
+    if not points then return end
+    t:ClearAllPoints()
+    for _, p in ipairs(points) do t:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
+end
+
+-- a texture we made (or changed into art) goes back to a plain colour texture
+local function Plain(t)
+    if t.SetTexCoord then t:SetTexCoord(0, 1, 0, 1) end
+    if t.SetVertexColor then t:SetVertexColor(1, 1, 1, 1) end
+end
+mod.Plain = Plain
 
 ---------------------------------------------------------------------------
 -- Fills
@@ -116,12 +153,26 @@ local function NoGradient(t, rec)
     end
 end
 
+local function UndoFill(t, rec)
+    NoGradient(t, rec)
+    if rec.art then
+        Plain(t)
+        mod.RestorePoints(t, rec.points)
+        if mod.ArtUndoFill then mod.ArtUndoFill(t, rec) end
+        rec.art = nil
+    end
+end
+
 local function PaintFill(t, rec, S)
     if rec.skip and rec.skip() then return end
+    UndoFill(t, rec)
+    if S and S.art and mod.ArtFill and mod.ArtFill(t, rec, S) then
+        rec.painted = true
+        return
+    end
     local cls = S and FillClass(rec)
     if not cls then
         if rec.painted then
-            NoGradient(t, rec)
             t:SetColorTexture(rec.r, rec.g, rec.b, rec.a)
             rec.painted = nil
         end
@@ -143,18 +194,18 @@ local function PaintFill(t, rec, S)
         local ok = pcall(t.SetGradient, t, "VERTICAL", CreateColor(r, g, b, a), CreateColor(top[1], top[2], top[3], a))
         if ok then rec.gradient, done = true, true end
     end
-    if not done then
-        NoGradient(t, rec)
-        t:SetColorTexture(r, g, b, a)
-    end
+    if not done then t:SetColorTexture(r, g, b, a) end
     rec.painted = true
 end
+mod.FillClass = FillClass
 
 local function AddFill(t, frame, r, g, b, a, skip)
     seen[t] = true
     local rec = fills[t] or {}
     rec.r, rec.g, rec.b, rec.a, rec.frame, rec.skip = Num(r), Num(g), Num(b), tonumber(a) or 1, frame, skip
+    rec.points = rec.points or mod.SavePoints(t)
     fills[t] = rec
+    if frame and not fillOf[frame] then fillOf[frame] = t end
     PaintFill(t, rec, mod.Current())
     return rec
 end
@@ -162,15 +213,6 @@ end
 ---------------------------------------------------------------------------
 -- Edges (UI.Border's four 1 px textures)
 ---------------------------------------------------------------------------
-local function Points(t)
-    local p = {}
-    for i = 1, Num(t.GetNumPoints and t:GetNumPoints()) do
-        local a, rel, b, x, y = t:GetPoint(i)
-        p[#p + 1] = { a, rel, b, Num(x), Num(y) }
-    end
-    return p
-end
-
 local function Horizontal(points)
     if #points < 2 then return nil end
     local top, bottom = true, true
@@ -246,33 +288,46 @@ local function PlaceEdge(t, points, horizontal, round)
     end
 end
 
+-- small = a widget-sized frame (controls: their own edge colour, no shadow)
+function mod.Small(rec)
+    if rec.role then return true end
+    local _, h = mod.Size(rec.frame)
+    return (h > 0 and h <= 32) or (h <= 0 and math.max(rec.r, rec.g, rec.b) >= 0.28)
+end
+
+-- the colour of a frame's edges in style S (nil = leave MMT's)
+function mod.EdgeColor(rec, S)
+    local cls = BorderClass(rec)
+    if not cls then return nil end
+    if cls == "neutral" then return mod.Small(rec) and S.controlBorder or S.border end
+    if S.accentBorder == "BLACK" then return { 0, 0, 0, rec.a > 0 and 1 or 0 } end
+    if AccentOn() then
+        local r, g, b = S.accent()
+        return { r, g, b, rec.a }
+    end
+    return { rec.r, rec.g, rec.b, rec.a }
+end
+
+local function UndoBorder(rec)
+    if mod.ArtUndoBorder then mod.ArtUndoBorder(rec) end
+    for i, t in ipairs(rec.edges) do
+        t:SetColorTexture(rec.r, rec.g, rec.b, rec.a)
+        Thickness(t, rec.horizontal[i], rec.thick[i], false)
+        PlaceEdge(t, rec.points[i], rec.horizontal[i], false)
+    end
+    for _, ring in pairs(rec.rings or {}) do ShowRing(ring, nil) end
+end
+
 local function PaintBorder(rec, S)
-    local cls = S and BorderClass(rec)
-    if not cls then
-        if rec.painted then
-            for i, t in ipairs(rec.edges) do
-                t:SetColorTexture(rec.r, rec.g, rec.b, rec.a)
-                Thickness(t, rec.horizontal[i], rec.thick[i], false)
-                PlaceEdge(t, rec.points[i], rec.horizontal[i], false)
-            end
-            for _, ring in pairs(rec.rings or {}) do ShowRing(ring, nil) end
-            rec.painted = nil
-        end
+    if rec.painted then UndoBorder(rec) end
+    rec.painted = nil
+    if not S then return end
+    if S.art and mod.ArtBorder and mod.ArtBorder(rec, S) then
+        rec.painted = true
         return
     end
-    local h = Size(rec.frame)
-    local small = (h > 0 and h <= 32) or (h <= 0 and math.max(rec.r, rec.g, rec.b) >= 0.28)
-    local c
-    if cls == "neutral" then
-        c = small and S.controlBorder or S.border
-    elseif S.accentBorder == "BLACK" then
-        c = { 0, 0, 0, rec.a > 0 and 1 or 0 }
-    elseif AccentOn() then
-        local r, g, b = S.accent()
-        c = { r, g, b, rec.a }
-    else
-        c = { rec.r, rec.g, rec.b, rec.a }
-    end
+    local c = mod.EdgeColor(rec, S)
+    if not c then return end
     for i, t in ipairs(rec.edges) do
         t:SetColorTexture(c[1], c[2], c[3], c[4])
         Thickness(t, rec.horizontal[i], 1, S.pixel)
@@ -282,7 +337,7 @@ local function PaintBorder(rec, S)
     local f = rec.frame
     if S.inner and not rec.rings.inner then rec.rings.inner = Ring(f, 1, "BORDER", 1) end
     ShowRing(rec.rings.inner, S.inner)
-    local shadow = (not small) and S.shadow
+    local shadow = (not mod.Small(rec)) and S.shadow
     for k = 1, 2 do
         local key = "shadow" .. k
         if shadow and shadow[k] and not rec.rings[key] then rec.rings[key] = Ring(f, -k, "BACKGROUND", -8, true) end
@@ -291,18 +346,24 @@ local function PaintBorder(rec, S)
     rec.painted = true
 end
 
+-- only the edge colour (hover): the rest of the paint stays
+function mod.SetEdgeColor(rec, c)
+    for _, t in ipairs(rec.edges) do t:SetColorTexture(c[1], c[2], c[3], c[4]) end
+end
+
 local function AddBorder(frame, edges, r, g, b, a)
     for _, t in ipairs(edges) do seen[t] = true end
     local rec = borders[edges[1]]
     if not rec then
         rec = { frame = frame, edges = edges, points = {}, horizontal = {}, thick = {} }
         for i, t in ipairs(edges) do
-            rec.points[i] = Points(t)
+            rec.points[i] = mod.SavePoints(t)
             rec.horizontal[i] = Horizontal(rec.points[i])
             local px = rec.horizontal[i] and t:GetHeight() or t:GetWidth()
             rec.thick[i] = (tonumber(px) and px > 0 and px <= 4) and px or 1
         end
         borders[edges[1]] = rec
+        if frame and not borderOf[frame] then borderOf[frame] = rec end
     end
     rec.r, rec.g, rec.b, rec.a = Num(r), Num(g), Num(b), tonumber(a) or 1
     PaintBorder(rec, mod.Current())
@@ -310,7 +371,7 @@ local function AddBorder(frame, edges, r, g, b, a)
 end
 
 ---------------------------------------------------------------------------
--- Fonts, accent pieces, tracks, accent text
+-- Fonts
 ---------------------------------------------------------------------------
 local function PaintFont(fs, rec, S)
     local file = S and S.font and mod.Opt("fonts") and S.font()
@@ -344,42 +405,165 @@ local function AddFont(fs)
     PaintFont(fs, rec, mod.Current())
 end
 
-local function PaintColor(kind, t, rec, S)
+---------------------------------------------------------------------------
+-- Accent pieces, slider tracks (colour textures)
+---------------------------------------------------------------------------
+local function PaintColor(t, rec, S)
+    if rec.art then
+        Plain(t)
+        mod.RestorePoints(t, rec.points)
+        if rec.w and t.SetSize then t:SetSize(rec.w, rec.h) end
+        if mod.ArtUndoColor then mod.ArtUndoColor(t, rec) end
+        rec.art = nil
+        rec.painted = true   -- the colour below puts it back
+    end
+    if rec.kind == "line" then   -- under a Column:Header: the style's header line colour, else MMT's
+        local c = S and S.headerLine
+        if c == "ACCENT" then
+            if AccentOn() then local r, g, b = S.accent(); c = { r, g, b, 0.5 } else c = nil end
+        end
+        if c then
+            t:SetColorTexture(c[1], c[2], c[3], c[4])
+            rec.painted = true
+        elseif rec.painted then
+            t:SetColorTexture(rec.r, rec.g, rec.b, rec.a)
+            rec.painted = nil
+        end
+        return
+    end
+    if S and S.art and mod.ArtColor and mod.ArtColor(t, rec, S) then
+        rec.art, rec.painted = true, true
+        return
+    end
     local c
     if S then
-        if kind == "track" then c = S.track
+        if rec.kind == "track" then c = S.track
         elseif AccentOn() then
             local r, g, b = S.accent()
             c = { r, g, b, rec.a }
         end
     end
-    local set = (kind == "text") and t.SetTextColor or t.SetColorTexture
     if not c then
-        if rec.painted then set(t, rec.r, rec.g, rec.b, rec.a); rec.painted = nil end
+        if rec.painted then t:SetColorTexture(rec.r, rec.g, rec.b, rec.a); rec.painted = nil end
         return
     end
-    set(t, c[1], c[2], c[3], c[4])
+    t:SetColorTexture(c[1], c[2], c[3], c[4])
     rec.painted = true
 end
 
-local function AddColor(list, kind, t, r, g, b, a)
-    if not t or list[t] then return end
+local function AddColor(kind, t, r, g, b, a)
+    if not t or colors[t] then return colors[t] end
     seen[t] = true
-    local rec = { r = Num(r), g = Num(g), b = Num(b), a = tonumber(a) or 1 }
-    list[t] = rec
-    PaintColor(kind, t, rec, mod.Current())
+    local rec = { kind = kind, r = Num(r), g = Num(g), b = Num(b), a = tonumber(a) or 1, points = mod.SavePoints(t) }
+    if t.GetWidth then rec.w, rec.h = t:GetWidth(), t:GetHeight() end
+    colors[t] = rec
+    PaintColor(t, rec, mod.Current())
+    return rec
 end
 
-local function AddAccentTexture(t)
+local function AddAccentTexture(t, kind)
     local A = MMT.UI.ACCENT
-    AddColor(accents, "accent", t, A[1], A[2], A[3], 1)
+    return AddColor(kind or "accent", t, A[1], A[2], A[3], 1)
 end
 
-local function AddAccentText(fs)
-    if not (fs and fs.GetTextColor) or texts[fs] then return end
-    local r, g, b, a = fs:GetTextColor()
-    if not IsAccent(Num(r), Num(g), Num(b)) then return end
-    AddColor(texts, "text", fs, r, g, b, a)
+---------------------------------------------------------------------------
+-- Text colours. The owner may colour a label again any time (greyed-out
+-- options, selected tabs): what we set is remembered, and a label whose colour
+-- is no longer ours belongs to its owner again.
+---------------------------------------------------------------------------
+local GOLD = { 1, 0.82, 0 }
+
+local function TextWant(rec, S)
+    local o = rec.orig
+    if rec.kind == "accent" then
+        if not (IsAccent(Num(o[1]), Num(o[2]), Num(o[3])) and AccentOn()) then return nil end
+        local r, g, b = S.accent()
+        return { r, g, b, o[4] }
+    end
+    local white = Near(o, 1, 1, 1)
+    if rec.kind == "plain" then return white and S.plainText or nil end
+    if rec.kind == "button" then
+        if white then return S.buttonText end
+        if IsAccent(Num(o[1]), Num(o[2]), Num(o[3])) and AccentOn() and S.buttonText then   -- a selected tab
+            local r, g, b = S.accent()
+            return { r, g, b, o[4] }
+        end
+        return nil
+    end
+    if rec.kind == "header" then
+        if not (Near(o, GOLD[1], GOLD[2], GOLD[3]) or white) then return nil end
+        if S.headerText == "ACCENT" then
+            if not AccentOn() then return nil end
+            local r, g, b = S.accent()
+            return { r, g, b, 1 }
+        end
+        return S.headerText
+    end
+end
+
+local painting = false   -- our own SetTextColor (the per-label hook ignores it)
+
+-- a colour our own label hooks don't take for the owner's (the hover light)
+function mod.QuietTextColor(fs, r, g, b, a)
+    painting = true
+    pcall(fs.SetTextColor, fs, r, g, b, a)
+    painting = false
+end
+
+local function PaintText(fs, rec, S)
+    local cur = { fs:GetTextColor() }
+    if rec.painted and not (Near(cur, rec.set[1], rec.set[2], rec.set[3]) and math.abs(Num(cur[4]) - Num(rec.set[4])) < 0.02) then
+        rec.painted = nil   -- coloured again by its owner
+    end
+    if not rec.painted then rec.orig = cur end
+    local want = S and TextWant(rec, S)
+    painting = true
+    if want then
+        fs:SetTextColor(want[1], want[2], want[3], want[4] or 1)
+        rec.set = { want[1], want[2], want[3], want[4] or 1 }
+        rec.painted = true
+    elseif rec.painted then
+        local o = rec.orig
+        fs:SetTextColor(o[1], o[2], o[3], o[4])
+        rec.painted = nil
+    end
+    painting = false
+end
+
+local function AddText(fs, kind)
+    if not (fs and fs.GetTextColor) then return end
+    local rec = texts[fs]
+    if rec then
+        rec.kind = kind
+    else
+        rec = { kind = kind }
+        texts[fs] = rec
+    end
+    -- buttons, dropdown values and headers are coloured again by their owner (selected tab, greyed out):
+    -- the style follows at once
+    if kind ~= "plain" and not rec.hooked then
+        rec.hooked = true
+        hooksecurefunc(fs, "SetTextColor", function()
+            if painting then return end
+            Try(PaintText, fs, rec, mod.Current())
+        end)
+    end
+    PaintText(fs, rec, mod.Current())
+end
+mod.AddText = AddText
+
+-- Column:Header: EllesmereUI writes them in capitals, Elv in the accent colour; the line under it follows
+local function PaintHeader(fs, rec, S)
+    local cur = fs:GetText()
+    if rec.upper and cur ~= rec.upper then rec.upper = nil end
+    if not rec.upper then rec.text = cur end
+    if S and S.headerUpper and type(rec.text) == "string" then
+        rec.upper = rec.text:upper()
+        fs:SetText(rec.upper)
+    elseif rec.upper then
+        fs:SetText(rec.text)
+        rec.upper = nil
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -399,11 +583,45 @@ end
 
 -- the settings window's base fill belongs to the core's background picker
 -- (pull request "settings-background") while a picture is chosen there
-local function BackgroundShown()
+function mod.BackgroundShown()
     local fn = MMT.ConfigBackground
     if type(fn) ~= "function" then return false end
     local ok, key = pcall(fn)
     return ok and key ~= nil and key ~= "NONE"
+end
+
+---------------------------------------------------------------------------
+-- Roles: the widget hooks say what a recorded frame is
+---------------------------------------------------------------------------
+mod.roles = setmetatable({}, weak)   -- [frame] = role
+mod.widgets = setmetatable({}, weak) -- [frame] = { role, label, arrow, close, hover = edge frame }
+
+local function Repaint(frame)
+    local S = mod.Current()
+    local rec = borderOf[frame]
+    if rec then Try(PaintBorder, rec, S) end
+    local t = fillOf[frame]
+    if t then Try(PaintFill, t, fills[t], S) end
+end
+
+local function SetRole(frame, role)
+    if not frame then return end
+    mod.roles[frame] = role
+    local rec = borderOf[frame]
+    if rec then rec.role = role end
+    local t = fillOf[frame]
+    if t then fills[t].role = role end
+    Repaint(frame)
+end
+
+-- a widget: frame = the button the mouse is on, edge = the frame with the edges
+local function Widget(frame, role, edge, label, extra)
+    local w = mod.widgets[frame] or {}
+    w.role, w.edge, w.label = role, edge or frame, label
+    for k, v in pairs(extra or {}) do w[k] = v end
+    mod.widgets[frame] = w
+    if mod.WidgetAdded then Try(mod.WidgetAdded, frame, w) end
+    return w
 end
 
 ---------------------------------------------------------------------------
@@ -426,62 +644,107 @@ local function Install()
         local t = Newest(frame, "Texture", 1, layer or "BACKGROUND")[1]
         if not t then return end
         local skip
-        if frame.GetName and frame:GetName() == "MMTConfigFrame" then skip = BackgroundShown end
+        if frame.GetName and frame:GetName() == "MMTConfigFrame" then skip = mod.BackgroundShown end
         AddFill(t, frame, r, g, b, a, skip)
     end)
     H("Border", function(frame, r, g, b, a)
         local edges = Newest(frame, "Texture", 4, "BORDER")
         if #edges == 4 then AddBorder(frame, edges, r, g, b, a) end
     end)
-    H("Label", function(parent)
-        AddFont(Newest(parent, "FontString", 1)[1])
+    H("Label", function(parent, _, template)
+        local fs = Newest(parent, "FontString", 1)[1]
+        AddFont(fs)
+        if fs and (template == nil or template == "GameFontHighlightSmall") then AddText(fs, "plain") end
+    end)
+    H("Button", function(parent)
+        local b = NewestChild(parent)
+        if not (b and rawget(b, "label")) then return end
+        SetRole(b, "button")
+        AddText(b.label, "button")
+        Widget(b, "button", b, b.label)
     end)
     H("Check", function(parent)
         local b = NewestChild(parent)
         local box = b and Children(b)[1]
+        if not box then return end
         for _, t in ipairs(Regions(box)) do
-            if Type(t) == "Texture" and Layer(t) == "ARTWORK" then AddAccentTexture(t) end
+            if Type(t) == "Texture" and Layer(t) == "ARTWORK" then AddAccentTexture(t, "mark") end
         end
+        SetRole(box, "check")
+        Widget(b, "check", box, rawget(b, "label"))
     end)
     H("Slider", function(parent)
         local c = NewestChild(parent)
         for _, s in ipairs(Children(c)) do
             if Type(s) == "Slider" then
                 for _, t in ipairs(Regions(s)) do
-                    if Type(t) == "Texture" and Layer(t) == "BACKGROUND" then AddColor(tracks, "track", t, TRACK[1], TRACK[2], TRACK[3], TRACK[4]) end
+                    if Type(t) == "Texture" and Layer(t) == "BACKGROUND" then AddColor("track", t, TRACK[1], TRACK[2], TRACK[3], TRACK[4]) end
                 end
                 local thumb = s.GetThumbTexture and s:GetThumbTexture()
-                if thumb then AddAccentTexture(thumb) end
+                if thumb then AddAccentTexture(thumb, "thumb") end
             end
         end
     end)
     local function Dropdown(parent)
         local b = NewestChild(parent)
-        if b and rawget(b, "valueLabel") then AddAccentText(b.valueLabel) end
+        if not b then return end
+        if rawget(b, "valueLabel") then AddText(b.valueLabel, "accent") end
+        local arrow
+        for _, fs in ipairs(Regions(b)) do
+            if Type(fs) == "FontString" and fs:GetText() == "v" then arrow = fs end
+        end
+        SetRole(b, "dropdown")
+        Widget(b, "dropdown", b, nil, { arrow = arrow })
     end
     H("Dropdown", Dropdown)
     if UI.Cycle ~= UI.Dropdown then H("Cycle", Dropdown) end   -- the old name holds the unhooked function
+    H("Color", function(parent)
+        local b = NewestChild(parent)
+        if not b then return end
+        SetRole(b, "dropdown")
+        Widget(b, "dropdown", b, nil)
+    end)
     H("EditBox", function(parent)
         local e = NewestChild(parent)
-        if Type(e) == "EditBox" then AddFont(e) end
+        if Type(e) ~= "EditBox" then return end
+        AddFont(e)
+        SetRole(e, "input")
     end)
     H("TextArea", function(parent)
         local holder = NewestChild(parent)
         local e = holder and rawget(holder, "edit")
         if e then AddFont(e) end
+        SetRole(holder, "input")
+    end)
+    H("TextButton", function(parent)
+        local b = NewestChild(parent)
+        local label = b and rawget(b, "label")
+        if label and label:GetText() == "x" then Widget(b, "close", b, nil, { close = label }) end
     end)
     H("SyncButton", function(page)
         local b = NewestChild(page)
         if not (b and type(rawget(b, "Update")) == "function") then return end
+        SetRole(b, "button")
         -- its Update colours the fill again: paint it after that
         hooksecurefunc(b, "Update", function()
             Try(function()
-                for _, t in ipairs(Regions(b)) do
-                    local rec = fills[t]
-                    if rec then rec.painted = true; PaintFill(t, rec, mod.Current()) end
-                end
+                local t = fillOf[b]
+                if t then fills[t].painted = true; PaintFill(t, fills[t], mod.Current()) end
             end)
         end)
+    end)
+    -- Column:Header (the Column metatable is the core's: its methods are looked up at call time)
+    local probe = UI.Column and UI.Column(UIParent, 0, 0, 10)
+    local Column = probe and getmetatable(probe)
+    mod.hooked.Header = Hook(Column, "Header", function(col)
+        local parent = col.parent
+        local fs = Newest(parent, "FontString", 1, nil, true)[1]
+        local line = Newest(parent, "Texture", 1, "ARTWORK")[1]
+        if not fs then return end
+        headers[fs] = { line = line }
+        AddText(fs, "header")
+        if line then AddColor("line", line, 1, 1, 1, 0.08) end
+        PaintHeader(fs, headers[fs], mod.Current())
     end)
     mod.hooked.ToggleConfig = Hook(MMT, "ToggleConfig", mod.ScanConfig)
     -- the background picker sets the base fill again each time the window opens
@@ -492,6 +755,8 @@ local function Install()
         rec.painted = nil   -- it has just set its own colour
         NoGradient(t, rec)
         PaintFill(t, rec, mod.Current())
+        local brec = borderOf[frame]
+        if brec then PaintBorder(brec, mod.Current()) end
     end)
 end
 Install()
@@ -501,32 +766,39 @@ Install()
 ---------------------------------------------------------------------------
 function mod.Apply()
     local S = mod.Current()
+    if mod.HoverReset then Try(mod.HoverReset) end
     mod.ScanConfig()
-    for t, rec in pairs(fills) do Try(PaintFill, t, rec, S) end
     for _, rec in pairs(borders) do Try(PaintBorder, rec, S) end
+    for t, rec in pairs(fills) do Try(PaintFill, t, rec, S) end
     for fs, rec in pairs(fonts) do Try(PaintFont, fs, rec, S) end
-    for t, rec in pairs(accents) do Try(PaintColor, "accent", t, rec, S) end
-    for t, rec in pairs(tracks) do Try(PaintColor, "track", t, rec, S) end
-    for t, rec in pairs(texts) do Try(PaintColor, "text", t, rec, S) end
+    for t, rec in pairs(colors) do Try(PaintColor, t, rec, S) end
+    for fs, rec in pairs(texts) do Try(PaintText, fs, rec, S) end
+    for fs, rec in pairs(headers) do Try(PaintHeader, fs, rec, S) end
+    if mod.ArtWidgets then Try(mod.ArtWidgets, S) end
+    if mod.HoverStart then Try(mod.HoverStart, S) end
 end
 
 function mod.Counts()
     local function n(t) local c = 0 for _ in pairs(t) do c = c + 1 end return c end
-    return { fills = n(fills), borders = n(borders), fonts = n(fonts), accents = n(accents), tracks = n(tracks), texts = n(texts) }
+    return { fills = n(fills), borders = n(borders), fonts = n(fonts), colors = n(colors), texts = n(texts),
+        headers = n(headers), widgets = n(mod.widgets) }
 end
 
 -- test / debug access
-mod.records = { fills = fills, borders = borders, fonts = fonts, accents = accents, tracks = tracks, texts = texts }
+mod.records = { fills = fills, borders = borders, fonts = fonts, colors = colors, texts = texts, headers = headers }
+mod.PaintBorder, mod.PaintFill, mod.PaintText = PaintBorder, PaintFill, PaintText
 
 ---------------------------------------------------------------------------
 -- Public API for modules that colour textures themselves
 ---------------------------------------------------------------------------
 QStyles = QStyles or {}
-QStyles.VERSION = 1
+QStyles.VERSION = 2
 
 -- instead of texture:SetColorTexture(r, g, b, a) for a window's background
 function QStyles.Paint(t, r, g, b, a)
     if not t then return end
+    local rec = fills[t]
+    if rec then UndoFill(t, rec) end
     t:SetColorTexture(r, g, b, a)
     pcall(AddFill, t, t.GetParent and t:GetParent(), r, g, b, a)
 end
