@@ -9,7 +9,8 @@
 --   check    MMT's box fill becomes the check box, the mark the yellow tick
 --   dropdown the old dropdown frame (CharacterCreate-LabelFrame, 3 pieces) and
 --            the round arrow button; input = the old edit box (Common-Input-Border)
---   dialog   windows (parent UIParent) >= 300 x 100: the background picked on the page
+--   dialog   windows >= 150 x 100 (mod.IsWindow: parent UIParent, or a side panel outside its parent;
+--            not the dropdown list / colour picker): the background picked on the page
 --            (mod.CLASSIC_BGS: stone by default) on the frame, the carved border
 --            on a child frame ABOVE it (so it also shows over the core's
 --            background pictures and the window's own pieces), full thickness
@@ -162,6 +163,29 @@ local function CanBackdrop(f)
     return (BackdropTemplateMixin and Mixin) and true or false
 end
 
+-- popups that are lists, not windows: the thin border like the game's dropdown menus
+local LISTS = { MMTDropdownList = true, MMTColorPopup = true }
+
+local function Outside(p, rp)
+    p, rp = tostring(p), tostring(rp)
+    return (p:find("LEFT") and rp:find("RIGHT")) or (p:find("RIGHT") and rp:find("LEFT"))
+        or (p:find("TOP") and rp:find("BOTTOM")) or (p:find("BOTTOM") and rp:find("TOP"))
+end
+
+-- a window: on the screen itself, or a side panel attached OUTSIDE its parent (Team Inventory's Team panel);
+-- a panel inside a page or window (Statistics' gold graph, a window's list) is not
+function mod.IsWindow(frame)
+    local name = frame.GetName and frame:GetName()
+    if name and LISTS[name] then return false end
+    local parent = frame.GetParent and frame:GetParent()
+    if parent == nil or parent == UIParent then return true end
+    for i = 1, tonumber(frame.GetNumPoints and frame:GetNumPoints()) or 0 do
+        local p, rel, rp = frame:GetPoint(i)
+        if rel == parent and Outside(p, rp) then return true end
+    end
+    return false
+end
+
 function mod.ArtKind(frame)
     if not frame then return nil end
     local role = mod.roles[frame]
@@ -175,11 +199,8 @@ function mod.ArtKind(frame)
     end
     if not mod.borderOf[frame] or not CanBackdrop(frame) then return nil end
     if role then return "thin" end
-    -- only real windows (on the screen itself) get the carved border; a big panel inside a page (Statistics'
-    -- gold graph) or a window is "thin": the carved one would cover its labels
-    local parent = frame.GetParent and frame:GetParent()
     local w, h = mod.Size(frame)
-    if (parent == nil or parent == UIParent) and w >= 300 and h >= 100 then return "dialog" end
+    if mod.IsWindow(frame) and w >= 150 and h >= 100 then return "dialog" end
     return "thin"
 end
 
