@@ -8,6 +8,9 @@ CLAUDE.md, ...), plus a changelog to paste with it. Run from anywhere in the rep
                                                      # changelog from a date (no release tag yet)
     python tools/make_release.py main --tag          # also tag it release-<name> and push the tag
 
+A branch name packs GITHUB's copy of it (fetched first; a local branch can be behind), and a commit
+that already has a release tag is refused (--force to build it anyway).
+
 Each upload gets a release name from its commit's date, YYYY.MM.DD (a second release
 that day .2, .3, ...): use it as CurseForge's "Display Name" / version. It sorts the
 right way everywhere, unlike "29/10/2026 19:40". The changelog lists every module's
@@ -33,15 +36,30 @@ if "--since" in args:
     del args[i:i + 2]
 args = [a for a in args if a != "--tag"]
 
+force = "--force" in args
+args = [a for a in args if a != "--force"]
+
 root = git("rev-parse", "--show-toplevel")
 os.chdir(root)
 ref = args[0] if args else "HEAD"
+# a branch name means GitHub's copy of it: a local branch can be behind (2026-10-30 a stale
+# local main gave an empty second release)
+subprocess.run(["git", "fetch", "-q", "--tags", "origin"], check=False)
+if subprocess.run(["git", "rev-parse", "--verify", "-q", "refs/remotes/origin/" + ref],
+                  capture_output=True).returncode == 0:
+    ref = "origin/" + ref
+print("packing %s (%s)" % (ref, git("log", "-1", "--format=%h %s", ref)[:90]))
 modules = [d for d in git("ls-tree", "-d", "--name-only", ref).splitlines() if d.startswith("MMT_")]
 if not modules:
     sys.exit("no MMT_* folders in " + ref)
 
 # release name: the commit's date, .2 / .3 for more releases that day
 tags = set(git("tag", "--list", "release-*").split())
+# nothing new since a release that's already tagged: no second, empty release
+same = [t for t in tags if git("rev-parse", t + "^{commit}") == git("rev-parse", ref + "^{commit}")]
+if same and not force:
+    sys.exit("%s is already released as %s - nothing new to release (push your changes to the branch "
+             "first, or add --force)." % (ref, ", ".join(sorted(same))))
 day = git("log", "-1", "--format=%cd", "--date=format:%Y.%m.%d", ref)
 name, n = day, 1
 while "release-" + name in tags:
