@@ -56,6 +56,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - `local M = MMT.NewModule{ name, title, description, defaults }`
 - `M.db` per-profile settings – always read `M.db.x` fresh, never cache `M.db` in a local
   (the core replaces it on profile change). `M.store` = account-wide storage.
+- **A setting must keep its default's TYPE**: the core's MergeDefaults (MMT/Profiles.lua) runs on M.db at every login,
+  profile change and sync and puts a value of another type back to the default (a string over a `false` default never
+  survived a /reload: Team Inventory 0.10.6). Don't set a defaulted key to nil either (the default comes back). Non-array
+  default tables are merged key by key (a default list key the user removed comes back); empty / array tables are not.
+- Reset to defaults: wipe M.db in place, copy the defaults, run OnProfileChanged (SettingsKit `mod.ResetSettings` keeps
+  `takenFrom`, else Cooldown / Buff Timers took the old module's settings over again, fixed 0.18.4 / 0.23.4).
 - `M.OnEnable`, `M.OnDisable` (stop timers/hide frames), `M.OnProfileChanged`
 - `M:On(event, fn)`, `M:Listen(callback, fn)` – only fire while the module is on
 - `M:Heartbeat(key, fn)` – tiny values only, no `:` `,` `=`; heartbeat message is capped at 255 bytes
@@ -118,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.3) / MMT_BuffTimers (v0.23.3) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.4) / MMT_BuffTimers (v0.23.4) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -443,7 +449,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_teamgear.py` (stand-in frames: read optional fields with `rawget`, or keep state on `mod`;
   the stub keeps every `M:Listen`/`M:On` handler; stand-in trait tree + classic API, comm round trip).
 
-### MMT_TeamInventory (v0.10.4)
+### MMT_TeamInventory (v0.10.6)
 - Files: `Module.lua` (store `M.store.chars[key] = {b, k, m, e = {[itemID] = n}, hash, time}`, `M.store.mine[key]`
   = characters of this account, `mod.CountOf`), `Scan.lua` (bags incl. ReagentBag/Keyring, bank =
   `Enum.BagIndex.CharacterBankTab_1..9` (fallback Bank + 5..11) ONLY while open, mail only while
@@ -497,7 +503,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (`SetGold` in Sync.lua redraws the open window on a change - before 0.9.3 it didn't, so trades looked lost) + `TIVM:<copper>`
   whispered with every TIVREQ reply. `mod.RefreshAll()` (5 s throttle) = own scan + RequestAll: `mod.RefreshButton(parent)` icon
   in the window's top bar (left of the cog; the search box stretches from the character button to -72: fixed 140 px overlapped it at the narrowest window, MIN_W) and the panel's Team header.
-- `otherChars` = false | "RULESET" | "ALL" (old `true` = RULESET; `mod.CharsMode()` -> TEAM/RULESET/ALL, settings Cycle "Characters"):
+- `chars` = "TEAM" | "RULESET" | "ALL" (0.10.6; `mod.CharsMode()` / `mod.SetCharsMode(v)`, settings Cycle "Characters"; until 0.10.5
+  `otherChars` = false | "RULESET" | "ALL" (old `true` = RULESET) - the core's MergeDefaults put the strings back to false at every
+  login; CharsMode takes an old otherChars over once and clears it):
   `mod.Shown(key)` = `mod.InTeam(key)` (SortedMembers or self), or ALL, or RULESET and `mod.SameRuleset(key)`; filters BagOwners
   (rest sorted: this ruleset / unknown first, then by ruleset), the added-up views, the panel and the total. The item tooltip still counts everyone.
   Rulesets (0.9.0): team keys "First-Last" carry no realm; `mod.Ruleset()` = C_GameRules.IsGameRuleActive(Enum.GameRule.Hardcore/PvP/RPRuleset)
@@ -785,7 +793,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 and every `tests/test_*.py` (stubbed WoW API; Totems runs two clients passing messages).
 Setup: `pip install --target <scratch>/py lupa luaparser`, `PYTHONPATH=<scratch>/py`.
 Run it before every commit; add a test when fixing a bug. It also lints `local a, b = x and f()`
-(keeps only f's first value: bit us twice).
+(keeps only f's first value: bit us twice) and that a `mod.VERSION = "x"` in the Lua equals the TOC's Version.
+`tests/test_settings_matrix.py` (2026-10-31) runs every module through test_settings' stand-in page: every checkbox both
+ways, every cycle choice, sliders at both ends, colours - each followed by a page refresh, OnProfileChanged and the
+core's MergeDefaults (must survive a /reload); every default changed, then a core sync onto a NEW table (old one
+poisoned: reading it fails), the page rebuilt, reset to defaults (= the defaults, OnProfileChanged ran; the old
+Cooldowns / Buffs module data in MMT.db.modules must not come back), export -> import of every setting (modules with
+TransferDef), OnDisable / OnEnable; then all again with MMT.ModuleActive false and MMTDB empty (no Item Compare).
 
 ## Testing
 The user tests in game. Errors are caught by BugSack/!BugGrabber; ask the user to paste them.
