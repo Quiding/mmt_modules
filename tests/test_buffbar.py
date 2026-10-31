@@ -852,6 +852,8 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()                                     -- readable: Flurry's ID learned
   local ids = m.LiveIds(fl)
   assert(ids and ids[12970], "live IDs")
+  assert(m.Timed(fl), "Flurry not known as a timed buff (its icon gate)")
+  assert(not m.Timed({ name = "Devotion*" }), "a never-seen buff counted as timed")
   m.Redraw()
   local before = #made
   assert(before > 0 and made[1].enabled, "the overlay doesn't draw out of combat (one look in and out of combat)")
@@ -870,7 +872,7 @@ print(lua.eval(r"""function(m)
   assert(#made == before, "an overlay was built in combat")
   local lines = {}
   m.LiveReport(function(l) lines[#lines + 1] = l end)
-  assert(#lines == 4 and lines[2]:find("drawing 1"), "report: " .. tostring(lines[2]))
+  assert(#lines == 3 and lines[2]:find("drawing 1"), "report: " .. tostring(lines[2]))
   -- the icon underneath: the missing look
   local under
   for _, w in pairs(MMTIconBars.windows) do

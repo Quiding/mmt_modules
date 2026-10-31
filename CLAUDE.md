@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.10) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.11) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -216,6 +216,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   0.25.10 (still flashed in game): blanking = the CONTAINER's alpha 0 (ours; the pieces may be locked) on Cooldown
   OnCooldownDone / OnHide, back (ov.alpha = active opacity) on Cooldown / button OnShow; `mod.liveHooks` counts each
   signal (+ blocked SetAlpha), shown by /mmtbt live "countdown signals".
+  In game: "none yet" - the engine-driven Cooldown / slot button run NO Lua hooks. 0.25.11 (ForeverAuras' "late glow"
+  trick, SecretAuraSingle.lua): the overlay's content (bg, icon, Cooldown, stacks) sits in a clip frame
+  (DisableUntrustedLayoutScriptsTemplate, SetClipsChildren) whose BOTTOMRIGHT is anchored to the fill texture of an
+  invisible 200000 px StatusBar the game drives via `button:SetDurationBar(bar, {direction = RemainingTime})`: the
+  clip closes exactly at 0. Gate only for buffs seen with a timer (`mod.Timed(e)`, `M.store.timed[name]`, noted while
+  readable) - a permanent aura would read as no time left. Hooks / liveHooks removed.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login

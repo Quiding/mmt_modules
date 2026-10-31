@@ -117,6 +117,18 @@ end
 
 mod.Tracked = Tracked
 
+-- has this entry's buff been seen with a timer (not a permanent aura)?
+function mod.Timed(e)
+    local timed = M.store.timed
+    if not timed then return false end
+    if mod.IsPattern(e) then
+        for name in pairs(timed) do if mod.Matches(e, name) then return true end end
+        return false
+    end
+    local name = mod.BuffName(e)
+    return name and timed[name] or false
+end
+
 local function NoteId(name, id)
     if type(id) ~= "number" or not Tracked(name) then return end
     M.store.auraIds = M.store.auraIds or {}
@@ -235,7 +247,14 @@ local function ScanUnit(unit)
         if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
         NoteId(name, spellId)
         local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
-        if duration and duration > 0 then seenDur[name] = duration end
+        if duration and duration > 0 then
+            seenDur[name] = duration
+            -- timed buffs, kept across sessions (Live.lua gates their icon on the time left)
+            if Tracked(name) then
+                M.store.timed = M.store.timed or {}
+                M.store.timed[name] = true
+            end
+        end
         t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count,
             icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw,
             -- cast by someone in the group (blessings: one per paladin here, Casters.lua)

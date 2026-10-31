@@ -71,50 +71,72 @@ function mod.LiveIds(e)
     return c[2], c[3]
 end
 
+-- The countdown reaches 0 a moment before the game takes the aura away: the plain icon flashed
+-- up in between (the cooldown frame runs no Lua hooks here, so it can't be blanked by script).
+-- So the icon sits in a clipping frame whose right edge follows the filled end of an invisible
+-- bar the game drives with the aura's time left (button:SetDurationBar, ForeverAuras' "late
+-- glow" trick): 200000 px long, the fill is wider than the icon until the last instant (Flurry:
+-- the last 2 ms), then the clip closes with the countdown. Only for buffs seen with a timer:
+-- a permanent aura has no time left to follow (mod.Timed, Tracker.lua).
+local GATE_W = 200000
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+
 -- the look of the slot's button: the aura's own icon, the game's countdown, stacks
 local function Build(ov, button)
     ov.button = button
     button:SetAllPoints(ov.container)
     pcall(button.EnableMouse, button, false)
+    local clip = CreateFrame("Frame", nil, button, "DisableUntrustedLayoutScriptsTemplate")
+    clip:SetClipsChildren(true)
+    clip:SetAllPoints(button)
+    ov.clip = clip
+    local content = CreateFrame("Frame", nil, clip)
+    content:SetAllPoints(button)
     -- solid behind the aura's icon: the missing-look icon underneath mustn't show through
-    local bg = button:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(button)
+    local bg = content:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(content)
     bg:SetColorTexture(0, 0, 0, 1)
-    local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints(button)
+    local icon = content:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints(content)
     button:SetIcon(icon)
     ov.icon = icon
-    local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-    cd:SetAllPoints(button)
+    local cd = CreateFrame("Cooldown", nil, content, "CooldownFrameTemplate")
+    cd:SetAllPoints(content)
     cd:SetDrawEdge(false)
     cd:SetDrawBling(false)
     cd:SetReverse(true)
     cd:SetUseAuraDisplayTime(true)
     button:SetDurationCooldown(cd)
     ov.cooldown = cd
-    local stacks = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
-    stacks:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+    local stacks = content:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+    stacks:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -1, 1)
     button:SetApplicationCount(stacks)
     ov.stacks = stacks
-    ov.bg = bg
-    -- the countdown reaches 0 a moment before the game takes the aura away: the plain icon
-    -- flashed up in between. Blank once the timer is done, back with the next countdown or
-    -- the next aura the game puts in the slot (the icon underneath shows meanwhile)
-    local function Seen(on, why)
-        local hs = mod.liveHooks
-        hs[why] = (hs[why] or 0) + 1
-        ov.blank = not on
-        -- the whole widget (ours) first, the button's own pieces as well
-        local ok = pcall(ov.container.SetAlpha, ov.container, on and (ov.alpha or 1) or 0)
-        if not ok then hs.blocked = (hs.blocked or 0) + 1 end
-        for _, r in ipairs({ bg, icon, stacks }) do pcall(r.SetAlpha, r, on and 1 or 0) end
-    end
-    pcall(cd.HookScript, cd, "OnCooldownDone", function() Seen(false, "done") end)
-    pcall(cd.HookScript, cd, "OnHide", function() Seen(false, "cdHide") end)
-    pcall(cd.HookScript, cd, "OnShow", function() Seen(true, "cdShow") end)
-    pcall(button.HookScript, button, "OnShow", function() Seen(true, "show") end)
+    -- the invisible bar the game fills with the time left
+    local bar = CreateFrame("StatusBar", nil, button)
+    bar:SetStatusBarTexture(WHITE)
+    bar:SetStatusBarColor(0, 0, 0, 0)
+    bar:SetAlpha(0)
+    bar:SetPoint("TOPLEFT", button, "TOPLEFT")
+    bar:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT")
+    bar:SetWidth(GATE_W)
+    local ok = pcall(button.SetDurationBar, button, bar,
+        { direction = Enum and Enum.StatusBarTimerDirection and Enum.StatusBarTimerDirection.RemainingTime })
+    ov.bar = ok and bar or nil
 end
-mod.liveHooks = {}
+
+-- the clip follows the time left (timed buffs) or covers the icon (permanent ones)
+local function Gate(ov, on)
+    on = (on and ov.bar) and true or false
+    if ov.gated == on or not ov.clip then return end
+    local ok = pcall(function()
+        ov.clip:ClearAllPoints()
+        ov.clip:SetPoint("TOPLEFT", ov.button, "TOPLEFT")
+        if on then ov.clip:SetPoint("BOTTOMRIGHT", ov.bar:GetStatusBarTexture(), "BOTTOMRIGHT")
+        else ov.clip:SetPoint("BOTTOMRIGHT", ov.button, "BOTTOMRIGHT") end
+    end)
+    if ok then ov.gated = on end
+end
 
 local function Style(ov, b)
     -- the look of the bar it sits on: active opacity (not the missing one of the icon
@@ -123,8 +145,7 @@ local function Style(ov, b)
     local cfg = i.look or M.db
     local c = ov.container
     if c.SetIgnoreParentAlpha then pcall(c.SetIgnoreParentAlpha, c, true) end
-    ov.alpha = i.activeAlpha or cfg.activeAlpha or 1
-    if not ov.blank then c:SetAlpha(ov.alpha) end
+    c:SetAlpha(i.activeAlpha or cfg.activeAlpha or 1)
     local z = (tonumber(cfg.iconZoom) or 8) / 100
     if ov.icon then ov.icon:SetTexCoord(z, 1 - z, z, 1 - z) end
     local cd = ov.cooldown
@@ -192,7 +213,7 @@ local function Disable(ov)
 end
 
 -- one overlay set to a member's unit and a buff's spell IDs; drawing only while live
-local function Configure(ov, b, unit, ids, sig)
+local function Configure(ov, b, unit, ids, sig, timed)
     if ov.unit ~= unit or ov.sig ~= sig then
         local c = ov.container
         SetOn(ov, false)
@@ -205,7 +226,7 @@ local function Configure(ov, b, unit, ids, sig)
             if ok then ov.unit = unit else Fail("SetUnit", err) end
         end
     end
-    if not mod.live then pcall(Style, ov, b) end
+    if not mod.live then pcall(Style, ov, b); Gate(ov, timed) end
     -- drawing in and out of combat: switching to our own drawing when combat ended made the
     -- icons jump (another timer font / format / swipe); out of combat the icon underneath still
     -- shows the real state, so a buff whose ID isn't learned yet looks right there
@@ -236,7 +257,7 @@ function mod.LiveSync()
                     if ids then
                         local ov = overlays[b]
                         if ov == nil then ov = NewOverlay(b) or false; overlays[b] = ov end
-                        if ov then Configure(ov, b, unit, ids, sig); used[b] = true end
+                        if ov then Configure(ov, b, unit, ids, sig, mod.Timed(live.e)); used[b] = true end
                     end
                 end
             end
@@ -260,9 +281,6 @@ function mod.LiveReport(say)
         tostring(mod.live), tostring(mod.AurasHidden and mod.AurasHidden())))
     say(("overlays: made %d, failed %d, set up %d, drawing %d%s"):format(stats.made, stats.failed, set, on,
         stats.err and (" - last error: " .. stats.err) or ""))
-    local hooks = {}
-    for k, n in pairs(mod.liveHooks) do hooks[#hooks + 1] = k .. " " .. n end
-    say("countdown signals: " .. (#hooks > 0 and table.concat(hooks, ", ") or "none yet"))
     local names = {}
     for name, ids in pairs(M.store.auraIds or {}) do
         local l = {}
