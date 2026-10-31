@@ -77,12 +77,23 @@ function mod.SpellCooldown(spell)
     if GetSpellCooldown then return GetSpellCooldown(spell) end
 end
 
+-- the game hides every aura right now (in combat on this client)
+function mod.AurasHidden()
+    if not (C_Secrets and C_Secrets.ShouldAurasBeSecret) then return false end
+    local ok, hidden = pcall(C_Secrets.ShouldAurasBeSecret)
+    if not ok then return false end
+    if MMT.IsSecret(hidden) then return true end
+    return hidden == true
+end
+
 -- i-th buff of a unit: name, icon, count, duration, expirationTime;
 -- nil after the last one; the string "secret" when the game hides it
 function mod.Buff(unit, i)
     if C_UnitAuras and C_UnitAuras.GetBuffDataByIndex then
+        if mod.AurasHidden() then return "secret" end
         local ok, a = pcall(C_UnitAuras.GetBuffDataByIndex, unit, i)
-        if not ok or type(a) ~= "table" then return nil end
+        if not ok then return "secret" end   -- the game refuses the read right now (combat restrictions)
+        if type(a) ~= "table" then return nil end
         if MMT.IsSecret(a.name) then return "secret" end
         -- 6th: the caster's unit ("party1", "player", ...; nil when they aren't in the group)
         return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime), Clean(a.sourceUnit)

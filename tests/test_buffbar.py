@@ -636,3 +636,53 @@ print(lua.eval(r"""function(m)
   m.State, m.SpellInfo, m.Castable = oldState, oldInfo, oldCast
   return "SmartBuff alerts glow ok"
 end""")(mod))
+
+# in combat the game hides aura data ("secret"): the last buffs stay (ones that ran out
+# meanwhile show as missing), the unit is read again until it's readable
+print(lua.eval(r"""function(m)
+  local oldBuff, oldExists, oldTime = m.Buff, UnitExists, GetTime
+  local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
+  local now, hide, buffs = 1000, false, {}
+  GetTime = function() return now end
+  m.Buff = function(unit, i)
+    if unit ~= "player" then return nil end
+    if hide then return "secret" end
+    local b = buffs[i] if b then return b[1], 1, 1, b[2], b[3] end
+  end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  local bs, fort = { name = "Battle Shout*" }, { name = "Fortitude*" }
+  buffs = { { "Battle Shout", 120, 1100 }, { "Fortitude", 1800, 2700 } }
+  m.ScanGroup()
+  assert(m.State("Me-Realm", bs) == "buff", "readable buff")
+  hide = true
+  m.ScanGroup()
+  assert(m.State("Me-Realm", bs) == "buff", "hidden: last buff kept")
+  now = 1101
+  assert(m.State("Me-Realm", bs) == "missing", "ran out while hidden: still shown")
+  assert(m.State("Me-Realm", fort) == "buff", "pattern kept while time is left")
+  -- readable again: the retry reads the new buffs
+  hide = false
+  buffs = { { "Battle Shout", 120, 1221 } }
+  m.RetryHidden()
+  assert(m.State("Me-Realm", bs) == "buff", "retry didn't read the unit again")
+  assert(m.State("Me-Realm", fort) == "missing", "retry kept an old buff")
+  -- an EMPTY list while fighting (the game gave nothing instead of hidden values): kept
+  local oldLock, oldUAC = InCombatLockdown, UnitAffectingCombat
+  UnitAffectingCombat = function() return false end
+  InCombatLockdown = function() return true end
+  buffs = {}
+  m.ScanGroup()
+  assert(m.State("Me-Realm", bs) == "buff", "empty read in combat dropped the buffs")
+  InCombatLockdown = function() return false end
+  m.RetryHidden()
+  assert(m.State("Me-Realm", bs) == "missing", "empty read out of combat: really gone")
+  InCombatLockdown, UnitAffectingCombat = oldLock, oldUAC
+  m.StopHidden()
+  m.Buff, UnitExists, GetTime = oldBuff, oldExists, oldTime
+  MMT.SplitUnit, MMT.Resolve = oldSplit, oldResolve
+  m.ScanGroup()
+  return "hidden auras in combat ok"
+end""")(mod))

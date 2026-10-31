@@ -56,13 +56,33 @@ local function UnitKey(unit)
     return key and MMT.Resolve(key) or nil
 end
 
+-- In combat the game hides aura data ("secret"); new buffs can't be seen then.
+-- A unit read as hidden keeps its last buffs (ones whose time ran out show as
+-- missing, see State) and is read again every second until it's readable, and
+-- the whole group once combat ends: no UNIT_AURA may come after it.
+local hidden = {}   -- [unit] = true: last read was hidden
+local ticker
+
+local function Fighting(unit)
+    if InCombatLockdown and InCombatLockdown() then return true end
+    if not UnitAffectingCombat then return false end
+    local ok, c = pcall(UnitAffectingCombat, unit)
+    if not ok or MMT.IsSecret(c) then return true end
+    return c and true or false
+end
+
 local function ScanUnit(unit)
     local key = UnitKey(unit)
     if not key then return end
     local t = {}
     for i = 1, 40 do
         local name, icon, count, duration, expiration, source = mod.Buff(unit, i)
-        if name == "secret" then return end   -- hidden right now: keep what we had
+        if name == "secret" then   -- hidden right now: keep what we had, look again soon
+            hidden[unit] = true
+            if mod.auras[key] then fromUnit[key] = true end
+            if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
+            return
+        end
         if not name then break end
         local raw = name
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
@@ -73,8 +93,34 @@ local function ScanUnit(unit)
             -- cast by someone in the group (blessings: one per paladin here, Casters.lua)
             group = type(source) == "string" and (source == "player" or source:find("^party%d") or source:find("^raid%d")) and true or nil }
     end
+    -- nothing at all while that unit fights, though it had buffs: the game gave an empty
+    -- list instead of hidden values (seen in game: every buff "missing" in combat)
+    if next(t) == nil and mod.auras[key] and next(mod.auras[key]) and Fighting(unit) then
+        hidden[unit] = true
+        if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
+        fromUnit[key] = true
+        return
+    end
     mod.auras[key] = t
     fromUnit[key] = true
+    hidden[unit] = nil
+end
+
+function mod.StopHidden()
+    wipe(hidden)
+    if ticker then ticker:Cancel(); ticker = nil end
+end
+
+-- the units read as hidden, again (ticker while there are any)
+function mod.RetryHidden()
+    local any = false
+    for unit in pairs(hidden) do
+        hidden[unit] = nil
+        if UnitExists(unit) then ScanUnit(unit) end
+        any = any or hidden[unit] or false
+    end
+    if not any and ticker then ticker:Cancel(); ticker = nil end
+    if M.enabled then mod.Refresh() end   -- also shows buffs that ran out meanwhile
 end
 
 local function GroupUnits()
@@ -89,6 +135,7 @@ end
 
 function mod.ScanGroup()
     wipe(fromUnit)
+    wipe(hidden)
     for _, unit in ipairs(GroupUnits()) do
         if UnitExists(unit) then ScanUnit(unit) end
     end
@@ -103,6 +150,10 @@ M:On("UNIT_AURA", function(unit)
 end)
 
 M:On("GROUP_ROSTER_UPDATE", function() mod.ScanGroup() mod.Refresh() end)
+M:On("PLAYER_REGEN_ENABLED", function()
+    mod.ScanGroup() mod.Refresh()
+    C_Timer.After(1, function() if M.enabled then mod.ScanGroup() mod.Refresh() end end)
+end)
 M:On("PLAYER_ENTERING_WORLD", function() mod.ScanGroup() mod.Refresh() end)
 
 M:Listen("TEAM_CHANGED", function() mod.ScanGroup() mod.Refresh() end)
@@ -132,6 +183,12 @@ end
 
 -- returns "buff", start, duration, count[, matched name, icon (patterns)]  or
 -- "missing"  or nil (member not in the group)
+-- a buff kept from an earlier read whose time has run out (seen last before the
+-- game hid the auras: it fell off since)
+local function Expired(a)
+    return a.start and a.dur and GetTime() > a.start + a.dur + 0.5 or false
+end
+
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
     if mod.preview then
@@ -151,7 +208,7 @@ function mod.State(key, e)
             -- any matching buff; the one with the most time left, else any
             local best, bestName
             for n, a in pairs(auras) do
-                if mod.Matches(e, a.raw or n) or mod.Matches(e, n) then
+                if not Expired(a) and (mod.Matches(e, a.raw or n) or mod.Matches(e, n)) then
                     local left = a.start and a.dur and (a.start + a.dur) or math.huge
                     if not best or left > best[1] then best, bestName = { left, a }, a.raw or n end
                 end
@@ -160,7 +217,7 @@ function mod.State(key, e)
             return "missing"
         end
         local a = auras[name]
-        if a then return "buff", a.start, a.dur, a.count end
+        if a and not Expired(a) then return "buff", a.start, a.dur, a.count end
         return "missing"
     end
     return nil

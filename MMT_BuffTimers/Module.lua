@@ -101,6 +101,7 @@ end
 
 M.OnDisable = function()
     mod.StopWeapons()
+    mod.StopHidden()
     mod.Detach()
     mod.window:Hide()
 end

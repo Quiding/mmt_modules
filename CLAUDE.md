@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.5) / MMT_BuffTimers (v0.23.4) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.6) / MMT_BuffTimers (v0.23.5) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -137,6 +137,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   warrior's own bar): Tracker `OwnCast` keeps the own UNIT_SPELLCAST_SUCCEEDED ("player") per entry, and OwnState's
   secret branch runs the timer from that cast (length = last readable `ownDur`, else the list's) unless the last
   readable state already holds that cast; Share then sends MCDU from it (OwnCast queues ShareCheck).
+  Auras in combat (Buffs 0.23.5, the user: every buff "missing" in combat, back after it): Compat `mod.Buff` returns
+  "secret" when `mod.AurasHidden()` (C_Secrets.ShouldAurasBeSecret, like EllesmereUI's AuraKit) or the read errors;
+  Buffs ScanUnit keeps the last buffs for a hidden unit (also an EMPTY list while it fights: `Fighting` = InCombatLockdown
+  or UnitAffectingCombat), marks it `hidden` and a 1 s ticker (`mod.RetryHidden`, stopped by `mod.StopHidden` on
+  disable) reads it again; ScanGroup on PLAYER_REGEN_ENABLED (+1 s); State treats a kept buff past its end as missing.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
@@ -364,7 +369,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.4.9) – port of ema_totems
+### MMT_Totems (v0.4.10) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
