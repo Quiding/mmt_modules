@@ -96,6 +96,17 @@ local function Build(ov, button)
     stacks:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
     button:SetApplicationCount(stacks)
     ov.stacks = stacks
+    ov.bg = bg
+    -- the countdown reaches 0 a moment before the game takes the aura away: the plain icon
+    -- flashed up in between. Blank once the timer is done, back with the next countdown or
+    -- the next aura the game puts in the slot (the icon underneath shows meanwhile)
+    local function Seen(on)
+        local a = on and 1 or 0
+        for _, r in ipairs({ bg, icon, stacks }) do pcall(r.SetAlpha, r, a) end
+    end
+    pcall(cd.HookScript, cd, "OnCooldownDone", function() Seen(false) end)
+    pcall(cd.HookScript, cd, "OnShow", function() Seen(true) end)
+    pcall(button.HookScript, button, "OnShow", function() Seen(true) end)
 end
 
 local function Style(ov, b)
