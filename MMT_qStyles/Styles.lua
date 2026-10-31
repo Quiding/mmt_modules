@@ -113,7 +113,7 @@ mod.STYLES = {
         accent = function() return 1, 0.82, 0 end,
         buttonText = { 1, 0.82, 0, 1 },
         headerLine = { 1, 0.82, 0, 0.25 },
-        windowGap = 16,   -- the metal rims of two windows side by side
+        windowGap = 20,   -- the metal rims of two windows side by side
     },
     CLASSIC = {
         key = "CLASSIC",

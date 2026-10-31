@@ -185,6 +185,10 @@ local METAL = {
     RightEdge = { layer = "OVERLAY", atlas = "!UI-Frame-Metal-EdgeRight", x = 0, y = 0, x1 = 0, y1 = 0 },
 }
 local METAL_TITLE = 22   -- px of the rim's title band: placed above the window
+-- The bottom corners / edge and the right side reach INTO the frame they're laid on (corners y = -3, x = 4):
+-- on our windows that covered the bottom row (Team bags' "17 different items ... updated" line), so the rim
+-- is laid that much below / right of the window instead.
+local METAL_BOTTOM, METAL_RIGHT = 9, 5
 
 local function MetalOK()
     return NineSliceUtil and NineSliceUtil.ApplyLayout and Atlas("UI-Frame-Metal-CornerTopLeft") and Atlas("_UI-Frame-Metal-EdgeTop") and true or false
@@ -482,7 +486,7 @@ local function MetalFrame(f)
     if not m then return nil end
     m:ClearAllPoints()
     m:SetPoint("TOPLEFT", f, "TOPLEFT", 0, METAL_TITLE)
-    m:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+    m:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", METAL_RIGHT, -METAL_BOTTOM)
     m:SetFrameLevel(f:GetFrameLevel() + 20)
     return m
 end
@@ -516,7 +520,7 @@ function mod.ArtBorder(rec, S)
         local m = MetalFrame(f)
         if m then
             m:Show()
-            Grips(m, f, METAL_TITLE + 4, 6, 13, 6)   -- the title band and the rim's outer reach
+            Grips(m, f, METAL_TITLE + 4, METAL_BOTTOM + 6, 13, METAL_RIGHT + 6)   -- the title band and the rim's outer reach
         end
     elseif kind == "dialog" then
         local picture = f.GetName and f:GetName() == "MMTConfigFrame" and mod.BackgroundShown()

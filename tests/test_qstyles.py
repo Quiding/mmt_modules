@@ -610,13 +610,13 @@ for _, n in ipairs({ "UI-Frame-Metal-CornerTopLeft", "_UI-Frame-Metal-EdgeTop", 
     "128-RedButton-Left", "128-RedButton-Center", "128-RedButton-Right" }) do ATLASES[n] = { width = 12, height = 22 } end
 QS.ResetArtCache()
 mod.SetStyle("MODERN")
-assert(QStyles.Current() == "MODERN" and QStyles.WindowGap() == 16, "Modern not current")
+assert(QStyles.Current() == "MODERN" and QStyles.WindowGap() == 20, "Modern not current")
 local function MetalOf(f) for _, c in ipairs(f._children) do if c._layout and c._shown then return c end end end
 local metal = MetalOf(big)
-assert(metal and metal._layout.TopLeftCorner.atlas == "UI-Frame-Metal-CornerTopLeft" and metal._points[1][5] == 22, "Modern window: no metal rim (title band above)")
+assert(metal and metal._layout.TopLeftCorner.atlas == "UI-Frame-Metal-CornerTopLeft" and metal._points[1][5] == 22 and metal._points[2][4] == 5 and metal._points[2][5] == -9, "Modern window: no metal rim (title band above, bottom / right outside)")
 local metalGrips = {}
 for _, c in ipairs(metal._children) do if c._scripts.OnDragStart and c._shown then metalGrips[#metalGrips + 1] = c end end
-assert(#metalGrips == 4 and metalGrips[1]._h == 26, "Modern: no drag strip over the title band")
+assert(#metalGrips == 4 and metalGrips[1]._h == 26 and metalGrips[2]._h == 15, "Modern: no drag strip over the title band / below the rim")
 assert(not EdgeOf(big) and not big._backdrop, "Modern window still has Classic's border / background")
 assert(eq(col(bigFill), 0.08, 0.08, 0.09, 0.95), "Modern window: not the dark colour")
 assert(col(select(2, big:GetRegions()))[4] == 0, "Modern window: MMT's 1 px edges under the rim")
