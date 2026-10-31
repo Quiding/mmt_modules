@@ -29,16 +29,32 @@ local function MB(kb) return kb and ("%.1f MB"):format(kb / 1024) or "?" end
 
 -- what each part allocates (garbage included): collectgarbage("count") before / after it.
 -- Cheap, always on; the report shows KB per second since the first measured call.
-local tally, since = {}, nil
+local tally, calls, callers, since = {}, {}, {}, nil
 function mod.MemTally(what, kb)
-    if kb and kb > 0 then
-        tally[what] = (tally[what] or 0) + kb
-        since = since or GetTime()
+    calls[what] = (calls[what] or 0) + 1
+    since = since or GetTime()
+    if kb and kb > 0 then tally[what] = (tally[what] or 0) + kb end
+end
+
+-- who asked for a redraw: the first lines of the call stack outside the bar library, counted
+-- (only the first 300 calls of each part: debugstack isn't free)
+local function Caller(what)
+    local by = callers[what] or {}
+    callers[what] = by
+    if (calls[what] or 0) > 300 or not debugstack then return end
+    local stack = debugstack(3, 6, 0) or ""
+    local where
+    for line in stack:gmatch("[^\n]+") do
+        local file, n = line:match("([%w_]+%.lua)\"?%]?:(%d+)")
+        if file and file ~= "IconBars.lua" and file ~= "Memory.lua" then where = file .. ":" .. n break end
     end
+    where = where or "?"
+    by[where] = (by[where] or 0) + 1
 end
 
 local function Measured(what, fn)
     return function(...)
+        Caller(what)
         local c = collectgarbage("count")
         local a, b, d = fn(...)
         mod.MemTally(what, collectgarbage("count") - c)
@@ -88,7 +104,18 @@ function mod.MemoryReport(say)
     for what, kb in pairs(tally) do parts[#parts + 1] = { what, kb } end
     table.sort(parts, function(a, b) return a[2] > b[2] end)
     local out = {}
-    for _, p in ipairs(parts) do out[#out + 1] = ("%s %.0f KB/s"):format(p[1], p[2] / secs) end
+    for _, p in ipairs(parts) do
+        out[#out + 1] = ("%s %.0f KB/s (%.1f calls/s, %.0f KB each)"):format(p[1], p[2] / secs,
+            (calls[p[1]] or 0) / secs, p[2] / math.max(1, calls[p[1]] or 1))
+    end
     say(secs and ("made per second over %d s: %s"):format(secs, table.concat(out, ", "))
         or "made per second: nothing measured yet (play a bit, then /mmtbt mem again)")
+    for what, by in pairs(callers) do
+        local list = {}
+        for where, n in pairs(by) do list[#list + 1] = { where, n } end
+        table.sort(list, function(a, b) return a[2] > b[2] end)
+        local top = {}
+        for i = 1, math.min(4, #list) do top[#top + 1] = list[i][1] .. " x" .. list[i][2] end
+        if #top > 0 then say(("%s asked by: %s"):format(what, table.concat(top, ", "))) end
+    end
 end
