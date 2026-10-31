@@ -657,7 +657,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.3.2) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.3.3) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
@@ -747,7 +747,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   every font object at login): store `gameFont` (default off) "Keep the game's own font", any style incl. None (module on):
   `GameFace(rec)` in PaintFont, used only when the style's font isn't: a recorded font whose path == the swapped
   STANDARD_TEXT_FONT gets `mod.ClientFont()` (EllesmereUI._clientFontPath read only, else FRIZQT__) at its own size; other
-  faces (MMT.ApplyFont picks) stay. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  faces (MMT.ApplyFont picks) stay. 0.3.3 (user: "Trade / Mail / Vendor" ran past the nav column into the page - the core's
+  nav labels have no width): `mod.FitNav()` (end of ScanConfig and of Apply, module on only) shrinks the first font string
+  of each `MMTConfigFrame.tabs` entry 1 pt at a time (min 8, max 8 steps) until it fits the entry's width - 16 - the other
+  font strings with text ("off", "+" / "-") - 4; marks the font record painted so None / the next Apply restores it. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's

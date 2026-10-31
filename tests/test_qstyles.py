@@ -91,7 +91,7 @@ function Object:SetFormattedText(f, ...) self._text = f:format(...) end
 function Object:SetTextColor(r, g, b, a) self._tc = { r, g, b, a or 1 } end
 function Object:GetTextColor() return self._tc[1], self._tc[2], self._tc[3], self._tc[4] end
 function Object:GetStringHeight() return 12 end
-function Object:GetStringWidth() return 50 end
+function Object:GetStringWidth() if self._swPer and self._font then return #self:GetText() * self._swPer * self._font[2] end return 50 end
 -- any other method: a no-op (fields stay nil)
 setmetatable(Object, { __index = function(_, k) if type(k) == "string" and k:match("^%u") and not k:find("Backdrop") then return function() end end end })
 -- sliders
@@ -361,6 +361,22 @@ mod.SetStyle("NONE")
 assert(eq(col(w.baseFill), 0.05, 0.05, 0.06, 0.4), "None put MMT's fill over the background picture")
 assert(eq(col(bar), A[1], A[2], A[3], 1), "None: nav bar")
 BGKEY = "NONE"
+-- a nav entry too long for the column (the core's labels have no width): a smaller size until it fits
+local tab2 = CreateFrame("Button", nil, w); tab2:SetSize(150, 26)
+local navLabel = UI.Label(tab2, "Trade / Mail / Vendor", "GameFontNormal"); navLabel._swPer = 0.55   -- 21 chars: 139 px at 12
+local navState = UI.Label(tab2, "")
+w.tabs[2] = tab2
+MMT.ToggleConfig()
+assert(navLabel._font[2] == 11, "nav label not fitted to its entry: " .. tostring(navLabel._font[2]))
+mod.SetStyle("ELLESMERE")
+assert(navLabel._font[1] == "Fonts\\ARIALN.TTF" and navLabel._font[2] == 11, "nav label with the style's bigger font not fitted: " .. tostring(navLabel._font[1]) .. " " .. tostring(navLabel._font[2]))
+navState:SetText("off")
+mod.Apply()
+assert(navLabel._font[2] == 8, "nav label: the 'off' text not left room (stops at 8)")
+navState:SetText(""); navLabel:SetText("Team")
+mod.SetStyle("NONE")
+assert(navLabel._font[1] == "Fonts\\FRIZQT__.TTF" and navLabel._font[2] == 12, "None: nav label not back to MMT's size")
+w.tabs[2] = nil
 
 -- the API (Team Inventory's own-skinned bags window): the colours it passes are the originals
 local bags = CreateFrame("Frame", "MMTTeamBagsWindow", UIParent); bags:SetSize(500, 400)

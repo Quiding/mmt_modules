@@ -631,6 +631,37 @@ function mod.ScanConfig()
             AddAccentTexture(t, nil, 0.6)
         end
     end
+    mod.FitNav()
+end
+
+-- The nav list's labels have no width: a bigger font (the style's, or one another addon puts on all game
+-- text) ran "Trade / Mail / Vendor" past the column into the page. A label wider than its entry (minus
+-- the right-hand "off" / "+" text) gets a smaller size until it fits; recorded fonts get it back on Apply.
+function mod.FitNav()
+    local w = _G.MMTConfigFrame
+    if not (mod.M.enabled and w and type(rawget(w, "tabs")) == "table") then return end
+    for _, tab in ipairs(w.tabs) do
+        local list = {}
+        for _, r in ipairs(Regions(tab)) do if Type(r) == "FontString" then list[#list + 1] = r end end
+        local label = list[1]
+        local width = tab.GetWidth and Num(tab:GetWidth()) or 0
+        if label and label.GetFont and label.GetStringWidth and width > 0 then
+            local reserve = 0
+            for i = 2, #list do
+                local t = list[i].GetText and list[i]:GetText()
+                if t and t ~= "" then reserve = reserve + Num(list[i]:GetStringWidth()) + 12 end
+            end
+            local avail = width - 16 - reserve - 4
+            local path, size, flags = label:GetFont()
+            size = tonumber(size)
+            local n = 0
+            while path and size and avail > 0 and Num(label:GetStringWidth()) > avail and size > 8 and n < 8 do
+                size, n = size - 1, n + 1
+                if not pcall(label.SetFont, label, path, size, flags or "") then break end
+            end
+            if n > 0 and fonts[label] then fonts[label].painted = true end   -- None / the next Apply sets its size back
+        end
+    end
 end
 
 -- the settings window's base fill belongs to the core's background picker
@@ -828,6 +859,7 @@ function mod.Apply()
     for _, rec in pairs(borders) do Try(PaintBorder, rec, S) end
     for t, rec in pairs(fills) do Try(PaintFill, t, rec, S) end
     for fs, rec in pairs(fonts) do Try(PaintFont, fs, rec, S) end
+    Try(mod.FitNav)
     for t, rec in pairs(colors) do Try(PaintColor, t, rec, S) end
     for fs, rec in pairs(texts) do Try(PaintText, fs, rec, S) end
     for fs, rec in pairs(headers) do Try(PaintHeader, fs, rec, S) end
