@@ -69,6 +69,15 @@ for d in ours:
         bad += 1
         print("DEFAULTSTATE %s: needs both DefaultState and X-MMT-DefaultState (or neither)" % d)
 
+# a version written in the Lua (debug dump, "/mmt debug") must be the TOC's: QoL / Whispers lagged one behind
+for d in ours:
+    toc = re.search(r"^## Version:\s*(\S+)", open(os.path.join(root, d, d + ".toc"), encoding="utf-8").read(), re.M)
+    for f in glob.glob(os.path.join(root, d, "*.lua")):
+        for v in re.findall(r'^mod\.VERSION\s*=\s*"([^"]*)"', open(f, encoding="utf-8").read(), re.M):
+            if not toc or v != toc.group(1):
+                bad += 1
+                print("VERSION %s: mod.VERSION %s, TOC %s" % (f, v, toc and toc.group(1)))
+
 here = os.path.dirname(os.path.abspath(__file__))
 for t in sorted(glob.glob(os.path.join(here, "test_*.py"))):
     r = subprocess.run([sys.executable, t, root], capture_output=True, text=True)
