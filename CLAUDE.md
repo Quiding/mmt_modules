@@ -118,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.1) / MMT_BuffTimers (v0.23.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.2) / MMT_BuffTimers (v0.23.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -209,7 +209,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   change; druid Feral + `mod.IsTank(key)` (an MMT role with "tank" in its name, both modules, 0.22.0) = BEAR. Preview ALL/MIXED: made-up tree from a hash.
   Set by hand: `M.db.specSet[key]` (Specs tab = `mod.SpecsTab(panel, status, changed)` in Specs.lua, both modules;
   holds the "Use spec lists" check), else the OTHER module's `MMT.db.modules[OTHER].specSet` (read only); must fit
-  `mod.SpecsOf(class)`. With spec lists on, `ListChoices` leaves out the class lists (ALL stays); the editor opens on `mod.OwnListKey()`.
+  `mod.SpecsOf(class)`. With spec lists on, `ListChoices` leaves out the class lists (ALL stays); the editor opens on `mod.OwnListKey()`; on every
+  page refresh `mod.EditorListKey(shown)` (ListKeys) swaps a list no longer offered (a spec list with spec lists off, a class
+  list but not ALL with them on) for `OwnListKey()` (0.18.2 / 0.23.2: it kept showing SPEC:WARRIOR:FURY after turning them off).
 - Spec presets (2026-10-25, replaced the class ones): `SPECS[class] = { {key, name, on, off} }` in each Presets.lua,
   key "<CLASS>:<SPEC>" (DRUID: BALANCE / FERAL / BEAR / RESTO). Data: Wowhead Forever "<spec> abilities" guide pages
   (spell links = max-rank IDs) + nether.wowhead.com/forever/tooltip/spell/<id> for cooldowns; talent cooldowns the

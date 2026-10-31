@@ -300,6 +300,7 @@ M.Page = function(_, page)
     RS:Add(def, UI.ROW + 2)
 
     page.OnRefresh = function()
+        class = mod.EditorListKey(class)
         list:Render(M.db.lists[class] or {})
         ArrangeText()
     end

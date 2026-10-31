@@ -85,6 +85,17 @@ for folder, entry_id, lists_src in [
       local added = m.AddPreset("RACE:Troll", { { t = "s", id = 777, cd = 1 }, { t = "s", id = 888, cd = 2, off = true } }, idf)
       assert(added == 1 and #m.M.db.lists["RACE:Troll"] == 2 and m.M.db.lists["RACE:Troll"][2].off == true, "preset merge")
       m.M.db.lists["RACE:Troll"] = nil
+      -- the editor after "Use spec lists" changed: a list no longer offered goes back to your own
+      MMT.PlayerFull = function() return "Anna-Smith" end
+      m.SpecOf = function(key) return key == "Anna-Smith" and "PRIEST:HOLY" or nil end
+      m.M.db.specLists = true
+      assert(m.EditorListKey("PRIEST") == "SPEC:PRIEST:HOLY", "class list with spec lists on")
+      assert(m.EditorListKey("ALL") == "ALL" and m.EditorListKey("ROLE:Tank") == "ROLE:Tank", "other lists kept")
+      assert(m.EditorListKey("SPEC:WARRIOR:FURY") == "SPEC:WARRIOR:FURY", "spec list with spec lists on")
+      m.M.db.specLists = false
+      assert(m.EditorListKey("SPEC:WARRIOR:FURY") == "PRIEST", "spec list kept with spec lists off")
+      assert(m.EditorListKey("WARRIOR") == "WARRIOR" and m.EditorListKey(nil) == "PRIEST", "class list / nothing")
+      m.SpecOf, MMT.PlayerFull = nil, nil
       MMT.status = nil
       return folder .. ": list keys and dropdown ok"
     end''')(mod, lua.eval(entry_id), folder))

@@ -244,6 +244,17 @@ function mod.OwnListKey()
     return select(2, UnitClass("player")) or "ALL"
 end
 
+-- the list the editor shows after a page refresh: the one picked, unless "Use spec
+-- lists" changed since and it's no longer offered (a spec list with them off, a
+-- class list with them on): then your own list again
+function mod.EditorListKey(key)
+    local spec = type(key) == "string" and key:match("^SPEC:") ~= nil
+    if not key or (spec and not mod.M.db.specLists) or (IsClass(key) and key ~= "ALL" and mod.M.db.specLists) then
+        return mod.OwnListKey()
+    end
+    return key
+end
+
 -- dropdown choices: classes (or specs), races, roles, characters (with the number of entries)
 -- which lists apply to the team right now: [list key] = { first names }
 function mod.ListsInUse()
