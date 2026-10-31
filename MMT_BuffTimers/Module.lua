@@ -141,6 +141,8 @@ SlashCmdList.MMTBUFFTIMERS = function(msg)
         mod.ToggleArrange()
     elseif msg == "probe" then
         mod.ProbeStart()
+    elseif msg == "mem" then
+        mod.MemoryReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     elseif msg == "live" then
         mod.LiveReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     elseif msg == "spec" then

@@ -21,6 +21,9 @@ local MAX_RESULTS = 12
 local index        -- [lower-case name] = { name, id }
 local names        -- lower-case names, for the substring search
 local building, built, progress = false, false, 0
+
+-- names in the index (memory report)
+function mod.SearchSize() return names and #names or 0 end
 local waiting = {} -- popups to redraw when the index is done
 
 local GetName = (C_Spell and C_Spell.GetSpellName) or function(id) return (mod.SpellInfo(id)) end

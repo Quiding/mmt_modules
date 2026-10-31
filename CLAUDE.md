@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.8) / MMT_BuffTimers (v0.25.3) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.9) / MMT_BuffTimers (v0.25.4) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -195,6 +195,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   strings per tick; Live `mod.LiveIds(e)` cached per entry by `mod.idsGen` (raised by NoteId on a new ID and by
   TrackedReset) with its signature, LiveSync reuses one table. Battle Shout cast in combat (`PARTY_WIDE`) refreshes it
   on every member read from a group unit (SelfCast + MBFC) - the All bar counts from those (stays frozen otherwise).
+  0.25.4: still 137 MB in game -> `Memory.lua` `/mmtbt mem` (`mod.MemoryReport`): both modules' GetAddOnMemoryUsage
+  before / after collectgarbage("collect") + table sizes (auras, store, lists, Search `mod.SearchSize()` - added to the
+  shared Search.lua -, bar icons, live overlays).
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
