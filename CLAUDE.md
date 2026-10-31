@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.7) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.8) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -207,6 +207,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   0.25.6: still ~27 MB/min in game -> /mmtbt mem also prints KB/s per source: `mod.MemTally(what, kb)` from
   collectgarbage("count") deltas around Buffs' UNIT_AURA scans, every MMTIconBars window's Refresh (wrapped on the
   instance by `mod.MemWrap`, 3 s after PLAYER_ENTERING_WORLD - keeps Live's hook) and lib.CheckFrames.
+  0.25.7: + calls/s, KB each and the callers (debugstack, first 300 calls). In game: "redraw MMTBuffs" 3.6 MB/s.
+  0.25.8 (user: icons "jump" when combat ends - the game's countdown font / format / swipe vs ours): Live overlays
+  draw ALWAYS (SetOn true in and out of combat); the icon underneath is forced to missing only while `mod.live`.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login

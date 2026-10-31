@@ -853,8 +853,8 @@ print(lua.eval(r"""function(m)
   local ids = m.LiveIds(fl)
   assert(ids and ids[12970], "live IDs")
   m.Redraw()
-  for _, r in ipairs(made) do assert(not r.enabled, "an overlay is on out of combat") end
   local before = #made
+  assert(before > 0 and made[1].enabled, "the overlay doesn't draw out of combat (one look in and out of combat)")
   assert(before > 0 and made[1].unit == "player" and made[1].ids[12970], "overlay not set up out of combat")
   hide = true
   m.live = true                                     -- combat (SetLive's queued redraw done by hand)
@@ -882,7 +882,7 @@ print(lua.eval(r"""function(m)
   m.live = false
   hide = false
   m.Redraw()
-  for _, r in ipairs(made) do assert(not r.enabled, "an overlay stayed on after combat") end
+  assert(made[1].enabled, "the overlay went off after combat (the icons jumped)")
   m.StopLive()
   m.M.db.lists["CHAR:Me-Realm"] = nil
   m.TrackedReset()

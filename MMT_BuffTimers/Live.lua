@@ -7,10 +7,11 @@
 -- it - icon, countdown, stacks - without the addon ever learning it is there.
 -- ForeverAuras shows Flurry this way.
 --
--- So while auras are hidden every member icon whose spell IDs are known (learned
--- while readable, Tracker.lua M.store.auraIds) gets such a widget laid over it,
--- and the icon underneath shows the "missing" look: buff up = the game draws it
--- on top, buff gone = the missing look shows. Out of combat nothing changes.
+-- So every member icon whose spell IDs are known (learned while readable,
+-- Tracker.lua M.store.auraIds) gets such a widget laid over it, drawing all the
+-- time (one look in and out of combat). While auras are hidden the icon
+-- underneath shows the "missing" look: buff up = the game draws it on top,
+-- buff gone = the missing look shows; out of combat it shows the real state.
 -- The All bar keeps its last counts (counting needs reading, which is blocked).
 
 local _, mod = ...
@@ -186,7 +187,10 @@ local function Configure(ov, b, unit, ids, sig)
         end
     end
     if not mod.live then pcall(Style, ov, b) end
-    SetOn(ov, mod.live)
+    -- drawing in and out of combat: switching to our own drawing when combat ended made the
+    -- icons jump (another timer font / format / swipe); out of combat the icon underneath still
+    -- shows the real state, so a buff whose ID isn't learned yet looks right there
+    SetOn(ov, true)
 end
 
 -- after every redraw: an overlay on each member icon whose IDs are known, on every bar
