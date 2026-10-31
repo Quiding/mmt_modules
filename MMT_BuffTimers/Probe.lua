@@ -63,6 +63,16 @@ local function OnEvent(_, event, unit, a, b)
     if info.updatedAuraInstanceIDs and not MMT.IsSecret(info.updatedAuraInstanceIDs) and info.updatedAuraInstanceIDs[1] then
         parts[#parts + 1] = ("updated %d: first %s"):format(#info.updatedAuraInstanceIDs, S(info.updatedAuraInstanceIDs[1]))
     end
+    -- the tracked buffs asked for by spell ID (what Buff Timers does in combat)
+    local asked, found, refused = 0, 0, 0
+    for _, ids in pairs(M.store.auraIds or {}) do
+        for id in pairs(ids) do
+            asked = asked + 1
+            local r, why = mod.AuraBySpellID(unit, id)
+            if r then found = found + 1 elseif why then refused = refused + 1 end
+        end
+    end
+    parts[#parts + 1] = ("byId asked %d found %d refused %d"):format(asked, found, refused)
     Say("%s %s aura: aurasHidden=%s %s", fight, unit, tostring(hidden), table.concat(parts, ", "))
 end
 

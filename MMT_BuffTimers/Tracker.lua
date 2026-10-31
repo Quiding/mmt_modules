@@ -20,6 +20,7 @@ local fromUnit = {} -- [teamKey] = true while the member is read from a unit
 local requested = {}
 local presetIcons   -- [pattern] = spell ID of its icon, from the presets (totems)
 function mod.BuildIndex()
+    if mod.TrackedReset then mod.TrackedReset() end
     if not presetIcons then
         presetIcons = {}
         for _, p in ipairs(mod.PRESETS or {}) do
@@ -79,36 +80,114 @@ local function Fighting(unit)
     return c and true or false
 end
 
+-- Spell IDs of the tracked buffs. In combat the game hides the aura LIST, but still
+-- answers "does this unit have the aura with spell ID x?" (C_UnitAuras.GetUnitAuraBySpellID,
+-- what ForeverAuras does then). So every tracked buff's IDs are learned while readable
+-- (each rank, group versions: M.store.auraIds[name] = { [id] = true }, kept across
+-- sessions) and asked for one by one while hidden: procs like Flurry, seals and
+-- buffs falling off then update live. A buff never seen readable keeps its last state.
+local trackedCache = {}   -- [buff name] = true | false
+function mod.TrackedReset() wipe(trackedCache) end
+
+local function Tracked(name)
+    local v = trackedCache[name]
+    if v ~= nil then return v end
+    v = false
+    for _, list in pairs(M.db.lists or {}) do
+        for _, e in ipairs(list) do
+            if not mod.IsWeapon(e) then
+                if mod.IsPattern(e) then
+                    if mod.Matches(e, name) then v = true end
+                elseif mod.BuffName(e) == name then v = true end
+            end
+            if v then break end
+        end
+        if v then break end
+    end
+    trackedCache[name] = v
+    return v
+end
+
+local function NoteId(name, id)
+    if type(id) ~= "number" or not Tracked(name) then return end
+    M.store.auraIds = M.store.auraIds or {}
+    local ids = M.store.auraIds[name]
+    if not ids then ids = {}; M.store.auraIds[name] = ids end
+    ids[id] = true
+end
+
+local function Clean(v)
+    if v == nil or MMT.IsSecret(v) then return nil end
+    return v
+end
+
+local function IsGroupSource(source)
+    return type(source) == "string" and (source == "player" or source:find("^party%d") or source:find("^raid%d")) and true or nil
+end
+
+-- the unit's tracked buffs asked for one by one (auras hidden); nil when the game can't
+local function ReadByIds(unit, key)
+    local known = M.store.auraIds
+    if not known or not (C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID) then return nil end
+    local old, t, asked = mod.auras[key] or {}, {}, {}
+    for name, ids in pairs(known) do
+        if Tracked(name) then
+            local a, blocked
+            for id in pairs(ids) do
+                local r, why = mod.AuraBySpellID(unit, id)
+                if r then a = r break end
+                if why then blocked = true end
+            end
+            if not blocked then asked[name] = true end   -- a refused answer: keep what we had
+            if a then
+                local o = old[name]
+                local dur, exp = Clean(a.duration), Clean(a.expirationTime)
+                local timed = dur and dur > 0 and exp
+                t[name] = { start = timed and (exp - dur) or (o and o.start), dur = timed and dur or (o and o.dur),
+                    count = Clean(a.applications) or (o and o.count), icon = Clean(a.icon) or (o and o.icon),
+                    raw = Clean(a.name) or (o and o.raw) or name,
+                    group = IsGroupSource(Clean(a.sourceUnit)) or (o and o.group) }
+            end
+        end
+    end
+    -- buffs we can't ask about (never seen readable): as they were
+    for name, o in pairs(old) do
+        if not asked[name] and not t[name] then t[name] = o end
+    end
+    return t
+end
+
+local function Hidden(unit, key)
+    hidden[unit] = true
+    if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
+    local t = ReadByIds(unit, key)
+    if t then mod.auras[key] = t end
+    if mod.auras[key] then fromUnit[key] = true end
+end
+
 local function ScanUnit(unit)
     local key = UnitKey(unit)
     if not key then return end
     local t = {}
     for i = 1, 40 do
-        local name, icon, count, duration, expiration, source = mod.Buff(unit, i)
-        if name == "secret" then   -- hidden right now: keep what we had, look again soon
-            hidden[unit] = true
-            if mod.auras[key] then fromUnit[key] = true end
-            if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
-            return
-        end
+        local name, icon, count, duration, expiration, source, spellId = mod.Buff(unit, i)
+        if name == "secret" then return Hidden(unit, key) end   -- hidden right now (combat)
         if not name then break end
         local raw = name
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
         if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
+        NoteId(name, spellId)
         local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
         if duration and duration > 0 then seenDur[name] = duration end
         t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count,
             icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw,
             -- cast by someone in the group (blessings: one per paladin here, Casters.lua)
-            group = type(source) == "string" and (source == "player" or source:find("^party%d") or source:find("^raid%d")) and true or nil }
+            group = IsGroupSource(source) }
     end
     -- nothing at all while that unit fights, though it had buffs: the game gave an empty
     -- list instead of hidden values (seen in game: every buff "missing" in combat)
     if next(t) == nil and mod.auras[key] and next(mod.auras[key]) and Fighting(unit) then
-        hidden[unit] = true
-        if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
-        fromUnit[key] = true
-        return
+        return Hidden(unit, key)
     end
     mod.auras[key] = t
     fromUnit[key] = true

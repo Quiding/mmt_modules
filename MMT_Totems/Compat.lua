@@ -95,13 +95,23 @@ function mod.Buff(unit, i)
         if not ok then return "secret" end   -- the game refuses the read right now (combat restrictions)
         if type(a) ~= "table" then return nil end
         if MMT.IsSecret(a.name) then return "secret" end
-        -- 6th: the caster's unit ("party1", "player", ...; nil when they aren't in the group)
-        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime), Clean(a.sourceUnit)
+        -- 6th: the caster's unit ("party1", "player", ...; nil when they aren't in the group), 7th: the aura's spell ID
+        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime), Clean(a.sourceUnit), Clean(a.spellId)
     end
     if UnitBuff then
-        local name, icon, count, _, duration, expiration, source = UnitBuff(unit, i)
-        return name, icon, count, duration, expiration, source
+        local name, icon, count, _, duration, expiration, source, _, _, spellId = UnitBuff(unit, i)
+        return name, icon, count, duration, expiration, source, spellId
     end
+end
+
+-- one aura of a unit by its exact spell ID: a table or nil. Works while the game hides
+-- aura lists in combat (how ForeverAuras follows procs then); nil when the API is missing
+function mod.AuraBySpellID(unit, id)
+    if not (C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID) then return nil, "no api" end
+    local ok, a = pcall(C_UnitAuras.GetUnitAuraBySpellID, unit, id)
+    if not ok or MMT.IsSecret(a) then return nil, "secret" end
+    if type(a) ~= "table" then return nil end
+    return a
 end
 
 -- the same for harmful auras (some self buffs are debuffs, e.g. Death Wish)

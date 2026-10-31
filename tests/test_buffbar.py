@@ -746,3 +746,57 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "seals in combat ok"
 end""")(mod))
+
+# in combat: tracked buffs asked for by spell ID (learned while readable) - procs like Flurry
+# come and go live; a buff never seen readable keeps its last state
+print(lua.eval(r"""function(m)
+  local oldBuff, oldExists, oldTime, oldHidden = m.Buff, UnitExists, GetTime, m.AurasHidden
+  local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
+  local oldUA = C_UnitAuras
+  local now, hide = 1000, false
+  GetTime = function() return now end
+  local flurry = nil                                -- what the game would answer by ID
+  C_UnitAuras = { GetUnitAuraBySpellID = function(unit, id)
+    if unit == "player" and id == 12970 then return flurry end
+  end }
+  m.Buff = function(unit, i)
+    if unit ~= "player" then return nil end
+    if hide then return "secret" end
+    if i == 1 then return "Flurry", 132152, 3, 15, 1015, "player", 12970 end
+    if i == 2 then return "Inner Focus", 1, 1, 0, 0, "player", 14751 end
+  end
+  m.AurasHidden = function() return hide end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  m.M.db.lists.ALL = m.M.db.lists.ALL or {}
+  local fl, inf = { name = "Flurry*" }, { name = "Inner Focus*" }
+  table.insert(m.M.db.lists.ALL, fl)
+  table.insert(m.M.db.lists.ALL, inf)
+  m.TrackedReset()
+  m.M.store.auraIds = nil
+  m.ScanGroup()                                     -- readable: IDs learned
+  assert(m.M.store.auraIds and m.M.store.auraIds.Flurry and m.M.store.auraIds.Flurry[12970], "Flurry's ID not learned")
+  m.M.store.auraIds["Inner Focus"] = nil            -- as if never seen readable
+  hide = true
+  now = 1020
+  flurry = { name = "Flurry", applications = 2, duration = 15, expirationTime = 1033, icon = 132152, sourceUnit = "player" }
+  m.ScanGroup()                                     -- combat: asked for by ID
+  local s, st, d, c = m.State("Me-Realm", fl)
+  assert(s == "buff" and st == 1018 and d == 15 and c == 2, "Flurry by ID: " .. tostring(s) .. " " .. tostring(c))
+  assert(m.State("Me-Realm", inf) == "buff", "a buff without known IDs was dropped")
+  flurry = nil                                      -- the proc fades in combat
+  m.RetryHidden()
+  assert(m.State("Me-Realm", fl) == "missing", "faded proc still shown")
+  hide = false
+  m.StopHidden()
+  for i = #m.M.db.lists.ALL, 1, -1 do local e = m.M.db.lists.ALL[i] if e == fl or e == inf then table.remove(m.M.db.lists.ALL, i) end end
+  m.TrackedReset()
+  C_UnitAuras = oldUA
+  m.AurasHidden = oldHidden
+  m.Buff, UnitExists, GetTime = oldBuff, oldExists, oldTime
+  MMT.SplitUnit, MMT.Resolve = oldSplit, oldResolve
+  m.ScanGroup()
+  return "auras by spell ID in combat ok"
+end""")(mod))
