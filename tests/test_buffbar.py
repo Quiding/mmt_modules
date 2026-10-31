@@ -715,7 +715,9 @@ print(lua.eval(r"""function(m)
   m.StopHidden()                                   -- the cast must count without the scan's mark
   now = 1030
   assert(m.State("Me-Realm", seal) == "missing", "old seal ran out")
+  SENT = {}
   m.SelfCast("player", 2)                          -- new seal in combat
+  assert(SENT[1] == "MBFC:Seal of the Crusader:30", "own seal cast not sent: " .. tostring(SENT[1]))
   local s, st, d, _, n = m.State("Me-Realm", seal)
   assert(s == "buff" and st == 1030 and d == 30 and n == "Seal of the Crusader", "seal from the cast: " .. tostring(s) .. tostring(n))
   now = 1040
@@ -727,6 +729,13 @@ print(lua.eval(r"""function(m)
   assert(count == 1, "two seals at once")
   m.SelfCast("player", 3)                          -- Judgement: the seal stays on Forever
   assert(m.State("Me-Realm", seal) == "buff", "Judgement ended the seal")
+  -- another client's message: that member's seal starts here (their cast isn't seen in combat)
+  now = 1050
+  TEAM_MESSAGE("Me-Realm", "MBFC:Seal of the Crusader:30")
+  s, st, d, _, n = m.State("Me-Realm", seal)
+  assert(s == "buff" and st == 1050 and n == "Seal of the Crusader", "MBFC not applied: " .. tostring(n))
+  TEAM_MESSAGE("Me-Realm", "MBFC:Blessing of Might:300")   -- only self buffs
+  assert(select(2, m.State("Me-Realm", bom)) == 900, "MBFC applied a non-self buff")
   m.SelfCast("player", 4)                          -- a blessing may be on someone else: not guessed
   assert(m.State("Me-Realm", bom) == "buff" and select(2, m.State("Me-Realm", bom)) == 900, "blessing changed by a cast")
   hide = false

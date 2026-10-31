@@ -173,27 +173,58 @@ local function SealsOff(auras)
     for n in pairs(auras) do if n:find("^Seal of ") then auras[n] = nil end end
 end
 
-function mod.SelfCast(unit, spellID)
-    if not (hidden[unit] or mod.AurasHidden()) or not spellID or MMT.IsSecret(spellID) then return end   -- readable: UNIT_AURA shows it
-    local name = mod.SpellInfo(spellID)
-    if not name or MMT.IsSecret(name) then return end
-    local key = UnitKey(unit)
+-- a self-cast buff started on a member: replaces their other seals / aspects
+local function StartSelf(key, name, dur, icon)
     local auras = key and mod.auras[key]
     if not auras then return end
-    name = mod.Canonical(name)
     local p = SelfBuff(name)
     if not p then return end
-    local dur = seenDur[name] or SELF_DUR[p]
-    if not dur then return end
     if p == "^Seal of " then SealsOff(auras) end
     if p == "^Aspect of the " then
         for n in pairs(auras) do if n:find(p) then auras[n] = nil end end
     end
     local old = auras[name]
     auras[name] = { start = GetTime(), dur = dur, count = 1, raw = name, group = true,
-        icon = (old and old.icon) or mod.SpellIcon(spellID) }
+        icon = (old and old.icon) or icon }
     mod.Refresh()
 end
+
+-- %XX for the characters the message uses
+local function Esc(s) return (s:gsub("[%%:]", function(c) return ("%%%02X"):format(c:byte()) end)) end
+local function Unesc(s) return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)) end
+
+function mod.SelfCast(unit, spellID)
+    if not (hidden[unit] or mod.AurasHidden()) or not spellID or MMT.IsSecret(spellID) then return end   -- readable: UNIT_AURA shows it
+    local name = mod.SpellInfo(spellID)
+    if not name or MMT.IsSecret(name) then return end
+    name = mod.Canonical(name)
+    local p = SelfBuff(name)
+    if not p then return end
+    local dur = seenDur[name] or SELF_DUR[p]
+    if not dur then return end
+    StartSelf(UnitKey(unit), name, dur, mod.SpellIcon(spellID))
+    -- the other clients don't see this cast in combat: one message per own cast
+    -- (the user agreed, like Cooldowns' MCDU); only while auras are hidden here
+    if unit == "player" then
+        local msg = ("MBFC:%s:%d"):format(Esc(name), math.floor(dur + 0.5))
+        MMT.SendToTeam(msg, true)
+        M:Debug("sent %s", msg)
+    end
+end
+
+-- MBFC:<buff name>:<seconds> = that member just cast a self buff (in combat on their client)
+M:Listen("TEAM_MESSAGE", function(key, _, text)
+    local name, dur = text:match("^MBFC:([^:]+):(%d+)$")
+    if not name or MMT.IsSelf(key) then return end
+    dur = tonumber(dur)
+    if not dur or dur <= 0 then return end
+    name = Unesc(name)
+    -- readable here (not fighting): their unit's own update shows it exactly
+    local unit
+    for u, k in pairs(keyOf) do if k == key then unit = u end end
+    if not mod.AurasHidden() and unit and not hidden[unit] and fromUnit[key] then return end
+    StartSelf(key, name, dur)
+end)
 
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     if unit == "player" or (unit and (unit:find("^party%d") or unit:find("^raid%d"))) then mod.SelfCast(unit, spellID) end
