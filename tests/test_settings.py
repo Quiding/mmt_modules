@@ -65,6 +65,8 @@ setmetatable(UI, { __index = function() return function() return new() end end }
 local frames = {}
 function CreateFrame(_, name) local f = new(); if name then rawset(_G, name, f) end return f end
 UIParent = new()
+-- WoW's wipe empties the table and returns it (without this the catch-all stub made it a no-op)
+function wipe(t) for k in pairs(t) do t[k] = nil end return t end
 LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", SHAMAN = "Shaman", PRIEST = "Priest", MAGE = "Mage" }
 RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 } }
 C_Timer = { After = function() end, NewTicker = function() return new() end }

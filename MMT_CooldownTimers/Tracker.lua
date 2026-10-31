@@ -159,10 +159,15 @@ local function CheckPending(unit)
     end
 end
 
+-- buffs of tracked spells (Berserking, Evasion, ...) come and go: auras change many times a
+-- second in a group, so these redraws are gathered into one every half second
+local auraQueued = false
 M:On("UNIT_AURA", function(unit)
     if GroupUnit(unit) then CheckPending(unit) end
-    -- buffs of tracked spells (Berserking, Evasion, ...) come and go
-    if M.db.showBuffs and (unit == "player" or GroupUnit(unit)) then mod.Refresh() end
+    if M.db.showBuffs and (unit == "player" or GroupUnit(unit)) and not auraQueued then
+        auraQueued = true
+        C_Timer.After(0.5, function() auraQueued = false; mod.Refresh() end)
+    end
 end)
 
 ---------------------------------------------------------------------------

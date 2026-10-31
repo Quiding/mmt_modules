@@ -74,7 +74,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 20
+local VERSION = 21
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -692,10 +692,12 @@ end
 
 -- every shown unit frame with a player: [team key] = frame, the top one (highest, then leftmost),
 -- and how many each addon gave ([provider name] = n)
+local listScratch, partsScratch = {}, {}   -- reused: CheckFrames runs 4 times a second
+
 function lib.UnitFrames()
     local byKey, count, top, topY, topX = {}, {}, nil, nil, nil
     for _, p in ipairs(PROVIDERS) do
-        local list = {}
+        local list = wipe(listScratch)
         pcall(p.frames, list)
         for _, f in ipairs(list) do
             local ok, shown = pcall(f.IsVisible, f)
@@ -783,7 +785,7 @@ function lib.CheckFrames()
     for _, w in pairs(lib.windows) do if w.onFrames then any = true end end
     if not any then fdrive:Hide() return end
     local byKey, top = lib.UnitFrames()
-    local parts = {}
+    local parts = wipe(partsScratch)
     for k, f in pairs(byKey) do parts[#parts + 1] = k .. "=" .. tostring(f) .. ":" .. FrameHeight(f) end
     table.sort(parts)
     local sig = table.concat(parts, ",") .. "|" .. tostring(top)

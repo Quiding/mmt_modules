@@ -115,6 +115,8 @@ local function Tracked(name)
     return v
 end
 
+mod.Tracked = Tracked
+
 local function NoteId(name, id)
     if type(id) ~= "number" or not Tracked(name) then return end
     M.store.auraIds = M.store.auraIds or {}
@@ -196,13 +198,33 @@ local function Hidden(unit, key)
     if mod.SetLive and mod.AurasHidden() then mod.SetLive(true) end   -- the game draws them (Live.lua)
     if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
     local t = ReadByIds(unit, key)
+    local changed = t and TrackedChanged(mod.auras[key], t) or false
     if t then mod.auras[key] = t end
     if mod.auras[key] then fromUnit[key] = true end
+    return changed
 end
 
+-- did anything TRACKED change between two reads of a member? (an aura nobody tracks coming
+-- or going - a debuff, a proc - is no reason to redraw every bar)
+local function Same(a, b)
+    return a.count == b.count and a.dur == b.dur and math.abs((a.start or 0) - (b.start or 0)) < 0.1
+end
+local function TrackedChanged(old, new)
+    if not old then return next(new) ~= nil end
+    for name, a in pairs(new) do
+        local o = old[name]
+        if (not o or not Same(o, a)) and Tracked(name) then return true end
+    end
+    for name in pairs(old) do
+        if not new[name] and Tracked(name) then return true end
+    end
+    return false
+end
+
+-- reads one unit; true when a tracked buff changed
 local function ScanUnit(unit)
     local key = UnitKey(unit)
-    if not key then return end
+    if not key then return false end
     local t = {}
     for i = 1, 40 do
         local name, icon, count, duration, expiration, source, spellId = mod.Buff(unit, i)
@@ -224,10 +246,12 @@ local function ScanUnit(unit)
     if next(t) == nil and mod.auras[key] and next(mod.auras[key]) and Fighting(unit) then
         return Hidden(unit, key)
     end
+    local changed = TrackedChanged(mod.auras[key], t) or not fromUnit[key]
     mod.auras[key] = t
     fromUnit[key] = true
     hidden[unit] = nil
     if mod.live and not mod.AurasHidden() then mod.SetLive(false) end   -- readable again
+    return changed
 end
 
 function mod.StopHidden()
@@ -236,15 +260,22 @@ function mod.StopHidden()
 end
 
 -- the units read as hidden, again (ticker while there are any)
+local expiredBefore = 0
 function mod.RetryHidden()
-    local any = false
+    local any, changed = false, false
     for unit in pairs(hidden) do
         hidden[unit] = nil
-        if UnitExists(unit) then ScanUnit(unit) end
+        if UnitExists(unit) and ScanUnit(unit) then changed = true end
         any = any or hidden[unit] or false
     end
     if not any and ticker then ticker:Cancel(); ticker = nil end
-    if M.enabled then mod.Refresh() end   -- also shows buffs that ran out meanwhile
+    -- a kept buff that ran out meanwhile shows as missing: redraw when that count moves
+    local expired = 0
+    for _, list in pairs(mod.auras) do
+        for _, a in pairs(list) do if Expired(a) then expired = expired + 1 end end
+    end
+    if expired ~= expiredBefore then expiredBefore, changed = expired, true end
+    if changed and M.enabled then mod.Refresh() end
 end
 
 local function GroupUnits()
@@ -268,8 +299,7 @@ end
 
 M:On("UNIT_AURA", function(unit)
     if unit == "player" or (unit and (unit:find("^party%d") or unit:find("^raid%d"))) then
-        ScanUnit(unit)
-        mod.Refresh()
+        if ScanUnit(unit) then mod.Refresh() end
     end
 end)
 

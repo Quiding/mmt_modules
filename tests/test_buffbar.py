@@ -930,3 +930,34 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "Battle Shout refreshes the group ok"
 end""")(mod))
+
+# an aura nobody tracks coming or going doesn't redraw the bars (memory churn); a tracked one does
+print(lua.eval(r"""function(m)
+  local oldBuff, oldExists, oldSplit, oldResolve, oldRefresh = m.Buff, UnitExists, MMT.SplitUnit, MMT.Resolve, m.Refresh
+  local auras = { { "Battle Shout", 120, 2000 } }
+  m.Buff = function(unit, i) local a = unit == "player" and auras[i] if a then return a[1], 1, 1, a[2], a[3] end end
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  m.M.db.lists["CHAR:Me-Realm"] = { { name = "Battle Shout*" } }
+  m.TrackedReset()
+  m.TrackedReset()
+  m.ScanGroup()
+  local n = 0
+  m.Refresh = function() n = n + 1 end
+  auras = { { "Battle Shout", 120, 2000 }, { "Sunder Armor", 30, 1500 } }
+  FIRE("UNIT_AURA", "player")
+  assert(n == 0, "an untracked aura redrew the bars")
+  auras = { { "Battle Shout", 120, 2100 }, { "Sunder Armor", 30, 1500 } }
+  FIRE("UNIT_AURA", "player")
+  assert(n == 1, "a refreshed tracked buff didn't redraw")
+  auras = { { "Sunder Armor", 30, 1500 } }
+  FIRE("UNIT_AURA", "player")
+  assert(n == 2, "a tracked buff falling off didn't redraw")
+  m.Refresh = oldRefresh
+  m.M.db.lists["CHAR:Me-Realm"] = nil
+  m.TrackedReset()
+  m.Buff, UnitExists, MMT.SplitUnit, MMT.Resolve = oldBuff, oldExists, oldSplit, oldResolve
+  m.ScanGroup()
+  return "redraw only on tracked changes ok"
+end""")(mod))
