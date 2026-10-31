@@ -62,6 +62,10 @@ local function Build(ov, button)
     ov.button = button
     button:SetAllPoints(ov.container)
     pcall(button.EnableMouse, button, false)
+    -- solid behind the aura's icon: the missing-look icon underneath mustn't show through
+    local bg = button:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(button)
+    bg:SetColorTexture(0, 0, 0, 1)
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints(button)
     button:SetIcon(icon)
@@ -81,14 +85,33 @@ local function Build(ov, button)
 end
 
 local function Style(ov, b)
-    -- the icon's zoom and the timer size of the bar it sits on
-    local cfg = (b.data and b.data.look) or M.db
+    -- the look of the bar it sits on: active opacity (not the missing one of the icon
+    -- underneath: the widget is its child), zoom, the bar's timer font and colours, swipe
+    local i = b.data or {}
+    local cfg = i.look or M.db
+    local c = ov.container
+    if c.SetIgnoreParentAlpha then pcall(c.SetIgnoreParentAlpha, c, true) end
+    c:SetAlpha(i.activeAlpha or cfg.activeAlpha or 1)
     local z = (tonumber(cfg.iconZoom) or 8) / 100
     if ov.icon then ov.icon:SetTexCoord(z, 1 - z, z, 1 - z) end
-    local numbers = ov.cooldown and ov.cooldown.GetCountdownFontString and ov.cooldown:GetCountdownFontString()
-    if numbers and numbers.SetFont then
-        local size = math.max(8, math.floor((b:GetHeight() or 30) * 0.4))
-        pcall(numbers.SetFont, numbers, STANDARD_TEXT_FONT, size, "OUTLINE")
+    local cd = ov.cooldown
+    if cd then
+        local sc, sa = cfg.swipeColor, tonumber(cfg.swipeAlpha) or 0.8
+        if cd.SetSwipeColor then cd:SetSwipeColor(sc and sc.r or 0, sc and sc.g or 0, sc and sc.b or 0, sa) end
+        if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(cfg.showTimers == false) end
+        local numbers = cd.GetCountdownFontString and cd:GetCountdownFontString()
+        if numbers and numbers.SetFont then
+            local font, size, flags
+            if b.timer and b.timer.GetFont then font, size, flags = b.timer:GetFont() end
+            if not font then font, size, flags = STANDARD_TEXT_FONT, math.max(8, math.floor((b:GetHeight() or 30) * 0.4)), "OUTLINE" end
+            pcall(numbers.SetFont, numbers, font, size, flags)
+            local tc = cfg.timerColor
+            if tc and numbers.SetTextColor then numbers:SetTextColor(tc.r or 1, tc.g or 1, tc.b or 1) end
+        end
+    end
+    if ov.stacks and b.count and b.count.GetFont then
+        local font, size, flags = b.count:GetFont()
+        if font then pcall(ov.stacks.SetFont, ov.stacks, font, size, flags) end
     end
 end
 

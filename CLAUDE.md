@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.25.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.25.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -188,6 +188,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   and sets them up out of combat (disabled), combat only SetEnabled(true) (ForeverAuras: building while restricted
   fails). `/mmtbt live` = `mod.LiveReport`: widget available, live mode, overlays made / failed / set up / drawing +
   last error, learned IDs.
+  0.25.2 (in game: WORKS; colours muted + the seal visible behind): the widget is the icon's child and took its
+  missing alpha - now SetIgnoreParentAlpha + the active opacity, a solid black BACKGROUND under the aura icon, the
+  bar's timer font (b.timer:GetFont) / timerColor / swipe colour / showTimers, stack font from b.count.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
