@@ -74,7 +74,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 19
+local VERSION = 20
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -165,6 +165,15 @@ function lib.PointAt(f, anchor)
     local x = anchor:find("RIGHT") and (r - W) or l
     local y = anchor:find("BOTTOM") and b or (t - H)
     return { anchor, anchor, math.floor(x + 0.5), math.floor(y + 0.5) }
+end
+
+-- the text FormatTime would give, as a number: Paint only builds a new string when it changes
+-- (every icon is painted 10 times a second: a string each time was a lot of garbage)
+local function TimeKey(t)
+    if t >= 3600 then return 3000000 + math.floor(t / 3600 + 0.5) end
+    if t >= 60 then return 2000000 + math.floor(t / 60 + 0.5) end
+    if t >= 10 then return 1000000 + math.floor(t + 0.5) end
+    return math.floor(t * 10 + 0.5)
 end
 
 local function FormatTime(t)
@@ -301,13 +310,14 @@ local function Paint(b, c)
     local stage = (rem and (state == "cd" or state == "buff")) and Stage(i, c, rem) or nil
     local sc = stage and LookOf(i, c, stage .. "SwipeColor") or LookOf(i, c, "swipeColor")
     local sa = tonumber(LookOf(i, c, "swipeAlpha")) or 0.8
-    local key = sc and ("%.3f %.3f %.3f %.3f"):format(sc.r or 0, sc.g or 0, sc.b or 0, sa) or ("default " .. sa)
-    if b.swipeNow ~= key and b.cd.SetSwipeColor then
-        b.swipeNow = key
-        b.cd:SetSwipeColor(sc and sc.r or 0, sc and sc.g or 0, sc and sc.b or 0, sa)
+    local r, g, bl = sc and sc.r or 0, sc and sc.g or 0, sc and sc.b or 0
+    if (b.swR ~= r or b.swG ~= g or b.swB ~= bl or b.swA ~= sa) and b.cd.SetSwipeColor then
+        b.swR, b.swG, b.swB, b.swA = r, g, bl, sa
+        b.cd:SetSwipeColor(r, g, bl, sa)
     end
     if c.showTimers and rem and (state == "cd" or state == "buff") then
-        b.timer:SetText(FormatTime(rem))
+        local tk = TimeKey(rem)
+        if b.timerKey ~= tk then b.timerKey = tk; b.timer:SetText(FormatTime(rem)) end
         local tc = stage and LookOf(i, c, stage .. "TextColor") or LookOf(i, c, "timerColor")
         if tc then b.timer:SetTextColor(tc.r or 1, tc.g or 1, tc.b or 1) end
         b.timer:Show()
@@ -344,7 +354,7 @@ local function Setup(b, i, key, c)
         b.tally:SetText("")
         b.tally:Hide()
     end
-    b.swipeNow = nil   -- Paint sets the countdown circle's colour
+    b.swR, b.timerKey = nil, nil   -- Paint sets the countdown circle's colour and the timer text
     if (i.state == "cd" or i.state == "buff") and Remaining(i) then
         b.cd:SetCooldown(i.start, i.duration)
         b.cd:Show()

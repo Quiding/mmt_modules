@@ -93,7 +93,8 @@ end
 -- sessions) and asked for one by one while hidden: procs like Flurry, seals and
 -- buffs falling off then update live. A buff never seen readable keeps its last state.
 local trackedCache = {}   -- [buff name] = true | false
-function mod.TrackedReset() wipe(trackedCache) end
+mod.idsGen = 0   -- raised whenever the learned IDs or the lists change (Live.lua caches by it)
+function mod.TrackedReset() wipe(trackedCache); mod.idsGen = mod.idsGen + 1 end
 
 local function Tracked(name)
     local v = trackedCache[name]
@@ -119,7 +120,7 @@ local function NoteId(name, id)
     M.store.auraIds = M.store.auraIds or {}
     local ids = M.store.auraIds[name]
     if not ids then ids = {}; M.store.auraIds[name] = ids end
-    ids[id] = true
+    if not ids[id] then ids[id] = true; mod.idsGen = mod.idsGen + 1 end
 end
 
 local function Clean(v)
@@ -173,6 +174,8 @@ local function ReadByIds(unit, key)
             if a then
                 local o = old[name]
                 local dur, exp = Clean(a.duration), Clean(a.expirationTime)
+                if type(dur) ~= "number" then dur = nil end
+                if type(exp) ~= "number" then exp = nil end
                 local timed = dur and dur > 0 and exp
                 t[name] = { start = timed and (exp - dur) or (o and o.start), dur = timed and dur or (o and o.dur),
                     count = Clean(a.applications) or (o and o.count), icon = Clean(a.icon) or (o and o.icon),
@@ -301,6 +304,18 @@ local function StartSelf(key, name, dur, icon)
     mod.Refresh()
 end
 
+-- buffs the caster gives the whole party at once (the cast refreshes it on everyone read from
+-- a group unit; in a raid that's more than the caster's own party - the real read after combat fixes it)
+local PARTY_WIDE = { ["^Battle Shout$"] = true }
+
+local function Start(key, name, dur, icon)
+    if PARTY_WIDE[SelfBuff(name) or ""] then
+        for k in pairs(fromUnit) do StartSelf(k, name, dur, icon) end
+    else
+        StartSelf(key, name, dur, icon)
+    end
+end
+
 -- %XX for the characters the message uses
 local function Esc(s) return (s:gsub("[%%:]", function(c) return ("%%%02X"):format(c:byte()) end)) end
 local function Unesc(s) return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)) end
@@ -314,7 +329,7 @@ function mod.SelfCast(unit, spellID)
     if not p then return end
     local dur = seenDur[name] or SELF_DUR[p]
     if not dur then return end
-    StartSelf(UnitKey(unit), name, dur, mod.SpellIcon(spellID))
+    Start(UnitKey(unit), name, dur, mod.SpellIcon(spellID))
     -- the other clients don't see this cast in combat: one message per own cast
     -- (the user agreed, like Cooldowns' MCDU); only while auras are hidden here
     if unit == "player" then
@@ -335,7 +350,7 @@ M:Listen("TEAM_MESSAGE", function(key, _, text)
     local unit
     for u, k in pairs(keyOf) do if k == key then unit = u end end
     if not mod.AurasHidden() and unit and not hidden[unit] and fromUnit[key] then return end
-    StartSelf(key, name, dur)
+    Start(key, name, dur)
 end)
 
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)

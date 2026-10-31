@@ -34,8 +34,18 @@ local function Available()
 end
 mod.LiveAvailable = Available
 
--- every spell ID an entry's buff is known by: learned ones (all ranks seen) + the entry's own
-function mod.LiveIds(e)
+-- every spell ID an entry's buff is known by: learned ones (all ranks seen) + the entry's own;
+-- cached per entry until the learned IDs or the lists change (asked on every redraw)
+local idCache = setmetatable({}, { __mode = "k" })   -- [entry] = { gen, ids, sig }
+
+local function Signature(ids)
+    local list = {}
+    for id in pairs(ids) do list[#list + 1] = id end
+    table.sort(list)
+    return table.concat(list, ",")
+end
+
+local function Collect(e)
     if mod.IsWeapon(e) then return nil end
     local known, ids, any = M.store.auraIds or {}, {}, false
     if mod.IsPattern(e) then
@@ -50,11 +60,14 @@ function mod.LiveIds(e)
     return any and ids or nil
 end
 
-local function Signature(ids)
-    local list = {}
-    for id in pairs(ids) do list[#list + 1] = id end
-    table.sort(list)
-    return table.concat(list, ",")
+function mod.LiveIds(e)
+    local c = idCache[e]
+    if not c or c[1] ~= mod.idsGen then
+        local ids = Collect(e)
+        c = { mod.idsGen, ids, ids and Signature(ids) }
+        idCache[e] = c
+    end
+    return c[2], c[3]
 end
 
 -- the look of the slot's button: the aura's own icon, the game's countdown, stacks
@@ -159,8 +172,7 @@ local function Disable(ov)
 end
 
 -- one overlay set to a member's unit and a buff's spell IDs; drawing only while live
-local function Configure(ov, b, unit, ids)
-    local sig = Signature(ids)
+local function Configure(ov, b, unit, ids, sig)
     if ov.unit ~= unit or ov.sig ~= sig then
         local c = ov.container
         SetOn(ov, false)
@@ -179,12 +191,13 @@ end
 
 -- after every redraw: an overlay on each member icon whose IDs are known, on every bar
 -- (ours, and ours on the Cooldowns bars) - set up out of combat, switched on in combat
+local usedScratch = {}
 local hooked = {}   -- [window] = true: its own redraws (e.g. the Cooldowns bars) sync too
 
 function mod.LiveSync()
     local lib = MMTIconBars
     if not (lib and lib.windows) or not Available() then return end
-    local used = {}
+    local used = wipe(usedScratch)
     for _, w in pairs(lib.windows) do
         if not hooked[w] and hooksecurefunc then
             hooked[w] = true
@@ -195,11 +208,12 @@ function mod.LiveSync()
                 for _, b in ipairs(row.icons or {}) do
                     local live = b.data and b.data.live   -- the bar clears data on unused icons
                     local unit = live and mod.UnitOf(live.key)
-                    local ids = unit and mod.LiveIds(live.e)
+                    local ids, sig
+                    if unit then ids, sig = mod.LiveIds(live.e) end
                     if ids then
                         local ov = overlays[b]
                         if ov == nil then ov = NewOverlay(b) or false; overlays[b] = ov end
-                        if ov then Configure(ov, b, unit, ids); used[b] = true end
+                        if ov then Configure(ov, b, unit, ids, sig); used[b] = true end
                     end
                 end
             end

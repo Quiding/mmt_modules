@@ -166,7 +166,11 @@ print(lua.eval(r'''function(cd, bf)
   CM.db.urgentSecs, CM.db.urgentSwipeColor = 10, { r = 1, g = 0, b = 0 }
   local left = 100
   cd.State = function() return "cd", GetTime() - (60 - left), 60 end
-  local function Swipe() Redraw(); return RowOf(cw, "Bob-Stone").icons[1].swipeNow end
+  local function Swipe()
+    Redraw()
+    local b = RowOf(cw, "Bob-Stone").icons[1]
+    return b.swR and ("%.3f %.3f %.3f %.3f"):format(b.swR, b.swG, b.swB, b.swA) or nil
+  end
   left = 59.5; Check(Swipe() == "1.000 1.000 0.000 0.500", "soon: " .. tostring(Swipe()))
   left = 5;    Check(Swipe() == "1.000 0.000 0.000 0.500", "urgent: " .. tostring(Swipe()))
   CM.db.soonSecs, CM.db.urgentSecs = 0, 0

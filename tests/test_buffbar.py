@@ -892,3 +892,41 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "live overlays in combat ok"
 end""")(mod))
+
+# Battle Shout cast in combat refreshes it on the whole group (the All bar counts from these)
+print(lua.eval(r"""function(m)
+  local oldBuff, oldExists, oldTime, oldInfo, oldHidden = m.Buff, UnitExists, GetTime, m.SpellInfo, m.AurasHidden
+  local oldSplit, oldResolve, oldUA, oldRaid = MMT.SplitUnit, MMT.Resolve, C_UnitAuras, IsInRaid
+  C_UnitAuras = {}
+  IsInRaid = function() return false end
+  local now, hide = 1000, false
+  GetTime = function() return now end
+  m.SpellInfo = function(id) if id == 25289 then return "Battle Shout" end end
+  m.Buff = function(unit, i)
+    if hide then return "secret" end
+    if i == 1 then return "Battle Shout", 1, 1, 120, 1060 end
+  end
+  m.AurasHidden = function() return hide end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" or u == "party1" end
+  MMT.SplitUnit = function(u) if u == "player" then return "Me", "Realm", "Me-Realm" end return "Bo", "Realm", "Bo-Realm" end
+  MMT.Resolve = function(k) return k end
+  local bs = { name = "Battle Shout*" }
+  m.ScanGroup()
+  hide = true
+  m.ScanGroup()
+  now = 1050
+  SENT = {}
+  m.SelfCast("player", 25289)
+  for _, k in ipairs({ "Me-Realm", "Bo-Realm" }) do
+    local s, st, d = m.State(k, bs)
+    assert(s == "buff" and st == 1050 and d == 120, k .. " not refreshed: " .. tostring(st))
+  end
+  assert(SENT[1] == "MBFC:Battle Shout:120", "not sent: " .. tostring(SENT[1]))
+  hide = false
+  m.StopHidden()
+  m.Buff, UnitExists, GetTime, m.SpellInfo, m.AurasHidden = oldBuff, oldExists, oldTime, oldInfo, oldHidden
+  MMT.SplitUnit, MMT.Resolve, C_UnitAuras, IsInRaid = oldSplit, oldResolve, oldUA, oldRaid
+  m.ScanGroup()
+  return "Battle Shout refreshes the group ok"
+end""")(mod))
