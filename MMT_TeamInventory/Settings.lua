@@ -12,6 +12,7 @@ local function ResetButton(page)
     local b = H.ConfirmButton(page, 150, "Reset to defaults", function()
         for k in pairs(M.db) do M.db[k] = nil end
         for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
+        if M.OnProfileChanged then M.OnProfileChanged(M) end   -- minimap button, team bags (0.10.5)
         if MMT.RefreshConfig then MMT.RefreshConfig() end
         MMT.Print("%s: settings reset to defaults.", M.title)
     end)
