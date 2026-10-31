@@ -551,3 +551,59 @@ print("C:", C.eval(r"""function(m)
   assert(n == 1, "MCDQ whispers to Wally: " .. n)
   return "running cooldowns after a reload ok"
 end""")(cmod))
+
+# own cooldowns the game hides ("secret", in combat on this client): the timer runs
+# from the own cast instead of staying "ready", and the team is told
+print("A:", A.eval(r"""function(m)
+  SECRET = {}
+  local realIsSecret = MMT.IsSecret
+  MMT.IsSecret = function(v) return v == SECRET end
+  local realCD = C_Spell.GetSpellCooldown
+  C_Spell.GetSpellCooldown = function(name)
+    if HIDDEN then return { startTime = SECRET, duration = SECRET, isEnabled = SECRET } end
+    return realCD(name)
+  end
+  local e
+  for _, x in ipairs(m.EntriesFor(ME)) do if x.id == 11958 then e = x end end
+  assert(e, "Ice Block not tracked for the mage")
+  SPELLCD = {}
+  NOW = 5000
+  m.ShareCheck()                        -- learns the current state
+  assert(m.OwnState(e) == "ready", "ready before the cast")
+  HIDDEN = true
+  SENT = {}
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 11958)
+  local s, st, d = m.OwnState(e)
+  assert(s == "cd" and st == 5000 and d == e.cd, "hidden cooldown not started from the cast: " .. tostring(s))
+  local told
+  for _, msg in ipairs(SENT) do if msg:find("^MCDU:s11958:") then told = msg end end
+  assert(told, "team not told about the hidden cooldown")
+  NOW = 5000 + e.cd + 1
+  assert(m.OwnState(e) == "ready", "still on cooldown after its time")
+  -- a length read from the game (talents) is used for the next hidden one
+  HIDDEN = false
+  NOW = 6000
+  SPELLCD["Ice Block"] = { start = 6000, dur = 240 }
+  assert(m.OwnState(e) == "cd", "readable cooldown")
+  NOW = 6300
+  SPELLCD["Ice Block"] = nil
+  m.OwnState(e)
+  HIDDEN = true
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 11958)
+  s, st, d = m.OwnState(e)
+  assert(s == "cd" and st == 6300 and d == 240, "real length not used: " .. tostring(d))
+  -- a hidden read right after a readable one of the same cast keeps the readable one
+  HIDDEN = false
+  NOW = 7000
+  SPELLCD["Ice Block"] = { start = 6999.8, dur = 240 }
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 11958)
+  m.OwnState(e)
+  HIDDEN = true
+  s, st = m.OwnState(e)
+  assert(s == "cd" and st == 6999.8, "readable start lost")
+  HIDDEN = false
+  MMT.IsSecret = realIsSecret
+  C_Spell.GetSpellCooldown = realCD
+  SPELLCD = {}
+  return "hidden own cooldowns ok"
+end""")(amod))

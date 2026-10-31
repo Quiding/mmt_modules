@@ -77,8 +77,29 @@ function mod.MemberDuration(key, e)
     return e.cd or 0
 end
 
+-- own casts of tracked entries: [entryKey] = GetTime() of the cast. Used only
+-- while the game hides the cooldown ("secret", in combat on this client):
+-- the timer then runs from the cast instead of staying "ready"
+local ownCast = {}
+local ownDur = {}         -- [entryKey] = real length last read from the game
+
+local function OwnCast(spellID)
+    if not spellID or MMT.IsSecret(spellID) then return end
+    local spellName = mod.SpellInfo(spellID)
+    if not spellName or MMT.IsSecret(spellName) then return end
+    if not index[spellName] and missing then mod.BuildIndex() end
+    if not index[spellName] then return end
+    local key = MMT.PlayerFull()
+    local e = key and EntryForMember(key, spellName)
+    if not e then return end
+    ownCast[mod.EntryKey(e)] = GetTime()
+    mod.Refresh()
+    if mod.ShareCheck then mod.ShareCheck() end
+end
+
 -- a group member cast something
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
+    if unit == "player" then return OwnCast(spellID) end
     if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
     local spellName = mod.SpellInfo(spellID)
     if not spellName or MMT.IsSecret(spellName) then return end
@@ -215,8 +236,17 @@ local function OwnState(e)
         start, dur, enabled = mod.SpellCooldown(name)
         if start == nil then return Unknown() end   -- not learned by this character
         if start == "secret" then
-            local l = lastOwn[mod.EntryKey(e)]
-            if l then return l[1], l[2], l[3] end
+            local ek = mod.EntryKey(e)
+            -- used since the last readable state: the timer runs from that cast
+            local cast, l = ownCast[ek], lastOwn[ek]
+            if cast and not (l and l[1] == "cd" and l[2] and l[2] >= cast - 0.5) then
+                local d = ownDur[ek] or e.cd or 0
+                if d > GCD and GetTime() - cast < d then return "cd", cast, d end
+            end
+            if l then
+                if l[1] == "cd" and l[2] and l[3] and GetTime() >= l[2] + l[3] then return "ready" end
+                return l[1], l[2], l[3]
+            end
             return "ready"
         end
     else
@@ -231,6 +261,7 @@ local function OwnState(e)
     elseif start and start > 0 and dur and dur > GCD then state = "cd"
     else state = "ready" end
     lastOwn[mod.EntryKey(e)] = { state, start, dur }
+    if state == "cd" and e.t == "s" then ownDur[mod.EntryKey(e)] = dur end
     if state == "cd" then return state, start, dur end
     return state
 end
