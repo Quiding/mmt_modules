@@ -51,9 +51,15 @@ end
 ---------------------------------------------------------------------------
 -- Units
 ---------------------------------------------------------------------------
+-- the team key of a unit; the last one read is kept per unit, as in combat the
+-- game can hide the unit's name too
+local keyOf = {}
 local function UnitKey(unit)
-    local _, _, key = MMT.SplitUnit(unit)
-    return key and MMT.Resolve(key) or nil
+    local ok, _, _, key = pcall(MMT.SplitUnit, unit)
+    key = ok and key and not MMT.IsSecret(key) and MMT.Resolve(key) or nil
+    if key then keyOf[unit] = key return key end
+    if mod.AurasHidden and mod.AurasHidden() then return keyOf[unit] end
+    return nil
 end
 
 -- In combat the game hides aura data ("secret"); new buffs can't be seen then.
@@ -168,7 +174,7 @@ local function SealsOff(auras)
 end
 
 function mod.SelfCast(unit, spellID)
-    if not hidden[unit] or not spellID or MMT.IsSecret(spellID) then return end   -- readable: UNIT_AURA shows it
+    if not (hidden[unit] or mod.AurasHidden()) or not spellID or MMT.IsSecret(spellID) then return end   -- readable: UNIT_AURA shows it
     local name = mod.SpellInfo(spellID)
     if not name or MMT.IsSecret(name) then return end
     local key = UnitKey(unit)
@@ -193,7 +199,7 @@ M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     if unit == "player" or (unit and (unit:find("^party%d") or unit:find("^raid%d"))) then mod.SelfCast(unit, spellID) end
 end)
 
-M:On("GROUP_ROSTER_UPDATE", function() mod.ScanGroup() mod.Refresh() end)
+M:On("GROUP_ROSTER_UPDATE", function() wipe(keyOf) mod.ScanGroup() mod.Refresh() end)
 M:On("PLAYER_REGEN_ENABLED", function()
     mod.ScanGroup() mod.Refresh()
     C_Timer.After(1, function() if M.enabled then mod.ScanGroup() mod.Refresh() end end)

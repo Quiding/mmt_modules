@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.6) / MMT_BuffTimers (v0.23.7) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.6) / MMT_BuffTimers (v0.23.8) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -151,6 +151,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   own event frame): prints per UNIT_AURA / UNIT_SPELLCAST_SUCCEEDED on player/party which fields are readable or SECRET
   (update info, added spellId / name / auraInstanceID / icon, removed / updated instance IDs, cast spellID) + whether
   C_UnitAuras.GetAuraDuration / Cooldown:SetCooldownFromDurationObject exist - to pick the in-combat workaround.
+  Probe result (user, in combat): own casts readable (spellID + name); party members' casts don't arrive at all; every
+  UNIT_AURA field (full, added, removed, instance IDs) SECRET for player and party; GetAuraDuration /
+  SetCooldownFromDurationObject exist but need the (secret) instance ID. So: procs (Flurry) can't be followed in
+  combat; self-cast buffs only on the caster's own client. 0.23.8: `UnitKey` keeps the last key per unit (`keyOf`,
+  used while auras are hidden: the name can be hidden too, so ScanUnit / SelfCast never matched), SelfCast counts
+  whenever `mod.AurasHidden()` (not only after the scan marked the unit).
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login

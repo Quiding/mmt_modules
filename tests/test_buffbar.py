@@ -708,7 +708,11 @@ print(lua.eval(r"""function(m)
   local seal, bom = { name = "Seal of *" }, { name = "Blessing of Might*" }
   m.ScanGroup()
   hide = true
+  local oldHidden = m.AurasHidden
+  m.AurasHidden = function() return hide end
+  MMT.SplitUnit = function() return nil end        -- the game hides the name in combat too
   m.ScanGroup()                                    -- combat: hidden, last read kept
+  m.StopHidden()                                   -- the cast must count without the scan's mark
   now = 1030
   assert(m.State("Me-Realm", seal) == "missing", "old seal ran out")
   m.SelfCast("player", 2)                          -- new seal in combat
@@ -727,6 +731,7 @@ print(lua.eval(r"""function(m)
   assert(m.State("Me-Realm", bom) == "buff" and select(2, m.State("Me-Realm", bom)) == 900, "blessing changed by a cast")
   hide = false
   m.StopHidden()
+  m.AurasHidden = oldHidden
   m.Buff, UnitExists, GetTime, m.SpellInfo = oldBuff, oldExists, oldTime, oldInfo
   MMT.SplitUnit, MMT.Resolve = oldSplit, oldResolve
   m.ScanGroup()
