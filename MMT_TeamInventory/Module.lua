@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.10.5"
+mod.VERSION = "0.10.6"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -47,7 +47,9 @@ local M = MMT.NewModule({
         baganatorCats = true,  -- with Baganator on: its categories (order, custom ones, priorities)
         giveTrade = true,      -- planned gifts (drag in the team bags) go into the trade window by themselves
         sidePanel = true,      -- the team / trades panel beside the team bags
-        otherChars = false,    -- team bags + gold: false = the team | "RULESET" = every stored character of this ruleset | "ALL" = every one
+        chars = "TEAM",        -- team bags + gold: TEAM | RULESET = every stored character of this ruleset | ALL = every one
+                               -- (until 0.10.5 otherChars = false | "RULESET" | "ALL": the core's MergeDefaults put a string
+                               -- over the false default back to false at every login, so it never survived a /reload)
         -- team bags look (settings > Look); defaults = MMT's settings window
         bagIconSize = 36, bagColumns = 10, bagSpacing = 4, bagQuality = true,
         bagBgTexture = "FLAT", bagBgColor = { r = 0.05, g = 0.05, b = 0.06 }, bagBgAlpha = 0.94,
@@ -163,12 +165,20 @@ function mod.StampTeam()
 end
 M:Listen("TEAM_CHANGED", function() mod.StampTeam(); if mod.RefreshBags then mod.RefreshBags() end end)
 
--- "Characters" setting: "TEAM" | "RULESET" | "ALL" (true from before 0.9.0 = RULESET)
+-- "Characters" setting: "TEAM" | "RULESET" | "ALL"; the older otherChars (true from before 0.9.0 = RULESET) taken over once
 function mod.CharsMode()
-    local v = M.db.otherChars
-    if v == "ALL" then return "ALL" end
-    if v then return "RULESET" end
+    local old = M.db.otherChars
+    if old ~= nil then
+        M.db.chars = old == "ALL" and "ALL" or old and "RULESET" or "TEAM"
+        M.db.otherChars = nil
+    end
+    local v = M.db.chars
+    if v == "ALL" or v == "RULESET" then return v end
     return "TEAM"
+end
+function mod.SetCharsMode(v)
+    M.db.otherChars = nil
+    M.db.chars = (v == "ALL" or v == "RULESET") and v or "TEAM"
 end
 function mod.Shown(key)
     if mod.InTeam(key) then return true end

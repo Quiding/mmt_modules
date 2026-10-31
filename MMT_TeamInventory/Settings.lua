@@ -119,7 +119,7 @@ M.Page = function(_, page)
         { value = "RULESET", text = "All stored, this ruleset" },
         { value = "ALL", text = "All stored, every ruleset" },
     }, mod.CharsMode, function(v)
-        M.db.otherChars = v ~= "TEAM" and v or false
+        mod.SetCharsMode(v)
         Redraw()
     end)
     UI.Tooltip(chars, "Characters", "Who the team bags and the gold show: the character list, the whole-team views, the panel and the total gold. All stored = also every other character this client has items of (other MMT profiles, old teams, other accounts' characters that were in a team with this account), on this ruleset (PvE, PvP, ...) or on all of them, grouped by the team they were last played in. Also at the bottom of the character list in the team bags. Characters of another ruleset can't be given items.")

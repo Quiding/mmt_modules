@@ -824,6 +824,7 @@ print(lua.eval(r'''function(m)
   -- old "true" = this ruleset
   m.M.db.otherChars = true
   assert(m.CharsMode() == "RULESET", "old setting")
+  assert(m.M.db.chars == "RULESET" and m.M.db.otherChars == nil, "old setting not taken over into chars")
   m.M.db.otherChars = "RULESET"
   m.RefreshBags()
   assert(Owners() == "Anna-Smith,Bob-Stone,Cara-Sun,Fen-New", "this ruleset: " .. Owners())
@@ -873,7 +874,7 @@ print(lua.eval(r"""function(m)
   -- choose "All stored, this ruleset" in the picker
   m.bags.owner._click(m.bags.owner)
   LIST.pick("__MODE_RULESET__")
-  assert(m.M.db.otherChars == "RULESET" and f.who == "__ALL__", "mode from the picker: " .. tostring(m.M.db.otherChars))
+  assert(m.CharsMode() == "RULESET" and f.who == "__ALL__", "mode from the picker: " .. tostring(m.M.db.chars))
   assert(table.concat(m.BagOwners(), ",") == "Anna-Smith,Bob-Stone,Cara-Sun,Dan-Sky,Eve-Old", "order: " .. table.concat(m.BagOwners(), ","))
   local groups = m.TeamGroups()
   assert(#groups == 3 and m.GroupLabel(groups[1]) == "This team" and m.GroupLabel(groups[2]) == "Team: Cara, Dan, Ola"
@@ -896,7 +897,7 @@ print(lua.eval(r"""function(m)
   -- back to the team
   m.bags.owner._click(m.bags.owner)
   LIST.pick("__MODE_TEAM__")
-  assert(m.M.db.otherChars == false and table.concat(m.BagOwners(), ",") == "Anna-Smith,Bob-Stone", "back to the team")
+  assert(m.CharsMode() == "TEAM" and table.concat(m.BagOwners(), ",") == "Anna-Smith,Bob-Stone", "back to the team")
   for _, k in ipairs({ "Cara-Sun", "Dan-Sky", "Eve-Old" }) do chars[k] = nil end
   return "teams grouped ok"
 end"""

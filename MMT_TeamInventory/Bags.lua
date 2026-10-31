@@ -746,7 +746,7 @@ local function Build()
         UI.OpenList(self, mod.PickerItems(), f.who, function(v)
             local mode = type(v) == "string" and v:match("^__MODE_(%u+)__$")
             if mode then   -- the "Characters" setting, from here too
-                M.db.otherChars = mode ~= "TEAM" and mode or false
+                mod.SetCharsMode(mode)
                 if MMT.RefreshConfig then MMT.RefreshConfig() end
                 return mod.RefreshBags()
             end

@@ -36,6 +36,19 @@ function DEEPEQ(a, b)
   for k in pairs(b) do if a[k] == nil then return false end end
   return true
 end
+-- the core's MergeDefaults (MMT/Profiles.lua), run on M.db at every login, profile change and sync:
+-- a value whose TYPE differs from its default is put back to the default
+local function IsArray(t) return next(t) == nil or t[1] ~= nil end
+function MERGE(dst, src)
+  for k, v in pairs(src) do
+    if type(v) == "table" then
+      if type(dst[k]) ~= "table" then dst[k] = MMT.CopyTable(v)
+      elseif not IsArray(v) then MERGE(dst[k], v) end
+    elseif dst[k] == nil or type(dst[k]) ~= type(v) then
+      dst[k] = v
+    end
+  end
+end
 -- another value of the same type
 function OTHER(v)
   if type(v) == "boolean" then return not v end
@@ -82,7 +95,12 @@ RUN = r'''function(m, folder)
     for _, c in ipairs(list or {}) do
       if not c.header and c.value ~= nil and not (type(c.value) == "string" and c.value:find("^__")) then
         n = n + 1
-        Try("cycle " .. label .. " = " .. tostring(c.value), function() s(c.value); Refresh(); Changed() end)
+        Try("cycle " .. label .. " = " .. tostring(c.value), function()
+          s(c.value); Refresh(); Changed()
+          local now = g()
+          MERGE(M.db, M.defaults or {})   -- a /reload
+          assert(g() == now, "lost after a /reload: " .. tostring(now) .. " -> " .. tostring(g()))
+        end)
       end
     end
     Try("cycle " .. label .. " back", function() s(was) end)
@@ -106,7 +124,12 @@ RUN = r'''function(m, folder)
       or { { r = 0.1, g = 0.2, b = 0.3 }, was }
     for _, v in ipairs(vals) do
       n = n + 1
-      Try(label .. " = " .. tostring(v), function() s(v); Refresh(); Changed() end)
+      Try(label .. " = " .. tostring(v), function()
+        s(v); Refresh(); Changed()
+        local now = g()
+        MERGE(M.db, M.defaults or {})   -- a /reload
+        assert(DEEPEQ(g(), now), "lost after a /reload: " .. tostring(now) .. " -> " .. tostring(g()))
+      end)
     end
   end
 
@@ -146,6 +169,35 @@ RUN = r'''function(m, folder)
   end
   MMT.db.modules = nil
 
+  -- export -> import: every setting comes back (not the key binding: it belongs to one computer)
+  if m.TransferDef then
+    local NOT_EXPORTED = { keybind = true, takenFrom = true }
+    local want = {}
+    for k, v in pairs(defaults) do
+      if not NOT_EXPORTED[k] then
+        want[k] = OTHER(v)
+        if k == "point" then want[k] = { "TOPLEFT", "TOPLEFT", 11, -22 } end
+        M.db[k] = MMT.CopyTable(want[k])
+      end
+    end
+    local def = m.TransferDef()
+    local data = {}
+    for _, sec in ipairs(def.sections) do data[sec.id] = sec.get() end
+    local text = MMTTransfer.Encode(def.prefix, data)
+    local back = assert(MMTTransfer.Decode(def.prefix, text))
+    Try("reset before import", m.ResetSettings or reset)
+    for _, sec in ipairs(def.sections) do
+      -- a section of nothing but empty tables (Totems' chosen totems / presets: test_totems.py) may say "nothing"
+      local empty = type(back[sec.id]) == "table"
+      for _, v in pairs(back[sec.id] or {}) do if type(v) ~= "table" or next(v) ~= nil then empty = false end end
+      Try("import " .. sec.id, function() local ok, why = sec.set(back[sec.id]); assert(ok or empty, why) end)
+    end
+    if def.after then Try("import: after", def.after) end
+    for k, v in pairs(want) do
+      if not DEEPEQ(M.db[k], v) then fails[#fails + 1] = "export / import lost " .. k .. " (" .. tostring(M.db[k]) .. ")" end
+    end
+  end
+
   -- off and on again
   if M.OnDisable then M.enabled = false; Try("OnDisable", M.OnDisable, M) end
   M.enabled = true
@@ -153,7 +205,7 @@ RUN = r'''function(m, folder)
   Try("page at the end", Build)
 
   if #fails > 0 then return "FAIL " .. folder .. "\n  " .. table.concat(fails, "\n  ") end
-  return folder .. ": " .. n .. " control values, sync / reset / off-on ok"
+  return folder .. ": " .. n .. " control values, sync / reset / off-on" .. (m.TransferDef and " / export-import" or "") .. " ok"
 end'''
 
 bad = 0

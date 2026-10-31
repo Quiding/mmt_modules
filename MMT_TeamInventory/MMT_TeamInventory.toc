@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Team Inventory
 ## Notes: MMT module: the item tooltip shows how many your team has, across all your accounts and characters (bags, bank, mail, equipped). Works next to Baganator / Syndicator.
-## Version: 0.10.5
+## Version: 0.10.6
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
