@@ -762,7 +762,7 @@ print(lua.eval(r"""function(m)
   m.Buff = function(unit, i)
     if unit ~= "player" then return nil end
     if hide then return "secret" end
-    if i == 1 then return "Flurry", 132152, 3, 15, 1015, "player", 12970 end
+    if i == 1 then return "Flurry", 132152, 3, 15, 1025, "player", 12970 end
     if i == 2 then return "Inner Focus", 1, 1, 0, 0, "player", 14751 end
   end
   m.AurasHidden = function() return hide end
@@ -777,6 +777,12 @@ print(lua.eval(r"""function(m)
   m.TrackedReset()
   m.M.store.auraIds = nil
   m.ScanGroup()                                     -- readable: IDs learned
+  -- Forever: the by-ID answer is "nothing" while hidden - nothing may turn missing
+  hide = true
+  m.ScanGroup()
+  assert(m.State("Me-Realm", fl) == "buff", "a blind by-ID answer marked Flurry missing")
+  hide = false
+  m.ScanGroup()
   assert(m.M.store.auraIds and m.M.store.auraIds.Flurry and m.M.store.auraIds.Flurry[12970], "Flurry's ID not learned")
   m.M.store.auraIds["Inner Focus"] = nil            -- as if never seen readable
   hide = true

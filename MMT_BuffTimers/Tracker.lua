@@ -125,10 +125,35 @@ local function IsGroupSource(source)
     return type(source) == "string" and (source == "player" or source:find("^party%d") or source:find("^raid%d")) and true or nil
 end
 
+-- a buff kept from an earlier read whose time has run out (seen last before the
+-- game hid the auras: it fell off since)
+local function Expired(a)
+    return a.start and a.dur and GetTime() > a.start + a.dur + 0.5 or false
+end
+
+-- On Forever the by-ID answer is "nothing" for every aura while they're hidden (the user's
+-- probe: Battle Shout on, found 0 in combat, found while readable). So an answer only
+-- counts once it found something while hidden at least once this session: until then a
+-- "nothing" would wrongly mark every tracked buff missing in combat (0.24.0 did).
+local byIdWorks = false
+
 -- the unit's tracked buffs asked for one by one (auras hidden); nil when the game can't
 local function ReadByIds(unit, key)
     local known = M.store.auraIds
     if not known or not (C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID) then return nil end
+    if not byIdWorks then
+        -- one probe: any tracked buff that unit had before the fight
+        for name, o in pairs(mod.auras[key] or {}) do
+            local ids = known[name]
+            if ids and not Expired(o) then
+                for id in pairs(ids) do
+                    if mod.AuraBySpellID(unit, id) then byIdWorks = true break end
+                end
+            end
+            if byIdWorks then break end
+        end
+        if not byIdWorks then return nil end
+    end
     local old, t, asked = mod.auras[key] or {}, {}, {}
     for name, ids in pairs(known) do
         if Tracked(name) then
@@ -343,12 +368,6 @@ end
 
 -- returns "buff", start, duration, count[, matched name, icon (patterns)]  or
 -- "missing"  or nil (member not in the group)
--- a buff kept from an earlier read whose time has run out (seen last before the
--- game hid the auras: it fell off since)
-local function Expired(a)
-    return a.start and a.dur and GetTime() > a.start + a.dur + 0.5 or false
-end
-
 function mod.State(key, e)
     if mod.testUntil and GetTime() < mod.testUntil then return "buff", mod.testUntil - 10, 10, 1 end
     if mod.preview then
