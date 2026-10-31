@@ -242,6 +242,7 @@ end
 
 -- the spec set by hand for a member (this module, else the other one), if it fits their class
 local OTHER = (M.name == "CooldownTimers") and "BuffTimers" or "CooldownTimers"
+local OTHER_TITLE = (OTHER == "BuffTimers") and "Buff Timers" or "Cooldown Timers"
 function mod.SetSpec(key, class)
     local own = M.db.specSet and M.db.specSet[key]
     local other = MMT.db and MMT.db.modules and MMT.db.modules[OTHER]
@@ -318,9 +319,11 @@ function mod.SpecsTab(panel, status, changed)
             local sets = Sets()
             local saved = sets[key]
             sets[key] = nil
-            local auto = not mod.SetSpec(key, class) and mod.SpecOf(key)
+            -- what Auto means now: a spec set in the other module, else the talents
+            local auto = mod.SpecOf(key)
+            local from = mod.SetSpec(key, class) and ("set in " .. OTHER_TITLE) or "talents"
             sets[key] = saved
-            local c = { { value = "AUTO", text = auto and ("Auto: " .. SpecName(class, auto:match(":(.+)$")) .. " (talents)")
+            local c = { { value = "AUTO", text = auto and ("Auto: " .. SpecName(class, auto:match(":(.+)$")) .. " (" .. from .. ")")
                 or "Auto (class list until known)" } }
             for _, s in ipairs(mod.SpecsOf(class or "")) do c[#c + 1] = { value = s, text = SpecName(class, s) } end
             return c

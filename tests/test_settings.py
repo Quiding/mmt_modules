@@ -26,6 +26,7 @@ setmetatable(_G, { __index = function(_, k) if MISSING[k] then return nil end re
 
 -- columns remember every getter / setter / choices; they are used after the page is built
 USES = {}
+CYCLES = {}   -- [label] = choices of the Cycle with that label
 function USE(fn) USES[#USES + 1] = fn end
 local function Choices(c) if type(c) == "function" then c = c() end return c end
 local function Column()
@@ -38,6 +39,7 @@ local function Column()
   rawset(col, "Check", function(_, text, g, s) assert(type(g) == "function" and type(s) == "function", "check " .. text .. ": no getter/setter"); USE(function() s(g()) end); return new() end)
   rawset(col, "Slider", function(_, text, lo, hi, step, g, s) assert(type(g) == "function" and type(s) == "function", "slider " .. text); USE(function() local v = g(); assert(type(v) == "number", "slider " .. text .. " value " .. tostring(v)); s(v) end); return new() end)
   rawset(col, "Cycle", function(_, text, choices, g, s)
+    CYCLES[text] = choices
     assert(type(g) == "function" and type(s) == "function", "cycle " .. text .. ": no getter/setter")
     USE(function()
     local list = Choices(choices)
@@ -115,5 +117,12 @@ for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_T
       if m.OpenScales then m.OpenScales() end  -- Pawn Compare's scale window
       if m.OpenAuras then m.OpenAuras() end    -- Quality of life's send windows
       if m.OpenEui then m.OpenEui() end
+      -- Specs tab: Auto names a spec set in the other module as such (it showed "until known")
+      if folder == "MMT_CooldownTimers" then
+        MMT.db.modules = { BuffTimers = { specSet = { ["Anna-Smith"] = "ENH" } } }
+        local auto = CYCLES["Anna-Smith"]()[1].text
+        assert(auto == "Auto: Enhancement (set in Buff Timers)", "Specs tab Auto: " .. auto)
+        MMT.db.modules = nil
+      end
       return folder .. ": settings page built, " .. #USES .. " options read and set"
     end''')(mod, folder))
