@@ -23,6 +23,20 @@ local function Check(col, text, key, tip)
     col:Check(text, g, s, tip)
 end
 
+-- the settings of each tab, for "Reset..." in the share bar (SettingsKit; tests check every default is in one)
+mod.TAB_KEYS = {
+    bars = { "shown", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "showNames", "fullNames",
+        "showTimers", "glowActive", "showBuffs", "hideReady", "hideUnknown", "hideUnseenItems", "point", "hidden" },
+    ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
+        "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
+    ["look.timer"] = { "timerSize", "timerColor", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor",
+        "urgentSecs", "urgentTextColor", "urgentSwipeColor" },
+    lists = { "lists" },
+    specs = { "specSet", "specLists" },
+    ["look.icons"] = { "iconSize", "iconZoom", "spacing", "readyAlpha", "cdAlpha" },
+    frames = { "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers" },
+}
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)

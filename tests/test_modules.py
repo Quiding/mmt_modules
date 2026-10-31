@@ -21,6 +21,14 @@ def load(path, mod):
         open(path, encoding='utf-8').read(), path)
     chunk("x", mod)
 
+# the settings tabs (Settings.lua in the game): every setting on Bars, the lists on their own; defaults = the db
+TABS = lua.eval(r'''function(m)
+  local bars = {}
+  for k in pairs(m.M.db) do if k ~= "lists" then bars[#bars + 1] = k end end
+  m.TAB_KEYS = { bars = bars, lists = { "lists" } }
+  m.M.defaults = MMT.CopyTable(m.M.db)
+end''')
+
 def new_mod(setup):
     return lua.eval('function(setup) local m = {} setup(m) return m end')(lua.eval(setup))
 
@@ -41,7 +49,7 @@ TEST = r'''function(mod, prefix, getdef, entryNeedsT)
   assert(same(saved, db), "import did not restore the settings")
   for _, s in ipairs(def.sections) do assert(s.set("junk") == false, "accepted junk for " .. s.id) end
   local look
-  for _, s in ipairs(def.sections) do if s.id == "look" then look = s end end
+  for _, s in ipairs(def.legacy) do if s.id == "look" then look = s end end   -- (a section of older strings)
   look.set({ iconSize = "huge", shown = 5, attach = "EVERYWHERE" })
   assert(db.iconSize == saved.iconSize and db.shown == saved.shown, "wrong types taken")
   if db.attach then assert(db.attach == "OFF", "bad choice taken") end
@@ -61,7 +69,9 @@ cd = new_mod(r'''function(m)
   m.BuildIndex = function() end
   m.window = { Refresh = function() end }
 end''')
+TABS(cd)
 load('MMT_CooldownTimers/ListKeys.lua', cd)
+load('MMT_CooldownTimers/TabTransfer.lua', cd)
 load('MMT_CooldownTimers/Export.lua', cd)
 print(lua.eval(TEST)(cd, 'MMTCD1', captured, True))
 
@@ -73,7 +83,9 @@ bf = new_mod(r'''function(m)
                  point = {"CENTER","CENTER",-200,0} } }
   m.BuildIndex = function() end; m.ScanGroup = function() end; m.Apply = function() end
 end''')
+TABS(bf)
 load('MMT_BuffTimers/ListKeys.lua', bf)
+load('MMT_BuffTimers/TabTransfer.lua', bf)
 load('MMT_BuffTimers/Export.lua', bf)
 print(lua.eval(TEST)(bf, 'MMTBF1', captured, False))
 

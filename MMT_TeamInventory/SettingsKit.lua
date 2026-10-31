@@ -6,6 +6,8 @@
 --   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export,
 --                                          Reset to defaults, the core's "Sync to team"
 --   mod.ResetSettings()                    every setting of the module back to its default
+--   mod.TAB_KEYS = { [tab id or "tab.sub"] = { M.db keys } }  (optional): the share bar's reset becomes
+--                                          "Reset..." = this tab's settings or everything; mod.ResetKeys(keys)
 --   mod.LookTab(panel, Opt, apply)         -> left, right column, for the module's own look options
 --   mod.LookIconSizes / LookWindowSizes(col, Opt), LookText(col, Opt, apply, timer), LookFrame(col, Opt, apply)
 --                                          the pieces of LookTab, for modules that split Look into sub-tabs
@@ -17,7 +19,8 @@
 local _, mod = ...
 local MMT = MMT
 
-local current = {}   -- [page] = selected tab id (kept while the game runs)
+local current = {}   -- [mod or opts.key] = selected tab id (kept while the game runs)
+local tabText = {}   -- [tab id] = its button text
 local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 
 -- list = { { id, text [, blocked = function() return why | nil end] }, ... }; a blocked tab
@@ -41,6 +44,7 @@ function mod.Tabs(page, list, opts)
         end
     end
     for i, t in ipairs(list) do
+        tabText[t[1]] = t[2]
         local b = UI.Button(page, bw, t[2], function() if not Blocked(t) then Show(t[1]) end end)
         b:SetPoint("TOPLEFT", (i - 1) * (bw + 8), 0)
         if t.blocked then
@@ -81,16 +85,60 @@ function mod.ShareBar(page, status)
     local ie = UI.Button(page, 176, "Import / Export...", function() mod.OpenTransfer() end)
     ie:SetPoint("BOTTOMLEFT", 0, 2)
     UI.Tooltip(ie, "Import / Export", "Choose parts and copy them as a text string, or paste one to take it over.")
-    local reset = MMT.ConfigHelpers.ConfirmButton(page, 150, "Reset to defaults", function()
-        mod.ResetSettings()
-        status.Show_("Every setting is back to its default.")
-    end)
+    local reset
+    if mod.TAB_KEYS then
+        -- this tab (or sub-tab) only, or everything; asked once more before it happens
+        reset = UI.Button(page, 150, "Reset...", function(self)
+            local id, name = mod.CurrentTab()
+            local items = {}
+            if mod.TAB_KEYS[id] then items[#items + 1] = { value = "TAB", text = "This tab: " .. name } end
+            items[#items + 1] = { value = "ALL", text = "Everything (all tabs)" }
+            UI.OpenList(self, items, nil, function(v)
+                local text = v == "TAB" and ("Reset the settings of " .. name .. " to their defaults?")
+                    or ("Reset every setting of " .. mod.M.title .. " (all tabs, lists, window position) to its default?")
+                UI.Confirm(text, "Reset", function()
+                    if v == "TAB" then
+                        mod.ResetKeys(mod.TAB_KEYS[id])
+                        status.Show_(name .. " is back to its defaults.")
+                    else
+                        mod.ResetSettings()
+                        status.Show_("Every setting is back to its default.")
+                    end
+                end, "Cancel")
+            end)
+        end)
+        UI.Tooltip(reset, "Reset to defaults", "The settings of the tab you are on (a Look sub-tab: just that one), or every setting of this module.")
+    else
+        reset = MMT.ConfigHelpers.ConfirmButton(page, 150, "Reset to defaults", function()
+            mod.ResetSettings()
+            status.Show_("Every setting is back to its default.")
+        end)
+        UI.Tooltip(reset, "Reset to defaults", "Puts every setting of this module (all tabs, lists, window position) back to the default of a new profile. Click twice.")
+    end
     reset:SetPoint("LEFT", ie, "RIGHT", 8, 0)
-    UI.Tooltip(reset, "Reset to defaults", "Puts every setting of this module (all tabs, lists, window position) back to the default of a new profile. Click twice.")
     status:ClearAllPoints()
     status:SetPoint("BOTTOMLEFT", 0, 32)
     status:SetWidth(W)
     return ie
+end
+
+-- the tab shown now: "look.timer" for a sub-tab (its tabs were made with opts.key = the tab's id), and its name
+function mod.CurrentTab()
+    local t = current[mod]
+    local sub = t and current[t]
+    if sub then return t .. "." .. sub, (tabText[t] or t) .. ": " .. (tabText[sub] or sub) end
+    return t, tabText[t] or tostring(t)
+end
+
+-- some settings back to their defaults (missing in the defaults = cleared, e.g. font)
+function mod.ResetKeys(keys)
+    local M = mod.M
+    for _, k in ipairs(keys) do
+        local v = M.defaults and M.defaults[k]
+        M.db[k] = v ~= nil and MMT.CopyTable(v) or nil
+    end
+    if M.OnProfileChanged then M.OnProfileChanged(M) end
+    if MMT.RefreshConfig then MMT.RefreshConfig() end
 end
 
 -- every setting back to the default (the same table, so the core's profile keeps it)

@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.17.2 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.22.2 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.18.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.23.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -81,7 +81,10 @@ colour and opacity of the countdown circle that runs round an icon, and other co
 seconds are left ("soon" and "urgent", each with its own number of seconds; 0 = off).
 
 Every settings page has **Sync to team** (MMT's own: the other clients are asked first) and
-**Reset to defaults** (click twice). Cooldown Timers, Buff Timers and Totems also have **Import / Export** as a
+**Reset to defaults** (click twice). In Cooldown Timers and Buff Timers it is **Reset...**: the tab you are on (a Look
+sub-tab: just that one) or everything, asked once more; their **Import / Export** has a section per tab (Bars, Look:
+Window / Icons / Timer, Tracked lists - spec lists included -, Specs, Party frames), so every setting can travel; strings
+exported before still import. Cooldown Timers, Buff Timers and Totems also have **Import / Export** as a
 text string, a growth direction (top > down, down > top, left > right, right > left) and
 background / border / font options.
 

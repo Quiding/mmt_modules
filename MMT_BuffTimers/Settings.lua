@@ -120,6 +120,23 @@ function mod.OpenFilter(e, owner, changed)
     return f
 end
 
+-- the settings of each tab, for "Reset..." in the share bar (SettingsKit; tests check every default is in one)
+mod.TAB_KEYS = {
+    bars = { "shown", "attach", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "hideUnlearned",
+        "blessingLimit", "hideNoCaster", "showNames", "fullNames", "showTimers", "point", "hidden", "allBar", "allExclude",
+        "glowAlerts" },
+    ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
+        "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
+    ["look.timer"] = { "timerSize", "timerColor", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor",
+        "urgentSecs", "urgentTextColor", "urgentSwipeColor" },
+    lists = { "lists" },
+    specs = { "specSet", "specLists" },
+    ["look.icons"] = { "iconSize", "iconZoom", "spacing", "allMissingLook", "glowMissing", "activeAlpha", "missingAlpha",
+        "allCount", "allCountSize", "allCountColor" },
+    frames = { "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers",
+        "allOnFrames", "allX", "allY" },
+}
+
 -- "Where" (Bars and Party frames tabs): own window, on the Cooldowns bars, or beside the party frames
 local WHERE = {
     { value = "OFF", text = "Own window" },

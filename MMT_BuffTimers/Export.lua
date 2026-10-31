@@ -1,47 +1,11 @@
 -- MMT Buffs: what can be exported / imported (Transfer.lua does the string
--- and the dialog). Every value is checked before it is taken over.
+-- and the dialog): one section per settings tab (TabTransfer.lua), the lists
+-- by SetLists. Every value is checked before it is taken over.
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "attach", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
-    "iconSize", "iconZoom", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
-    "timerSize", "missingAlpha", "activeAlpha", "glowMissing", "glowAlerts", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor", "urgentSecs", "urgentTextColor", "urgentSwipeColor", "allMissingLook", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers",
-    "allOnFrames", "allX", "allY" }
-local CHOICES = { attach = { OFF = true, LEFT = true, RIGHT = true }, allMissingLook = { PLAIN = true, RED = true, GREY = true },
-    framesSide = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }, framesOthers = { WINDOW = true, HIDE = true } }
-
-local function GetKeys(keys)
-    local t = {}
-    for _, k in ipairs(keys) do t[k] = M.db[k] end
-    return t
-end
-
--- takes over values whose type (and, for choices, value) matches
-local function SetKeys(keys, data)
-    if type(data) ~= "table" then return false, "unreadable" end
-    local n = 0
-    for _, k in ipairs(keys) do
-        local v = data[k]
-        if v ~= nil and k == "font" and type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
-        if k == "growth" then
-            if v == "DOWN" or v == "UP" or v == "RIGHT" or v == "LEFT" then
-                M.db.growth, M.db.vertical = v, (v == "RIGHT" or v == "LEFT"); n = n + 1
-            end
-            v = nil
-        end
-        if type(v) == "table" and k:find("Color$") then
-            v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
-        end
-        if v ~= nil and k ~= "font" and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then
-            M.db[k] = v; n = n + 1
-        end
-    end
-    return n > 0, n == 0 and "no known settings" or nil
-end
-
--- replaces the lists (class, role, character) in the string, keeps the others
 -- where an icon was dragged on the bars (ListKeys PlaceIcon): onto the Cooldowns bars, after the icon `after`
 local function Place(t, e)
     t.host = e.host == "MMTCooldowns" and e.host or nil
@@ -74,26 +38,12 @@ local function SetLists(data)
     return n > 0, n == 0 and "no class lists" or nil
 end
 
-local ALLROW = { "allBar", "allMissingLook", "allCount", "allCountSize", "allCountColor" }
-
-local function GetAllRow()
-    local t = GetKeys(ALLROW)
-    t.exclude = MMT.CopyTable(M.db.allExclude)
-    return t
-end
-
+-- the All bar section of strings before 0.23 (its member list was "exclude")
 local function SetAllRow(data)
     if type(data) ~= "table" then return false, "unreadable" end
-    local ok = SetKeys(ALLROW, data)
-    if type(data.exclude) == "table" then
-        local ex = {}
-        for key, v in pairs(data.exclude) do
-            if type(key) == "string" and v == true then ex[key] = true end
-        end
-        M.db.allExclude = ex
-        ok = true
-    end
-    return ok, not ok and "no known settings" or nil
+    local d = MMT.CopyTable(data)
+    d.allExclude = d.exclude
+    return mod.SetTabKeys(mod.AllTabKeys(), d)
 end
 
 local function SetPosition(p)
@@ -108,13 +58,12 @@ function mod.TransferDef()
     return {
         title = "Buff Timers",
         prefix = "MMTBF1",
-        sections = {
-            { id = "lists", label = "Tracked buffs", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },
-            { id = "look", label = "Window & look", get = function() return GetKeys(LOOK) end,
-              set = function(d) return SetKeys(LOOK, d) end },
-            { id = "allrow", label = "All bar", get = GetAllRow, set = SetAllRow },
-            { id = "position", label = "Position", get = function() return MMT.CopyTable(M.db.point) end,
-              set = SetPosition },
+        sections = mod.TabSections({ lists = { get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists } }),
+        -- what strings before 0.23 called their sections
+        legacy = {
+            { id = "look", label = "Window & look", set = function(d) return mod.SetTabKeys(mod.AllTabKeys(), d) end },
+            { id = "allrow", label = "All bar", set = SetAllRow },
+            { id = "position", label = "Position", set = SetPosition },
         },
         after = function()
             mod.BuildIndex()

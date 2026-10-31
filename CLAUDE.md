@@ -118,7 +118,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.17.2) / MMT_BuffTimers (v0.22.2) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.0) / MMT_BuffTimers (v0.23.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -331,6 +331,14 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   over the team, removed from member rows; stays in the Buffs window even when attached. A member row with no icons is left out (own window).
 - Growth direction `growth` (DOWN/UP/RIGHT/LEFT; older profiles: `vertical`): `MMTIconBars.Growth(c)`,
   reversed member order for UP/LEFT, frame pinned at `ANCHOR[growth]` (`lib.PointAt`), also in Totems.
+- Per-tab reset + export (Cooldowns 0.18.0 / Buffs 0.23.0): each Settings.lua has `mod.TAB_KEYS = { bars, ["look.window"],
+  ["look.icons"], ["look.timer"], lists, specs, frames = { M.db keys } }` (test_iconmove checks every default key is in one
+  and is exported). SettingsKit: with TAB_KEYS the share bar's reset is "Reset..." -> UI.OpenList (this tab / everything)
+  -> UI.Confirm; `mod.CurrentTab()` = "tab" or "tab.sub" (sub-tabs made with opts.key = the tab id) + name, `mod.ResetKeys(keys)`;
+  without TAB_KEYS (Totems) the old ConfirmButton. `TabTransfer.lua` (identical in both): `mod.TabSections(special)` = one
+  Transfer section per tab in ORDER (lists via the module's SetLists), `mod.SetTabKeys` takes values whose type matches the
+  default (+ CHOICES, colours, point, specSet, hidden / allExclude cleaned); `mod.AllTabKeys()`. Transfer v5 `def.legacy` =
+  sections of older strings (look / position / allrow) imported when present, no checkbox.
 - Settings sync = the CORE's (`sync = true` in NewModule; Totems `syncExclude = { "keybind" }`):
   button bottom right of the page, `/mmt sync <module>`, the core sends M.db, asks the receiver,
   replaces M.db, runs OnProfileChanged then `M.OnSyncReceived` (Cooldowns: ShareCheck +

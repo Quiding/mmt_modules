@@ -1,42 +1,10 @@
 -- MMT Cooldowns: what can be exported / imported (Transfer.lua does the
--- string and the dialog). Every value is checked before it is taken over.
+-- string and the dialog): one section per settings tab (TabTransfer.lua), the
+-- lists by SetLists. Every value is checked before it is taken over.
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
-
-local LOOK = { "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "timerColor", "font", "shown", "locked", "clickThrough", "vertical", "growth", "includeSelf", "onlyOnline",
-    "iconSize", "iconZoom", "spacing", "rowGap", "scale", "bgAlpha", "showNames", "fullNames", "nameSize", "showTimers",
-    "timerSize", "readyAlpha", "cdAlpha", "glowActive", "hideReady", "hideUnknown",
-    "hideUnseenItems", "showBuffs", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor", "urgentSecs", "urgentTextColor", "urgentSwipeColor", "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers" }
-local CHOICES = { framesSide = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }, framesOthers = { WINDOW = true, HIDE = true } }
-
-local function GetKeys(keys)
-    local t = {}
-    for _, k in ipairs(keys) do t[k] = M.db[k] end
-    return t
-end
-
--- takes over values whose type matches the current setting
-local function SetKeys(keys, data)
-    if type(data) ~= "table" then return false, "unreadable" end
-    local n = 0
-    for _, k in ipairs(keys) do
-        local v = data[k]
-        if v ~= nil and k == "font" and type(v) == "string" then M.db.font = v ~= "" and v or nil; n = n + 1 end
-        if k == "growth" then
-            if v == "DOWN" or v == "UP" or v == "RIGHT" or v == "LEFT" then
-                M.db.growth, M.db.vertical = v, (v == "RIGHT" or v == "LEFT"); n = n + 1
-            end
-            v = nil
-        end
-        if type(v) == "table" and k:find("Color$") then
-            v = { r = tonumber(v.r) or 0, g = tonumber(v.g) or 0, b = tonumber(v.b) or 0 }
-        end
-        if v ~= nil and k ~= "font" and type(v) == type(M.db[k]) and (not CHOICES[k] or CHOICES[k][v]) then M.db[k] = v; n = n + 1 end
-    end
-    return n > 0, n == 0 and "no known settings" or nil
-end
 
 -- replaces the lists (class, role, character) in the string, keeps the others
 local function SetLists(data)
@@ -73,12 +41,11 @@ function mod.TransferDef()
     return {
         title = "Cooldown Timers",
         prefix = "MMTCD1",
-        sections = {
-            { id = "lists", label = "Tracked lists", get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists },
-            { id = "look", label = "Window & look", get = function() return GetKeys(LOOK) end,
-              set = function(d) return SetKeys(LOOK, d) end },
-            { id = "position", label = "Position", get = function() return MMT.CopyTable(M.db.point) end,
-              set = SetPosition },
+        sections = mod.TabSections({ lists = { get = function() return MMT.CopyTable(M.db.lists) end, set = SetLists } }),
+        -- what strings before 0.18 called their sections
+        legacy = {
+            { id = "look", label = "Window & look", set = function(d) return mod.SetTabKeys(mod.AllTabKeys(), d) end },
+            { id = "position", label = "Position", set = SetPosition },
         },
         after = function()
             mod.BuildIndex()

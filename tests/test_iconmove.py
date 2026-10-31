@@ -60,6 +60,7 @@ function Drag(row, j, to, onto)
   b.scripts.OnDragStop(b)
   HOVER = nil
 end
+function Section(def, id) for _, x in ipairs(def.sections) do if x.id == id then return x end end end
 function Find(list, id) for _, e in ipairs(list) do if e.id == id then return e end end end
 function ListIds(l) local t = {} for _, e in ipairs(l) do t[#t + 1] = e.id end return table.concat(t, ",") end
 '''
@@ -193,15 +194,59 @@ print(lua.eval(r'''function(cd, bf)
   -- export / import keep the placement, drop nonsense
   b12.host, b12.after = "MMTCooldowns", "c:s2"
   local def = bf.TransferDef()
-  local lists = def.sections[1].get()
+  local lists = Section(def, "lists").get()
   lists.SHAMAN[2].host, lists.SHAMAN[2].after = "Elsewhere", ("x"):rep(200)
-  Check(def.sections[1].set(lists), "import failed")
+  Check(Section(def, "lists").set(lists), "import failed")
   local e1, e2 = BM.db.lists.SHAMAN[1], BM.db.lists.SHAMAN[2]
   Check(e1.id == 12 and e1.host == "MMTCooldowns" and e1.after == "c:s2", "import lost the placement")
   Check(e2.host == nil and e2.after == nil, "import kept a bad placement")
   local cdef = cd.TransferDef()
   CM.db.lists.SHAMAN[1].host, CM.db.lists.SHAMAN[1].after = "MMTBuffs", "b:12"
-  local cl = cdef.sections[1].get()
-  Check(cdef.sections[1].set(cl) and CM.db.lists.SHAMAN[1].host == "MMTBuffs" and CM.db.lists.SHAMAN[1].after == "b:12", "cooldown import lost the placement")
+  local cl = cSection(def, "lists").get()
+  Check(cSection(def, "lists").set(cl) and CM.db.lists.SHAMAN[1].host == "MMTBuffs" and CM.db.lists.SHAMAN[1].after == "b:12", "cooldown import lost the placement")
+  -- "Reset..." (SettingsKit): every default belongs to a tab; a tab resets only its own settings
+  for _, m in ipairs({ cd, bf }) do
+    local covered = {}
+    for _, keys in pairs(m.TAB_KEYS) do for _, k in ipairs(keys) do covered[k] = true end end
+    for k in pairs(m.M.defaults) do Check(covered[k] or k == "takenFrom", m.M.name .. ": " .. k .. " is in no tab's reset") end
+  end
+  CM.db.swipeAlpha, CM.db.iconSize, CM.db.timerSize = 0.3, 40, 20
+  cd.ResetKeys(cd.TAB_KEYS["look.timer"])
+  Check(CM.db.swipeAlpha == 0.8 and CM.db.timerSize == 13 and CM.db.iconSize == 40, "Timer reset touched the wrong settings")
+  cd.ResetKeys(cd.TAB_KEYS["look.icons"])
+  Check(CM.db.iconSize == 28, "Icons reset")
+  BM.db.font = "Friz"
+  bf.ResetKeys(bf.TAB_KEYS["look.window"])
+  Check(BM.db.font == nil and #BM.db.lists.SHAMAN > 0, "Window reset: font not cleared, or the lists went")
+  -- export: a section per settings tab, together every setting; a round trip brings them all back
+  for _, m in ipairs({ cd, bf }) do
+    local d = m.TransferDef()
+    local seen = {}
+    for _, x in ipairs(d.sections) do
+      local got = x.get()
+      for _, k in ipairs(m.TAB_KEYS[x.id]) do if k ~= "lists" then seen[k] = got[k] ~= nil or m.M.db[k] == nil end end
+      if x.id == "lists" then seen.lists = type(got.SHAMAN) == "table" end
+    end
+    for k in pairs(m.M.defaults) do Check(seen[k] or k == "takenFrom", m.M.name .. ": " .. k .. " isn't exported") end
+  end
+  -- specs: set by hand + spec lists flag; timer colours; then import them back over changed values
+  local d = bf.TransferDef()
+  BM.db.specSet = { ["Bob-Stone"] = "ENH" }; BM.db.specLists = true; BM.db.urgentSecs = 7
+  BM.db.lists["SPEC:SHAMAN:ENH"] = { { id = 11 } }
+  local saved = {}
+  for _, x in ipairs(d.sections) do saved[x.id] = x.get() end
+  BM.db.specSet, BM.db.specLists, BM.db.urgentSecs, BM.db.lists["SPEC:SHAMAN:ENH"] = {}, false, 0, nil
+  for _, x in ipairs(d.sections) do Check(x.set(saved[x.id]) ~= false, "import of " .. x.id .. " failed") end
+  Check(BM.db.specSet["Bob-Stone"] == "ENH" and BM.db.specLists == true and BM.db.urgentSecs == 7, "specs / timer not imported")
+  Check(BM.db.lists["SPEC:SHAMAN:ENH"] and BM.db.lists["SPEC:SHAMAN:ENH"][1].id == 11, "spec list not imported")
+  -- bad values are left out
+  Check(not Section(d, "frames").set({ framesSide = "MIDDLE", framesX = "far" }), "nonsense imported")
+  -- strings from before (sections look / allrow / position) still import
+  local legacy = {}
+  for _, l in ipairs(d.legacy) do legacy[l.id] = l end
+  BM.db.iconSize, BM.db.allExclude = 28, {}
+  Check(legacy.look.set({ iconSize = 33, growth = "LEFT" }) and BM.db.iconSize == 33 and BM.db.vertical == true, "old look section")
+  Check(legacy.allrow.set({ allBar = true, exclude = { ["Bob-Stone"] = true } }) and BM.db.allExclude["Bob-Stone"], "old All bar section")
+  Check(legacy.position.set({ "TOPLEFT", "TOPLEFT", 5, -5 }) and BM.db.point[3] == 5, "old position section")
   return "icon moves between bars ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))

@@ -10,9 +10,10 @@
 --       title = "Cooldowns", prefix = "MMTCD1",
 --       sections = { { id = "lists", label = "Tracked lists", get = fn() -> data,
 --                      set = fn(data) -> ok, err }, ... },
+--       legacy = { { id, label, set }, ... },   -- (v5) sections of older strings: imported when present, no checkbox
 --   }
 
-local VERSION = 4
+local VERSION = 5
 if MMTTransfer and (MMTTransfer.version or 0) >= VERSION then return end
 
 local lib = MMTTransfer or {}
@@ -237,6 +238,14 @@ local function Build()
                 else
                     skipped[#skipped + 1] = s.label
                 end
+            end
+        end
+        -- (v5) sections an older version exported under other names
+        for _, s in ipairs(f.def.legacy or {}) do
+            if secs[s.id] ~= nil then
+                local ok, res, why = pcall(s.set, secs[s.id])
+                if ok and res ~= false then done[#done + 1] = s.label
+                else failed[#failed + 1] = s.label .. (why and (" (" .. why .. ")") or "") end
             end
         end
         if #done == 0 and #failed == 0 then
