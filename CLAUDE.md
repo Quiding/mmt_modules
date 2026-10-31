@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.5) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.6) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -204,6 +204,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   redraws only on a change or when the count of expired kept buffs moves; Cooldowns' showBuffs UNIT_AURA redraw is
   gathered into one per 0.5 s. Test stubs: test_settings now defines `wipe` (the catch-all stub made it a no-op that
   returned a stub - caches never cleared in tests).
+  0.25.6: still ~27 MB/min in game -> /mmtbt mem also prints KB/s per source: `mod.MemTally(what, kb)` from
+  collectgarbage("count") deltas around Buffs' UNIT_AURA scans, every MMTIconBars window's Refresh (wrapped on the
+  instance by `mod.MemWrap`, 3 s after PLAYER_ENTERING_WORLD - keeps Live's hook) and lib.CheckFrames.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login

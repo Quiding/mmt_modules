@@ -27,6 +27,43 @@ end
 
 local function MB(kb) return kb and ("%.1f MB"):format(kb / 1024) or "?" end
 
+-- what each part allocates (garbage included): collectgarbage("count") before / after it.
+-- Cheap, always on; the report shows KB per second since the first measured call.
+local tally, since = {}, nil
+function mod.MemTally(what, kb)
+    if kb and kb > 0 then
+        tally[what] = (tally[what] or 0) + kb
+        since = since or GetTime()
+    end
+end
+
+local function Measured(what, fn)
+    return function(...)
+        local c = collectgarbage("count")
+        local a, b, d = fn(...)
+        mod.MemTally(what, collectgarbage("count") - c)
+        return a, b, d
+    end
+end
+
+-- the shared bar library's work, whoever asked for it: each window's redraws, the party-frame check
+local wrapped = {}
+function mod.MemWrap()
+    local lib = MMTIconBars
+    if not lib then return end
+    for name, w in pairs(lib.windows or {}) do
+        if not wrapped[w] then
+            wrapped[w] = true
+            w.Refresh = Measured("redraw " .. name, w.Refresh)   -- keeps a hook already on it (Live.lua)
+        end
+    end
+    if not wrapped.check and lib.CheckFrames then
+        wrapped.check = true
+        lib.CheckFrames = Measured("party-frame check", lib.CheckFrames)
+    end
+end
+M:On("PLAYER_ENTERING_WORLD", function() if C_Timer and C_Timer.After then C_Timer.After(3, mod.MemWrap) end end)
+
 function mod.MemoryReport(say)
     if UpdateAddOnMemoryUsage then UpdateAddOnMemoryUsage() end
     local bt, ct = Usage("MMT_BuffTimers"), Usage("MMT_CooldownTimers")
@@ -45,4 +82,13 @@ function mod.MemoryReport(say)
     say(("tables: auras %d, store %d, lists %d, search names %d, bar icons %d in %d windows, live overlays %d"):format(
         Count(mod.auras, seen, 0), Count(M.store, {}, 0), Count(M.db.lists, {}, 0),
         mod.SearchSize and mod.SearchSize() or 0, icons, windows, mod.LiveCount and mod.LiveCount() or 0))
+    mod.MemWrap()
+    local secs = since and math.max(1, GetTime() - since) or nil
+    local parts = {}
+    for what, kb in pairs(tally) do parts[#parts + 1] = { what, kb } end
+    table.sort(parts, function(a, b) return a[2] > b[2] end)
+    local out = {}
+    for _, p in ipairs(parts) do out[#out + 1] = ("%s %.0f KB/s"):format(p[1], p[2] / secs) end
+    say(secs and ("made per second over %d s: %s"):format(secs, table.concat(out, ", "))
+        or "made per second: nothing measured yet (play a bit, then /mmtbt mem again)")
 end

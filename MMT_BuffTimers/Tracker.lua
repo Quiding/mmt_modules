@@ -299,7 +299,10 @@ end
 
 M:On("UNIT_AURA", function(unit)
     if unit == "player" or (unit and (unit:find("^party%d") or unit:find("^raid%d"))) then
-        if ScanUnit(unit) then mod.Refresh() end
+        local c = collectgarbage("count")
+        local changed = ScanUnit(unit)
+        if mod.MemTally then mod.MemTally("aura scans", collectgarbage("count") - c) end
+        if changed then mod.Refresh() end
     end
 end)
 
