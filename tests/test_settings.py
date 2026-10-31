@@ -27,6 +27,7 @@ setmetatable(_G, { __index = function(_, k) if MISSING[k] then return nil end re
 -- columns remember every getter / setter / choices; they are used after the page is built
 USES = {}
 CYCLES = {}   -- [label] = choices of the Cycle with that label
+CYCLE_GS = {} -- [label] = { getter, setter }
 function USE(fn) USES[#USES + 1] = fn end
 local function Choices(c) if type(c) == "function" then c = c() end return c end
 local function Column()
@@ -40,6 +41,7 @@ local function Column()
   rawset(col, "Slider", function(_, text, lo, hi, step, g, s) assert(type(g) == "function" and type(s) == "function", "slider " .. text); USE(function() local v = g(); assert(type(v) == "number", "slider " .. text .. " value " .. tostring(v)); s(v) end); return new() end)
   rawset(col, "Cycle", function(_, text, choices, g, s)
     CYCLES[text] = choices
+    CYCLE_GS[text] = { g, s }
     assert(type(g) == "function" and type(s) == "function", "cycle " .. text .. ": no getter/setter")
     USE(function()
     local list = Choices(choices)
@@ -117,6 +119,20 @@ for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_T
       if m.OpenScales then m.OpenScales() end  -- Pawn Compare's scale window
       if m.OpenAuras then m.OpenAuras() end    -- Quality of life's send windows
       if m.OpenEui then m.OpenEui() end
+      -- the list editor after "Use spec lists" was turned off / on on the Specs tab
+      if folder == "MMT_CooldownTimers" or folder == "MMT_BuffTimers" then
+        local g, s = CYCLE_GS["List"][1], CYCLE_GS["List"][2]
+        m.M.db.specLists = true
+        s("SPEC:SHAMAN:ENH")
+        m.M.db.specLists = false
+        page.OnRefresh()
+        assert(g() == "SHAMAN", folder .. ": spec list still shown with spec lists off: " .. tostring(g()))
+        m.M.db.specLists = true
+        m.M.db.specSet = { ["Anna-Smith"] = "ELE" }
+        page.OnRefresh()
+        assert(g() == "SPEC:SHAMAN:ELE", folder .. ": own spec list not shown with spec lists on: " .. tostring(g()))
+        m.M.db.specLists, m.M.db.specSet = false, nil
+      end
       -- Specs tab: Auto names a spec set in the other module as such (it showed "until known")
       if folder == "MMT_CooldownTimers" then
         MMT.db.modules = { BuffTimers = { specSet = { ["Anna-Smith"] = "ENH" } } }

@@ -156,7 +156,7 @@ M.Page = function(_, page)
     local class = mod.OwnListKey()
     LS:Header("Tracked spells & items")
     local list
-    LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
+    local pick = LS:Cycle("List", mod.ListChoices, function() return class end, function(v) class = v; list:Render(M.db.lists[class] or {}) end)
 
     local EditSeconds
     local function Changed()
@@ -299,8 +299,19 @@ M.Page = function(_, page)
     end)
     RS:Add(def, UI.ROW + 2)
 
-    page.OnRefresh = function()
+    -- "Use spec lists" may have changed on the Specs tab: show a list that's
+    -- offered (the page's widgets refresh before OnRefresh, so the dropdown again)
+    local function CheckListKey()
         class = mod.EditorListKey(class)
+        pick.Refresh()
+    end
+    lp:HookScript("OnShow", function()
+        local was = class
+        CheckListKey()
+        if class ~= was then list:Render(M.db.lists[class] or {}) end
+    end)
+    page.OnRefresh = function()
+        CheckListKey()
         list:Render(M.db.lists[class] or {})
         ArrangeText()
     end
