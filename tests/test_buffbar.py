@@ -870,7 +870,7 @@ print(lua.eval(r"""function(m)
   assert(#made == before, "an overlay was built in combat")
   local lines = {}
   m.LiveReport(function(l) lines[#lines + 1] = l end)
-  assert(#lines == 3 and lines[2]:find("drawing 1"), "report: " .. tostring(lines[2]))
+  assert(#lines == 4 and lines[2]:find("drawing 1"), "report: " .. tostring(lines[2]))
   -- the icon underneath: the missing look
   local under
   for _, w in pairs(MMTIconBars.windows) do

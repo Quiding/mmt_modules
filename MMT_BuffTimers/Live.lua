@@ -100,14 +100,21 @@ local function Build(ov, button)
     -- the countdown reaches 0 a moment before the game takes the aura away: the plain icon
     -- flashed up in between. Blank once the timer is done, back with the next countdown or
     -- the next aura the game puts in the slot (the icon underneath shows meanwhile)
-    local function Seen(on)
-        local a = on and 1 or 0
-        for _, r in ipairs({ bg, icon, stacks }) do pcall(r.SetAlpha, r, a) end
+    local function Seen(on, why)
+        local hs = mod.liveHooks
+        hs[why] = (hs[why] or 0) + 1
+        ov.blank = not on
+        -- the whole widget (ours) first, the button's own pieces as well
+        local ok = pcall(ov.container.SetAlpha, ov.container, on and (ov.alpha or 1) or 0)
+        if not ok then hs.blocked = (hs.blocked or 0) + 1 end
+        for _, r in ipairs({ bg, icon, stacks }) do pcall(r.SetAlpha, r, on and 1 or 0) end
     end
-    pcall(cd.HookScript, cd, "OnCooldownDone", function() Seen(false) end)
-    pcall(cd.HookScript, cd, "OnShow", function() Seen(true) end)
-    pcall(button.HookScript, button, "OnShow", function() Seen(true) end)
+    pcall(cd.HookScript, cd, "OnCooldownDone", function() Seen(false, "done") end)
+    pcall(cd.HookScript, cd, "OnHide", function() Seen(false, "cdHide") end)
+    pcall(cd.HookScript, cd, "OnShow", function() Seen(true, "cdShow") end)
+    pcall(button.HookScript, button, "OnShow", function() Seen(true, "show") end)
 end
+mod.liveHooks = {}
 
 local function Style(ov, b)
     -- the look of the bar it sits on: active opacity (not the missing one of the icon
@@ -116,7 +123,8 @@ local function Style(ov, b)
     local cfg = i.look or M.db
     local c = ov.container
     if c.SetIgnoreParentAlpha then pcall(c.SetIgnoreParentAlpha, c, true) end
-    c:SetAlpha(i.activeAlpha or cfg.activeAlpha or 1)
+    ov.alpha = i.activeAlpha or cfg.activeAlpha or 1
+    if not ov.blank then c:SetAlpha(ov.alpha) end
     local z = (tonumber(cfg.iconZoom) or 8) / 100
     if ov.icon then ov.icon:SetTexCoord(z, 1 - z, z, 1 - z) end
     local cd = ov.cooldown
@@ -252,6 +260,9 @@ function mod.LiveReport(say)
         tostring(mod.live), tostring(mod.AurasHidden and mod.AurasHidden())))
     say(("overlays: made %d, failed %d, set up %d, drawing %d%s"):format(stats.made, stats.failed, set, on,
         stats.err and (" - last error: " .. stats.err) or ""))
+    local hooks = {}
+    for k, n in pairs(mod.liveHooks) do hooks[#hooks + 1] = k .. " " .. n end
+    say("countdown signals: " .. (#hooks > 0 and table.concat(hooks, ", ") or "none yet"))
     local names = {}
     for name, ids in pairs(M.store.auraIds or {}) do
         local l = {}

@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.9) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.10) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -213,6 +213,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   0.25.9 (user: at 0 the full icon flashed before the missing look - the countdown ends a moment before the game
   removes the aura): the widget's bg / icon / stacks go alpha 0 on the Cooldown's OnCooldownDone, back on the
   Cooldown's or the slot button's OnShow (HookScript, pcall). Untested in game whether OnShow fires on a recast.
+  0.25.10 (still flashed in game): blanking = the CONTAINER's alpha 0 (ours; the pieces may be locked) on Cooldown
+  OnCooldownDone / OnHide, back (ov.alpha = active opacity) on Cooldown / button OnShow; `mod.liveHooks` counts each
+  signal (+ blocked SetAlpha), shown by /mmtbt live "countdown signals".
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
