@@ -101,6 +101,7 @@ end
 
 M.OnDisable = function()
     mod.StopWeapons()
+    mod.ProbeStop()
     mod.StopHidden()
     mod.Detach()
     mod.window:Hide()
@@ -137,9 +138,11 @@ SlashCmdList.MMTBUFFTIMERS = function(msg)
         MMT.Print("Buffs window %s.", M.db.locked and "locked" or "unlocked")
     elseif msg == "arrange" then
         mod.ToggleArrange()
+    elseif msg == "probe" then
+        mod.ProbeStart()
     elseif msg == "spec" then
         mod.SpecReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     else
-        MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt arrange, /mmtbt spec, /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
+        MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt arrange, /mmtbt spec, /mmtbt probe (what the game hides in combat), /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
     end
 end
