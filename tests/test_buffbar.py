@@ -806,3 +806,83 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "auras by spell ID in combat ok"
 end""")(mod))
+
+# live in combat (Live.lua): each member icon with known spell IDs gets the game's aura widget
+# (a stand-in here) set to the member's unit and the buff's IDs, on only while auras are hidden;
+# the icon underneath shows the missing look
+print(lua.eval(r"""function(m)
+  local oldCF, oldBuff, oldExists, oldHidden = CreateFrame, m.Buff, UnitExists, m.AurasHidden
+  local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
+  local made = {}
+  CreateFrame = function(kind, ...)
+    if kind ~= "AuraContainer" then return oldCF(kind, ...) end
+    local c = oldCF("Frame")
+    local rec = { enabled = false }
+    made[#made + 1] = rec
+    rawset(c, "SetEnabled", function(_, on) rec.enabled = on end)
+    rawset(c, "SetUnit", function(_, u) rec.unit = u end)
+    rawset(c, "AddAuraSlot", function(_, name, filter, opts)
+      rec.slot, rec.filter, rec.ids = name, filter, opts.candidateFilters.includeSpellIDs
+      local b = oldCF("Frame")
+      rawset(b, "SetIcon", function() rec.icon = true end)
+      rawset(b, "SetDurationCooldown", function() rec.cooldown = true end)
+      rawset(b, "SetApplicationCount", function() rec.stacks = true end)
+      opts.initializeFrame(b)
+    end)
+    rawset(c, "SetAuraSlotCandidateFilters", function(_, name, f) rec.ids = f.includeSpellIDs end)
+    return c
+  end
+  local hide = false
+  m.Buff = function(unit, i)
+    if unit ~= "player" then return nil end
+    if hide then return "secret" end
+    if i == 1 then return "Flurry", 132152, 3, 15, 1025, "player", 12970 end
+  end
+  m.AurasHidden = function() return hide end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  local oldMembers = m.Members
+  m.Members = function() return { "Me-Realm" } end
+  local fl = { name = "Flurry*" }
+  m.M.db.lists.ALL = m.M.db.lists.ALL or {}
+  m.M.db.lists["CHAR:Me-Realm"] = { fl }
+  m.TrackedReset()
+  m.ScanGroup()                                     -- readable: Flurry's ID learned
+  local ids = m.LiveIds(fl)
+  assert(ids and ids[12970], "live IDs")
+  m.Redraw()
+  for _, r in ipairs(made) do assert(not r.enabled, "an overlay is on out of combat") end
+  hide = true
+  m.live = true                                     -- combat (SetLive's queued redraw done by hand)
+  m.Redraw()
+  local on
+  for _, r in ipairs(made) do if r.enabled then on = r end end
+  local nIcons, nLive = 0, 0
+  for _, w in pairs(MMTIconBars.windows) do for _, row in ipairs(w.rows) do for _, b in ipairs(row.icons) do
+    nIcons = nIcons + 1; if b.data and b.data.live then nLive = nLive + 1 end end end end
+  assert(on, "no live overlay in combat (" .. #made .. " made, icons " .. nIcons .. " live " .. nLive .. " unit " .. tostring(m.UnitOf("Me-Realm")) .. ")")
+  assert(on.unit == "player" and on.ids[12970] and on.filter == "HELPFUL", "overlay set wrong: " .. tostring(on.unit))
+  assert(on.icon and on.cooldown and on.stacks, "overlay doesn't draw icon / countdown / stacks")
+  -- the icon underneath: the missing look
+  local under
+  for _, w in pairs(MMTIconBars.windows) do
+    for _, row in ipairs(w.rows) do for _, b in ipairs(row.icons) do
+      if b.data and b.data.live then under = b.data end
+    end end
+  end
+  assert(under and under.state == "missing" and not under.start, "underneath not the missing look")
+  m.live = false
+  hide = false
+  m.Redraw()
+  for _, r in ipairs(made) do assert(not r.enabled, "an overlay stayed on after combat") end
+  m.StopLive()
+  m.M.db.lists["CHAR:Me-Realm"] = nil
+  m.TrackedReset()
+  m.Members = oldMembers
+  CreateFrame, m.Buff, UnitExists, m.AurasHidden = oldCF, oldBuff, oldExists, oldHidden
+  MMT.SplitUnit, MMT.Resolve = oldSplit, oldResolve
+  m.ScanGroup()
+  return "live overlays in combat ok"
+end""")(mod))

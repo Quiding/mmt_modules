@@ -101,6 +101,7 @@ end
 
 M.OnDisable = function()
     mod.StopWeapons()
+    mod.StopLive()
     mod.ProbeStop()
     mod.StopHidden()
     mod.Detach()

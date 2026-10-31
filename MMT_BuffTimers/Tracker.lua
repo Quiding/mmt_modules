@@ -55,6 +55,12 @@ end
 -- the team key of a unit; the last one read is kept per unit, as in combat the
 -- game can hide the unit's name too
 local keyOf = {}
+-- the group unit of a team member ("player", "party2", ...; Live.lua)
+function mod.UnitOf(key)
+    for unit, k in pairs(keyOf) do
+        if k == key and UnitExists(unit) then return unit end
+    end
+end
 local function UnitKey(unit)
     local ok, _, _, key = pcall(MMT.SplitUnit, unit)
     key = ok and key and not MMT.IsSecret(key) and MMT.Resolve(key) or nil
@@ -184,6 +190,7 @@ end
 
 local function Hidden(unit, key)
     hidden[unit] = true
+    if mod.SetLive and mod.AurasHidden() then mod.SetLive(true) end   -- the game draws them (Live.lua)
     if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, mod.RetryHidden) end
     local t = ReadByIds(unit, key)
     if t then mod.auras[key] = t end
@@ -217,6 +224,7 @@ local function ScanUnit(unit)
     mod.auras[key] = t
     fromUnit[key] = true
     hidden[unit] = nil
+    if mod.live and not mod.AurasHidden() then mod.SetLive(false) end   -- readable again
 end
 
 function mod.StopHidden()

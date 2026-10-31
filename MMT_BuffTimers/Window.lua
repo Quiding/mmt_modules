@@ -87,8 +87,14 @@ local function Icons(key, host)
             if arranging and not state then state = "ready" end
         end
         end
+        -- in combat (Live.lua) the game draws the buff over its icon when it's up: underneath, the missing look
+        local live
+        if state and mod.live and not arranging and not mod.preview and mod.LiveIds(e) then
+            live = { key = key, e = e }
+            state, start, dur, count, matched, micon = "missing", nil, nil, nil, nil, nil
+        end
         if state then
-            icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur,
+            icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur, live = live,
                 count = count, spell = e.id, drag = arranging and mod.DragFor(from[n], e) or nil,
                 oid = oid, anchor = host and e.after or nil,
                 glow = mod.Alerted(key, e, state, start) or nil,   -- SmartBuff says it's missing (Alerts.lua)
@@ -280,4 +286,5 @@ M:Listen("REFRESH", function() mod.Apply() end)
 function mod.Redraw()
     if mod.Guesting() then MMTIconBars.Refresh(CD_WINDOW) end   -- our icons on its bars
     mod.window:Refresh()
+    if mod.LiveSync then mod.LiveSync() end
 end

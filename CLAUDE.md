@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.24.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.25.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -172,7 +172,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   live Flurry uses the engine widget `CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")`
   (Blizzard_AuraContainer; SetUnit, AddAuraSlot / AddAuraGroup with a filter string and candidate filters
   `includeSpellIDs`): the GAME draws the matching aura, the addon never learns if it's there (its "Missing" is a
-  layout trick). Only route to live in-combat icons; not built (asked the user).
+  layout trick). Only route to live in-combat icons.
+  0.25.0 `Live.lua` (user: "build it"): `mod.live` (PLAYER_REGEN_DISABLED, or a hidden scan with AurasHidden; off on
+  REGEN_ENABLED or a readable scan) -> Window Icons gives every member icon whose `mod.LiveIds(e)` (learned auraIds +
+  e.id; patterns: every learned name matching) are known `live = {key, e}` and the MISSING look (no time);
+  `mod.LiveSync()` (end of mod.Redraw + hooksecurefunc on every MMTIconBars window's Refresh, so the Cooldowns bars'
+  own redraws keep guests right) lays an AuraContainer (CustomAuraContainerTemplate, processing policy None, one
+  `AddAuraSlot("MMTBuff", "HELPFUL", {candidateFilters = {includeSpellIDs}, initializeFrame})`, button: SetIcon /
+  SetDurationCooldown (Cooldown with SetUseAuraDisplayTime) / SetApplicationCount) over the icon, SetUnit =
+  `mod.UnitOf(key)` (Tracker keyOf), enabled only while live; reconfigured (disable, filters, unit, enable) only on
+  change. Written from ForeverAuras' documented AuraOverlay pattern (GPL: not copied). The All bar stays frozen.
+  NOT verified in game yet (stand-in widget in test_buffbar "live overlays in combat").
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
