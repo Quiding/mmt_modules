@@ -300,6 +300,27 @@ assert(eq(col(boxMark), A[1], A[2], A[3], 1), "accent off: mark not MMT's blue")
 assert(near(dd.valueLabel._tc[1], A[1]), "accent off: dropdown value")
 mod.SetOpt("fonts", false)
 assert(title._font[1] == "Fonts\\FRIZQT__.TTF" and title._font[2] == 16, "fonts off: font not back")
+-- "Keep the game's own font": EllesmereUI swapped all game text to Expressway; a window's own pick stays
+STANDARD_TEXT_FONT = "Fonts\\Expressway.ttf"
+EllesmereUI._clientFontPath = "Fonts\\FRIZQT__.TTF"
+local fpage = CreateFrame("Frame", nil, UIParent)
+local swappedFs = fpage:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); swappedFs._font = { "Fonts\\Expressway.ttf", 13, "" }
+local pickedFs = fpage:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); pickedFs._font = { "Fonts\\Picked.ttf", 11, "" }
+local _ = 0
+mod.AddFont(swappedFs); mod.AddFont(pickedFs)
+assert(swappedFs._font[1] == "Fonts\\Expressway.ttf", "game font changed while the option is off")
+mod.SetOpt("gameFont", true)
+assert(swappedFs._font[1] == "Fonts\\FRIZQT__.TTF" and swappedFs._font[2] == 13, "game font option: swapped text not back to the client's font")
+assert(pickedFs._font[1] == "Fonts\\Picked.ttf", "game font option changed a window's own font")
+mod.SetOpt("fonts", true)
+assert(swappedFs._font[1] == "Fonts\\ARIALN.TTF", "the style's font should win over the game font option")
+mod.SetOpt("fonts", false)
+mod.SetOpt("gameFont", false)
+assert(swappedFs._font[1] == "Fonts\\Expressway.ttf", "game font option off: swapped face not back")
+mod.SetOpt("gameFont", true); mod.SetStyle("NONE")
+assert(swappedFs._font[1] == "Fonts\\FRIZQT__.TTF", "game font option should work with None")
+mod.SetStyle("ELLESMERE"); mod.SetOpt("gameFont", false)
+STANDARD_TEXT_FONT = nil; EllesmereUI._clientFontPath = nil
 mod.SetOpt("accent", true); mod.SetOpt("fonts", true)
 
 -- None: exactly what MMT set

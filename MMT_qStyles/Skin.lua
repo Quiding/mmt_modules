@@ -385,9 +385,36 @@ end
 ---------------------------------------------------------------------------
 -- Fonts
 ---------------------------------------------------------------------------
+-- "Keep the game's own font": an addon that swaps ALL game text (EllesmereUI's "Apply to All Game Text",
+-- ElvUI) sets STANDARD_TEXT_FONT and the game's font objects to its face, so MMT's labels (made from those
+-- templates) get it too. Only text in that swapped face goes back - a font picked for a window (MMT.ApplyFont)
+-- stays. The client's face: EllesmereUI keeps it in _clientFontPath (read only), else the game's Friz Quadrata.
+function mod.ClientFont()
+    local e = rawget(_G, "EllesmereUI")
+    local p = type(e) == "table" and rawget(e, "_clientFontPath")
+    return type(p) == "string" and p ~= "" and p or "Fonts\\FRIZQT__.TTF"
+end
+
+local function GameFace(rec)
+    if not (mod.M.enabled and mod.Opt("gameFont")) then return nil end
+    local swapped, own = rawget(_G, "STANDARD_TEXT_FONT"), mod.ClientFont()
+    if type(swapped) ~= "string" or swapped:lower() == own:lower() then return nil end   -- nothing swapped
+    if (rec.path or ""):lower() ~= swapped:lower() then return nil end
+    return own
+end
+mod.GameFace = GameFace
+
 local function PaintFont(fs, rec, S)
     local file = S and S.font and mod.Opt("fonts") and S.font()
     if not file then
+        local own = GameFace(rec)
+        if own then
+            local ok, res = pcall(fs.SetFont, fs, own, rec.size, rec.flags)
+            if ok and res ~= false then rec.painted = true return end
+            pcall(fs.SetFont, fs, rec.path, rec.size, rec.flags)
+            rec.painted = nil
+            return
+        end
         if rec.painted then
             pcall(fs.SetFont, fs, rec.path, rec.size, rec.flags)
             if rec.sx and fs.SetShadowOffset then fs:SetShadowOffset(rec.sx, rec.sy) end
@@ -416,6 +443,7 @@ local function AddFont(fs)
     fonts[fs] = rec
     PaintFont(fs, rec, mod.Current())
 end
+mod.AddFont = AddFont
 
 ---------------------------------------------------------------------------
 -- Accent pieces, slider tracks (colour textures)

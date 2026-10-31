@@ -37,6 +37,9 @@ M.Page = function(_, page)
     local desc = L:Note(mod.STYLES.ELLESMERE.description)   -- the longest: room for every one
     local fontCheck = L:Check("Use the style's font", function() return mod.Opt("fonts") end, function(v) mod.SetOpt("fonts", v and true or false) end,
         "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
+    L:Check("Keep the game's own font", function() return mod.Opt("gameFont") end, function(v) mod.SetOpt("gameFont", v and true or false) end,
+        "When another addon changes all game text (EllesmereUI's \"Apply to All Game Text\", ElvUI), MMT's windows keep the game's own font. "
+        .. "Works with any style, None too. The style's font, when it's used, wins.")
     L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
         "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
     L:Cycle("Classic: window background", mod.ClassicBgChoices, function() return mod.Opt("classicBg") end, function(v)
@@ -69,8 +72,8 @@ end
 
 M.Report = function(_, add)
     local c = mod.Counts()
-    add(("style=%s (shown: %s) fonts=%s accent=%s"):format(tostring(mod.Opt("style")), QStyles.Current(),
-        tostring(mod.Opt("fonts")), tostring(mod.Opt("accent"))))
+    add(("style=%s (shown: %s) fonts=%s accent=%s gameFont=%s (game text: %s, client: %s)"):format(tostring(mod.Opt("style")), QStyles.Current(),
+        tostring(mod.Opt("fonts")), tostring(mod.Opt("accent")), tostring(mod.Opt("gameFont")), tostring(rawget(_G, "STANDARD_TEXT_FONT")), mod.ClientFont()))
     add(("tracked: fills=%d edges=%d fonts=%d colours=%d texts=%d headers=%d widgets=%d"):format(c.fills, c.borders, c.fonts,
         c.colors, c.texts, c.headers, c.widgets))
     local bgs = {}

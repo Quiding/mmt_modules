@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.1"
+mod.VERSION = "0.3.2"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
@@ -30,6 +30,7 @@ mod.DEFAULTS = {
     fonts = true,      -- the style's font on MMT's labels and edit boxes
     accent = true,     -- the style's accent colour instead of MMT's blue
     classicBg = "ROCK", -- Classic's window background: ROCK | MARBLE | TOOLTIP | DARK (Art.lua)
+    gameFont = false,  -- MMT keeps the game's own font when an addon swaps all game text (Skin.lua GameFace)
 }
 
 function mod.Opt(key)
