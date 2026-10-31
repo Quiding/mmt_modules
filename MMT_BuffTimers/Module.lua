@@ -141,9 +141,11 @@ SlashCmdList.MMTBUFFTIMERS = function(msg)
         mod.ToggleArrange()
     elseif msg == "probe" then
         mod.ProbeStart()
+    elseif msg == "live" then
+        mod.LiveReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     elseif msg == "spec" then
         mod.SpecReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     else
-        MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt arrange, /mmtbt spec, /mmtbt probe (what the game hides in combat), /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
+        MMT.Print("/mmtbt = show/hide, /mmtbt lock, /mmtbt arrange, /mmtbt spec, /mmtbt probe (what the game hides in combat), /mmtbt live (buffs drawn live in combat), /mmtbt test, /mmtbt preview [mixed|all], /mmtbt export. Settings: /mmt > MODULES > Buff Timers.")
     end
 end

@@ -854,6 +854,8 @@ print(lua.eval(r"""function(m)
   assert(ids and ids[12970], "live IDs")
   m.Redraw()
   for _, r in ipairs(made) do assert(not r.enabled, "an overlay is on out of combat") end
+  local before = #made
+  assert(before > 0 and made[1].unit == "player" and made[1].ids[12970], "overlay not set up out of combat")
   hide = true
   m.live = true                                     -- combat (SetLive's queued redraw done by hand)
   m.Redraw()
@@ -865,6 +867,10 @@ print(lua.eval(r"""function(m)
   assert(on, "no live overlay in combat (" .. #made .. " made, icons " .. nIcons .. " live " .. nLive .. " unit " .. tostring(m.UnitOf("Me-Realm")) .. ")")
   assert(on.unit == "player" and on.ids[12970] and on.filter == "HELPFUL", "overlay set wrong: " .. tostring(on.unit))
   assert(on.icon and on.cooldown and on.stacks, "overlay doesn't draw icon / countdown / stacks")
+  assert(#made == before, "an overlay was built in combat")
+  local lines = {}
+  m.LiveReport(function(l) lines[#lines + 1] = l end)
+  assert(#lines == 3 and lines[2]:find("drawing 1"), "report: " .. tostring(lines[2]))
   -- the icon underneath: the missing look
   local under
   for _, w in pairs(MMTIconBars.windows) do

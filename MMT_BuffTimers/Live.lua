@@ -92,72 +92,91 @@ local function Style(ov, b)
     end
 end
 
+local stats = { made = 0, failed = 0 }
+mod.liveStats = stats
+
+local function Fail(where, err)
+    stats.failed = stats.failed + 1
+    stats.err = where .. ": " .. tostring(err)
+    M:Debug("live overlay %s", stats.err)
+end
+
+-- built OUT of combat (ForeverAuras' note: building one while auras are restricted fails);
+-- combat only switches it on
 local function NewOverlay(b)
     if not Available() then return nil end
     local ok, container = pcall(CreateFrame, "AuraContainer", nil, b, "CustomAuraContainerTemplate")
-    if not ok or not container then return nil end
+    if not ok or not container then Fail("CreateFrame", container) return nil end
     local ov = { container = container, enabled = false }
-    container:SetEnabled(false)
-    container:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
-    container:SetAllPoints(b)
-    pcall(container.EnableMouse, container, false)
-    container:SetFrameLevel(b:GetFrameLevel() + 5)
-    local added = pcall(container.AddAuraSlot, container, SLOT, "HELPFUL", {
-        candidateFilters = { includeSpellIDs = NONE },
-        initializeFrame = function(button) Build(ov, button) end,
-    })
-    if not added then container:Hide() return nil end
+    local built, err = pcall(function()
+        container:SetEnabled(false)
+        container:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
+        container:SetAllPoints(b)
+        pcall(container.EnableMouse, container, false)
+        container:SetFrameLevel(b:GetFrameLevel() + 5)
+        container:AddAuraSlot(SLOT, "HELPFUL", {
+            candidateFilters = { includeSpellIDs = NONE },
+            initializeFrame = function(button) Build(ov, button) end,
+        })
+    end)
+    if not built then pcall(container.Hide, container) Fail("AddAuraSlot", err) return nil end
+    stats.made = stats.made + 1
     return ov
 end
 
-local function Disable(ov)
-    if ov.enabled then pcall(ov.container.SetEnabled, ov.container, false) end
-    ov.enabled = false
-    ov.container:Hide()
+local function SetOn(ov, on)
+    if ov.enabled == on then return end
+    local ok, err = pcall(ov.container.SetEnabled, ov.container, on)
+    if ok then ov.enabled = on else Fail("SetEnabled", err) end
 end
 
--- set one overlay to a member's unit and a buff's spell IDs, on while live
+local function Disable(ov)
+    SetOn(ov, false)
+    ov.unit, ov.sig = nil, nil
+end
+
+-- one overlay set to a member's unit and a buff's spell IDs; drawing only while live
 local function Configure(ov, b, unit, ids)
     local sig = Signature(ids)
     if ov.unit ~= unit or ov.sig ~= sig then
         local c = ov.container
-        pcall(c.SetEnabled, c, false)
-        ov.enabled = false
-        if ov.sig ~= sig and pcall(c.SetAuraSlotCandidateFilters, c, SLOT, { includeSpellIDs = ids }) then ov.sig = sig end
-        if ov.unit ~= unit and pcall(c.SetUnit, c, unit) then ov.unit = unit end
+        SetOn(ov, false)
+        if ov.sig ~= sig then
+            local ok, err = pcall(c.SetAuraSlotCandidateFilters, c, SLOT, { includeSpellIDs = ids })
+            if ok then ov.sig = sig else Fail("filters", err) end
+        end
+        if ov.unit ~= unit then
+            local ok, err = pcall(c.SetUnit, c, unit)
+            if ok then ov.unit = unit else Fail("SetUnit", err) end
+        end
     end
-    Style(ov, b)
-    ov.container:Show()
-    if not ov.enabled and pcall(ov.container.SetEnabled, ov.container, true) then ov.enabled = true end
+    if not mod.live then pcall(Style, ov, b) end
+    SetOn(ov, mod.live)
 end
 
--- after every redraw: an overlay on each live icon of every bar (ours, and ours on the Cooldowns bars)
+-- after every redraw: an overlay on each member icon whose IDs are known, on every bar
+-- (ours, and ours on the Cooldowns bars) - set up out of combat, switched on in combat
 local hooked = {}   -- [window] = true: its own redraws (e.g. the Cooldowns bars) sync too
 
 function mod.LiveSync()
     local lib = MMTIconBars
+    if not (lib and lib.windows) or not Available() then return end
     local used = {}
-    if lib and lib.windows then
-        for _, w in pairs(lib.windows) do
-            if not hooked[w] and hooksecurefunc then
-                hooked[w] = true
-                hooksecurefunc(w, "Refresh", function() if mod.live or mod.LiveCount() > 0 then mod.LiveSync() end end)
-            end
+    for _, w in pairs(lib.windows) do
+        if not hooked[w] and hooksecurefunc then
+            hooked[w] = true
+            hooksecurefunc(w, "Refresh", function() mod.LiveSync() end)
         end
-    end
-    if mod.live and lib and lib.windows then
-        for _, w in pairs(lib.windows) do
-            for _, rows in ipairs({ w.rows or {}, w.frows or {} }) do
-                for _, row in ipairs(rows) do
-                    for _, b in ipairs(row.icons or {}) do
-                        local live = b.data and b.data.live   -- the bar clears data on unused icons
-                        local unit = live and mod.UnitOf(live.key)
-                        local ids = unit and mod.LiveIds(live.e)
-                        if ids then
-                            local ov = overlays[b]
-                            if ov == nil then ov = NewOverlay(b) or false; overlays[b] = ov end
-                            if ov then Configure(ov, b, unit, ids); used[b] = true end
-                        end
+        for _, rows in ipairs({ w.rows or {}, w.frows or {} }) do
+            for _, row in ipairs(rows) do
+                for _, b in ipairs(row.icons or {}) do
+                    local live = b.data and b.data.live   -- the bar clears data on unused icons
+                    local unit = live and mod.UnitOf(live.key)
+                    local ids = unit and mod.LiveIds(live.e)
+                    if ids then
+                        local ov = overlays[b]
+                        if ov == nil then ov = NewOverlay(b) or false; overlays[b] = ov end
+                        if ov then Configure(ov, b, unit, ids); used[b] = true end
                     end
                 end
             end
@@ -166,6 +185,29 @@ function mod.LiveSync()
     for b, ov in pairs(overlays) do
         if ov and not used[b] then Disable(ov) end
     end
+end
+
+-- /mmtbt live
+function mod.LiveReport(say)
+    local set, on = 0, 0
+    for _, ov in pairs(overlays) do
+        if ov then
+            if ov.unit then set = set + 1 end
+            if ov.enabled then on = on + 1 end
+        end
+    end
+    say(("live: widget %s, live mode %s, auras hidden %s"):format(Available() and "yes" or "NO",
+        tostring(mod.live), tostring(mod.AurasHidden and mod.AurasHidden())))
+    say(("overlays: made %d, failed %d, set up %d, drawing %d%s"):format(stats.made, stats.failed, set, on,
+        stats.err and (" - last error: " .. stats.err) or ""))
+    local names = {}
+    for name, ids in pairs(M.store.auraIds or {}) do
+        local l = {}
+        for id in pairs(ids) do l[#l + 1] = tostring(id) end
+        names[#names + 1] = name .. " " .. table.concat(l, "/")
+    end
+    table.sort(names)
+    say("learned: " .. (#names > 0 and table.concat(names, ", ") or "nothing yet"))
 end
 
 function mod.LiveCount()
@@ -187,5 +229,5 @@ M:On("PLAYER_REGEN_ENABLED", function() mod.SetLive(false) end)
 
 function mod.StopLive()
     mod.live = false
-    for _, ov in pairs(overlays) do if ov then Disable(ov) end end
+    for _, ov in pairs(overlays) do if ov then SetOn(ov, false) end end
 end

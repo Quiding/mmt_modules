@@ -124,7 +124,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.25.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.7) / MMT_BuffTimers (v0.25.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -183,6 +183,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.UnitOf(key)` (Tracker keyOf), enabled only while live; reconfigured (disable, filters, unit, enable) only on
   change. Written from ForeverAuras' documented AuraOverlay pattern (GPL: not copied). The All bar stays frozen.
   NOT verified in game yet (stand-in widget in test_buffbar "live overlays in combat").
+  0.25.1 (0.25.0 drew nothing in game; the learning and live mode worked - Flurry 12966 in auraIds, missing look in
+  combat): overlays were BUILT only in combat. Now every icon with known IDs carries `live` always; LiveSync builds
+  and sets them up out of combat (disabled), combat only SetEnabled(true) (ForeverAuras: building while restricted
+  fails). `/mmtbt live` = `mod.LiveReport`: widget available, live mode, overlays made / failed / set up / drawing +
+  last error, learned IDs.
 - **Old globals don't exist here**: no `GetSpellInfo`, `GetSpellCooldown`, `UnitBuff`, ...
   Use `Compat.lua` (`mod.SpellInfo`, `mod.SpellIcon`, `mod.SpellCooldown`, `mod.Buff`,
   `mod.ItemSpell`, `mod.SpellIconAny` = icon by ID else by name; C_Spell / C_UnitAuras first, old globals as fallback, "secret" handled). **Spell data is lazy**: right after login
