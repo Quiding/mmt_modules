@@ -142,10 +142,13 @@ function mod.ResetKeys(keys)
 end
 
 -- every setting back to the default (the same table, so the core's profile keeps it)
+-- takenFrom stays: without it Cooldown / Buff Timers' OnProfileChanged took the old module's settings over again
 function mod.ResetSettings()
     local M = mod.M
+    local taken = M.db.takenFrom
     for k in pairs(M.db) do M.db[k] = nil end
     for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
+    M.db.takenFrom = taken
     if M.OnProfileChanged then M.OnProfileChanged(M) end
     if MMT.RefreshConfig then MMT.RefreshConfig() end
     MMT.Print("%s: settings reset to defaults.", M.title)
