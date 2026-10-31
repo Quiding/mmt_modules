@@ -11,12 +11,12 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.18.3 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.23.3 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.9 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.18.10 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.25.12 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.4.11 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.4 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.6 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.8 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 0.3.4 |
@@ -51,6 +51,8 @@ in it, as a faint slot to drop on). Buff icons on the Cooldown
 Timers bars - moved one by one, or all of them with "Where: On the Cooldowns bars" - can be dropped anywhere in the
 row, between the cooldowns; switching "Where" back to its own window brings them all home.
 
+<img src="media/timers_arrange.webp" alt="Arrange mode: dots on every icon, the All bar's buffs and both modules' bars beside the party frames, icons dragged along the rows" width="712">
+
 **Beside the party frames** (Cooldown Timers and Buff Timers, **Frames** tab): each member's icons sit next
 to their own party or raid frame instead of in the window - right, left, above or below it, with X / Y offsets and
 their own icon size (up to 100, or as high as the frame) - and follow the frames when they are re-sorted (EUI_NameSort, EllesmereUI's sort), moved, or
@@ -59,6 +61,8 @@ without a frame (not in your group) stay in the window, or are hidden. With both
 come after the cooldowns; Buff icons attached to the Cooldown Timers bars come along. Buff Timers' **All bar** can sit
 above the party frames or stay a free window. Only our own icons are placed - the unit frames are never touched, and
 it keeps working in combat.
+
+<img src="media/bufftimers_frames.png" alt="Buff Timers' Frames tab: beside the party frames, which side, icon size or as high as the frame, offsets, members without a frame, where the All bar goes" width="560">
 
 Cooldown Timers and Buff Timers have a **Preview** (Bars tab, or `/mmtct preview` / `/mmtbt preview`): every team
 member gets a row with made-up states, to set up the look and position without the team around -
@@ -116,7 +120,7 @@ important spells, trinkets and potions.
 
 `/mmtct` · `/mmtct test` · `/mmtct preview [mixed|all]` · `/mmtct export`
 
-![Cooldowns bar](media/cooldowns.gif)
+<img src="media/timers_showcase.webp" alt="Cooldown Timers and Buff Timers beside the party frames: the All bar above, each member's cooldowns then buffs with their timers, live in combat" width="639">
 
 | | |
 | --- | --- |
@@ -132,6 +136,11 @@ Port of [EMA Buffs](https://github.com/Quiding/ema_buffs): which group members h
 tracked for them, with exact timers.
 
 - Any rank counts, and group versions too (Prayer of Fortitude, Greater Blessings, ...).
+- **Live in combat**: the game hides every buff from addons while you fight, so the game draws them itself on the
+  bar (its own aura widget, like ForeverAuras' Modern auras): procs like Flurry and Enrage, seals and buffs falling
+  off show with their real timer and stacks. A buff needs to be seen once out of combat first (its spell ID is
+  learned then). The All bar's counts wait for the fight to end; seals, aspects, Battle Shout and other self-cast
+  buffs are followed from the casts (a short team message per cast in combat).
 - **Name patterns**: add `Seal of *` (a `*` = any text) and one icon shows whichever seal is up, with its own
   icon and timer. The paladin presets track any seal this way, the hunter presets any aspect (`Aspect of the *`).
 - **Weapon enchants**: add `main hand` / `off hand` - any enchant on that weapon counts (shaman imbues, rogue
@@ -167,8 +176,6 @@ tracked for them, with exact timers.
   Members it isn't for don't count as missing it.
 
 `/mmtbt` · `/mmtbt test` · `/mmtbt preview [mixed|all]` · `/mmtbt export`
-
-![Buffs bar](media/buffs.gif)
 
 <img src="media/buffs_bar.png" alt="Buff Timers: the All bar and the members' rows" width="304">
 
@@ -361,6 +368,13 @@ Another look for MMT's settings window and every window built from MMT's widgets
 colour picker, dialogs, Item Compare's tooltips, the death panel ...) and the modules' (Team bags, Team Gear,
 Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export ...). Pick it from a
 dropdown; it switches right away, no `/reload`, and **None** gives MMT's own look back exactly.
+
+| | |
+| --- | --- |
+| <img src="media/styles_elvui.png" alt="Styles: ElvUI - MMT's settings, Team Gear, the team bags and the team panel" width="420"> | <img src="media/styles_ellesmere.png" alt="Styles: EllesmereUI" width="420"> |
+| ElvUI | EllesmereUI |
+| <img src="media/styles_modern.png" alt="Styles: Modern Blizzard - the metal window rim and red buttons" width="420"> | <img src="media/styles_classic.png" alt="Styles: Classic - the carved dialog border on stone" width="420"> |
+| Modern Blizzard | Classic |
 
 - **ElvUI**: flat dark panels, 1 pixel black edges with a faint line inside, ElvUI's blue, a narrow outlined font.
   Section headers in the accent colour; the widget under the mouse gets accent-coloured edges; a drawn dropdown arrow.
