@@ -686,3 +686,49 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "hidden auras in combat ok"
 end""")(mod))
+
+# seals in combat: the paladin's own casts keep the timer exact while auras are hidden
+print(lua.eval(r"""function(m)
+  local oldBuff, oldExists, oldTime, oldInfo = m.Buff, UnitExists, GetTime, m.SpellInfo
+  local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
+  local now, hide = 1000, false
+  GetTime = function() return now end
+  local NAMES = { [1] = "Seal of Command", [2] = "Seal of the Crusader", [3] = "Judgement", [4] = "Blessing of Might" }
+  m.SpellInfo = function(id) return NAMES[id] end
+  m.Buff = function(unit, i)
+    if unit ~= "player" then return nil end
+    if hide then return "secret" end
+    if i == 1 then return "Seal of Command", 1, 1, 30, 1020 end
+    if i == 2 then return "Blessing of Might", 2, 1, 300, 1200 end
+  end
+  m.preview, m.testUntil = nil, nil
+  UnitExists = function(u) return u == "player" end
+  MMT.SplitUnit = function() return "Me", "Realm", "Me-Realm" end
+  MMT.Resolve = function(k) return k end
+  local seal, bom = { name = "Seal of *" }, { name = "Blessing of Might*" }
+  m.ScanGroup()
+  hide = true
+  m.ScanGroup()                                    -- combat: hidden, last read kept
+  now = 1030
+  assert(m.State("Me-Realm", seal) == "missing", "old seal ran out")
+  m.SelfCast("player", 2)                          -- new seal in combat
+  local s, st, d, _, n = m.State("Me-Realm", seal)
+  assert(s == "buff" and st == 1030 and d == 30 and n == "Seal of the Crusader", "seal from the cast: " .. tostring(s) .. tostring(n))
+  now = 1040
+  m.SelfCast("player", 1)                          -- another seal replaces it
+  s, st, d, _, n = m.State("Me-Realm", seal)
+  assert(s == "buff" and st == 1040 and n == "Seal of Command", "seal not replaced")
+  local count = 0
+  for k in pairs(m.auras["Me-Realm"]) do if k:find("^Seal of") then count = count + 1 end end
+  assert(count == 1, "two seals at once")
+  m.SelfCast("player", 3)                          -- Judgement: the seal stays on Forever
+  assert(m.State("Me-Realm", seal) == "buff", "Judgement ended the seal")
+  m.SelfCast("player", 4)                          -- a blessing may be on someone else: not guessed
+  assert(m.State("Me-Realm", bom) == "buff" and select(2, m.State("Me-Realm", bom)) == 900, "blessing changed by a cast")
+  hide = false
+  m.StopHidden()
+  m.Buff, UnitExists, GetTime, m.SpellInfo = oldBuff, oldExists, oldTime, oldInfo
+  MMT.SplitUnit, MMT.Resolve = oldSplit, oldResolve
+  m.ScanGroup()
+  return "seals in combat ok"
+end""")(mod))

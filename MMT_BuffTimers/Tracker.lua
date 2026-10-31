@@ -63,6 +63,8 @@ end
 local hidden = {}   -- [unit] = true: last read was hidden
 local ticker
 
+local seenDur = {}  -- [buff name] = its length last seen readable (for the casts below)
+
 local function Fighting(unit)
     if InCombatLockdown and InCombatLockdown() then return true end
     if not UnitAffectingCombat then return false end
@@ -88,6 +90,7 @@ local function ScanUnit(unit)
         name = mod.Canonical(name)   -- Prayer of Fortitude counts as Fortitude, ...
         if raw == name then mod.SeeIcon(name, icon) end   -- for a "?" entry icon (EntryIcon)
         local start = (duration and duration > 0 and expiration) and (expiration - duration) or nil
+        if duration and duration > 0 then seenDur[name] = duration end
         t[name] = { start = start, dur = (duration and duration > 0) and duration or nil, count = count,
             icon = (not MMT.IsSecret(icon)) and icon or nil, raw = raw,
             -- cast by someone in the group (blessings: one per paladin here, Casters.lua)
@@ -147,6 +150,47 @@ M:On("UNIT_AURA", function(unit)
         ScanUnit(unit)
         mod.Refresh()
     end
+end)
+
+-- Buffs a character only ever casts on themself: while their auras are hidden (combat)
+-- the cast says it all - which one, when, on whom. A seal lasts 30 s and a new seal
+-- replaces the old one (Judgement does NOT use it up on Forever), so its timer stays exact.
+local SELF = { "^Seal of ", "^Aspect of the ", "^Battle Shout$", "^Inner Fire$", "^Righteous Fury$",
+    "^Lightning Shield$", "^Demon Skin$", "^Demon Armor$", "^Frost Armor$", "^Ice Armor$", "^Mage Armor$" }
+local SELF_DUR = { ["^Seal of "] = 30 }   -- before one was ever seen readable
+
+local function SelfBuff(name)
+    for _, p in ipairs(SELF) do if name:find(p) then return p end end
+end
+
+local function SealsOff(auras)
+    for n in pairs(auras) do if n:find("^Seal of ") then auras[n] = nil end end
+end
+
+function mod.SelfCast(unit, spellID)
+    if not hidden[unit] or not spellID or MMT.IsSecret(spellID) then return end   -- readable: UNIT_AURA shows it
+    local name = mod.SpellInfo(spellID)
+    if not name or MMT.IsSecret(name) then return end
+    local key = UnitKey(unit)
+    local auras = key and mod.auras[key]
+    if not auras then return end
+    name = mod.Canonical(name)
+    local p = SelfBuff(name)
+    if not p then return end
+    local dur = seenDur[name] or SELF_DUR[p]
+    if not dur then return end
+    if p == "^Seal of " then SealsOff(auras) end
+    if p == "^Aspect of the " then
+        for n in pairs(auras) do if n:find(p) then auras[n] = nil end end
+    end
+    local old = auras[name]
+    auras[name] = { start = GetTime(), dur = dur, count = 1, raw = name, group = true,
+        icon = (old and old.icon) or mod.SpellIcon(spellID) }
+    mod.Refresh()
+end
+
+M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
+    if unit == "player" or (unit and (unit:find("^party%d") or unit:find("^raid%d"))) then mod.SelfCast(unit, spellID) end
 end)
 
 M:On("GROUP_ROSTER_UPDATE", function() mod.ScanGroup() mod.Refresh() end)
