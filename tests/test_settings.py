@@ -21,6 +21,7 @@ end
 U.__call = function() return new() end
 -- globals that must really be missing (libraries this code creates, optional APIs)
 local MISSING = { MMTIconBars = true, MMTTransfer = true, LibStub = true, BackdropTemplateMixin = true,
+  CustomAuraContainerAuraProcessingPolicy = true,   -- no native aura widget (Buff Timers' Live.lua) unless a test adds one
   issecretvalue = true, GetSpellInfo = true, UnitBuff = true, GetSpellCooldown = true, ChatEdit_InsertLink = true }
 setmetatable(_G, { __index = function(_, k) if MISSING[k] then return nil end return new() end })
 

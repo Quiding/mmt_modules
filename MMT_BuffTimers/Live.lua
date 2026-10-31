@@ -24,8 +24,8 @@ mod.live = false              -- true while the overlays draw (auras hidden)
 local overlays = {}           -- [icon button] = overlay
 local available               -- nil = not checked yet
 
-local function Available()
-    if available ~= nil then return available end
+local function Available(recheck)
+    if available ~= nil and not recheck then return available end
     available = false
     if C_AddOns and C_AddOns.IsAddOnLoaded and not C_AddOns.IsAddOnLoaded("Blizzard_AuraContainer") and C_AddOns.LoadAddOn then
         pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer")

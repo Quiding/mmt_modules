@@ -88,11 +88,14 @@ local function Icons(key, host)
         end
         end
         -- in combat (Live.lua) the game draws the buff over its icon when it's up: underneath, the missing look
-        -- (the widget is set up out of combat on every such icon, switched on in combat)
+        -- (the widget draws the buff in and out of combat; underneath, always the missing look:
+        -- out of combat the real state showed through for a moment when the buff's time ran out,
+        -- at full opacity, before the game took the buff away. A buff of a rank never seen yet
+        -- has its ID learned on this read, so the next redraw's widget draws it)
         local live
-        if state and not arranging and not mod.preview and mod.LiveIds(e) then
+        if state and not arranging and not mod.preview and mod.LiveIds(e) and mod.LiveAvailable() then
             live = { key = key, e = e }
-            if mod.live then state, start, dur, count, matched, micon = "missing", nil, nil, nil, nil, nil end
+            state, start, dur, count, matched, micon = "missing", nil, nil, nil, nil, nil
         end
         if state then
             icons[#icons + 1] = Look({ texture = micon or mod.EntryIcon(e), state = state, start = start, duration = dur, live = live,

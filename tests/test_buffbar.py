@@ -812,6 +812,8 @@ end""")(mod))
 # the icon underneath shows the missing look
 print(lua.eval(r"""function(m)
   local oldCF, oldBuff, oldExists, oldHidden = CreateFrame, m.Buff, UnitExists, m.AurasHidden
+  rawset(_G, "CustomAuraContainerAuraProcessingPolicy", { None = 0 })
+  assert(m.LiveAvailable(true), "the stand-in widget isn't seen")
   local oldSplit, oldResolve = MMT.SplitUnit, MMT.Resolve
   local made = {}
   CreateFrame = function(kind, ...)
@@ -855,6 +857,11 @@ print(lua.eval(r"""function(m)
   assert(m.Timed(fl), "Flurry not known as a timed buff (its icon gate)")
   assert(not m.Timed({ name = "Devotion*" }), "a never-seen buff counted as timed")
   m.Redraw()
+  -- out of combat too: underneath always the missing look (the widget draws the buff)
+  local underOut
+  for _, w in pairs(MMTIconBars.windows) do for _, row in ipairs(w.rows) do for _, b in ipairs(row.icons) do
+    if b.data and b.data.live then underOut = b.data end end end end
+  assert(underOut and underOut.state == "missing", "out of combat the real state shows under the widget (flash at 0)")
   local before = #made
   assert(before > 0 and made[1].enabled, "the overlay doesn't draw out of combat (one look in and out of combat)")
   assert(before > 0 and made[1].unit == "player" and made[1].ids[12970], "overlay not set up out of combat")
@@ -886,6 +893,8 @@ print(lua.eval(r"""function(m)
   m.Redraw()
   assert(made[1].enabled, "the overlay went off after combat (the icons jumped)")
   m.StopLive()
+  rawset(_G, "CustomAuraContainerAuraProcessingPolicy", nil)
+  m.LiveAvailable(true)
   m.M.db.lists["CHAR:Me-Realm"] = nil
   m.TrackedReset()
   m.Members = oldMembers
