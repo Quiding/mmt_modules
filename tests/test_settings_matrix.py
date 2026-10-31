@@ -209,16 +209,24 @@ RUN = r'''function(m, folder)
 end'''
 
 bad = 0
-for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL", "MMT_qStyles"]:
+# second pass: the friend's modules switched off and no stored data of theirs (Pawn Compare / Team Gear without
+# Item Compare); the QoL features' addons are missing in both passes (no C_AddOns.IsAddOnLoaded here)
+ALONE = r'''
+function MMT.ModuleActive() return false end
+MMTDB = {}
+'''
+for alone in (False, True):
+  for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_Totems", "MMT_Whispers", "MMT_TeamGear", "MMT_TeamInventory", "MMT_QoL", "MMT_qStyles"]:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(STUBS)
     lua.execute(EXTRA)
+    if alone: lua.execute(ALONE)
     toc = [l.strip() for l in open(os.path.join(folder, folder + ".toc"), encoding="utf-8") if l.strip().endswith(".lua")]
     mod = lua.eval("{}")
     for f in toc:
         s = open(os.path.join(folder, f), encoding="utf-8").read()
         lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(s, folder + "/" + f, mod)
-    out = lua.eval(RUN)(mod, folder)
+    out = lua.eval(RUN)(mod, folder + (" (no Item Compare)" if alone else ""))
     print(out)
     bad += out.startswith("FAIL")
 sys.exit(1 if bad else 0)
