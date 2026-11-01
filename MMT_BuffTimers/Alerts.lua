@@ -69,12 +69,14 @@ function mod.AlertHook()
     end)
 end
 
--- SmartBuff or Quality of life (which carries the team's alerts) is loaded here; without either
--- the option isn't shown and nothing glows
+-- SmartBuff is loaded on this character and Quality of life's "SmartBuff alerts" is on (its
+-- settings READ only); else the option isn't shown and nothing glows
 function mod.SmartBuffAround()
     local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-    if not loaded then return true end
-    return (loaded("SmartBuff") or loaded("MMT_QoL")) and true or false
+    if loaded and not loaded("SmartBuff") then return false end
+    if not (MMT.ModuleActive and MMT.ModuleActive("QoL")) then return false end
+    local q = MMT.db and MMT.db.modules and MMT.db.modules.QoL
+    return type(q) == "table" and q.smartbuff == true
 end
 
 -- should entry e glow for member key now? (state / start = what mod.State said)

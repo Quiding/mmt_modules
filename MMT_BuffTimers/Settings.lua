@@ -261,9 +261,20 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
     R:Add(who, UI.ROW + 2)
     R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
-    if mod.SmartBuffAround() then   -- only with SmartBuff or Quality of life loaded (Alerts.lua)
-        R:Header("SmartBuff")
-        Check(R, "Glow on SmartBuff alerts", "glowAlerts", "When SmartBuff says a member needs a buff (your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts), that buff's icon - theirs and the All bar's - glows until they have it again.")
+    -- only while SmartBuff is loaded and Quality of life's SmartBuff alerts are on (Alerts.lua): looked at
+    -- again whenever the page refreshes, so switching it in Quality of life needs no /reload
+    local sbHead = R:Header("SmartBuff")
+    local gga, sga = Opt("glowAlerts")
+    local sbCheck = R:Check("Glow on SmartBuff alerts", gga, sga, "When SmartBuff says a member needs a buff (your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts), that buff's icon - theirs and the All bar's - glows until they have it again.")
+    local sbRefresh = sbCheck and sbCheck.Refresh
+    if sbCheck then
+        sbCheck.Refresh = function(...)
+            if sbRefresh then sbRefresh(...) end
+            local on = mod.SmartBuffAround()
+            sbCheck:SetShown(on)
+            if sbHead and sbHead.SetShown then sbHead:SetShown(on) end
+        end
+        sbCheck.Refresh()
     end
 
 
