@@ -50,7 +50,14 @@ function mod.CasterClass(e)
     return name and Names()[name] or nil
 end
 
--- classes present: your group, plus team members who are online (worked out
+-- a group unit that's there and online (an offline paladin in the party blesses nobody)
+local function Present(u)
+    if not UnitExists(u) then return false end
+    if u == "player" or not UnitIsConnected then return true end
+    return MMT.Safe(UnitIsConnected, u) ~= false
+end
+
+-- classes present: your group (online), plus team members who are online (worked out
 -- once per redraw: kept for half a second). who[class] = { team keys, stranger =
 -- true when someone of that class who isn't in the team is in the group }
 local here, who, hereTime
@@ -81,7 +88,7 @@ function mod.ClassesHere()
     if IsInRaid() then for i = 1, 40 do units[#units + 1] = "raid" .. i end
     else for i = 1, 4 do units[#units + 1] = "party" .. i end end
     for _, u in ipairs(units) do
-        if UnitExists(u) then
+        if Present(u) then
             local _, class = MMT.Safe(UnitClass, u)
             if class then
                 local key = (u == "player") and own or (MMT.SplitUnit and select(3, MMT.SplitUnit(u)))
@@ -139,7 +146,7 @@ end
 function mod.BlessingsReset() blessingNames, blessingsComplete = nil, nil end   -- KnownReset
 function mod.IsBlessing(e) return e.id ~= nil and Blessings()[mod.BuffName(e) or ""] == true end
 
--- paladins in your group (they can only bless who they're grouped with); the preview counts its team
+-- paladins in your group and online (they can only bless who they're grouped with); the preview counts its team
 local paladins, paladinsTime
 function mod.PaladinsHere()
     if mod.preview then
@@ -153,7 +160,7 @@ function mod.PaladinsHere()
     if IsInRaid() then for i = 1, 40 do units[#units + 1] = "raid" .. i end
     else for i = 1, 4 do units[#units + 1] = "party" .. i end end
     for _, u in ipairs(units) do
-        if UnitExists(u) then
+        if Present(u) then
             local _, class = MMT.Safe(UnitClass, u)
             if class == "PALADIN" then n = n + 1 end
         end

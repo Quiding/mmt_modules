@@ -415,6 +415,7 @@ M:On("PLAYER_REGEN_ENABLED", function()
     C_Timer.After(1, function() if M.enabled then mod.ScanGroup() mod.Refresh() end end)
 end)
 M:On("PLAYER_ENTERING_WORLD", function() mod.ScanGroup() mod.Refresh() end)
+M:On("UNIT_CONNECTION", function() mod.Refresh() end)   -- a group member went offline / came back (Casters.lua)
 
 M:Listen("TEAM_CHANGED", function() mod.ScanGroup() mod.Refresh() end)
 

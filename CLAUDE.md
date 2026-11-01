@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.12) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.13) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -413,7 +413,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   value = aura sourceUnit; randoms outside the group give nil). Member row: not shown; All bar: `covered`, not counted.
 - Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`
   (default on) `mod.Castable(e)` hides a buff whose class isn't in the group (units) or online in the team
-  (`mod.ClassesHere`, cached 0.5 s); buffs not in the table always show.
+  (`mod.ClassesHere`, cached 0.5 s); buffs not in the table always show. Group units count only while online
+  (`Present`: UnitIsConnected ~= false, 0.25.13 - an offline paladin in the party showed blessings as missing), also in
+  `PaladinsHere`; UNIT_CONNECTION redraws.
 - Buffs "Only for" (`OnlyFor.lua`, was Roles.lua): `e.only = { classes = {...}, specs = {["PALADIN:RET"]=true}, mmt = {...} }` (specs via `mod.SpecOf`; spec unknown -> any ticked spec of the member's class counts; popup section from `mod.AllSpecs()`), nothing = everyone,
   else ANY match (`mod.Applies(e, key)`, used in Window `Icons` and the All classes row: members it isn't for aren't
   counted). Buff Timers' own player roles (Tank / Healer / Melee / Ranged / Caster: Roles tab, druid forms, BPR messages,

@@ -152,6 +152,14 @@ print(lua.eval(r'''function(m)
   NOW = NOW + 1
   assert(m.Castable(fort) and m.Castable({ id = 21562 }), "priest in the group")
   assert(not m.Castable(motw), "Mark without a druid")
+  -- the priest goes offline (still in the party): nobody can cast Fortitude
+  OFFLINE = { party1 = true }
+  function UnitIsConnected(u) return not OFFLINE[u] end
+  NOW = NOW + 1
+  assert(not m.Castable(fort), "an offline priest counted as a caster")
+  OFFLINE = {}
+  NOW = NOW + 1
+  assert(m.Castable(fort), "the priest back online")
   -- a druid of the team online (not grouped)
   GROUP.party1 = nil
   ONLINE["Cid-Ray"] = true
