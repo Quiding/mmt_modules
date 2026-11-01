@@ -69,9 +69,17 @@ function mod.AlertHook()
     end)
 end
 
+-- SmartBuff or Quality of life (which carries the team's alerts) is loaded here; without either
+-- the option isn't shown and nothing glows
+function mod.SmartBuffAround()
+    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    if not loaded then return true end
+    return (loaded("SmartBuff") or loaded("MMT_QoL")) and true or false
+end
+
 -- should entry e glow for member key now? (state / start = what mod.State said)
 function mod.Alerted(key, e, state, start)
-    if not M.db.glowAlerts then return false end
+    if not M.db.glowAlerts or not mod.SmartBuffAround() then return false end
     local t = mod.alerts[key]
     if not t then return false end
     local now = GetTime()

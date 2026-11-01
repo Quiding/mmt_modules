@@ -632,6 +632,13 @@ print(lua.eval(r"""function(m)
   -- own SmartBuff's alert (the hook), first name only
   m.NoteAlert("N", "Bob", "Blessing of Might")
   assert(AllIcon().glow, "own SmartBuff alert didn't glow")
+  -- neither SmartBuff nor Quality of life loaded here: no glow (and no option on the page)
+  local oldAddOns = C_AddOns
+  C_AddOns = { IsAddOnLoaded = function() return false end }
+  assert(not m.SmartBuffAround() and not AllIcon().glow, "glow without SmartBuff / Quality of life")
+  C_AddOns = { IsAddOnLoaded = function(n) return n == "MMT_QoL" end }
+  assert(m.SmartBuffAround() and AllIcon().glow, "Quality of life alone should be enough")
+  C_AddOns = oldAddOns
   m.alerts = {}
   m.State, m.SpellInfo, m.Castable = oldState, oldInfo, oldCast
   return "SmartBuff alerts glow ok"
