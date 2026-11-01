@@ -261,7 +261,7 @@ M.Page = function(_, page)
     UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
     R:Add(who, UI.ROW + 2)
     R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
-    -- only while SmartBuff is loaded and Quality of life's SmartBuff alerts are on (Alerts.lua): looked at
+    -- only while Quality of life's SmartBuff alerts are on (Alerts.lua): looked at
     -- again whenever the page refreshes, so switching it in Quality of life needs no /reload
     local sbHead = R:Header("SmartBuff")
     local gga, sga = Opt("glowAlerts")

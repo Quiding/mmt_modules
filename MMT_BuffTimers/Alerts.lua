@@ -69,11 +69,10 @@ function mod.AlertHook()
     end)
 end
 
--- SmartBuff is loaded on this character and Quality of life's "SmartBuff alerts" is on (its
--- settings READ only); else the option isn't shown and nothing glows
+-- Quality of life's "SmartBuff alerts" is on here (its settings READ only); else the option isn't
+-- shown and nothing glows. SmartBuff itself isn't needed here: a main without it still gets the
+-- alts' alerts (they need SmartBuff + Quality of life to send them)
 function mod.SmartBuffAround()
-    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-    if loaded and not loaded("SmartBuff") then return false end
     if not (MMT.ModuleActive and MMT.ModuleActive("QoL")) then return false end
     local q = MMT.db and MMT.db.modules and MMT.db.modules.QoL
     return type(q) == "table" and q.smartbuff == true

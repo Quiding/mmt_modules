@@ -592,7 +592,7 @@ end""")(mod))
 print(lua.eval(r"""function(m)
   local c = m.M.db
   local oldState, oldInfo, oldCast = m.State, m.SpellInfo, m.Castable
-  -- SmartBuff loaded, Quality of life's SmartBuff alerts on (Alerts.lua's SmartBuffAround)
+  -- Quality of life's SmartBuff alerts on (Alerts.lua's SmartBuffAround)
   local oldAddOns, oldActive, oldModules = C_AddOns, MMT.ModuleActive, MMT.db.modules
   local qolOn = true
   MMT.ModuleActive = function(n) return n == "QoL" and qolOn end
@@ -638,11 +638,10 @@ print(lua.eval(r"""function(m)
   -- own SmartBuff's alert (the hook), first name only
   m.NoteAlert("N", "Bob", "Blessing of Might")
   assert(AllIcon().glow, "own SmartBuff alert didn't glow")
-  -- needs SmartBuff loaded here AND Quality of life's SmartBuff alerts on (else no glow, no option on the page)
+  -- needs Quality of life's SmartBuff alerts on (else no glow, no option on the page)
+  -- SmartBuff not loaded here (a main without it): the alts' alerts still glow
   C_AddOns = { IsAddOnLoaded = function(n) return n == "MMT_QoL" end }
-  assert(not m.SmartBuffAround() and not AllIcon().glow, "glow without SmartBuff")
-  C_AddOns = { IsAddOnLoaded = function(n) return n == "SmartBuff" end }
-  assert(m.SmartBuffAround() and AllIcon().glow, "no glow with SmartBuff and Quality of life's alerts on")
+  assert(m.SmartBuffAround() and AllIcon().glow, "no glow without SmartBuff here")
   MMT.db.modules.QoL.smartbuff = false
   assert(not m.SmartBuffAround() and not AllIcon().glow, "glow with Quality of life's SmartBuff alerts off")
   MMT.db.modules.QoL.smartbuff, qolOn = true, false

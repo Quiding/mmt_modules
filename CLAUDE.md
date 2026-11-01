@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.15) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.16) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -387,7 +387,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Target -> key by full / first name (QoL's Shown logic; a shared first name = unknown); buff -> `mod.Canonical` (+ "Greater
   Blessing of" -> "Blessing of" while spell data is missing). `mod.alerts[key][name] = {kind, time}`; `mod.Alerted(key, e, state,
   start)`: 90 s, cleared when state == "buff" (kind N) or the buff started after the alert (E / C). Member icons and the All bar
-  (any counted member alerted; tip line). `mod.SmartBuffAround()` (0.25.15; 0.25.14 also took MMT_QoL - the user: no): SmartBuff loaded here + QoL active + its `smartbuff` feature on (`MMT.db.modules.QoL`, read only; checked
+  (any counted member alerted; tip line). `mod.SmartBuffAround()` (0.25.16; SmartBuff itself NOT needed here - a main without it gets the alts' alerts): QoL active + its `smartbuff` feature on (`MMT.db.modules.QoL`, read only; checked
   again on every page refresh: the header / check are hidden, not left out), else the
   Bars tab leaves the SmartBuff section out and nothing glows. Test: test_buffbar.py "SmartBuff alerts glow".
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
