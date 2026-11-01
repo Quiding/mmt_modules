@@ -707,9 +707,12 @@ return "ok: " .. table.concat(lines, " | ")
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(STUBS)
+# the core: beside the modules (an AddOns folder), else the MMT-src clone (this repo lives in D:\Games\MMT-modules)
 widgets = os.path.join("MMT", "Widgets.lua")
 if not os.path.exists(widgets):
-    print("MMT/Widgets.lua not found (MMT core not installed here): skipped")
+    widgets = os.path.join(os.environ.get("MMT_SRC", r"D:\Games\MMT-src"), "MMT", "Widgets.lua")
+if not os.path.exists(widgets):
+    print("MMT/Widgets.lua not found (no MMT core here or in MMT_SRC): skipped")
     sys.exit(0)
 lua.eval('function(src, name) assert(loadstring(src, name))("MMT", ns) end')(open(widgets, encoding="utf-8").read(), "MMT/Widgets.lua")
 lua.execute(MODULE)

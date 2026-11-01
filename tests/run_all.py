@@ -2,7 +2,7 @@
 
 Setup once:  pip install lupa luaparser   (or: pip install --target <dir> lupa luaparser
              and set PYTHONPATH=<dir>)
-Run:         python tests/run_all.py        (from Interface/AddOns)
+Run:         python tests/run_all.py        (from the repo root, D:/Games/MMT-modules)
 """
 import glob, os, subprocess, sys
 

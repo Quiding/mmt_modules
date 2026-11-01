@@ -402,6 +402,6 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
 
 ## Development
 
-This repository lives directly in `Interface/AddOns`; the `.gitignore` ignores every other addon
-and only lists our own module folders. Tests run the modules in Lua 5.1 (the same as WoW) through
+The repository holds only our module folders plus tests, tools and pictures; the game runs the modules
+through junctions from its `Interface/AddOns` folder into the repo (`tools/link_addons.ps1` makes them). Tests run the modules in Lua 5.1 (the same as WoW) through
 Python and [lupa](https://github.com/scoder/lupa): `python tests/run_all.py`.

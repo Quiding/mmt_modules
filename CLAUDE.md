@@ -7,14 +7,19 @@ World of Warcraft: Forever (interface `16001`, Lua 5.1 WoW API).
 - This repo (ours): https://github.com/Quiding/quiding_mmt_modules (branch `main`)
 
 ## Repo layout – IMPORTANT
-This git repo lives **directly in `Interface/AddOns`**, which also contains many
-other addons (Pawn, Details, Questie, the MMT core, the friend's MMT_* modules...).
-`.gitignore` ignores everything (`/*`) and whitelists only our files:
+This git repo lives in **`D:\Games\MMT-modules`** (since 2026-11-01, the user's choice; until then it was the WoW
+`Interface/AddOns` folder itself - the old copies are in `D:\Games\MMT-modules-old-copy\2026-11-01`). The game
+runs our modules through NTFS **junctions**: `<AddOns>\MMT_<Name>` -> `D:\Games\MMT-modules\MMT_<Name>`, so every
+edit here is live after a `/reload` - nothing to copy. `tools/link_addons.ps1` (re)creates them (safe to run any time:
+right links stay, a real folder in the way is moved to `D:\Games\MMT-modules-old-copy\<date>`, never deleted).
+**Never delete through a junction** (Remove-Item -Recurse on a link deletes the TARGET's files): remove a link with
+`(Get-Item <link>).Delete()` or let the script do it.
+`.gitignore` still ignores everything (`/*`) and whitelists only our files (from the AddOns days; harmless):
 `.gitignore`, `.gitattributes`, `.pkgmeta`, `README.md`, `CLAUDE.md`, `tests/`, `tools/`, `media/` (README pictures / gifs), and each of OUR module folders.
 - `MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`, `MMT_Statistics` (every `MMT*`
   folder in MMT-src) belong to the friend: never edit or commit them. Read them for reference only.
-- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, a move-folders line to `.pkgmeta`, list it in README.md.
-- Before committing, run `git status` and make sure no other addon's files are staged.
+- **New module:** create `MMT_<Name>/`, add `!/MMT_<Name>/` to `.gitignore`, a move-folders line to `.pkgmeta`, list it in
+  README.md, then run `tools/link_addons.ps1` so the game sees it.
 - Downloads hold only the `MMT_*` folders: `.gitattributes` `export-ignore`s tests/, media/, tools/, CLAUDE.md, README.md and the
   git / packager files (GitHub's Download ZIP, release archives). CurseForge zip: `python tools/make_release.py [ref]`
   (git archive of every MMT_* folder -> `dist/QMMTModules-<YYYY.MM.DD[.n]>.zip` + `dist/CHANGELOG-<name>.md` = module
@@ -28,7 +33,8 @@ After each meaningful change: `git add -A`, commit with a short clear message, `
 Changes go to the `dev` branch (since 2026-10-21, the user's choice); `main` only gets them when the user says so.
 
 ## Game folder
-WoW: Forever runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`** (this clone). The old
+WoW: Forever runs from **`D:\Games\World of Warcraft\_forever_\Interface\AddOns`** (our modules = junctions into this
+repo, see "Repo layout"; SavedVariables in `..\..\WTF\Account\<account>\SavedVariables\MMT.lua`). The old
 `_classic_beta_` folder is retired (since 2026-10-25): no sync hooks any more, don't update or use it.
 - The friend's MMT core + modules (`MMT`, `MMT_ItemCompare`, `MMT_LootDistribution`, `MMT_QuestTracker`, `MMT_ItemBar`)
   are NTFS **junctions** to `D:\Games\MMT-src\<name>` (a clone of github.com/bnetworking/MMT): update them with
@@ -884,7 +890,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `M.db` IN PLACE (the core holds that table), copy `M.defaults`, run OnProfileChanged.
 
 ## Tests (no Lua installed: Python + lupa's Lua 5.1, the same Lua as WoW)
-`tests/run_all.py` (from Interface/AddOns): syntax of every module file, shared files identical,
+`tests/run_all.py` (from the repo root): syntax of every module file, shared files identical,
 and every `tests/test_*.py` (stubbed WoW API; Totems runs two clients passing messages).
 Setup: `pip install --target <scratch>/py lupa luaparser`, `PYTHONPATH=<scratch>/py`.
 Run it before every commit; add a test when fixing a bug. It also lints `local a, b = x and f()`
