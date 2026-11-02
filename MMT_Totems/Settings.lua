@@ -331,6 +331,16 @@ M.Report = function(_, add)
     add(("-- Totems %s: shown=%s shamans=%s key=%s"):format(mod.VERSION, tostring(M.db.shown),
         table.concat(mod.Shamans(), ","), tostring(M.db.keybind)))
     add("sequence macro: " .. tostring(mod.SequenceMacro(mod.OwnKey())))
+    -- why the own bar's Call icon / sequence button show or not
+    local own = mod.OwnKey()
+    local bar = mod.bars[own]
+    local seq = mod.sequenceButton
+    add(("own bar %s: bar=%s shaman=%s onlyTimers=%s | call icon shown=%s usesCalls=%s knowsCall=%s/%s/%s callSide=%s view=%s | sequence shown=%s parent=bar:%s showSequence=%s"):format(
+        tostring(own), tostring(bar ~= nil), tostring(mod.IsShaman(own)), tostring(M.db.onlyTimers),
+        tostring(bar and bar.call and bar.call:IsShown()), tostring(mod.UsesCalls(own)),
+        tostring(mod.KnowsCall(1)), tostring(mod.KnowsCall(2)), tostring(mod.KnowsCall(3)),
+        tostring(M.db.callSide), tostring(mod.ViewCall(own)),
+        tostring(seq and seq:IsShown()), tostring(seq and bar and seq:GetParent() == bar), tostring(M.db.showSequence)))
     for key, t in pairs(mod.active) do
         local parts = {}
         for el, a in pairs(t) do parts[#parts + 1] = el .. "=" .. tostring(a.name) end
