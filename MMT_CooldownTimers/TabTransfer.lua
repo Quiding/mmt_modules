@@ -16,6 +16,7 @@ local ORDER = {
     { "lists", "Tracked lists" },
     { "specs", "Specs (spec lists, set by hand)" },
     { "frames", "Party frames" },
+    { "stance", "Stance / form icon" },
 }
 
 local SIDES = { RIGHT = true, LEFT = true, TOP = true, BOTTOM = true }
@@ -43,6 +44,20 @@ local function Clean(k, v)
         return nil
     end
     local out = {}
+    if k == "stance" and MMTStanceLib then   -- the shared stance settings (Stance.lua): fields of its defaults
+        for f, d in pairs(MMTStanceLib.DEFAULTS) do
+            local x = v[f]
+            if f == "where" then
+                if x == "OFF" or x == "WINDOW" or x == "CD" or x == "BUFF" then out.where = x end
+            elseif f == "point" then
+                if type(x) == "table" and type(x[1]) == "string" and type(x[2]) == "string" and type(x[3]) == "number"
+                    and type(x[4]) == "number" then out.point = { x[1], x[2], x[3], x[4] } end
+            elseif x ~= nil and type(x) == type(d) then
+                out[f] = x
+            end
+        end
+        return out
+    end
     if k == "specSet" then   -- [team key] = spec ("RET")
         for key, s in pairs(v) do if type(key) == "string" and type(s) == "string" and s:match("^%u+$") then out[key] = s end end
         return out
@@ -82,6 +97,7 @@ function mod.SetTabKeys(keys, data)
                 if v ~= nil then
                     M.db[k] = v
                     if k == "growth" then M.db.vertical = (v == "RIGHT" or v == "LEFT") end
+                    if k == "stance" and MMTStanceLib then MMTStanceLib.SetAll(v) end   -- both modules' copies
                     n = n + 1
                 end
             end

@@ -133,6 +133,7 @@ mod.TAB_KEYS = {
     specs = { "specSet", "specLists" },
     ["look.icons"] = { "iconSize", "iconZoom", "spacing", "allMissingLook", "glowMissing", "activeAlpha", "missingAlpha",
         "allCount", "allCountSize", "allCountColor" },
+    stance = { "stance" },
     frames = { "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers",
         "allOnFrames", "allX", "allY" },
 }
@@ -159,7 +160,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "specs", "Specs" }, { "frames", "Frames" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "specs", "Specs" }, { "frames", "Frames" }, { "stance", "Stance" } })
     mod.ShareBar(page, status)
 
     local FL = mod.FramesTab(panels.frames, Opt, status, { choices = WHERE, get = WhereGet, set = WhereSet })
@@ -288,6 +289,7 @@ M.Page = function(_, page)
     mod.LookText(WL, Opt, Apply, false)   -- the timer's size and colour: Timer sub-tab
     mod.LookFrame(UI.Column(look.window, COL2_X, 0, COL_W), Opt, Apply)
     mod.TimerTab(look.timer, Opt, Apply)
+    mod.StanceTab(panels.stance, status)
     mod.WindowShade(look.window, function()
         local allHere = M.db.allBar and not M.db.allOnFrames
         local members = (mod.Attached() and "NONE") or (not M.db.onFrames and "ALL")

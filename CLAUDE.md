@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.18.10) / MMT_BuffTimers (v0.25.16) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.0) / MMT_BuffTimers (v0.26.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -348,6 +348,19 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   first/last icon) and ends on mouse up (`IsMouseButtonDown`) or OnDragStop; no drag data / locked -> forwards to the
   window's drag. `row.key` / `row.vertical` set in Refresh.
   Test: test_bardrag.py (positions from SetPoint("TOPLEFT", x, y)).
+- Stance / form icon (`Stance.lua`, identical in both, Cooldowns 0.19.0 / Buffs 0.26.0): embedded lib **`MMTStanceLib`**
+  (NOT "MMTStance": that is the window's frame name, and a named frame is a global - it overwrote the lib in the first try),
+  newest VERSION wins, both modules `Register` (Cooldown Timers' M wins as the host whose `M.db.stance` holds the settings
+  while that addon is loaded, even switched off; else Buff Timers'). `M.db.stance` = {} in both defaults, missing fields read
+  from `lib.DEFAULTS` (metatable __index; read raw in tests); `lib.Set(k, v)` / `lib.SetAll(t)` write every loaded module's
+  copy (pages, import via TabTransfer's Clean "stance" + SetAll, reset via SettingsKit `mod.AfterReset(keys)`). `where` =
+  OFF | WINDOW (MMTIconBars window "MMTStance", frameOrder 3, rows of members with a stance) | CD | BUFF (an extra "stance" on
+  both windows, registered once, answering only while `lib.Target()` = that window - MMTIconBars.CanHost - else the window
+  takes over). Icon: state "ready", readyAlpha 1, oid "stance", anchor "^". Own stance = GetShapeshiftForm +
+  GetShapeshiftFormInfo (icon, _, _, spellID); `MST:<spellID>` (0 = none) once per change (own event frame:
+  UPDATE_SHAPESHIFT_FORM(S), PLAYER_ENTERING_WORLD), heartbeat `stn` (Cooldowns) / `stb` (Buffs while Cooldowns is off);
+  others = a message < 40 s old, else the heartbeat. Module OnEnable / OnDisable / OnProfileChanged wrapped to `lib.Apply()`;
+  REFRESH too. Settings tab "Stance" (`mod.StanceTab`), TAB_KEYS stance = {"stance"}. Test: end of test_iconmove.py.
 - Party frames (IconBars v14, Cooldowns 0.15.0 / Buffs 0.18.0): cfg `onFrames` = each member row beside their unit frame,
   `allOnFrames` (Buffs: the All bar = label rows) above the TOP frame (highest, then leftmost); `framesSide` RIGHT/LEFT/TOP/BOTTOM,
   `framesX/Y`, `framesIconSize` (0 = iconSize; slider 12-100), `framesFit` (v15, 0.15.1 / 0.18.1: member rows as high as their frame = `FrameHeight` in UIParent units, also in the poll signature so a resized frame redraws; All bar keeps framesIconSize; the Icon size slider is greyed (alpha 0.4, its Slider child takes no mouse, wrapped `Refresh`) while framesFit and no All bar above the frames), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.

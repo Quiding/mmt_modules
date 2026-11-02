@@ -137,6 +137,7 @@ function mod.ResetKeys(keys)
         local v = M.defaults and M.defaults[k]
         M.db[k] = v ~= nil and MMT.CopyTable(v) or nil
     end
+    if mod.AfterReset then mod.AfterReset(keys) end   -- settings shared with another module (Stance.lua)
     if M.OnProfileChanged then M.OnProfileChanged(M) end
     if MMT.RefreshConfig then MMT.RefreshConfig() end
 end
@@ -149,6 +150,7 @@ function mod.ResetSettings()
     for k in pairs(M.db) do M.db[k] = nil end
     for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
     M.db.takenFrom = taken
+    if mod.AfterReset then mod.AfterReset(nil) end   -- nil = everything
     if M.OnProfileChanged then M.OnProfileChanged(M) end
     if MMT.RefreshConfig then MMT.RefreshConfig() end
     MMT.Print("%s: settings reset to defaults.", M.title)

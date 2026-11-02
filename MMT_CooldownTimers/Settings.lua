@@ -34,6 +34,7 @@ mod.TAB_KEYS = {
     lists = { "lists" },
     specs = { "specSet", "specLists" },
     ["look.icons"] = { "iconSize", "iconZoom", "spacing", "readyAlpha", "cdAlpha" },
+    stance = { "stance" },
     frames = { "onFrames", "framesSide", "framesX", "framesY", "framesIconSize", "framesFit", "framesOthers" },
 }
 
@@ -41,7 +42,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" }, { "specs", "Specs" }, { "frames", "Frames" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Spells & items" }, { "specs", "Specs" }, { "frames", "Frames" }, { "stance", "Stance" } })
     mod.ShareBar(page, status)
     mod.SpecsTab(panels.specs, status, function()
         mod.BuildIndex()
@@ -134,6 +135,7 @@ M.Page = function(_, page)
     mod.LookText(WL, Opt, Apply, false)   -- the timer's size and colour: Timer sub-tab
     mod.LookFrame(UI.Column(look.window, COL2_X, 0, COL_W), Opt, Apply)
     mod.TimerTab(look.timer, Opt, Apply)
+    mod.StanceTab(panels.stance, status)
     mod.WindowShade(look.window, function()
         if not M.db.onFrames then return "ALL" end
         if M.db.framesOthers == "HIDE" then

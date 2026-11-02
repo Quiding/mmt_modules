@@ -44,6 +44,7 @@ local M = MMT.NewModule({
         framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22, framesFit = false,
         framesOthers = "WINDOW",   -- members without a frame: WINDOW (own window) | HIDE
         hidden = {},                -- [teamKey] = true: no row for this member
+        stance = {},                -- the stance / form icon, shared with the other module (Stance.lua; missing = its defaults)
         lists = mod.DEFAULT_LISTS,
     },
 })

@@ -252,5 +252,57 @@ print(lua.eval(r'''function(cd, bf)
   Check(legacy.look.set({ iconSize = 33, growth = "LEFT" }) and BM.db.iconSize == 33 and BM.db.vertical == true, "old look section")
   Check(legacy.allrow.set({ allBar = true, exclude = { ["Bob-Stone"] = true } }) and BM.db.allExclude["Bob-Stone"], "old All bar section")
   Check(legacy.position.set({ "TOPLEFT", "TOPLEFT", 5, -5 }) and BM.db.point[3] == 5, "old position section")
+  -- the stance / form icon (Stance.lua, shared lib MMTStanceLib): Bob tells us he's in Defensive Stance
+  local S = MMTStanceLib
+  BM.db.attach, BM.db.onFrames, BM.db.shown, BM.db.allBar = "OFF", false, true, false
+  BM.db.growth, BM.db.vertical, CM.db.onFrames = "DOWN", false, false
+  S.told = {}
+  S.OnMessage("Bob-Stone", "MST:71")
+  Check(S.StanceOf("Bob-Stone") == 71, "stance message not taken")
+  -- settings: one table, kept in Cooldown Timers' settings (the host), written into both copies
+  Check(S.Host().M == CM, "the host isn't Cooldown Timers")
+  S.Set("where", "CD")
+  Check(CM.db.stance.where == "CD" and BM.db.stance.where == "CD", "setting not in both copies")
+  Redraw(); cr, br = Rows()
+  Check(cr.icons[1].data.spell == 71 and cr.icons[1].data.guest, "stance not first on the cooldown row: " .. Ids(cr))
+  Check(Ids(br) ~= "" and br.icons[1].data.spell ~= 71, "stance on the buff row too")
+  Check(not S.window.frame.shown, "stance window shown while on the bars")
+  S.Set("where", "BUFF")
+  Redraw(); cr, br = Rows()
+  Check(br.icons[1].data.spell == 71 and cr.icons[1].data.spell ~= 71, "stance not moved to the buff row")
+  -- the Buff Timers bars aren't shown: its own window instead
+  BM.db.shown = false
+  Redraw(); S.window:Refresh()
+  local sr = RowOf(S.window, "Bob-Stone")
+  Check(sr and sr.icons[1].data.spell == 71, "stance window not used while its bars are hidden")
+  BM.db.shown = true
+  S.Set("where", "WINDOW")
+  Check(RowOf(S.window, "Bob-Stone"), "own window")
+  -- out of a stance: nothing; an old message gives way to the heartbeat
+  S.OnMessage("Bob-Stone", "MST:0")
+  S.window:Refresh()
+  Check(not RowOf(S.window, "Bob-Stone"), "a member in no stance has an icon")
+  S.told["Bob-Stone"] = { 0, GetTime() - 100 }
+  MMT.status["Bob-Stone"] = { ext = { stn = "2457" } }
+  Check(S.StanceOf("Bob-Stone") == 2457, "heartbeat not read: " .. tostring(S.StanceOf("Bob-Stone")))
+  MMT.status["Bob-Stone"] = nil
+  -- our own: read live, one message per change
+  local sent = {}
+  MMT.SendToTeam = function(msg) sent[#sent + 1] = msg end
+  GetShapeshiftForm = function() return 1 end
+  GetShapeshiftFormInfo = function(i) return 132341, true, true, 2457 end
+  S.OwnChanged(); S.OwnChanged()
+  Check(#sent == 1 and sent[1] == "MST:2457", "own stance message: " .. table.concat(sent, " "))
+  Check(S.StanceOf("Anna-Smith") == 2457, "own stance not read live")
+  -- export / import and reset of the Stance tab (either page) go to both copies
+  local def2 = bf.TransferDef()
+  local st = Section(def2, "stance")
+  Check(st, "no Stance section in the export")
+  S.Set("iconSize", 40)
+  local data = st.get()
+  S.Set("iconSize", 20)
+  Check(st.set(data) and CM.db.stance.iconSize == 40 and BM.db.stance.iconSize == 40, "stance import")
+  bf.ResetKeys(bf.TAB_KEYS.stance)
+  Check(rawget(CM.db.stance, "iconSize") == nil and S.Cfg().iconSize == 28 and S.Cfg().where == "OFF", "Stance reset from the Buff Timers page")
   return "icon moves between bars ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))

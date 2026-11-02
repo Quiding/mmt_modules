@@ -52,6 +52,7 @@ local M = MMT.NewModule({
         hideUnlearned = true,      -- hide buffs not learned yet: own row, and casters who haven't (Known.lua)
         blessingLimit = true,      -- one blessing per paladin in the group (Casters.lua)
         hideNoCaster = true,       -- hide buffs nobody in the group / online team can cast (Casters.lua)
+        stance = {},                -- the stance / form icon, shared with the other module (Stance.lua; missing = its defaults)
         lists = mod.DEFAULT_LISTS,
     },
 })

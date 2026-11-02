@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.18.10 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.25.16 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.26.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.0 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -52,6 +52,12 @@ Timers bars - moved one by one, or all of them with "Where: On the Cooldowns bar
 row, between the cooldowns; switching "Where" back to its own window brings them all home.
 
 <img src="media/timers_arrange.webp" alt="Arrange mode: dots on every icon, the All bar's buffs and both modules' bars beside the party frames, icons dragged along the rows" width="712">
+
+**Stance / form icon** (Cooldown Timers and Buff Timers, **Stance** tab - the same settings on both pages, works while
+either module is on): one icon per member with the stance or form they're in (warrior stances, druid forms, stealth,
+shadowform - whatever is on their stance bar). Show it in its own window, or as the first icon on the Cooldown Timers or
+Buff Timers bars (when those bars aren't shown, it uses its own window). Each client tells the team once when its stance
+changes.
 
 **Beside the party frames** (Cooldown Timers and Buff Timers, **Frames** tab): each member's icons sit next
 to their own party or raid frame instead of in the window - right, left, above or below it, with X / Y offsets and

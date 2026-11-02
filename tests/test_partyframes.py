@@ -247,8 +247,10 @@ print(lua.eval(r'''function(cd, bf)
   Check(not FRow(w, "Cid-Stone"), "frame rows while hidden")
   CM.db.shown = true
   w:Refresh()
+  CM.enabled = false   -- as the core does before OnDisable
   CM.OnDisable()
   Check(not FRow(w, "Cid-Stone") and not w.onFrames, "frame rows after OnDisable")
+  CM.enabled = true
   w:Refresh()
   -- the settings tab's "Where": back to the window
   BM.db.attach, BM.db.onFrames = "OFF", false
