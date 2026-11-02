@@ -420,7 +420,7 @@ function mod.Refresh()
     end
 
     -- team preset button: on the frame, or on the first bar when ungrouped
-    if c.showPresets and c.showTeamPreset and #keys > 0 then
+    if false then   -- team presets (TP) were replaced by the Calls (Calls.lua)
         local size = math.max(16, math.floor(c.iconSize * 0.8))
         teamBtn:SetSize(size, size)
         Font(teamBtn.text, math.floor(size * 0.5))

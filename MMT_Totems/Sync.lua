@@ -65,6 +65,27 @@ function mod.TakeOver(data, what)
             if type(key) == "string" and type(s) == "string" then M.db.sequences[key] = s; n = n + 1 end
         end
     end
+    if (not what or what.totems) and type(data.calls) == "table" then
+        for key, calls in pairs(data.calls) do
+            if type(key) == "string" and type(calls) == "table" then
+                local clean = {}
+                for call = 1, #mod.CALLS do
+                    local t = calls[call]
+                    if type(t) == "table" then
+                        for el, id in pairs(t) do
+                            if mod.TOTEMS[el] and type(id) == "number" then
+                                clean[call] = clean[call] or {}
+                                clean[call][el] = id
+                            end
+                        end
+                    end
+                end
+                M.db.calls[key] = clean
+                n = n + 1
+            end
+        end
+        if mod.PushCalls then mod.PushCalls() end
+    end
     if (not what or what.presets) and type(data.presets) == "table" then
         M.db.presets = mod.CleanPresets(data.presets)
         n = n + 1

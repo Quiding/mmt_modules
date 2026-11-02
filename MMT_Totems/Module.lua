@@ -43,12 +43,13 @@ local M = MMT.NewModule({
         point = { "CENTER", "CENTER", 0, -150 },
         barPoints = {},            -- [teamKey] = point, ungrouped bars
         keybind = "", spamSafe = false,
-        showPresets = true, showBarPresets = true, showTeamPreset = true,
+        showPresets = true, showBarPresets = true,
         presetsOnHover = false, presetSide = "START",
         selected = {},             -- [teamKey] = { Fire = spellID, ... }
         sequences = {},            -- [teamKey] = "Fire, Air, Water, Earth"
         presets = {},              -- [teamKey] = { [name] = { totems = {...}, sequence, icon } }
-        teamPresets = {},          -- [name] = { members = { [teamKey] = { totems, sequence } }, icon }
+        teamPresets = {},          -- old team presets (replaced by the Calls, kept, no longer shown)
+        calls = {},                -- [teamKey][call 1-3][element] = spellID: Call of the Elements / Ancestors / Spirits
     },
 })
 mod.M = M
@@ -140,6 +141,7 @@ M.OnEnable = function()
     mod.LoadTotemData()    -- names of totems this character never used (Data.lua)
     mod.RestoreRunning()   -- other shamans' totems from before a /reload (Tracker.lua)
     mod.Refresh()
+    mod.StartCalls()
     C_Timer.After(2, function() if M.enabled then mod.Refresh() end end)
 end
 

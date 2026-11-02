@@ -58,7 +58,6 @@ local function Build()
     local refresh
     local modeDD = UI.Dropdown(f, half, "Presets", {
         { value = "SHAMAN", text = "Per shaman" },
-        { value = "TEAM", text = "Team" },
     }, function() return st.mode end, function(v) st.mode = v; st.edit = nil; refresh() end)
     col:Add(modeDD, 0)
     local shamanDD = UI.Dropdown(f, half, "Shaman", function()

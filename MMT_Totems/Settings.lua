@@ -26,7 +26,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting & presets" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting & presets" }, { "calls", "Calls" } })
     mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------
@@ -216,7 +216,6 @@ M.Page = function(_, page)
     R:Header("Presets")
     Check(R, "Use presets", "showPresets")
     Check(R, "P button on each bar", "showBarPresets")
-    Check(R, "TP (team presets) button", "showTeamPreset")
     Check(R, "Only show them on mouse-over", "presetsOnHover")
     R:Cycle("P button position", {
         { value = "START", text = "Before the totems" },
@@ -225,8 +224,99 @@ M.Page = function(_, page)
     R:Button("Manage presets...", function() mod.OpenPresets() end)
 
 
+    -- Calls -----------------------------------------------------------------
+    -- each shaman's Call of the Elements / Ancestors / Spirits: one totem per element,
+    -- set here for anyone; that shaman's client puts them on Blizzard's totem bar
+    local kp = panels.calls
+    local K = UI.Column(kp, 0, 0, COL_W)
+    K:Header("Calls of")
+    local callKey
+    local RefreshCalls
+    K:Cycle("Shaman", Shamans, function() return callKey end, function(v)
+        callKey = v
+        RefreshCalls()
+    end)
+    local ICON, IGAP = 30, 6
+    local callIcons = {}
+    for call, c in ipairs(mod.CALLS) do
+        local row = CreateFrame("Frame", nil, kp)
+        row:SetSize(COL_W, ICON + 18)
+        local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        label:SetPoint("TOPLEFT", 0, 0)
+        label:SetText(c.name)
+        row.label = label
+        callIcons[call] = { row = row }
+        for i, el in ipairs(mod.ELEMENTS) do
+            local b = CreateFrame("Button", nil, row)
+            b:SetSize(ICON, ICON)
+            b:SetPoint("TOPLEFT", (i - 1) * (ICON + IGAP), -14)
+            UI.Fill(b, 0.12, 0.12, 0.12, 1)
+            UI.Border(b, 0.3, 0.3, 0.3, 1)
+            b.icon = b:CreateTexture(nil, "ARTWORK")
+            b.icon:SetPoint("TOPLEFT", 1, -1)
+            b.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+            b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            b.empty = b:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            b.empty:SetPoint("CENTER")
+            b.empty:SetText(el:sub(1, 1))
+            b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            b:SetScript("OnClick", function(self, button)
+                if not callKey then status.Show_("Choose a shaman first.", true) return end
+                if button == "RightButton" then mod.SetCallTotem(callKey, call, el, 0)
+                else mod.OpenCallMenu(self, callKey, call, el) end
+                RefreshCalls()
+            end)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(("%s - %s"):format(c.name, el))
+                local id = callKey and mod.CallTotem(callKey, call, el)
+                GameTooltip:AddLine(id and (mod.TotemName(id) or ("Spell " .. id)) or "none", 1, 1, 1)
+                GameTooltip:AddLine("Click: choose. Right-click: none.", 0.7, 0.7, 0.7)
+                GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            callIcons[call][el] = b
+        end
+        K:Add(row, ICON + 22)
+    end
+    RefreshCalls = function()
+        local own = callKey and MMT.IsSelf(callKey)
+        for call, c in ipairs(mod.CALLS) do
+            local known = not own or mod.KnowsCall(call)
+            callIcons[call].row.label:SetText(c.name .. (known and "" or "  |cff888888(not learned yet)|r"))
+            for _, el in ipairs(mod.ELEMENTS) do
+                local b = callIcons[call][el]
+                local id = callKey and mod.CallTotem(callKey, call, el)
+                local icon = id and mod.TotemIcon(id)
+                if icon then b.icon:SetTexture(icon); b.icon:Show(); b.empty:Hide()
+                else b.icon:Hide(); b.empty:Show() end
+                b.icon:SetDesaturated(not known)
+            end
+        end
+    end
+
+    local KR = UI.Column(kp, COL2_X, 0, COL_W)
+    KR:Header("How it works")
+    KR:Note("Each Call drops one totem per element: Call of the Elements from level 20, of the Ancestors from 30, of the Spirits from 40. Set them here for any shaman; that shaman's client puts them on Blizzard's totem bar (out of combat). Below level 20 the sequence key does the job.")
+    KR:Button("Copy Elements to the other two", function()
+        if not callKey then return end
+        mod.CopyCall(callKey, 1, 2)
+        mod.CopyCall(callKey, 1, 3)
+        RefreshCalls()
+        status.Show_(("%s: all three Calls are now the same."):format(MMT.FirstName(callKey)))
+    end)
+    KR:Button("Put mine on my totem bar now", function()
+        local n = mod.PushCalls()
+        status.Show_(InCombatLockdown() and "In combat: after the fight." or ("%d totem(s) changed on your totem bar."):format(n))
+    end)
+
     page.OnRefresh = function()
         PracticeText()
+        if not callKey then
+            local first = Shamans()[1]
+            callKey = first and first.value
+        end
+        RefreshCalls()
         if not capturing then keyButton.label:SetText("Sequence key: " .. KeyText()) end
         if not seqKey then
             local first = Shamans()[1]

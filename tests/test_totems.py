@@ -124,6 +124,11 @@ function MMT.ToggleConfig(k) OPENED[#OPENED + 1] = k end
 function MMT.RefreshConfig() end
 function MMT.ApplyFont(fs) fs._font = true end
 function MMT.Repr(s) return s end
+function MMT.Safe(fn, ...) if type(fn) ~= "function" then return nil end local ok, a, b, c, d, e, f, g = pcall(fn, ...) if ok then return a, b, c, d, e, f, g end end
+-- Blizzard's totem bar: action slot -> spell (133..144 = 3 Calls x Fire, Earth, Water, Air)
+BAR = {}
+function GetActionInfo(a) if BAR[a] then return "spell", BAR[a] end end
+function SetMultiCastSpell(a, id) if IN_COMBAT then error("blocked in combat") end BAR[a] = id end
 MMT.UI = setmetatable({}, { __index = function() return function() return CreateFrame("Frame") end end })
 CONFIRMS = {}
 MMT.UI.Confirm = function(text, acceptText, onAccept) CONFIRMS[#CONFIRMS + 1] = { text = text, accept = onAccept } end
@@ -647,4 +652,54 @@ print("A:", A.eval(r"""function(m)
   CreateFrame = real
   assert(strata == "DIALOG", "presets window strata: " .. tostring(strata) .. " " .. tostring(err))
   return "presets window below the dropdown layer ok"
+end""")(amod))
+
+# the Calls (WoW: Forever): each shaman's three sets of four totems, put on Blizzard's totem
+# bar by that shaman's own client (slots 132 + Fire 1 / Earth 2 / Water 3 / Air 4 + 4 per Call)
+sent(A); sent(B)
+print("A:", A.eval(r"""function(m)
+  SPELLS[66842] = "Call of the Elements"     -- learned; Ancestors / Spirits not yet
+  IN_COMBAT = false
+  BAR = {}
+  m.SetCallTotem("Anna-Smith", 1, "Fire", 3599)
+  m.SetCallTotem("Anna-Smith", 1, "Earth", 8075)
+  assert(BAR[133] == 3599 and BAR[134] == 8075, "not on the bar: " .. tostring(BAR[133]) .. " " .. tostring(BAR[134]))
+  local msg = false
+  for _, t in ipairs(SENT) do if t == "MTTC:1:Fire:3599:Anna-Smith" then msg = true end end
+  assert(msg, "team not told")
+  -- a Call not learned yet: kept, not put on the bar
+  m.SetCallTotem("Anna-Smith", 2, "Fire", 3599)
+  assert(BAR[137] == nil and m.CallTotem("Anna-Smith", 2, "Fire") == 3599, "unlearned Call")
+  -- in combat: after the fight
+  IN_COMBAT = true
+  m.SetCallTotem("Anna-Smith", 1, "Water", 5394)
+  assert(BAR[135] == nil, "set in combat")
+  IN_COMBAT = false
+  FIRE("PLAYER_REGEN_ENABLED")
+  assert(BAR[135] == 5394, "not set after combat")
+  return "calls onto the bar ok"
+end""")(amod))
+# Bob sets Anna's Air totem of Call of the Elements: Anna's client puts it on her bar
+print("B:", B.eval(r"""function(m)
+  m.SetCallTotem("Anna-Smith", 1, "Air", 8512)
+  assert(BAR[136] == nil, "Bob's client touched a bar for Anna")
+  return "set for another shaman"
+end""")(bmod))
+for msg in sent(B): A.eval('function(f, m) DELIVER(f, m) end')("Bob-Stone", msg)
+print("A:", A.eval(r"""function(m)
+  assert(BAR[136] == 8512, "Bob's choice not on Anna's bar: " .. tostring(BAR[136]))
+  -- the first time: what's already on the bar is taken over (and told to the team)
+  m.M.db.calls["Anna-Smith"] = nil
+  BAR = { [133] = 8190, [136] = 8835 }
+  SENT = {}
+  assert(m.ReadCalls(), "bar not read")
+  assert(m.CallTotem("Anna-Smith", 1, "Fire") == 8190 and m.CallTotem("Anna-Smith", 1, "Air") == 8835, "bar not taken over")
+  assert(#SENT == 2, "taken-over Calls not told: " .. #SENT)
+  -- not again once there are Calls
+  BAR[133] = 3599
+  assert(not m.ReadCalls() and m.CallTotem("Anna-Smith", 1, "Fire") == 8190, "read again")
+  -- copy Elements to the other two
+  m.CopyCall("Anna-Smith", 1, 3)
+  assert(m.CallTotem("Anna-Smith", 3, "Air") == 8835, "copy")
+  return "calls taken over + copied ok"
 end""")(amod))

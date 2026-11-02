@@ -9,7 +9,7 @@ local M = mod.M
 local LOOK = { "shown", "locked", "ungrouped", "vertical", "growth", "includeSelf", "onlyOnline", "order",
     "showNames", "fullNames", "onlyTimers", "showTimers", "timerColor", "iconSize", "iconZoom", "spacing", "rowGap",
     "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe",
-    "showPresets", "showBarPresets", "showTeamPreset", "presetsOnHover", "presetSide",
+    "showPresets", "showBarPresets", "presetsOnHover", "presetSide",
     "hideNoItem", "hideUnlearned", "hiddenElements", "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
 local CHOICES = {
     order = { TEAM = true, NAME_ASC = true, NAME_DESC = true, ROLE = true },
@@ -75,8 +75,8 @@ function mod.TransferDef()
         prefix = "MMTTT1",
         sections = {
             { id = "look", label = "Bars & look", get = GetLook, set = SetLook },
-            { id = "totems", label = "Chosen totems & sequences",
-              get = function() return { selected = MMT.CopyTable(M.db.selected), sequences = MMT.CopyTable(M.db.sequences) } end,
+            { id = "totems", label = "Chosen totems, sequences & Calls",
+              get = function() return { selected = MMT.CopyTable(M.db.selected), sequences = MMT.CopyTable(M.db.sequences), calls = MMT.CopyTable(M.db.calls) } end,
               set = function(d)
                   if type(d) ~= "table" then return false, "unreadable" end
                   return mod.TakeOver(d, { totems = true })
