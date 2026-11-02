@@ -43,6 +43,7 @@ local M = MMT.NewModule({
         point = { "CENTER", "CENTER", 0, -150 },
         barPoints = {},            -- [teamKey] = point, ungrouped bars
         keybind = "", spamSafe = false,
+        showSequence = true,       -- the sequence button on your own bar (the sequence key works without it)
         showPresets = true, showBarPresets = true,
         presetsOnHover = false, presetSide = "START",
         selected = {},             -- [teamKey] = { Fire = spellID, ... }

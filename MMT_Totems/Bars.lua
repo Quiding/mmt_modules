@@ -303,11 +303,13 @@ local function LayoutBar(bar, pad, nameW)
     local size, gap = c.iconSize, c.spacing
     local own = MMT.IsSelf(bar.key)
     local seqBtn = mod.sequenceButton
-    local hasSeq = own and not c.onlyTimers
+    -- the sequence button: own bar, not "Only timers", not switched off (the key works without it)
+    local hasSeq = own and not c.onlyTimers and c.showSequence ~= false
+    if own and not hasSeq and seqBtn then seqBtn:Hide() end
     local hasPreset = false   -- the P button is gone (0.5.2): the Calls are the sets now
     local items = {}
     -- the Call icon, set apart from the totems by SEP (callSide START | END | OFF)
-    local calls = mod.UsesCalls and mod.UsesCalls(bar.key) and c.callSide ~= "OFF"
+    local calls = mod.UsesCalls and mod.UsesCalls(bar.key) and c.callSide ~= "OFF" and not c.onlyTimers
     local SEP = bar   -- a marker in items: extra room
     if calls and c.callSide ~= "END" then items[#items + 1] = bar.call; items[#items + 1] = SEP end
     if not calls then bar.call:Hide() end

@@ -150,6 +150,7 @@ M.Page = function(_, page)
     UI.Tooltip(keyButton, "Totem sequence key", "Click, then press a key (Alt, Ctrl, Shift work). Right-click removes it. Also in Esc > Options > Keybindings > MMT (Manage My Team) > Totems.")
     C:Add(keyButton, UI.ROW + 2)
     Check(C, "Spam-safe sequence", "spamSafe", "/castsequence reset=3 with an empty step at the end, so mashing the key doesn't restart the sequence.")
+    Check(C, "Sequence button on my bar", "showSequence", "The button that casts the sequence, at the end of your own bar. Off: only the sequence key casts it (after level 20 the Call icon drops all four totems).")
 
     -- sequence per shaman
     local seqKey

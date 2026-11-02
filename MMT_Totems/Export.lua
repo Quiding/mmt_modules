@@ -8,12 +8,13 @@ local M = mod.M
 
 local LOOK = { "shown", "locked", "ungrouped", "vertical", "growth", "includeSelf", "onlyOnline", "order",
     "showNames", "fullNames", "onlyTimers", "showTimers", "timerColor", "iconSize", "iconZoom", "spacing", "rowGap",
-    "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe",
+    "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe", "showSequence", "callSide",
     "showPresets", "showBarPresets", "presetsOnHover", "presetSide",
     "hideNoItem", "hideUnlearned", "hiddenElements", "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
 local CHOICES = {
     order = { TEAM = true, NAME_ASC = true, NAME_DESC = true, ROLE = true },
     presetSide = { START = true, END = true },
+    callSide = { START = true, END = true, OFF = true },
 }
 
 local function GetLook()

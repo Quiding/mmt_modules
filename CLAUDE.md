@@ -482,7 +482,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.3) – port of ema_totems
+### MMT_Totems (v0.5.4) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -523,6 +523,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   totems) | END | OFF, set apart by an extra gap - the SEP marker in LayoutBar's items; right-click (others: any click)
   = `mod.OpenCallList` -> `mod.SetViewCall` (session only); own bar: secure, left-click `/cast <Call>` set in
   UpdateSecure, only when learned). No Calls -> chosen totems as before.
+  0.5.4: no Call icon with `onlyTimers`; `showSequence` (default on) = the sequence button on the own bar (hidden
+  secure button: the sequence key's CLICK binding still works); a sequence button left off the bar is hidden (it
+  stayed at its old spot). Export LOOK has showSequence / callSide (CHOICES callSide).
   0.5.2: the P button (per-shaman presets) is gone from bar and settings (functions / `presets` data kept, unused).
 - Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `calls[key]`, `teamPresets[name]` (old).
 - Shared files: `Compat.lua`, `Transfer.lua`, `SettingsKit.lua` (identical with Cooldowns / Buffs).

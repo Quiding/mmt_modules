@@ -13,7 +13,7 @@ MODULES, with its own settings page.
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.1 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.28.0 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.3 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.4 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.6 |
@@ -199,7 +199,8 @@ tracked for them, with exact timers.
 - Active totem with its timer, else the chosen / last one.
 - Right-click a slot to choose a totem (only the ones that shaman has learned), left-click your own
   to cast it. Works from every client: a warrior can set the shaman's totems.
-- A cast sequence (reorder the four element buttons) on a key, spam-safe option - for lower levels.
+- A cast sequence (reorder the four element buttons) on a key, spam-safe option - for lower levels; its
+  button on your bar can be switched off (the key keeps working).
 - **Calls** (settings > Calls): each shaman's Call of the Elements / Ancestors / Spirits, one totem per
   element, set for any shaman; that shaman's client puts them on Blizzard's totem bar (out of combat).
   On the bar: one Call icon left of the totems (setting: right / hidden) - right-click it to choose which Call
