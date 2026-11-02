@@ -703,3 +703,32 @@ print("A:", A.eval(r"""function(m)
   assert(m.CallTotem("Anna-Smith", 3, "Air") == 8835, "copy")
   return "calls taken over + copied ok"
 end""")(amod))
+
+# the bar follows the Calls: an E / A / S switch picks which Call the slots show, a right-click on a
+# slot sets that Call's totem (onto the shaman's Blizzard bar); a shaman without Calls keeps the old way
+print("A:", A.eval(r"""function(m)
+  local pick
+  local open = MMT.UI.OpenList
+  MMT.UI.OpenList = function(owner, items, current, onPick) pick = onPick end
+  m.Refresh()
+  local bar = m.bars["Anna-Smith"]
+  assert(m.UsesCalls("Anna-Smith") and bar.callSwitch:IsShown(), "no Call switch on Anna's bar")
+  assert(not m.UsesCalls("Bob-Stone"), "Bob has no Calls")
+  -- the slots show the shown Call
+  m.SetViewCall("Anna-Smith", 3)
+  assert(m.Selected("Anna-Smith", "Air") == m.CallTotem("Anna-Smith", 3, "Air"), "slot doesn't follow Call 3")
+  m.SetViewCall("Anna-Smith", 1)
+  assert(m.Selected("Anna-Smith", "Fire") == m.CallTotem("Anna-Smith", 1, "Fire"), "slot doesn't follow Call 1")
+  -- right-click a slot: into Call of the Elements and onto Anna's Blizzard bar
+  m.OpenTotemMenu(bar.slots.Fire, "Anna-Smith", "Fire")
+  pick(3599)
+  assert(m.CallTotem("Anna-Smith", 1, "Fire") == 3599 and BAR[133] == 3599, "slot pick not in the Call / bar: " .. tostring(BAR[133]))
+  -- the own slot casts the shown Call's totem
+  assert(bar.slots.Fire:GetAttribute("*macrotext1") == "/cast Searing Totem", "own slot casts: " .. tostring(bar.slots.Fire:GetAttribute("*macrotext1")))
+  -- a shaman without Calls: the chosen totem as before
+  m.OpenTotemMenu(m.bars["Bob-Stone"].slots.Water, "Bob-Stone", "Water")
+  pick(5675)
+  assert(m.Selected("Bob-Stone", "Water") == 5675 and m.CallTotem("Bob-Stone", 1, "Water") == nil, "Bob's pick")
+  MMT.UI.OpenList = open
+  return "bar follows the Calls ok"
+end""")(amod))

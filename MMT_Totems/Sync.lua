@@ -11,7 +11,9 @@ local MMT = MMT
 local M = mod.M
 
 
+-- a shaman who uses the Calls: the bar shows (and casts) the shown Call's totems
 function mod.Selected(key, element)
+    if mod.UsesCalls and mod.UsesCalls(key) then return mod.CallTotem(key, mod.ViewCall(key), element) end
     local s = M.db.selected[key]
     local id = s and s[element]
     return (id and id ~= 0) and id or nil

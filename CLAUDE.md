@@ -475,7 +475,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.0) – port of ema_totems
+### MMT_Totems (v0.5.1) – port of ema_totems
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry
@@ -509,6 +509,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   tested: allowed from an addon timer; not in combat -> PLAYER_REGEN_ENABLED; only learned Calls, `mod.KnowsCall`
   = spell found by name). First login: `mod.ReadCalls()` takes over what's on Blizzard's bar (GetActionInfo).
   Replaces the team presets (TP button / dialog mode removed; `teamPresets` data kept, unused).
+  0.5.1 the bar follows the Calls: `mod.UsesCalls(key)` (own: Call of the Elements learned; others: their calls are
+  known) -> `mod.Selected` returns `CallTotem(key, mod.ViewCall(key), el)` (slots, tooltip, own slot casts), the slot
+  menu writes `SetCallTotem` into the shown Call; `bar.callSwitch` (E / A / S, one icon's place, after the slots) =
+  `mod.SetViewCall` (session only; lit in UpdateIcons, unlearned own Calls dimmed). No Calls -> chosen totems as before.
 - Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `calls[key]`, `teamPresets[name]` (old).
 - Shared files: `Compat.lua`, `Transfer.lua`, `SettingsKit.lua` (identical with Cooldowns / Buffs).
 - Settings tabs Bars / Look (`mod.LookTab` + inactiveAlpha, alpha) / Casting & presets; one status line.

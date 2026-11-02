@@ -100,8 +100,38 @@ function mod.SetCallTotem(key, call, element, id, quiet)
     M.db.calls[key][call] = M.db.calls[key][call] or {}
     M.db.calls[key][call][element] = id ~= 0 and id or nil
     if not quiet then MMT.SendToTeam(("MTTC:%d:%s:%d:%s"):format(call, element, id, key), true) end
-    if MMT.IsSelf(key) then mod.PushCalls() end
+    if MMT.IsSelf(key) then
+        mod.PushCalls()
+        if mod.UpdateSecure then mod.UpdateSecure() end   -- the bar's own slots cast the shown Call's totems
+    end
+    if mod.Refresh then mod.Refresh() end   -- a shaman's first Call can change their bar (E / A / S)
     if MMT.RefreshConfig then MMT.RefreshConfig() end
+end
+
+---------------------------------------------------------------------------
+-- The bars follow the Calls: a shaman who uses them gets an E / A / S switch on
+-- the bar; the slots show (right-click: set) that Call's totems
+---------------------------------------------------------------------------
+local view = {}   -- [key] = the Call the bar shows (this session)
+
+-- this character: a Call learned; another shaman: their Calls are known (their client
+-- takes them over from its Blizzard bar at login and tells the team)
+function mod.UsesCalls(key)
+    if not key or (mod.IsPractice and mod.IsPractice(key)) then return false end
+    if MMT.IsSelf(key) then return mod.KnowsCall(1) end
+    local c = M.db.calls and M.db.calls[key]
+    if not c then return false end
+    for _, t in pairs(c) do if next(t) then return true end end
+    return false
+end
+
+function mod.ViewCall(key) return view[key] or 1 end
+
+function mod.SetViewCall(key, call)
+    if not mod.CALLS[call] then return end
+    view[key] = call
+    if MMT.IsSelf(key) and mod.UpdateSecure then mod.UpdateSecure() end
+    if mod.UpdateIcons then mod.UpdateIcons() end
 end
 
 -- the same totems in all three Calls (e.g. to start from the chosen ones)

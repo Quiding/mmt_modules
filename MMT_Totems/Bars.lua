@@ -244,6 +244,22 @@ local function NewBar(key)
     bar.preset:SetScript("OnLeave", function() GameTooltip:Hide() end)
     bar.slots = {}
     for _, element in ipairs(mod.ELEMENTS) do bar.slots[element] = NewSlot(bar, key, element, own) end
+    -- E / A / S: which Call the slots show (Calls.lua); one icon's place, three thin buttons
+    bar.callSwitch = CreateFrame("Frame", nil, bar)
+    bar.callSwitch.buttons = {}
+    for call, c in ipairs(mod.CALLS) do
+        local b = TextButton(bar.callSwitch, c.short:sub(1, 1), 0.6, 0.6, 0.6)
+        b:SetScript("OnClick", function() mod.SetViewCall(key, call) end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(c.name .. " - " .. MMT.FirstName(key))
+            GameTooltip:AddLine("Click: the slots show this Call. Right-click a slot to set its totem: it goes onto "
+                .. MMT.FirstName(key) .. "'s totem bar.", 0.7, 0.7, 0.7, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        bar.callSwitch.buttons[call] = b
+    end
     -- presets only while the mouse is over the bar
     local t = 0
     bar:SetScript("OnUpdate", function(self, e)
@@ -286,6 +302,8 @@ local function LayoutBar(bar, pad, nameW)
         local s = bar.slots[element]
         if mod.SlotShown(bar.key, element) then items[#items + 1] = s else s:Hide() end
     end
+    local calls = mod.UsesCalls and mod.UsesCalls(bar.key)
+    if calls then items[#items + 1] = bar.callSwitch else bar.callSwitch:Hide() end
     if hasSeq then items[#items + 1] = seqBtn end
     if hasPreset and c.presetSide ~= "START" then items[#items + 1] = bar.preset end
     bar.preset:SetShown(hasPreset)
@@ -310,6 +328,15 @@ local function LayoutBar(bar, pad, nameW)
         item:Show()
     end
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
+    if calls then
+        local h = size / #mod.CALLS
+        for i, b in ipairs(bar.callSwitch.buttons) do
+            b:SetSize(size, h)
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", 0, -(i - 1) * h)
+            Font(b.text, math.max(8, math.floor(h * 0.8)))
+        end
+    end
     bar.name:ClearAllPoints()
     if c.vertical then bar.name:SetPoint("TOP", bar, "TOPLEFT", pad + colW / 2, -pad)
     else bar.name:SetPoint("LEFT", bar, "TOPLEFT", pad, -pad - size / 2) end
@@ -460,6 +487,15 @@ function mod.UpdateIcons()
     if not (M.enabled and c) then return end
     local now = GetTime()
     for key, bar in pairs(bars) do
+        if bar:IsShown() and bar.callSwitch:IsShown() then
+            -- the shown Call lit, a Call this character hasn't learned dimmed
+            local shown, own = mod.ViewCall(key), MMT.IsSelf(key)
+            for call, b in ipairs(bar.callSwitch.buttons) do
+                if call == shown then b.text:SetTextColor(1, 0.82, 0)
+                elseif own and not mod.KnowsCall(call) then b.text:SetTextColor(0.3, 0.3, 0.3)
+                else b.text:SetTextColor(0.6, 0.6, 0.6) end
+            end
+        end
         if bar:IsShown() then
             for element, s in pairs(bar.slots) do
                 local name, icon, start, dur = mod.ActiveTotem(key, element)
@@ -514,7 +550,9 @@ function mod.OpenTotemMenu(owner, key, element)
         items[#items + 1] = { value = id, text = IconText(mod.TotemIcon(id), text) }
     end
     UI.OpenList(owner, items, mod.Selected(key, element) or 0, function(id)
-        mod.SetSelected(key, element, id)
+        -- a shaman with Calls: into the Call the bar shows (and onto their Blizzard totem bar)
+        if mod.UsesCalls and mod.UsesCalls(key) then mod.SetCallTotem(key, mod.ViewCall(key), element, id)
+        else mod.SetSelected(key, element, id) end
     end)
 end
 
