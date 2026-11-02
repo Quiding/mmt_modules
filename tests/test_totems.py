@@ -712,14 +712,23 @@ print("A:", A.eval(r"""function(m)
   MMT.UI.OpenList = function(owner, items, current, onPick) pick = onPick end
   m.Refresh()
   local bar = m.bars["Anna-Smith"]
-  assert(m.UsesCalls("Anna-Smith") and bar.callButtons[1]:IsShown() and bar.callButtons[3]:IsShown(), "no Call icons on Anna's bar")
+  assert(m.UsesCalls("Anna-Smith") and bar.call:IsShown(), "no Call icon on Anna's bar")
   -- the P button is gone (0.5.2)
   m.M.db.showPresets, m.M.db.showBarPresets = true, true
   m.Refresh()
   assert(not bar.preset:IsShown(), "P button still on the bar")
-  -- clicking a Call's icon shows that Call
-  bar.callButtons[2]._OnClick(bar.callButtons[2])
-  assert(m.ViewCall("Anna-Smith") == 2, "Call icon click")
+  -- one Call icon: right-click = the list of Calls; own left-click casts the shown Call (learned only)
+  bar.call._PostClick(bar.call, "RightButton", false)
+  pick(2)
+  assert(m.ViewCall("Anna-Smith") == 2, "Call chosen from the list")
+  assert(bar.call:GetAttribute("*macrotext1") == nil, "casts a Call not learned (Ancestors)")
+  m.SetViewCall("Anna-Smith", 1)
+  assert(bar.call:GetAttribute("*macrotext1") == "/cast Call of the Elements", "Call icon doesn't cast: " .. tostring(bar.call:GetAttribute("*macrotext1")))
+  -- left of the totems by default, right with callSide END, gone with OFF
+  m.M.db.callSide = "OFF"; m.Refresh()
+  assert(not bar.call:IsShown(), "Call icon shown while OFF")
+  m.M.db.callSide = "START"; m.Refresh()
+  assert(bar.call:IsShown(), "Call icon back")
   assert(not m.UsesCalls("Bob-Stone"), "Bob has no Calls")
   -- the slots show the shown Call
   m.SetViewCall("Anna-Smith", 3)

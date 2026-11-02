@@ -290,6 +290,12 @@ M.Page = function(_, page)
     end
 
     local KR = UI.Column(kp, COL2_X, 0, COL_W)
+    KR:Header("On the bars")
+    KR:Cycle("Call icon", {
+        { value = "START", text = "Left of the totems" },
+        { value = "END", text = "Right of the totems" },
+        { value = "OFF", text = "Hidden" },
+    }, Opt("callSide"))
     KR:Header("How it works")
     KR:Note("Each Call drops one totem per element: Call of the Elements from level 20, of the Ancestors from 30, of the Spirits from 40. Set them here for any shaman; that shaman's client puts them on Blizzard's totem bar (out of combat). Below level 20 the sequence key does the job.")
     KR:Button("Copy Elements to the other two", function()

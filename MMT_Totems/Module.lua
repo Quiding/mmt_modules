@@ -50,6 +50,7 @@ local M = MMT.NewModule({
         presets = {},              -- [teamKey] = { [name] = { totems = {...}, sequence, icon } }
         teamPresets = {},          -- old team presets (replaced by the Calls, kept, no longer shown)
         calls = {},                -- [teamKey][call 1-3][element] = spellID: Call of the Elements / Ancestors / Spirits
+        callSide = "START",        -- the Call icon on the bars: START (left of the totems) | END | OFF
     },
 })
 mod.M = M

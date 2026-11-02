@@ -76,6 +76,13 @@ function mod.UpdateSecure()
             s:SetAttribute("*type1", name and "macro" or nil)
             s:SetAttribute("*macrotext1", name and ("/cast " .. name) or nil)
         end
+        -- the Call icon: left-click casts the Call the slots show (when learned)
+        if bar.call then
+            local call = mod.ViewCall and mod.ViewCall(key)
+            local name = not passive and call and mod.KnowsCall(call) and mod.CALLS[call].name
+            bar.call:SetAttribute("*type1", name and "macro" or nil)
+            bar.call:SetAttribute("*macrotext1", name and ("/cast " .. name) or nil)
+        end
     end
     local macro = not passive and mod.SequenceMacro(key) or nil
     seq.macroText = macro

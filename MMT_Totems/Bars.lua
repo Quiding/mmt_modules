@@ -1,6 +1,6 @@
 -- MMT Totems: the bars.
 --
--- One bar per shaman: name, Fire / Air / Water / Earth, [the three Calls' icons],
+-- One bar per shaman: name, [the Call icon], Fire / Air / Water / Earth,
 -- and on YOUR bar the sequence button. Grouped (one movable frame) or
 -- ungrouped (each bar moves on its own). Your slot buttons and the sequence
 -- button are secure action buttons (they cast), so the layout can only
@@ -244,30 +244,31 @@ local function NewBar(key)
     bar.preset:SetScript("OnLeave", function() GameTooltip:Hide() end)
     bar.slots = {}
     for _, element in ipairs(mod.ELEMENTS) do bar.slots[element] = NewSlot(bar, key, element, own) end
-    -- the three Calls' icons after the slots: click = the slots show that Call (Calls.lua)
-    bar.callButtons = {}
-    for call, c in ipairs(mod.CALLS) do
-        local b = CreateFrame("Button", nil, bar)
-        b.icon = b:CreateTexture(nil, "ARTWORK")
-        b.icon:SetPoint("CENTER")
-        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        b.edge = b:CreateTexture(nil, "BACKGROUND")   -- gold behind the icon = the Call shown
-        b.edge:SetAllPoints()
-        b.edge:SetColorTexture(1, 0.82, 0, 1)
-        local hl = b:CreateTexture(nil, "HIGHLIGHT")
-        hl:SetAllPoints()
-        hl:SetColorTexture(1, 1, 1, 0.15)
-        b:SetScript("OnClick", function() mod.SetViewCall(key, call) end)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText(c.name .. " - " .. MMT.FirstName(key))
-            GameTooltip:AddLine("Click: the slots show this Call. Right-click a slot to set its totem: it goes onto "
-                .. MMT.FirstName(key) .. "'s totem bar.", 0.7, 0.7, 0.7, true)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        bar.callButtons[call] = b
-    end
+    -- the Call the slots show (Calls.lua): one icon beside the totems. Right-click = which Call;
+    -- left-click on your own bar casts it (secure, set up in Secure.lua), elsewhere opens the list too
+    local cb = CreateFrame("Button", nil, bar, own and "SecureActionButtonTemplate" or nil)
+    cb.icon = cb:CreateTexture(nil, "ARTWORK")
+    cb.icon:SetAllPoints()
+    local chl = cb:CreateTexture(nil, "HIGHLIGHT")
+    chl:SetAllPoints()
+    chl:SetColorTexture(1, 1, 1, 0.2)
+    cb:RegisterForClicks("AnyUp", "AnyDown")
+    cb:SetScript("PostClick", function(self, button, down)
+        if down then return end
+        if button == "RightButton" or not own then mod.OpenCallList(self, key) end
+    end)
+    cb:SetScript("OnEnter", function(self)
+        local call = mod.ViewCall(key)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(mod.CALLS[call].name .. " - " .. MMT.FirstName(key))
+        GameTooltip:AddLine("The totem slots show this Call; right-click a slot to set its totem (it goes onto "
+            .. MMT.FirstName(key) .. "'s totem bar).", 0.8, 0.8, 0.8, true)
+        if own then GameTooltip:AddLine("Left-click: cast it", 1, 0.8, 0) end
+        GameTooltip:AddLine("Right-click: choose the Call", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    bar.call = cb
     -- presets only while the mouse is over the bar
     local t = 0
     bar:SetScript("OnUpdate", function(self, e)
@@ -305,15 +306,17 @@ local function LayoutBar(bar, pad, nameW)
     local hasSeq = own and not c.onlyTimers
     local hasPreset = false   -- the P button is gone (0.5.2): the Calls are the sets now
     local items = {}
+    -- the Call icon, set apart from the totems by SEP (callSide START | END | OFF)
+    local calls = mod.UsesCalls and mod.UsesCalls(bar.key) and c.callSide ~= "OFF"
+    local SEP = bar   -- a marker in items: extra room
+    if calls and c.callSide ~= "END" then items[#items + 1] = bar.call; items[#items + 1] = SEP end
+    if not calls then bar.call:Hide() end
     if hasPreset and c.presetSide == "START" then items[#items + 1] = bar.preset end
     for _, element in ipairs(mod.ELEMENTS) do
         local s = bar.slots[element]
         if mod.SlotShown(bar.key, element) then items[#items + 1] = s else s:Hide() end
     end
-    local calls = mod.UsesCalls and mod.UsesCalls(bar.key)
-    for _, b in ipairs(bar.callButtons) do
-        if calls then items[#items + 1] = b else b:Hide() end
-    end
+    if calls and c.callSide == "END" then items[#items + 1] = SEP; items[#items + 1] = bar.call end
     if hasSeq then items[#items + 1] = seqBtn end
     if hasPreset and c.presetSide ~= "START" then items[#items + 1] = bar.preset end
     bar.preset:SetShown(hasPreset)
@@ -329,31 +332,33 @@ local function LayoutBar(bar, pad, nameW)
 
     local z = math.max(0, math.min(40, tonumber(c.iconZoom) or 8)) / 100
     for _, s in pairs(bar.slots) do s.icon:SetTexCoord(z, 1 - z, z, 1 - z) end
-    for i, item in ipairs(items) do
-        if item == seqBtn then seqBtn:SetParent(bar) end
-        item:SetSize(size, size)
-        item:ClearAllPoints()
-        if c.vertical then item:SetPoint("TOPLEFT", pad + colX, -pad - nameH - (i - 1) * (size + gap))
-        else item:SetPoint("TOPLEFT", pad + left + (i - 1) * (size + gap), -pad) end
-        item:Show()
+    local sep = math.max(4, math.floor(size * 0.3 + 0.5))
+    local pos, n = 0, 0   -- along the bar; n = icons placed
+    for _, item in ipairs(items) do
+        if item == SEP then
+            pos = pos + sep
+        else
+            if item == seqBtn then seqBtn:SetParent(bar) end
+            item:SetSize(size, size)
+            item:ClearAllPoints()
+            if c.vertical then item:SetPoint("TOPLEFT", pad + colX, -pad - nameH - pos)
+            else item:SetPoint("TOPLEFT", pad + left + pos, -pad) end
+            item:Show()
+            pos, n = pos + size + gap, n + 1
+        end
     end
+    local length = n > 0 and (pos - gap) or 0
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
-    -- a Call icon a bit smaller than a slot, inside a 2 px edge (gold when shown)
-    for call, b in ipairs(bar.callButtons) do
-        b.icon:SetSize(size - 4, size - 4)
-        b.icon:SetTexture(mod.CallIcon(call))
-        b.icon:SetTexCoord(z, 1 - z, z, 1 - z)
-    end
+    bar.call.icon:SetTexCoord(z, 1 - z, z, 1 - z)
     bar.name:ClearAllPoints()
     if c.vertical then bar.name:SetPoint("TOP", bar, "TOPLEFT", pad + colW / 2, -pad)
     else bar.name:SetPoint("LEFT", bar, "TOPLEFT", pad, -pad - size / 2) end
-    local n = #items
     local w, h
     if c.vertical then
         w = colW
-        h = nameH + n * size + (n - 1) * gap
+        h = nameH + length
     else
-        w = left + n * size + (n - 1) * gap
+        w = left + length
         h = size
     end
     w, h = w + 2 * pad, h + 2 * pad
@@ -494,15 +499,11 @@ function mod.UpdateIcons()
     if not (M.enabled and c) then return end
     local now = GetTime()
     for key, bar in pairs(bars) do
-        if bar:IsShown() and bar.callButtons[1]:IsShown() then
-            -- the shown Call: full colour on gold; the others dimmed; one this character hasn't learned grey
-            local shown, own = mod.ViewCall(key), MMT.IsSelf(key)
-            for call, b in ipairs(bar.callButtons) do
-                local on, learned = call == shown, not own or mod.KnowsCall(call)
-                b.edge:SetAlpha(on and 1 or 0)
-                b.icon:SetDesaturated(not learned)
-                b.icon:SetAlpha(on and 1 or (learned and 0.55 or 0.35))
-            end
+        if bar:IsShown() and bar.call:IsShown() then
+            -- the shown Call's icon; grey when this character hasn't learned it
+            local call = mod.ViewCall(key)
+            bar.call.icon:SetTexture(mod.CallIcon(call))
+            bar.call.icon:SetDesaturated(MMT.IsSelf(key) and not mod.KnowsCall(call))
         end
         if bar:IsShown() then
             for element, s in pairs(bar.slots) do
@@ -547,6 +548,17 @@ end)
 ---------------------------------------------------------------------------
 local function IconText(icon, text)
     return ("|T%s:16:16:0:0:64:64:5:59:5:59|t %s"):format(tostring(icon or mod.PRESET_ICON), text)
+end
+
+-- which Call a shaman's slots show
+function mod.OpenCallList(owner, key)
+    local items, own = {}, MMT.IsSelf(key)
+    for call, c in ipairs(mod.CALLS) do
+        local text = c.name
+        if own and not mod.KnowsCall(call) then text = text .. " |cff888888(not learned)|r" end
+        items[#items + 1] = { value = call, text = IconText(mod.CallIcon(call), text) }
+    end
+    UI.OpenList(owner, items, mod.ViewCall(key), function(call) mod.SetViewCall(key, call) end)
 end
 
 function mod.OpenTotemMenu(owner, key, element)
