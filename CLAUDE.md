@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.0) / MMT_BuffTimers (v0.26.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.1) / MMT_BuffTimers (v0.27.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -354,9 +354,13 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   while that addon is loaded, even switched off; else Buff Timers'). `M.db.stance` = {} in both defaults, missing fields read
   from `lib.DEFAULTS` (metatable __index; read raw in tests); `lib.Set(k, v)` / `lib.SetAll(t)` write every loaded module's
   copy (pages, import via TabTransfer's Clean "stance" + SetAll, reset via SettingsKit `mod.AfterReset(keys)`). `where` =
-  OFF | WINDOW (MMTIconBars window "MMTStance", frameOrder 3, rows of members with a stance) | CD | BUFF (an extra "stance" on
-  both windows, registered once, answering only while `lib.Target()` = that window - MMTIconBars.CanHost - else the window
-  takes over). Icon: state "ready", readyAlpha 1, oid "stance", anchor "^". Own stance = GetShapeshiftForm +
+  OFF | WINDOW (MMTIconBars window "MMTStance", frameOrder 3, rows of members with a stance). Lib v2 (Cooldowns 0.19.1 /
+  Buffs 0.27.0, the user: "add / remove it like buffs, per spec list"): the CD / BUFF bar placement (v1 extras) is gone;
+  instead Buff Timers' list entry `{ stance = true }` (Lists.lua `IsStance`, `ParseStance` = "stance" / "form" typed in the
+  add box, EntryKey "stance", BuffName "<stance>" = a name no aura has so CollectEntries de-dups it and aura code never
+  matches it, EntryName / EntryIcon) -> Window `Icons` builds it from `MMTStanceLib.Data(key)` {id, texture, name} (Only for
+  counts; arranging shows it even without a stance); EntriesFor keeps it in member rows when the ALL list has it, AllRow
+  skips it; Export SetLists keeps it. Own stance = GetShapeshiftForm +
   GetShapeshiftFormInfo (icon, _, _, spellID); `MST:<spellID>` (0 = none) once per change (own event frame:
   UPDATE_SHAPESHIFT_FORM(S), PLAYER_ENTERING_WORLD), heartbeat `stn` (Cooldowns) / `stb` (Buffs while Cooldowns is off);
   others = a message < 40 s old, else the heartbeat. Module OnEnable / OnDisable / OnProfileChanged wrapped to `lib.Apply()`;

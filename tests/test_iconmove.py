@@ -261,23 +261,40 @@ print(lua.eval(r'''function(cd, bf)
   Check(S.StanceOf("Bob-Stone") == 71, "stance message not taken")
   -- settings: one table, kept in Cooldown Timers' settings (the host), written into both copies
   Check(S.Host().M == CM, "the host isn't Cooldown Timers")
-  S.Set("where", "CD")
-  Check(CM.db.stance.where == "CD" and BM.db.stance.where == "CD", "setting not in both copies")
+  S.Set("iconSize", 30)
+  Check(CM.db.stance.iconSize == 30 and BM.db.stance.iconSize == 30, "setting not in both copies")
+  -- the list entry: typed "stance", second in Bob's (shaman) list -> his stance icon there
+  Check(bf.ParseStance("Stance") and bf.ParseStance("stance / form") and not bf.ParseStance("Cat Form"), "ParseStance")
+  BM.db.specLists = false   -- (on from the export test above: Bob would use his spec's list)
+  local shaman = BM.db.lists.SHAMAN
+  table.insert(shaman, 2, { stance = true })
+  bf.BuildIndex()
   Redraw(); cr, br = Rows()
-  Check(cr.icons[1].data.spell == 71 and cr.icons[1].data.guest, "stance not first on the cooldown row: " .. Ids(cr))
-  Check(Ids(br) ~= "" and br.icons[1].data.spell ~= 71, "stance on the buff row too")
-  Check(not S.window.frame.shown, "stance window shown while on the bars")
-  S.Set("where", "BUFF")
+  Check(br.icons[2].data.spell == 71 and br.icons[2].data.state == "buff", "stance not second in Bob's buff row: " .. Ids(br))
+  Check(bf.EntryName(shaman[2]) == "Stance / form" and bf.EntryKey(shaman[2]) == "stance", "entry name / key")
+  -- "Only for" warriors: not for Bob
+  shaman[2].only = { classes = { WARRIOR = true } }
   Redraw(); cr, br = Rows()
-  Check(br.icons[1].data.spell == 71 and cr.icons[1].data.spell ~= 71, "stance not moved to the buff row")
-  -- the Buff Timers bars aren't shown: its own window instead
-  BM.db.shown = false
-  Redraw(); S.window:Refresh()
-  local sr = RowOf(S.window, "Bob-Stone")
-  Check(sr and sr.icons[1].data.spell == 71, "stance window not used while its bars are hidden")
-  BM.db.shown = true
+  Check(not (br.icons[2] and br.icons[2].shown and br.icons[2].data.spell == 71), "stance shown despite Only for")
+  shaman[2].only = nil
+  -- in the ALL list with the All bar on: still in the member's row, not on the All bar
+  local st = table.remove(shaman, 2)
+  BM.db.allBar = true
+  table.insert(BM.db.lists.ALL, st)
+  Redraw(); cr, br = Rows()
+  local found = false
+  for _, b in ipairs(br.icons) do if b.shown and b.data and b.data.spell == 71 then found = true end end
+  Check(found, "stance from the ALL list not in the member row")
+  local allRow = RowOf(bw, "All")
+  if allRow then for _, b in ipairs(allRow.icons) do Check(not (b.shown and b.data and b.data.spell == 71), "stance on the All bar") end end
+  table.remove(BM.db.lists.ALL)
+  BM.db.allBar = false
+  -- not in any list: no stance icon anywhere; the own window shows it when switched on
+  Redraw(); cr, br = Rows()
+  for _, b in ipairs(br.icons) do Check(not (b.shown and b.data and b.data.spell == 71), "stance without a list entry") end
   S.Set("where", "WINDOW")
-  Check(RowOf(S.window, "Bob-Stone"), "own window")
+  S.window:Refresh()
+  Check(RowOf(S.window, "Bob-Stone") and RowOf(S.window, "Bob-Stone").icons[1].data.spell == 71, "own window")
   -- out of a stance: nothing; an old message gives way to the heartbeat
   S.OnMessage("Bob-Stone", "MST:0")
   S.window:Refresh()

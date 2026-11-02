@@ -27,6 +27,8 @@ local function SetLists(data)
                     clean[#clean + 1] = Place({ name = mod.ParsePattern(e.name), off = (e.off == true) or nil, only = only,
                         caster = type(e.caster) == "string" and e.caster:match("^%u+$") or nil,
                         icon = type(e.icon) == "number" and e.icon or nil }, e)
+                elseif type(e) == "table" and e.stance == true then
+                    clean[#clean + 1] = Place({ stance = true, off = (e.off == true) or nil, only = only }, e)
                 elseif type(e) == "table" and (e.weapon == "MH" or e.weapon == "OH") then
                     clean[#clean + 1] = Place({ weapon = e.weapon, off = (e.off == true) or nil, only = only }, e)
                 end

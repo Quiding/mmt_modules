@@ -414,6 +414,9 @@ M.Page = function(_, page)
             if mod.IsPattern(self.entry) then
                 GameTooltip:SetText(self.entry.name)
                 GameTooltip:AddLine("Any buff whose name matches (* = any text): the icon shows the one that's up.", 1, 1, 1, true)
+            elseif mod.IsStance(self.entry) then
+                GameTooltip:SetText(mod.EntryName(self.entry))
+                GameTooltip:AddLine("The stance or form the member is in (warrior stances, druid forms, stealth, ...), as an icon in their row. Add or leave it out per list, like a buff; the cog limits it to classes / specs.", 1, 1, 1, true)
             elseif mod.IsWeapon(self.entry) then
                 GameTooltip:SetText(mod.EntryName(self.entry))
                 GameTooltip:AddLine("Any enchant on that weapon: shaman imbues, poisons, oils, sharpening stones. Members send theirs when it changes (they need this version).", 1, 1, 1, true)
@@ -455,11 +458,17 @@ M.Page = function(_, page)
         return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
     end
     local function Add()
-        local weapon = mod.ParseWeapon(box:GetText())
-        local pattern = not weapon and mod.ParsePattern(box:GetText())
-        local id = not weapon and not pattern and Parse()
-        if not id and not pattern and not weapon then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *), or main hand / off hand.", true) return end
-        local entry = weapon and { weapon = weapon } or pattern and { name = pattern } or { id = id }
+        local stance = mod.ParseStance(box:GetText())
+        local weapon = not stance and mod.ParseWeapon(box:GetText())
+        local pattern = not stance and not weapon and mod.ParsePattern(box:GetText())
+        local id = not stance and not weapon and not pattern and Parse()
+        if not id and not pattern and not weapon and not stance then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *), main hand / off hand, or stance.", true) return end
+        if stance then
+            for _, e in ipairs(M.db.lists[class] or {}) do
+                if mod.IsStance(e) then status.Show_("This list has the stance / form already.", true) return end
+            end
+        end
+        local entry = stance and { stance = true } or weapon and { weapon = weapon } or pattern and { name = pattern } or { id = id }
         M.db.lists[class] = M.db.lists[class] or {}
         table.insert(M.db.lists[class], entry)
         box.picked = nil
@@ -477,7 +486,7 @@ M.Page = function(_, page)
 
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to classes, specs or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil). Drag a buff to reorder.")
+    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to classes, specs or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil), stance for the stance / form the member is in. Drag a buff to reorder.")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()

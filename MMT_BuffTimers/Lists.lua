@@ -71,10 +71,20 @@ function mod.Matches(e, name)
     return type(name) == "string" and name:lower():find(Compile(e.name)) ~= nil
 end
 
--- what an entry is known by in a list (presets, de-dup): spell ID, pattern or weapon
-function mod.EntryKey(e) return e.id or e.name or (e.weapon and ("weapon:" .. e.weapon)) end
+-- the stance / form entry { stance = true }: the member's current stance / form as an icon (Stance.lua's
+-- MMTStanceLib); added by typing "stance" in a list's add box
+function mod.IsStance(e) return e.stance == true end
+mod.STANCE_NAME, mod.STANCE_ICON = "Stance / form", 132349   -- Battle Stance's icon until someone has one
+function mod.ParseStance(text)
+    text = (text or ""):lower():gsub("[%s%-_/]", "")
+    return text == "stance" or text == "form" or text == "stanceform" or text == "stances"
+end
+
+-- what an entry is known by in a list (presets, de-dup): spell ID, pattern, weapon or the stance
+function mod.EntryKey(e) return e.id or e.name or (e.weapon and ("weapon:" .. e.weapon)) or (e.stance and "stance") end
 
 function mod.BuffName(e)
+    if mod.IsStance(e) then return "<stance>" end   -- not a buff: a name no aura has (lists still de-dup it)
     if mod.IsPattern(e) then return e.name end
     if mod.IsWeapon(e) then return mod.WEAPON_NAMES[e.weapon] end
     return mod.Canonical((mod.SpellInfo(e.id)))
@@ -82,6 +92,7 @@ end
 
 -- the entry's own name for lists and tooltips
 function mod.EntryName(e)
+    if mod.IsStance(e) then return mod.STANCE_NAME end
     if mod.IsPattern(e) then return e.name end
     if mod.IsWeapon(e) then return mod.WEAPON_NAMES[e.weapon] end
     return (mod.SpellInfo(e.id)) or ("Spell " .. e.id)
@@ -90,6 +101,7 @@ end
 -- the spell's icon, else by its name, else the icon the buff itself had when it was
 -- last seen on someone (kept account-wide), else the "?" placeholder
 function mod.EntryIcon(e)
+    if mod.IsStance(e) then return mod.STANCE_ICON end
     if mod.IsWeapon(e) then
         -- the own weapon, else a sword / dagger
         return GetInventoryItemTexture("player", e.weapon == "MH" and 16 or 17) or (e.weapon == "MH" and 135274 or 135650)

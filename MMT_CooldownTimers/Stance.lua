@@ -1,12 +1,11 @@
--- MMT Cooldown / Buff Timers: one icon per member with the stance / form they're in (warrior stances,
--- druid forms, stealth, shadowform, ... = whatever the game puts on the stance bar). Shared by both
--- modules: each ships this same file, the newest VERSION of the lib part wins (like IconBars), and it
--- works while either module is on.
---
+-- MMT Cooldown / Buff Timers: the stance / form each member is in (warrior stances, druid forms, stealth,
+-- shadowform, ... = whatever the game puts on the stance bar). Shared by both modules: each ships this
+-- same file, the newest VERSION of the lib part (MMTStanceLib) wins, and it works while either is on.
+--   * Buff Timers lists: the entry { stance = true } (type "stance" in a list's add box) shows the member's
+--     stance icon where the list puts it - per class / spec / character list, "Only for" counts (Window.lua)
+--   * its own window (M.db.stance.where = WINDOW, MMTIconBars window "MMTStance"): every member with one
 -- Settings (M.db.stance, one table) live in Cooldown Timers' profile settings when that addon is loaded
--- (even switched off), else in Buff Timers'; both settings pages show the same "Stance" tab. Where:
---   OFF | WINDOW (own MMTIconBars window "MMTStance") | CD / BUFF (first icon on the Cooldown / Buff
---   Timers bars, IconBars extra anchored "^"; that bar not shown -> the own window instead)
+-- (even switched off), else in Buff Timers'; both settings pages show the same "Stance" tab.
 -- Others' stances: each client sends "MST:<spellID>" (0 = none) once per change, and its heartbeat
 -- carries it (stn from Cooldown Timers, stb from Buff Timers while Cooldown Timers is off).
 -- Identical in MMT_CooldownTimers and MMT_BuffTimers: keep both copies the same.
@@ -15,7 +14,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local VERSION = 1
+local VERSION = 2
 local lib = rawget(_G, "MMTStanceLib")
 if not lib or (lib.version or 0) < VERSION then
     lib = lib or {}
@@ -30,8 +29,6 @@ if not lib or (lib.version or 0) < VERSION then
         point = { "CENTER", "CENTER", 0, -150 },
     }
     local DEFAULTS = lib.DEFAULTS
-    local WINDOWS = { CD = "MMTCooldowns", BUFF = "MMTBuffs" }
-    lib.WINDOWS = WINDOWS
 
     local function Loaded(name) local e = lib.mods[name]; return e and e.M.db and e end
     local function Active(name) return MMT.ModuleActive and MMT.ModuleActive(name) and true or false end
@@ -96,8 +93,8 @@ if not lib or (lib.version or 0) < VERSION then
         return t and t[1] or nil
     end
 
-    -- the icon for member key, or nil (no stance / not known)
-    function lib.Icons(key, look)
+    -- member key's stance: { id, texture, name } or nil (no stance / not known)
+    function lib.Data(key)
         local id = lib.StanceOf(key)
         if not id or id <= 0 then return nil end
         local texture
@@ -105,24 +102,23 @@ if not lib or (lib.version or 0) < VERSION then
         texture = texture or (lib.IconOf and lib.IconOf(id)) or 134400
         local name = lib.NameOf and lib.NameOf(id)
         if type(name) ~= "string" then name = nil end
-        return { { texture = texture, state = "ready", readyAlpha = 1, spell = id, oid = "stance", anchor = "^",
-            look = look, tip = name and ("Stance / form: " .. name) or nil } }
+        return { id = id, texture = texture, name = name }
+    end
+
+    -- the own window's icon for member key, or nil
+    function lib.Icons(key)
+        local d = lib.Data(key)
+        if not d then return nil end
+        return { { texture = d.texture, state = "ready", readyAlpha = 1, spell = d.id,
+            tip = d.name and ("Stance / form: " .. d.name) or nil } }
     end
 
     ---------------------------------------------------------------------------
-    -- Where it shows
+    -- Its own window
     ---------------------------------------------------------------------------
-    -- the bars it's on now ("MMTCooldowns" / "MMTBuffs"), or nil (own window / off)
-    function lib.Target()
-        local c = lib.Cfg()
-        local w = c and WINDOWS[c.where]
-        if w and MMTIconBars.CanHost(w) then return w end
-        return nil
-    end
-
     function lib.WindowWanted()
         local c = lib.Cfg()
-        return c ~= nil and c.where ~= "OFF" and lib.Target() == nil and lib.AnyOn()
+        return c ~= nil and c.where == "WINDOW" and lib.AnyOn()
     end
 
     local function Rows()
@@ -139,29 +135,13 @@ if not lib or (lib.version or 0) < VERSION then
         return rows
     end
 
-    -- the icon rides on both modules' bars as an extra that answers only while that bar is the target
-    -- (so a bar that stops showing - module off, attached elsewhere - hands it to the window at once)
-    lib.extraOn = lib.extraOn or {}
     function lib.Apply()
-        if not MMTIconBars then return end
-        for _, w in pairs(WINDOWS) do
-            if not lib.extraOn[w] then
-                lib.extraOn[w] = true
-                MMTIconBars.SetExtra(w, "stance", function(key)
-                    if not lib.AnyOn() or MMTStanceLib.Target() ~= w then return nil end
-                    return MMTStanceLib.Icons(key)
-                end, "LEFT")
-            else
-                MMTIconBars.Refresh(w)
-            end
-        end
         if lib.window then lib.window:Refresh() end
     end
 
-    -- the redraw after a stance changed somewhere
+    -- the redraw after a stance changed somewhere: the Buff Timers bars (list entries) and the window
     function lib.Redraw()
-        local t = lib.Target()
-        if t then MMTIconBars.Refresh(t) end
+        if MMTIconBars then MMTIconBars.Refresh("MMTBuffs"); MMTIconBars.Refresh("MMTCooldowns") end
         if lib.window then lib.window:Refresh() end
     end
 
@@ -246,14 +226,11 @@ function mod.StanceTab(panel, status)
     local function G(k) return function() local c = MMTStanceLib.Cfg(); return c and c[k] end end
     local function S(k) return function(v) MMTStanceLib.Set(k, v) end end
     local L = UI.Column(panel, 0, 0, COL_W)
-    L:Header("Stance / form")
-    L:Cycle("Show it", {
-        { value = "OFF", text = "Off" },
-        { value = "WINDOW", text = "In its own window" },
-        { value = "CD", text = "On the Cooldown Timers bars" },
-        { value = "BUFF", text = "On the Buff Timers bars" },
-    }, G("where"), S("where"))
     L:Header("Own window")
+    L:Cycle("Stance window", {
+        { value = "OFF", text = "Off" },
+        { value = "WINDOW", text = "On: every member with a stance" },
+    }, function() local c = MMTStanceLib.Cfg(); return c and (c.where == "WINDOW" and "WINDOW" or "OFF") end, S("where"))
     L:Check("Show the window", G("shown"), S("shown"))
     L:Check("Lock position", G("locked"), S("locked"))
     L:Slider("Icon size", 16, 64, 1, G("iconSize"), S("iconSize"))
@@ -276,9 +253,9 @@ function mod.StanceTab(panel, status)
     L:Add(reset, UI.ROW + 2)
 
     local R = UI.Column(panel, COL2_X, 0, COL_W)
+    R:Header("In the Buff Timers lists")
+    R:Note("Type stance in a Buff Timers list's add box (Buffs tab): that list's members get their stance / form as an icon in their row, where you drag it. Add it to the lists you want (e.g. Warrior: Fury) and leave it out of the others (Paladin); the cog limits it to classes / specs like a buff.")
     R:Header("How it works")
-    R:Note("One icon per member with the stance or form they're in: warrior stances, druid forms, stealth, shadowform - whatever the game puts on their stance bar. Nothing shows for a member in no stance.")
-    R:Note("On the Cooldown Timers or Buff Timers bars it's the first icon of each member's row; while those bars aren't shown (module off, attached elsewhere) it uses its own window.")
-    R:Note("The same settings on both modules' pages; it works while either module is on. Each client tells the team once when its stance changes.")
+    R:Note("Warrior stances, druid forms, stealth, shadowform - whatever the game puts on the member's stance bar; nothing for a member in no stance. Each client tells the team once when its stance changes (needs Cooldown or Buff Timers on). The window settings are the same on both modules' pages.")
     return L, R
 end

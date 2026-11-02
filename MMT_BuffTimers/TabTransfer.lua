@@ -48,7 +48,7 @@ local function Clean(k, v)
         for f, d in pairs(MMTStanceLib.DEFAULTS) do
             local x = v[f]
             if f == "where" then
-                if x == "OFF" or x == "WINDOW" or x == "CD" or x == "BUFF" then out.where = x end
+                if x == "OFF" or x == "WINDOW" then out.where = x end
             elseif f == "point" then
                 if type(x) == "table" and type(x[1]) == "string" and type(x[2]) == "string" and type(x[3]) == "number"
                     and type(x[4]) == "number" then out.point = { x[1], x[2], x[3], x[4] } end

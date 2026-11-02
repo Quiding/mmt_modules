@@ -36,14 +36,24 @@ local function EntriesFor(key)
     local list, from = mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
     if not M.db.allBar then return list, from end
     -- a buff the All bar shows stays out of the member's row, even when a class list has it too
+    -- (the stance entry is per member: it stays in their row, also when the All bar's list has it)
     local inAll = {}
     for _, e in ipairs(M.db.lists.ALL or {}) do
-        local name = not e.off and (mod.BuffName(e) or mod.EntryKey(e))
+        local name = not e.off and not mod.IsStance(e) and (mod.BuffName(e) or mod.EntryKey(e))
         if name then inAll[name] = true end
     end
     local out, outFrom = {}, {}
+    local stance = false
     for n, e in ipairs(list) do
-        if not inAll[mod.BuffName(e) or mod.EntryKey(e) or ""] then out[#out + 1] = e; outFrom[#out] = from[n] end
+        if not inAll[mod.BuffName(e) or mod.EntryKey(e) or ""] then
+            out[#out + 1] = e; outFrom[#out] = from[n]
+            if mod.IsStance(e) then stance = true end
+        end
+    end
+    if not stance then
+        for _, e in ipairs(M.db.lists.ALL or {}) do
+            if mod.IsStance(e) and not e.off then out[#out + 1] = e; outFrom[#out] = "ALL"; break end
+        end
     end
     return out, outFrom
 end
@@ -76,6 +86,18 @@ local function Icons(key, host)
     for n, e in ipairs(entries) do
         local oid = "b:" .. tostring(mod.EntryKey(e))
         order[#order + 1] = oid
+        if mod.IsStance(e) then
+            -- the member's stance / form (Stance.lua), where the list puts it; "Only for" counts
+            if mod.HostOf(e) == host and (arranging or mod.Applies(e, key)) then
+                local d = MMTStanceLib and MMTStanceLib.Data(key)
+                if d or arranging then
+                    icons[#icons + 1] = { texture = d and d.texture or mod.STANCE_ICON, state = d and "buff" or "ready",
+                        activeAlpha = 1, readyAlpha = 1, spell = d and d.id or nil, look = M.db,
+                        tip = d and ((d.name or "?") .. "  (stance / form)") or "Stance / form (none right now)",
+                        oid = oid, anchor = host and e.after or nil, drag = arranging and mod.DragFor(from[n], e) or nil }
+                end
+            end
+        else
         local state, start, dur, count, matched, micon
         if mod.HostOf(e) == host then
         -- "Only for" (Roles.lua), nobody here can cast it (Casters.lua)
@@ -107,6 +129,7 @@ local function Icons(key, host)
                     or mod.IsWeapon(e) and (matched and (matched .. "  (" .. mod.EntryName(e) .. ")")
                         or state == "missing" and ("No " .. mod.EntryName(e):lower()) or mod.EntryName(e)) or nil })
         end
+        end
     end
     return icons, order
 end
@@ -129,7 +152,9 @@ local function AllRow()
     local members = mod.AllMembers()
     -- arrange mode: every switched-on buff of the list shows, draggable
     local arranging = mod.Arranging("MMTBuffs")
-    for _, e in ipairs(cfg.lists.ALL or {}) do
+    local allBuffs = {}   -- the stance entry belongs in the members' rows, not here
+    for _, e in ipairs(cfg.lists.ALL or {}) do if not mod.IsStance(e) then allBuffs[#allBuffs + 1] = e end end
+    for _, e in ipairs(allBuffs) do
         local before = #icons
         -- only the members this buff is for ("Only for", Roles.lua)
         local forThem = {}
