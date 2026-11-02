@@ -712,7 +712,14 @@ print("A:", A.eval(r"""function(m)
   MMT.UI.OpenList = function(owner, items, current, onPick) pick = onPick end
   m.Refresh()
   local bar = m.bars["Anna-Smith"]
-  assert(m.UsesCalls("Anna-Smith") and bar.callSwitch:IsShown(), "no Call switch on Anna's bar")
+  assert(m.UsesCalls("Anna-Smith") and bar.callButtons[1]:IsShown() and bar.callButtons[3]:IsShown(), "no Call icons on Anna's bar")
+  -- the P button is gone (0.5.2)
+  m.M.db.showPresets, m.M.db.showBarPresets = true, true
+  m.Refresh()
+  assert(not bar.preset:IsShown(), "P button still on the bar")
+  -- clicking a Call's icon shows that Call
+  bar.callButtons[2]._OnClick(bar.callButtons[2])
+  assert(m.ViewCall("Anna-Smith") == 2, "Call icon click")
   assert(not m.UsesCalls("Bob-Stone"), "Bob has no Calls")
   -- the slots show the shown Call
   m.SetViewCall("Anna-Smith", 3)

@@ -1,6 +1,6 @@
 -- MMT Totems: the bars.
 --
--- One bar per shaman: name, [P preset button], Fire / Air / Water / Earth,
+-- One bar per shaman: name, Fire / Air / Water / Earth, [the three Calls' icons],
 -- and on YOUR bar the sequence button. Grouped (one movable frame) or
 -- ungrouped (each bar moves on its own). Your slot buttons and the sequence
 -- button are secure action buttons (they cast), so the layout can only
@@ -244,11 +244,19 @@ local function NewBar(key)
     bar.preset:SetScript("OnLeave", function() GameTooltip:Hide() end)
     bar.slots = {}
     for _, element in ipairs(mod.ELEMENTS) do bar.slots[element] = NewSlot(bar, key, element, own) end
-    -- E / A / S: which Call the slots show (Calls.lua); one icon's place, three thin buttons
-    bar.callSwitch = CreateFrame("Frame", nil, bar)
-    bar.callSwitch.buttons = {}
+    -- the three Calls' icons after the slots: click = the slots show that Call (Calls.lua)
+    bar.callButtons = {}
     for call, c in ipairs(mod.CALLS) do
-        local b = TextButton(bar.callSwitch, c.short:sub(1, 1), 0.6, 0.6, 0.6)
+        local b = CreateFrame("Button", nil, bar)
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetPoint("CENTER")
+        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        b.edge = b:CreateTexture(nil, "BACKGROUND")   -- gold behind the icon = the Call shown
+        b.edge:SetAllPoints()
+        b.edge:SetColorTexture(1, 0.82, 0, 1)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.15)
         b:SetScript("OnClick", function() mod.SetViewCall(key, call) end)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -258,7 +266,7 @@ local function NewBar(key)
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        bar.callSwitch.buttons[call] = b
+        bar.callButtons[call] = b
     end
     -- presets only while the mouse is over the bar
     local t = 0
@@ -295,7 +303,7 @@ local function LayoutBar(bar, pad, nameW)
     local own = MMT.IsSelf(bar.key)
     local seqBtn = mod.sequenceButton
     local hasSeq = own and not c.onlyTimers
-    local hasPreset = c.showPresets and c.showBarPresets
+    local hasPreset = false   -- the P button is gone (0.5.2): the Calls are the sets now
     local items = {}
     if hasPreset and c.presetSide == "START" then items[#items + 1] = bar.preset end
     for _, element in ipairs(mod.ELEMENTS) do
@@ -303,7 +311,9 @@ local function LayoutBar(bar, pad, nameW)
         if mod.SlotShown(bar.key, element) then items[#items + 1] = s else s:Hide() end
     end
     local calls = mod.UsesCalls and mod.UsesCalls(bar.key)
-    if calls then items[#items + 1] = bar.callSwitch else bar.callSwitch:Hide() end
+    for _, b in ipairs(bar.callButtons) do
+        if calls then items[#items + 1] = b else b:Hide() end
+    end
     if hasSeq then items[#items + 1] = seqBtn end
     if hasPreset and c.presetSide ~= "START" then items[#items + 1] = bar.preset end
     bar.preset:SetShown(hasPreset)
@@ -328,14 +338,11 @@ local function LayoutBar(bar, pad, nameW)
         item:Show()
     end
     for _, s in pairs(bar.slots) do Font(s.timer, c.timerSize) end
-    if calls then
-        local h = size / #mod.CALLS
-        for i, b in ipairs(bar.callSwitch.buttons) do
-            b:SetSize(size, h)
-            b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", 0, -(i - 1) * h)
-            Font(b.text, math.max(8, math.floor(h * 0.8)))
-        end
+    -- a Call icon a bit smaller than a slot, inside a 2 px edge (gold when shown)
+    for call, b in ipairs(bar.callButtons) do
+        b.icon:SetSize(size - 4, size - 4)
+        b.icon:SetTexture(mod.CallIcon(call))
+        b.icon:SetTexCoord(z, 1 - z, z, 1 - z)
     end
     bar.name:ClearAllPoints()
     if c.vertical then bar.name:SetPoint("TOP", bar, "TOPLEFT", pad + colW / 2, -pad)
@@ -487,13 +494,14 @@ function mod.UpdateIcons()
     if not (M.enabled and c) then return end
     local now = GetTime()
     for key, bar in pairs(bars) do
-        if bar:IsShown() and bar.callSwitch:IsShown() then
-            -- the shown Call lit, a Call this character hasn't learned dimmed
+        if bar:IsShown() and bar.callButtons[1]:IsShown() then
+            -- the shown Call: full colour on gold; the others dimmed; one this character hasn't learned grey
             local shown, own = mod.ViewCall(key), MMT.IsSelf(key)
-            for call, b in ipairs(bar.callSwitch.buttons) do
-                if call == shown then b.text:SetTextColor(1, 0.82, 0)
-                elseif own and not mod.KnowsCall(call) then b.text:SetTextColor(0.3, 0.3, 0.3)
-                else b.text:SetTextColor(0.6, 0.6, 0.6) end
+            for call, b in ipairs(bar.callButtons) do
+                local on, learned = call == shown, not own or mod.KnowsCall(call)
+                b.edge:SetAlpha(on and 1 or 0)
+                b.icon:SetDesaturated(not learned)
+                b.icon:SetAlpha(on and 1 or (learned and 0.55 or 0.35))
             end
         end
         if bar:IsShown() then

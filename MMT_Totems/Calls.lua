@@ -16,10 +16,16 @@ local MMT = MMT
 local M = mod.M
 
 mod.CALLS = {
-    { name = "Call of the Elements", short = "Elements" },
-    { name = "Call of the Ancestors", short = "Ancestors" },
-    { name = "Call of the Spirits", short = "Spirits" },
+    { name = "Call of the Elements", short = "Elements", icon = "Interface\\Icons\\Spell_Shaman_DropAll_01" },
+    { name = "Call of the Ancestors", short = "Ancestors", icon = "Interface\\Icons\\Spell_Shaman_DropAll_02" },
+    { name = "Call of the Spirits", short = "Spirits", icon = "Interface\\Icons\\Spell_Shaman_DropAll_03" },
 }
+
+-- a Call's icon: the game's (known spell), else the Call icons' files
+function mod.CallIcon(call)
+    local c = mod.CALLS[call]
+    return c and (mod.SpellIcon(c.name) or c.icon)
+end
 
 local function Action(call, element) return 132 + mod.TOTEM_SLOT[element] + 4 * (call - 1) end
 mod.CallAction = Action

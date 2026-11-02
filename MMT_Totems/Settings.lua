@@ -1,6 +1,6 @@
 -- MMT Totems: settings page (MODULES > Totems in /mmt) and debug report.
 -- Tabs: Bars (what is shown) / Look (SettingsKit.lua: sizes, text, background,
--- border) / Casting & presets (sequence key and sequences, presets, sharing).
+-- border) / Casting (sequence key and sequences) / Calls.
 
 local _, mod = ...
 local MMT = MMT
@@ -26,7 +26,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting & presets" }, { "calls", "Calls" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting" }, { "calls", "Calls" } })
     mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------
@@ -212,16 +212,10 @@ M.Page = function(_, page)
     ShowSequence()
     C:Add(seqRow, UI.ROW + 4)
 
+    -- the per-shaman presets (P button) are gone since 0.5.2: the Calls are the sets
     local R = UI.Column(cp, COL2_X, 0, COL_W)
-    R:Header("Presets")
-    Check(R, "Use presets", "showPresets")
-    Check(R, "P button on each bar", "showBarPresets")
-    Check(R, "Only show them on mouse-over", "presetsOnHover")
-    R:Cycle("P button position", {
-        { value = "START", text = "Before the totems" },
-        { value = "END", text = "After the totems" },
-    }, Opt("presetSide"))
-    R:Button("Manage presets...", function() mod.OpenPresets() end)
+    R:Header("Sets of totems")
+    R:Note("From level 20 the Calls (Elements, Ancestors, Spirits) are each shaman's totem sets: pick the Call on the bar with its icon, then right-click a slot to choose that Call's totem - or set all three on the Calls tab. Below level 20 the sequence key above drops the chosen totems.")
 
 
     -- Calls -----------------------------------------------------------------
