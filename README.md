@@ -12,7 +12,7 @@ MODULES, with its own settings page.
 | Module | What it does | Version |
 | --- | --- | --- |
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.27.0 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.28.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.1 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -56,7 +56,8 @@ row, between the cooldowns; switching "Where" back to its own window brings them
 **Stance / form icon**: the stance or form a member is in (warrior stances, druid forms, stealth, shadowform -
 whatever is on their stance bar) as an icon. In Buff Timers it's a list entry like a buff: type **stance** in a list's add
 box and that list's members get it in their row, where you drag it - add it to "Warrior: Fury", leave it out of the
-paladin lists; the cog limits it like a buff. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
+paladin lists; the cog limits it like a buff. The presets and default lists of warriors, rogues (stealth), druids and
+Shadow priests have it (the Priest class list: off), and it was added once to existing lists of those classes / specs. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
 tab, the same settings on both pages; works while either module is on). Each client tells the team once when its stance
 changes.
 

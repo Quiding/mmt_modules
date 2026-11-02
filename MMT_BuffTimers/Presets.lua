@@ -7,11 +7,13 @@
 -- versions like Prayer of Fortitude count, see Lists.lua).
 
 local _, mod = ...
+local MMT = MMT
 
 local function B(id) return { id = id } end
 local function O(id) return { id = id, off = true } end
 local function P(name, off) return { name = name, off = off or nil } end   -- a name pattern (Lists.lua)
 local function W(slot, off) return { weapon = slot, off = off or nil } end  -- weapon enchant (Weapons.lua)
+local function S(off) return { stance = true, off = off or nil } end         -- the stance / form icon (Stance.lua)
 -- a totem's buff (pattern: the buff is "Strength of Earth", the totem "... Totem"),
 -- shown only while a shaman is around (Casters.lua); icon = a spell whose icon it shows until the buff was seen
 local function T(name, icon, off) return { name = name, caster = "SHAMAN", icon = icon, off = off or nil } end
@@ -57,9 +59,9 @@ mod.PRESETS = {
 -- off in the class default; party buffs (Fortitude, Blessings, ...) are the All bar's.
 local SPECS = {
     WARRIOR = {
-        { "ARMS", "Arms", { B(6673), O(12319) } },                       -- Battle Shout, Flurry
-        { "FURY", "Fury", { B(6673), B(12319) } },
-        { "PROT", "Protection", { B(6673) } },
+        { "ARMS", "Arms", { S(), B(6673), O(12319) } },                  -- stance, Battle Shout, Flurry
+        { "FURY", "Fury", { S(), B(6673), B(12319) } },
+        { "PROT", "Protection", { S(), B(6673) } },
     },
     PALADIN = {
         { "HOLY", "Holy", { B(19746), P("Seal of *"), O(10293) } },  -- Concentration Aura, any seal, Devotion
@@ -74,14 +76,14 @@ local SPECS = {
         { "SURV", "Survival", { P("Aspect of the *") } },
     },
     ROGUE = {
-        { "ASSA", "Assassination", { B(5171), W("MH"), W("OH") } },      -- Slice and Dice, poisons
-        { "COMBAT", "Combat", { B(5171), W("MH"), W("OH") } },
-        { "SUB", "Subtlety", { B(5171), W("MH"), W("OH") } },
+        { "ASSA", "Assassination", { S(), B(5171), W("MH"), W("OH") } }, -- stealth, Slice and Dice, poisons
+        { "COMBAT", "Combat", { S(), B(5171), W("MH"), W("OH") } },
+        { "SUB", "Subtlety", { S(), B(5171), W("MH"), W("OH") } },
     },
     PRIEST = {
         { "DISC", "Discipline", { B(588), O(6346) } },                   -- Inner Fire, Fear Ward
         { "HOLY", "Holy", { B(588), O(6346) } },
-        { "SHADOW", "Shadow", { B(15473), B(588), O(6346) } },           -- Shadowform
+        { "SHADOW", "Shadow", { S(), B(15473), B(588), O(6346) } },      -- the form (Shadowform), Shadowform
     },
     SHAMAN = {
         { "ELE", "Elemental", { B(408510), O(324), W("MH", true) } },    -- Water Shield, Lightning Shield, imbue
@@ -101,10 +103,10 @@ local SPECS = {
         { "DESTRO", "Destruction", { B(706) } },
     },
     DRUID = {
-        { "BALANCE", "Balance", { B(24858), B(16864), O(467) } },        -- Moonkin Form, Omen of Clarity, Thorns
-        { "FERAL", "Feral (cat)", { B(16864), B(17007), O(467) } },      -- + Leader of the Pack
-        { "BEAR", "Feral (bear tank)", { B(16864), B(17007), B(467) } },
-        { "RESTO", "Restoration", { B(16864), O(467) } },
+        { "BALANCE", "Balance", { S(), B(24858), B(16864), O(467) } },   -- form, Moonkin Form, Omen of Clarity, Thorns
+        { "FERAL", "Feral (cat)", { S(), B(16864), B(17007), O(467) } }, -- + Leader of the Pack
+        { "BEAR", "Feral (bear tank)", { S(), B(16864), B(17007), B(467) } },
+        { "RESTO", "Restoration", { S(), B(16864), O(467) } },
     },
 }
 local CLASS_NAMES = { WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue", PRIEST = "Priest",
@@ -137,4 +139,41 @@ for class, specs in pairs(SPECS) do
         if (onIn[mod.EntryKey(e)] or 0) < #specs then e.off = true end
     end
     mod.DEFAULT_LISTS[class] = list
+end
+
+-- Once per profile (0.28.0): the stance / form entry put at the front of the lists of the classes / specs
+-- that have one (as in the presets above), switched like there; lists that have it already keep theirs.
+-- Taking it out of a list afterwards stays out. The flag is kept per profile in the account-wide store
+-- (M.store.stanceAdded[profile]), not in the settings: a reset gives the default lists, which have it.
+local STANCE_LISTS = {}
+for class, specs in pairs(SPECS) do
+    local on, any = 0, false
+    for _, sp in ipairs(specs) do
+        for _, e in ipairs(sp[3]) do
+            if mod.IsStance(e) then
+                any = true
+                STANCE_LISTS["SPEC:" .. class .. ":" .. sp[1]] = e.off and "off" or "on"
+                if not e.off then on = on + 1 end
+            end
+        end
+    end
+    if any then STANCE_LISTS[class] = (on == #specs) and "on" or "off" end
+end
+mod.STANCE_LISTS = STANCE_LISTS
+
+function mod.AddStanceDefaults()
+    local db, store = mod.M.db, mod.M.store
+    local profile = type(MMT.profileName) == "string" and MMT.profileName or "?"
+    if not db or not store then return end
+    store.stanceAdded = store.stanceAdded or {}
+    if store.stanceAdded[profile] then return end
+    store.stanceAdded[profile] = true
+    for lk, how in pairs(STANCE_LISTS) do
+        local list = db.lists and db.lists[lk]
+        if list then
+            local has = false
+            for _, e in ipairs(list) do if mod.IsStance(e) then has = true end end
+            if not has then table.insert(list, 1, { stance = true, off = (how == "off") or nil }) end
+        end
+    end
 end

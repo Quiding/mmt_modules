@@ -91,6 +91,7 @@ mod.TakeOver = TakeOver
 
 M.OnEnable = function()
     TakeOver()
+    mod.AddStanceDefaults()   -- once per profile: the stance / form entry in the lists that have one (Presets.lua)
     mod.OwnSpecSent()
     mod.BuildIndex()
     mod.ScanGroup()
@@ -111,6 +112,7 @@ end
 
 M.OnProfileChanged = function()
     TakeOver()
+    mod.AddStanceDefaults()
     mod.BuildIndex()
     mod.Apply()
     mod.KnownCheck()

@@ -321,5 +321,24 @@ print(lua.eval(r'''function(cd, bf)
   Check(st.set(data) and CM.db.stance.iconSize == 40 and BM.db.stance.iconSize == 40, "stance import")
   bf.ResetKeys(bf.TAB_KEYS.stance)
   Check(rawget(CM.db.stance, "iconSize") == nil and S.Cfg().iconSize == 28 and S.Cfg().where == "OFF", "Stance reset from the Buff Timers page")
+  -- the stance entry in the presets / defaults of the classes with stances, and added once to existing lists
+  Check(bf.IsStance(bf.DEFAULT_LISTS.WARRIOR[1]) and not bf.DEFAULT_LISTS.WARRIOR[1].off, "warrior default without the stance")
+  local pst
+  for _, e in ipairs(bf.DEFAULT_LISTS.PRIEST) do if bf.IsStance(e) then pst = e end end
+  Check(pst and pst.off, "priest default: stance (Shadow only) should be there, off")
+  for _, e in ipairs(bf.DEFAULT_LISTS.PALADIN) do Check(not bf.IsStance(e), "paladin default has the stance") end
+  local fury = bf.PresetByKey("WARRIOR:FURY")
+  Check(fury and bf.IsStance(fury.entries[1]), "Fury preset without the stance")
+  BM.store.stanceAdded = nil
+  BM.db.lists.DRUID = { { id = 16864 } }
+  BM.db.lists["SPEC:WARRIOR:FURY"] = { { stance = true, off = true }, { id = 6673 } }
+  BM.db.lists.PALADIN = { { id = 19746 } }
+  bf.AddStanceDefaults()
+  Check(bf.IsStance(BM.db.lists.DRUID[1]) and #BM.db.lists.DRUID == 2, "stance not added to the druid list")
+  Check(#BM.db.lists["SPEC:WARRIOR:FURY"] == 2 and BM.db.lists["SPEC:WARRIOR:FURY"][1].off, "a list's own stance entry changed")
+  Check(#BM.db.lists.PALADIN == 1, "stance added to the paladin list")
+  table.remove(BM.db.lists.DRUID, 1)
+  bf.AddStanceDefaults()
+  Check(#BM.db.lists.DRUID == 1, "a removed stance came back")
   return "icon moves between bars ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))
