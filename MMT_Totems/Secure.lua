@@ -4,6 +4,7 @@
 --     one, else the active / last one),
 --   * MMTTotemsSequenceButton: /castsequence of your totems in your element
 --     order (spam-safe: reset=3 with a ", null" step at the end),
+--   * MMTTotemsCallButton (hidden, key binding only): casts the Call your bar shows,
 --   * the key: your own key from the settings page (override binding) and/or
 --     Esc > Options > Keybindings > MMT (Manage My Team) > Totems (Bindings.xml).
 
@@ -14,6 +15,7 @@ local M = mod.M
 -- own header in the core's binding group (category BINDING_CATEGORY_MMT); "MMT" is the core's
 BINDING_HEADER_MMT_TOTEMS = "Totems"
 _G["BINDING_NAME_CLICK MMTTotemsSequenceButton:LeftButton"] = "Totem sequence"
+_G["BINDING_NAME_CLICK MMTTotemsCallButton:LeftButton"] = "Cast the shown Call"
 
 local seq = CreateFrame("Button", "MMTTotemsSequenceButton", UIParent, "SecureActionButtonTemplate")
 seq:RegisterForClicks("AnyUp", "AnyDown")
@@ -33,6 +35,12 @@ end)
 seq:SetScript("OnLeave", function() GameTooltip:Hide() end)
 seq:Hide()
 mod.sequenceButton = seq
+
+-- the Call key: never shown, only clicked through its key binding
+local callBtn = CreateFrame("Button", "MMTTotemsCallButton", UIParent, "SecureActionButtonTemplate")
+callBtn:RegisterForClicks("AnyUp", "AnyDown")
+callBtn:Hide()
+mod.callButton = callBtn
 
 local keyOwner = CreateFrame("Frame")
 local pending = false
@@ -84,6 +92,12 @@ function mod.UpdateSecure()
             bar.call:SetAttribute("*macrotext1", name and ("/cast " .. name) or nil)
         end
     end
+    -- the Call key: the Call your bar shows (also without a bar), when learned
+    local call = not passive and key and mod.ViewCall and mod.ViewCall(key)
+    local callName = call and mod.KnowsCall(call) and mod.CALLS[call].name
+    callBtn:SetAttribute("type", callName and "macro" or nil)
+    callBtn:SetAttribute("macrotext", callName and ("/cast " .. callName) or nil)
+
     local macro = not passive and mod.SequenceMacro(key) or nil
     seq.macroText = macro
     seq:SetAttribute("type", macro and "macro" or nil)

@@ -321,6 +321,7 @@ M.Page = function(_, page)
     }, Opt("callSide"))
     Check(KR, "Hide Blizzard's totem bar", "hideBlizzardBar", "Hides the game's own Call bar (out of combat). The Calls set here still go onto it, and the Call icon on our bars still casts them.")
     KR:Header("How it works")
+    KR:Note("Key: Esc > Options > Keybindings > MMT (Manage My Team) > Totems > \"Cast the shown Call\" casts the Call your bar shows (pick it with the Call icon's right-click).")
     KR:Note("Each Call drops one totem per element: Call of the Elements from level 20, of the Ancestors from 30, of the Spirits from 40. Set them here for any shaman; that shaman's client puts them on Blizzard's totem bar (out of combat). Below level 20 the sequence key does the job.")
     KR:Button("Copy Elements to the other two", function()
         if not callKey then return end

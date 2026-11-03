@@ -722,8 +722,11 @@ print("A:", A.eval(r"""function(m)
   pick(2)
   assert(m.ViewCall("Anna-Smith") == 2, "Call chosen from the list")
   assert(bar.call:GetAttribute("*macrotext1") == nil, "casts a Call not learned (Ancestors)")
+  assert(MMTTotemsCallButton:GetAttribute("macrotext") == nil, "Call key casts a Call not learned")
   m.SetViewCall("Anna-Smith", 1)
   assert(bar.call:GetAttribute("*macrotext1") == "/cast Call of the Elements", "Call icon doesn't cast: " .. tostring(bar.call:GetAttribute("*macrotext1")))
+  -- the Call key casts the shown Call too
+  assert(MMTTotemsCallButton:GetAttribute("macrotext") == "/cast Call of the Elements", "Call key: " .. tostring(MMTTotemsCallButton:GetAttribute("macrotext")))
   -- left of the totems by default, right with callSide END, gone with OFF
   m.M.db.callSide = "OFF"; m.Refresh()
   assert(not bar.call:IsShown(), "Call icon shown while OFF")

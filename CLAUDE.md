@@ -484,7 +484,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.5) – port of ema_totems
+### MMT_Totems (v0.5.6) – port of ema_totems
 - 2026-11-02 development notes: Totemic Projection is now called Totemic Call and TELEPORTS the totems to the shaman, so
   `mod.RECALL` (Data.lua) only holds Totemic Recall (a seen Totemic Call cast used to empty that shaman's slots).
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
@@ -533,6 +533,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   0.5.5: Calls tab rows start with the Call's icon (`row.call`, desaturated when own and unlearned); `hideBlizzardBar`
   (default off, Export LOOK) = `mod.ApplyBlizzardBar()` (start of mod.Refresh, so after combat too): MultiCastActionBarFrame
   SetParent to a hidden frame, back to its old parent when off / module off; never in combat (secure).
+  0.5.6: key binding `CLICK MMTTotemsCallButton:LeftButton` ("Cast the shown Call", Bindings.xml): hidden secure button,
+  `/cast <Call>` of the own `ViewCall` set in UpdateSecure (learned only; none while passive / onlyTimers).
   0.5.2: the P button (per-shaman presets) is gone from bar and settings (functions / `presets` data kept, unused).
 - Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `calls[key]`, `teamPresets[name]` (old).
 - Shared files: `Compat.lua`, `Transfer.lua`, `SettingsKit.lua` (identical with Cooldowns / Buffs).

@@ -1,4 +1,5 @@
 <Bindings>
 	<!-- In the key binding menu under "MMT (Manage My Team)" > "Totems" (texts in Secure.lua). Not in the TOC. -->
 	<Binding name="CLICK MMTTotemsSequenceButton:LeftButton" header="MMT_TOTEMS" category="BINDING_CATEGORY_MMT" />
+	<Binding name="CLICK MMTTotemsCallButton:LeftButton" category="BINDING_CATEGORY_MMT" />
 </Bindings>
