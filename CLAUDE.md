@@ -696,7 +696,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.6.8) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.9) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -756,7 +756,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   (`mod.Ask`) then `b:Queue(t, items)` = replies A, one `open` at a time (`importing` set BEFORE open: done may come at
   once), retry 2 s while `busy[why]`, after combat (`b:InCombatEnded()` on PLAYER_REGEN_ENABLED), else skipped. Replies
   whispered `<tag>R:<batch>:A` | `:N:<why>` (ignored / not the leader / not one of ours) | `:D:<imported>:<total>`;
-  every step prints a chat line on both sides. `b.stats`, `b:Waiting()`, `b:Count()` for the report. Strings are
+  every step prints a chat line on both sides. 0.6.9 (user: 28 auras / 404 KB looked like nothing arrived - it takes ~11 min at the
+  core's 800 B/s): the receiver prints `Progress(t)` at 25 / 50 / 75 % and at least once a minute (bytes received of the
+  head's total, time left at the rate so far). `b.stats`, `b:Waiting()`, `b:Count()` for the report. Strings are
   printable (LibDeflate EncodeForPrint, no ; or =).
 - `ForeverAuras.lua` + `AurasWindow.lua` (0.4.0, key `auras`, options `waAsk` (default on), `waFrom` TEAM | LEADER,
   `waDock`): ForeverAuras (`ForeverAuras` = its `WeakAuras` table; global `WeakAuras` too) has a PUBLIC API in

@@ -118,6 +118,23 @@ function mod.Bulk(spec)
         return t, k
     end
 
+    -- the receiver hears nothing between "is sending you" and the import (a big one takes minutes):
+    -- a line at 25 / 50 / 75 % and at least once a minute, with the time left at the rate so far
+    local function Progress(t)
+        local total = (t.bytes and t.bytes > 0) and t.bytes or nil
+        local frac = total and math.min(1, (t.recv or 0) / total) or (t.got / math.max(1, t.n or 1))
+        local step = math.floor(frac * 4)   -- 1 = 25 %, 2 = 50 %, 3 = 75 %
+        local now = GetTime()
+        if step <= (t.step or 0) and now - (t.said or t.start or now) < 60 then return end
+        if step >= 4 then return end
+        t.step, t.said = math.max(step, t.step or 0), now
+        if frac <= 0 then return end
+        local elapsed = math.max(1, now - (t.start or now))
+        local left = elapsed / frac * (1 - frac)
+        MMT.Print("Quality of life: %s from %s: %d%% (%s of %s, about %s left).", spec.plural, MMT.FullDisplay(t.from),
+            math.floor(frac * 100), mod.KB(t.recv or 0), total and mod.KB(total) or "?", Duration(left))
+    end
+
     local function OnHead(key, sender, body)
         local batch, count, bytes, names = body:match("^(%d+):(%d+):(%d+):(.*)$")
         if not batch then return end
@@ -128,6 +145,7 @@ function mod.Bulk(spec)
         end
         local t = Buffer(key, sender, batch)
         t.count, t.bytes = tonumber(count), tonumber(bytes)
+        t.start = t.start or GetTime()
         MMT.Print("Quality of life: %s is sending you %s %s (%s): %s", MMT.FullDisplay(key), count, spec.noun, mod.KB(t.bytes), Unesc(names))
     end
 
@@ -138,8 +156,13 @@ function mod.Bulk(spec)
         if not Allowed(key) then return end
         local t, k = Buffer(key, sender, batch)
         t.n, t.last = n, GetTime()
-        if not t.parts[i] then t.parts[i] = part; t.got = t.got + 1 end
-        if t.got < n then return end
+        t.start = t.start or t.last
+        if not t.parts[i] then
+            t.parts[i] = part
+            t.got = t.got + 1
+            t.recv = (t.recv or 0) + #part
+        end
+        if t.got < n then return Progress(t) end
         incoming[k] = nil
         local entries = {}
         for entry in table.concat(t.parts):gmatch("[^;]+") do

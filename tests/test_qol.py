@@ -550,6 +550,10 @@ end""")
 deliver_to(msgs, B, "Anna-Smith", order=[0, 2, 1])
 run(B, bmod, r"""function(m)
   assert(DIALOG == nil, "asked while ask is off")
+  -- the receiver hears how far it got (one of the two parts in: half)
+  local progress
+  for _, p in ipairs(PRINTS) do if p:find("from Anna Smith: %d+%% %(") and p:find("left%)") then progress = p end end
+  assert(progress, "no progress line while the parts came in")
   assert(#IMPORTS == 1 and LAST():find("waits until ForeverAuras' import window is free", 1, true), LAST())
   FA_OPEN = nil; FLUSH()
   assert(#IMPORTS == 2 and IMPORTS[2] == "Big group", "group not opened after the window closed")
