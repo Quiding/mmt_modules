@@ -65,11 +65,12 @@ local SPECS = {
         { "PROT", "Protection", { S(), B(6673) } },
     },
     PALADIN = {
-        { "HOLY", "Holy", { B(19746), P("Seal of *"), O(10293) } },  -- Concentration Aura, any seal, Devotion
-        { "PROT", "Protection", { B(25780), B(10293), B(20928), P("Seal of *"), O(10301) } },
-            -- Righteous Fury, Devotion Aura, Holy Shield, any seal (Seal of Fury), Retribution Aura
-        { "RET", "Retribution", { P("Seal of *"), B(20050), B(20218), O(10301) } },
-            -- any seal (Command / Crusader / Righteousness, swapped with Twist of Light), Vengeance, Sanctity Aura, Retribution Aura
+        -- the aura they run = their stance bar (0.29.0: one stance entry instead of an entry per aura)
+        { "HOLY", "Holy", { S(), P("Seal of *") } },                     -- aura, any seal
+        { "PROT", "Protection", { S(), B(25780), B(20928), P("Seal of *") } },
+            -- aura, Righteous Fury, Holy Shield, any seal (Seal of Fury)
+        { "RET", "Retribution", { S(), P("Seal of *"), B(20050) } },
+            -- aura, any seal (Command / Crusader / Righteousness, swapped with Twist of Light), Vengeance
     },
     HUNTER = {
         { "BM", "Beast Mastery", { P("Aspect of the *") } },             -- any aspect (Hawk, Monkey, Wild, ...)
@@ -142,10 +143,11 @@ for class, specs in pairs(SPECS) do
     mod.DEFAULT_LISTS[class] = list
 end
 
--- Once per profile (0.28.0): the stance / form entry put at the front of the lists of the classes / specs
--- that have one (as in the presets above), switched like there; lists that have it already keep theirs.
--- Taking it out of a list afterwards stays out. The flag is kept per profile in the account-wide store
--- (M.store.stanceAdded[profile]), not in the settings: a reset gives the default lists, which have it.
+-- Once per profile and class (0.28.0; paladins 0.29.0): the stance / form entry put at the front of the
+-- lists of the classes / specs that have one (as in the presets above), switched like there; lists that
+-- have it already keep theirs. Taking it out of a list afterwards stays out. Done up to which round is
+-- kept per profile in the account-wide store (M.store.stanceAdded[profile] = 1 | 2; true = 1), not in the
+-- settings: a reset gives the default lists, which have it. STANCE_SINCE = the round a class came in.
 local STANCE_LISTS = {}
 for class, specs in pairs(SPECS) do
     local on, any = 0, false
@@ -161,6 +163,8 @@ for class, specs in pairs(SPECS) do
     if any then STANCE_LISTS[class] = (on == #specs) and "on" or "off" end
 end
 mod.STANCE_LISTS = STANCE_LISTS
+local STANCE_SINCE = { PALADIN = 2 }   -- everyone else: 1
+local STANCE_ROUND = 2
 
 -- buffs the game doesn't have any more: Blessing of Salvation / Greater Blessing of Salvation and
 -- Blessing of Light / Greater Blessing of Light (removed 2026-11-02). Taken out of every list on
@@ -184,11 +188,14 @@ function mod.AddStanceDefaults()
     local profile = type(MMT.profileName) == "string" and MMT.profileName or "?"
     if not db or not store then return end
     store.stanceAdded = store.stanceAdded or {}
-    if store.stanceAdded[profile] then return end
-    store.stanceAdded[profile] = true
+    local done = store.stanceAdded[profile]
+    done = (done == true) and 1 or tonumber(done) or 0
+    if done >= STANCE_ROUND then return end
+    store.stanceAdded[profile] = STANCE_ROUND
     for lk, how in pairs(STANCE_LISTS) do
+        local class = lk:match("^SPEC:(%u+):") or lk
         local list = db.lists and db.lists[lk]
-        if list then
+        if list and (STANCE_SINCE[class] or 1) > done then
             local has = false
             for _, e in ipairs(list) do if mod.IsStance(e) then has = true end end
             if not has then table.insert(list, 1, { stance = true, off = (how == "off") or nil }) end

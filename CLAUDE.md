@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.2) / MMT_BuffTimers (v0.29.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.2) / MMT_BuffTimers (v0.30.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -362,9 +362,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   add box, EntryKey "stance", BuffName "<stance>" = a name no aura has so CollectEntries de-dups it and aura code never
   matches it, EntryName / EntryIcon) -> Window `Icons` builds it from `MMTStanceLib.Data(key)` {id, texture, name} (Only for
   counts; arranging shows it even without a stance); EntriesFor keeps it in member rows when the ALL list has it, AllRow
-  skips it; Export SetLists keeps it. Presets (0.28.0): `S()` first in every Warrior / Rogue / Druid spec and Priest Shadow
+  skips it; Export SetLists keeps it. Presets (0.28.0; paladins 0.30.0 - their auras ARE their stance bar on Forever, the user: one entry, not one per aura): `S()` first in every Warrior / Paladin / Rogue / Druid spec and Priest Shadow
   (class defaults: on when on in every spec -> Priest off); `mod.AddStanceDefaults()` (OnEnable / OnProfileChanged) puts it
-  at the front of existing lists of those (`mod.STANCE_LISTS`) once per profile - flag in `M.store.stanceAdded[profile]`, not
+  at the front of existing lists of those (`mod.STANCE_LISTS`) once per profile and class round (`STANCE_SINCE` PALADIN = 2; `M.store.stanceAdded[profile]` = done round, true = 1), not
   M.db (test_settings_matrix: a reset must leave nothing but the defaults). Own stance = GetShapeshiftForm +
   GetShapeshiftFormInfo (icon, _, _, spellID); `MST:<spellID>` (0 = none) once per change (own event frame:
   UPDATE_SHAPESHIFT_FORM(S), PLAYER_ENTERING_WORLD), heartbeat `stn` (Cooldowns) / `stb` (Buffs while Cooldowns is off);

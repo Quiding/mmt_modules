@@ -56,8 +56,9 @@ row, between the cooldowns; switching "Where" back to its own window brings them
 **Stance / form icon**: the stance or form a member is in (warrior stances, druid forms, stealth, shadowform -
 whatever is on their stance bar) as an icon. In Buff Timers it's a list entry like a buff: type **stance** in a list's add
 box and that list's members get it in their row, where you drag it - add it to "Warrior: Fury", leave it out of the
-paladin lists; the cog limits it like a buff. The presets and default lists of warriors, rogues (stealth), druids and
-Shadow priests have it (the Priest class list: off), and it was added once to existing lists of those classes / specs. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
+paladin lists; the cog limits it like a buff. The presets and default lists of warriors, paladins (their aura - one entry instead
+of one per aura), rogues (stealth), druids and Shadow priests have it (the Priest class list: off), and it was added once
+to existing lists of those classes / specs (paladin auras already in your lists stay; take them out if the stance is enough). It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
 tab, the same settings on both pages; works while either module is on). Each client tells the team once when its stance
 changes.
 

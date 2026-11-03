@@ -326,7 +326,8 @@ print(lua.eval(r'''function(cd, bf)
   local pst
   for _, e in ipairs(bf.DEFAULT_LISTS.PRIEST) do if bf.IsStance(e) then pst = e end end
   Check(pst and pst.off, "priest default: stance (Shadow only) should be there, off")
-  for _, e in ipairs(bf.DEFAULT_LISTS.PALADIN) do Check(not bf.IsStance(e), "paladin default has the stance") end
+  Check(bf.IsStance(bf.DEFAULT_LISTS.PALADIN[1]) and not bf.DEFAULT_LISTS.PALADIN[1].off, "paladin default without the stance (their aura)")
+  for _, e in ipairs(bf.DEFAULT_LISTS.PALADIN) do Check(e.id ~= 19746 and e.id ~= 10293, "paladin default still has aura entries") end
   local fury = bf.PresetByKey("WARRIOR:FURY")
   Check(fury and bf.IsStance(fury.entries[1]), "Fury preset without the stance")
   BM.store.stanceAdded = nil
@@ -336,9 +337,14 @@ print(lua.eval(r'''function(cd, bf)
   bf.AddStanceDefaults()
   Check(bf.IsStance(BM.db.lists.DRUID[1]) and #BM.db.lists.DRUID == 2, "stance not added to the druid list")
   Check(#BM.db.lists["SPEC:WARRIOR:FURY"] == 2 and BM.db.lists["SPEC:WARRIOR:FURY"][1].off, "a list's own stance entry changed")
-  Check(#BM.db.lists.PALADIN == 1, "stance added to the paladin list")
+  Check(bf.IsStance(BM.db.lists.PALADIN[1]) and #BM.db.lists.PALADIN == 2, "stance not added to the paladin list")
   table.remove(BM.db.lists.DRUID, 1)
   bf.AddStanceDefaults()
   Check(#BM.db.lists.DRUID == 1, "a removed stance came back")
+  -- a profile done in round 1 (0.28.0): only the paladin lists get it now, a druid list without it stays so
+  BM.store.stanceAdded = { ["?"] = true }
+  BM.db.lists.PALADIN = { { id = 19746 } }
+  bf.AddStanceDefaults()
+  Check(bf.IsStance(BM.db.lists.PALADIN[1]) and #BM.db.lists.DRUID == 1, "round 2: paladin added / druid left alone")
   return "icon moves between bars ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))
