@@ -759,3 +759,25 @@ print("A:", A.eval(r"""function(m)
   MMT.UI.OpenList = open
   return "bar follows the Calls ok"
 end""")(amod))
+
+# Blizzard's totem bar hidden: into a hidden frame out of combat, back to its parent when off
+print("A:", A.eval(r"""function(m)
+  local f = CreateFrame("Frame", "MultiCastActionBarFrame", UIParent, "SecureFrameTemplate")
+  m.Refresh()
+  assert(f:GetParent() == UIParent and not m.BlizzardBarHidden(), "hidden by default")
+  m.M.db.hideBlizzardBar = true; m.Refresh()
+  assert(m.BlizzardBarHidden() and f:GetParent() ~= UIParent, "not hidden")
+  -- off in combat: nothing touched (secure), done after the fight
+  IN_COMBAT = true
+  m.M.db.hideBlizzardBar = false; m.Refresh()
+  assert(m.BlizzardBarHidden(), "moved in combat")
+  IN_COMBAT = false
+  m.Refresh()
+  assert(f:GetParent() == UIParent and not m.BlizzardBarHidden(), "not back after combat")
+  -- module off: shown again
+  m.M.db.hideBlizzardBar = true; m.Refresh()
+  m.M.enabled = false; m.Refresh()
+  assert(f:GetParent() == UIParent, "still hidden with the module off")
+  m.M.enabled = true; m.M.db.hideBlizzardBar = false; m.Refresh()
+  return "Blizzard totem bar hidden ok"
+end""")(amod))

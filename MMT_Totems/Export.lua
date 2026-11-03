@@ -8,7 +8,7 @@ local M = mod.M
 
 local LOOK = { "shown", "locked", "ungrouped", "vertical", "growth", "includeSelf", "onlyOnline", "order",
     "showNames", "fullNames", "onlyTimers", "showTimers", "timerColor", "iconSize", "iconZoom", "spacing", "rowGap",
-    "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe", "showSequence", "callSide",
+    "scale", "alpha", "bgAlpha", "inactiveAlpha", "nameSize", "timerSize", "spamSafe", "showSequence", "callSide", "hideBlizzardBar",
     "showPresets", "showBarPresets", "presetsOnHover", "presetSide",
     "hideNoItem", "hideUnlearned", "hiddenElements", "bgTexture", "bgColor", "bgTint", "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha", "font" }
 local CHOICES = {

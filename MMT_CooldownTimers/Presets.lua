@@ -7,6 +7,8 @@
 -- Pick one in the list editor and add it to a list or replace the list with it.
 --   mod.PRESETS = { { key, group = class token | "RACE" | "ALL", name, entries }, ... }
 -- An entry is { t = "s" | "i", id, cd = seconds, off = true|nil }.
+-- 2026-11-02 development notes: Lava Burst and Berserk removed, Stormstrike 6 s, Riptide 12 s, Blood Fury 2 min.
+-- New cooldowns (Shank, Death Mark, Reckless Swings, Slam's 15 s) aren't in Wowhead's data yet: add them by name.
 -- Per spec: the big cooldowns, defensives and crowd control ON, the rotation and
 -- short utility in the list but OFF. A class's default list (new profiles) is
 -- every spec's entries together, on when on in any spec ("Hide what you don't
@@ -74,12 +76,12 @@ local SPECS = {
                   S(1277331, 120), S(1277455, 120) } },
     },
     SHAMAN = {
-        { "ELE", "Elemental", on = { S(16166, 180), S(20608, 3600) },
-          off = { S(1238300, 10), S(437009, 60), S(8177, 15), S(10414, 6), S(10605, 6), S(10428, 30), S(2484, 15) } },
+        { "ELE", "Elemental", on = { S(16166, 180), S(20608, 3600) },   -- Elemental Mastery = Lightning Mastery now
+          off = { S(437009, 60), S(8177, 15), S(10414, 6), S(10605, 6), S(10428, 30), S(2484, 15) } },
         { "ENH", "Enhancement", on = { S(425336, 180), S(20608, 3600) },
-          off = { S(17364, 8), S(10414, 6), S(29228, 6), S(8177, 15), S(437009, 60), S(10428, 30), S(2484, 15) } },
+          off = { S(17364, 6), S(10414, 6), S(29228, 6), S(8177, 15), S(437009, 60), S(10428, 30), S(2484, 15) } },
         { "RESTO", "Restoration", on = { S(16188, 180), S(16190, 300), S(20608, 3600) },
-          off = { S(1239243, 6), S(8177, 15), S(437009, 60), S(10414, 6), S(10428, 30), S(2484, 15) } },
+          off = { S(1239243, 12), S(8177, 15), S(437009, 60), S(10414, 6), S(10428, 30), S(2484, 15) } },
     },
     MAGE = {
         { "ARCANE", "Arcane", on = { S(12042, 180), S(12043, 180), S(12051, 480), S(11958, 300) },
@@ -101,9 +103,9 @@ local SPECS = {
     DRUID = {
         { "BALANCE", "Balance", on = { S(29166, 360), S(20748, 1800), S(9863, 300), S(22812, 60) },
           off = { S(16689, 60), S(8983, 60), S(5209, 600), S(22842, 180) } },
-        { "FERAL", "Feral (cat)", on = { S(417141, 180), S(29166, 360), S(20748, 1800), S(22812, 60) },
+        { "FERAL", "Feral (cat)", on = { S(29166, 360), S(20748, 1800), S(22812, 60) },
           off = { S(5217, 30), S(9821, 300), S(8983, 60), S(22842, 180), S(16689, 60), S(5229, 60) } },
-        { "BEAR", "Feral (bear tank)", on = { S(417141, 180), S(22842, 180), S(5209, 600), S(22812, 60), S(29166, 360),
+        { "BEAR", "Feral (bear tank)", on = { S(22842, 180), S(5209, 600), S(22812, 60), S(29166, 360),
                   S(20748, 1800) },
           off = { S(5229, 60), S(8983, 60), S(6795, 8), S(16979, 15), S(16689, 60), S(9863, 300) } },
         { "RESTO", "Restoration", on = { S(17116, 180), S(29166, 360), S(20748, 1800), S(9863, 300), S(22812, 60) },
@@ -117,7 +119,7 @@ local RACIALS = {
     { "Dwarf", "Dwarf", { S(20594, 180) } },                               -- Stoneform
     { "NightElf", "Night Elf", { S(1259799, 180), S(20580, 10) } },       -- Elune's Light, Shadowmeld
     { "Gnome", "Gnome", { S(20589, 120), S(1259812, 120) } },             -- Escape Artist, Eureka!
-    { "Orc", "Orc", { S(20572, 180), S(1299026, 180) } },                 -- Blood Fury, Shatter Curse
+    { "Orc", "Orc", { S(20572, 120), S(1299026, 180) } },                 -- Blood Fury, Shatter Curse
     { "Scourge", "Undead", { S(7744, 120), S(20577, 120) } },             -- Will of the Forsaken, Cannibalize
     { "Tauren", "Tauren", { S(20549, 90), S(20552, 900) } },              -- War Stomp, Cultivation
     { "Troll", "Troll", { S(20554, 180), S(1260270, 180) } },             -- Berserking, Rapid Regeneration

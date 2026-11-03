@@ -52,6 +52,7 @@ local M = MMT.NewModule({
         teamPresets = {},          -- old team presets (replaced by the Calls, kept, no longer shown)
         calls = {},                -- [teamKey][call 1-3][element] = spellID: Call of the Elements / Ancestors / Spirits
         callSide = "START",        -- the Call icon on the bars: START (left of the totems) | END | OFF
+        hideBlizzardBar = false,   -- hide Blizzard's totem bar (MultiCastActionBarFrame); the Calls still work
     },
 })
 mod.M = M

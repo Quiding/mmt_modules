@@ -1,6 +1,7 @@
 -- MMT Buffs: presets for the tracked lists, from Wowhead's WoW: Forever data
 -- (October 2026; many buffs are raid-wide in Forever: Battle Shout, Trueshot
--- Aura, Leader of the Pack, Moonkin Aura, the totems; Salvation is its own buff).
+-- Aura, Leader of the Pack, Moonkin Aura, the totems). Blessing of Salvation and Blessing of Light were
+-- removed from the game (development notes of 2026-11-02): mod.DropRemovedBuffs takes them out of lists.
 -- Pick one in the list editor and add it to a list or replace the list with it.
 --   mod.PRESETS = { { key, group = class token | "ALL", name, entries }, ... }
 -- An entry is { id, off = true|nil } (or a name pattern / weapon, Lists.lua); buffs match by NAME (any rank, and group
@@ -22,7 +23,7 @@ local function PartyBuffs()
     return {
         B(1243), B(1126), B(20217),            -- Fortitude, Mark of the Wild, Kings
         B(976), B(14752), B(1459),             -- Shadow Protection, Divine Spirit, Arcane Intellect
-        B(19740), B(19742), B(1038),           -- Might, Wisdom, Salvation
+        B(19740), B(19742),                    -- Might, Wisdom
         B(6673),                               -- Battle Shout
     }
 end
@@ -33,7 +34,7 @@ mod.PRESETS = {
     { key = "ALL:RAIDAURAS", group = "ALL", name = "Raid buffs + auras (Fortitude, Mark, Kings on)", entries = {
         B(1243), B(1126), B(20217),                       -- Fortitude, Mark of the Wild, Kings
         O(1459), O(14752), O(976),                        -- Arcane Intellect, Divine Spirit, Shadow Protection
-        O(19740), O(19742), O(1038),                      -- Might, Wisdom, Salvation
+        O(19740), O(19742),                               -- Might, Wisdom
         O(6673), O(19506), O(17007), O(24907),            -- Battle Shout, Trueshot Aura, Leader of the Pack, Moonkin Aura
     } },
     { key = "ALL:TOTEMS", group = "ALL", name = "Shaman totems (only in the shaman's party)", entries = {
@@ -160,6 +161,23 @@ for class, specs in pairs(SPECS) do
     if any then STANCE_LISTS[class] = (on == #specs) and "on" or "off" end
 end
 mod.STANCE_LISTS = STANCE_LISTS
+
+-- buffs the game doesn't have any more: Blessing of Salvation / Greater Blessing of Salvation and
+-- Blessing of Light / Greater Blessing of Light (removed 2026-11-02). Taken out of every list on
+-- each enable and profile change (also lists that came in by sync or import later)
+mod.REMOVED_BUFFS = { [1038] = true, [25895] = true, [19977] = true, [25890] = true }
+
+function mod.DropRemovedBuffs()
+    local db = mod.M.db
+    if not (db and db.lists) then return 0 end
+    local n = 0
+    for _, list in pairs(db.lists) do
+        for i = #list, 1, -1 do
+            if list[i].id and mod.REMOVED_BUFFS[list[i].id] then table.remove(list, i); n = n + 1 end
+        end
+    end
+    return n
+end
 
 function mod.AddStanceDefaults()
     local db, store = mod.M.db, mod.M.store

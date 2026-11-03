@@ -32,7 +32,9 @@ local DURATION = {
     ["Sentry Totem"] = 300, ["Tranquil Air Totem"] = 120,
 }
 
-mod.RECALL = { ["Totemic Recall"] = true, ["Totemic Call"] = true }
+-- casts that take a shaman's totems away. Not "Totemic Call" any more: since 2026-11-02 (development notes) it
+-- is the old Totemic Projection renamed and TELEPORTS the totems to the shaman - they stay up
+mod.RECALL = { ["Totemic Recall"] = true }
 mod.DEFAULT_SEQUENCE = "Fire, Air, Water, Earth"
 mod.PRESET_ICON = "Interface\\Icons\\Spell_Totem_WardOfDraining"
 

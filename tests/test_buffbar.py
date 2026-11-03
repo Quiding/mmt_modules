@@ -107,7 +107,13 @@ print(lua.eval(r"""function(m)
   local def = Ids(m.DEFAULT_LISTS.ALL)
   assert(def[1243] and def[1126] and def[20217] and not def[1243].only, "Fortitude / Mark / Kings for everyone")
   for _, e in ipairs(m.DEFAULT_LISTS.ALL) do assert(not e.only, "a default buff has Only for: " .. e.id) end
-  assert(def[19740] and def[19742] and def[1459] and def[1038] and def[6673], "party buffs missing")
+  assert(def[19740] and def[19742] and def[1459] and def[6673], "party buffs missing")
+  assert(not def[1038], "Blessing of Salvation is gone from the game (2026-11-02)")
+  -- lists that still have Salvation / Light (old profiles, syncs, imports) lose them
+  local keep = m.M.db.lists.PALADIN
+  m.M.db.lists.PALADIN = { { id = 1038 }, { id = 19740 }, { id = 25890 }, { id = 19977, off = true } }
+  assert(m.DropRemovedBuffs() == 3 and #m.M.db.lists.PALADIN == 1 and m.M.db.lists.PALADIN[1].id == 19740, "removed buffs kept")
+  m.M.db.lists.PALADIN = keep
   assert(not def[19506] and not def[17007] and not def[24907], "auras in the default")
   local raid, auras = m.PresetByKey("ALL:RAID"), m.PresetByKey("ALL:RAIDAURAS")
   assert(raid and auras, "raid presets")

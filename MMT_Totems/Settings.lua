@@ -240,11 +240,30 @@ M.Page = function(_, page)
         label:SetPoint("TOPLEFT", 0, 0)
         label:SetText(c.name)
         row.label = label
+        -- the Call's own icon first (easier to know by than the names)
+        local ci = CreateFrame("Frame", nil, row)
+        ci:SetSize(ICON, ICON)
+        ci:SetPoint("TOPLEFT", 0, -14)
+        UI.Border(ci, 0.5, 0.4, 0.1, 1)
+        ci.icon = ci:CreateTexture(nil, "ARTWORK")
+        ci.icon:SetPoint("TOPLEFT", 1, -1)
+        ci.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        ci.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        ci.icon:SetTexture(mod.CallIcon(call))
+        ci:EnableMouse(true)
+        ci:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(c.name)
+            GameTooltip:AddLine("Drops the four totems on its right.", 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end)
+        ci:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row.call = ci
         callIcons[call] = { row = row }
         for i, el in ipairs(mod.ELEMENTS) do
             local b = CreateFrame("Button", nil, row)
             b:SetSize(ICON, ICON)
-            b:SetPoint("TOPLEFT", (i - 1) * (ICON + IGAP), -14)
+            b:SetPoint("TOPLEFT", ICON + 14 + (i - 1) * (ICON + IGAP), -14)
             UI.Fill(b, 0.12, 0.12, 0.12, 1)
             UI.Border(b, 0.3, 0.3, 0.3, 1)
             b.icon = b:CreateTexture(nil, "ARTWORK")
@@ -278,7 +297,10 @@ M.Page = function(_, page)
         local own = callKey and MMT.IsSelf(callKey)
         for call, c in ipairs(mod.CALLS) do
             local known = not own or mod.KnowsCall(call)
-            callIcons[call].row.label:SetText(c.name .. (known and "" or "  |cff888888(not learned yet)|r"))
+            local row = callIcons[call].row
+            row.label:SetText(c.name .. (known and "" or "  |cff888888(not learned yet)|r"))
+            row.call.icon:SetTexture(mod.CallIcon(call))
+            row.call.icon:SetDesaturated(not known)
             for _, el in ipairs(mod.ELEMENTS) do
                 local b = callIcons[call][el]
                 local id = callKey and mod.CallTotem(callKey, call, el)
@@ -297,6 +319,7 @@ M.Page = function(_, page)
         { value = "END", text = "Right of the totems" },
         { value = "OFF", text = "Hidden" },
     }, Opt("callSide"))
+    Check(KR, "Hide Blizzard's totem bar", "hideBlizzardBar", "Hides the game's own Call bar (out of combat). The Calls set here still go onto it, and the Call icon on our bars still casts them.")
     KR:Header("How it works")
     KR:Note("Each Call drops one totem per element: Call of the Elements from level 20, of the Ancestors from 30, of the Spirits from 40. Set them here for any shaman; that shaman's client puts them on Blizzard's totem bar (out of combat). Below level 20 the sequence key does the job.")
     KR:Button("Copy Elements to the other two", function()

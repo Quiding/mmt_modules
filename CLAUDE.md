@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.1) / MMT_BuffTimers (v0.28.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.2) / MMT_BuffTimers (v0.29.0) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -318,6 +318,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   list but not ALL with them on) for `OwnListKey()` (0.18.2 / 0.23.2: it kept showing SPEC:WARRIOR:FURY after turning them off).
   0.18.3 / 0.23.3: also when the lists tab is shown (`lp` OnShow: switching tabs runs no page refresh), and the dropdown
   (`pick.Refresh()`) after it: the core's RefreshPage refreshes the widgets BEFORE `OnRefresh`.
+- Cooldown presets after the 2026-11-02 development notes (0.19.2): Lava Burst and Berserk out, Stormstrike 6 s, Riptide 12 s,
+  Blood Fury 2 min; new cooldowns (Shank, Death Mark, Reckless Swings, Slam 15 s) not in Wowhead's Forever data yet.
 - Spec presets (2026-10-25, replaced the class ones): `SPECS[class] = { {key, name, on, off} }` in each Presets.lua,
   key "<CLASS>:<SPEC>" (DRUID: BALANCE / FERAL / BEAR / RESTO). Data: Wowhead Forever "<spec> abilities" guide pages
   (spell links = max-rank IDs) + nether.wowhead.com/forever/tooltip/spell/<id> for cooldowns; talent cooldowns the
@@ -430,7 +432,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   the class here who learned it (`ClassesHere` returns present, who[class] = keys + `stranger` for non-team units =
   counts as able). Name patterns: learned when a learned spellbook spell matches (`C_SpellBook.GetSpellBookItemType` == Spell, so not FutureSpell; ID = 3rd value OR the action ID, like EllesmereUI), for patterns in own lists + `caster == class`; sent after "#" (`MBFK:<ids>#<pattern>...`), `rec.patterns`. Weapon entries: `#@imbue` when `mod.OwnCanImbue()` is false (shaman without a "... Weapon" imbue spell, rogue without Poisons; other classes always can). `mod.KnownCheck()` on list change / profile / sync / SPELLS_CHANGED; `mod.KnownReset()` clears caches.
 - Blessings (`Casters.lua`, `blessingLimit`, default on): `mod.BlessingCovered(key, e)` = a missing blessing (`IsBlessing`:
-  canonical name of Might / Wisdom / Kings / Light / Sanctuary; NOT Salvation: on Forever its own buff, stacks) while the member has >= `mod.PaladinsHere()`
+  canonical name of Might / Wisdom / Kings / Sanctuary; Blessing of Salvation and Blessing of Light (+ Greater, Mass Salvation) were REMOVED from the game in the 2026-11-02 development notes: Buffs 0.29.0 dropped them from presets / CASTERS / BLESSINGS / GROUP, and `mod.DropRemovedBuffs()` (Presets.lua, `mod.REMOVED_BUFFS`, every OnEnable + OnProfileChanged) takes them out of existing lists) while the member has >= `mod.PaladinsHere()`
   (paladin units in the group; preview: its team) blessings CAST BY A GROUP UNIT (`a.group` from Compat `mod.Buff`'s 6th
   value = aura sourceUnit; randoms outside the group give nil). Member row: not shown; All bar: `covered`, not counted.
 - Buffs `Casters.lua`: `CASTERS` = class -> spell IDs of its buffs (matched by canonical name); with `hideNoCaster`
@@ -482,7 +484,9 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.4) – port of ema_totems
+### MMT_Totems (v0.5.5) – port of ema_totems
+- 2026-11-02 development notes: Totemic Projection is now called Totemic Call and TELEPORTS the totems to the shaman, so
+  `mod.RECALL` (Data.lua) only holds Totemic Recall (a seen Totemic Call cast used to empty that shaman's slots).
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
   secure). ALL layout/attribute/binding changes only out of combat (`pending` + PLAYER_REGEN_ENABLED);
   in combat only textures/cooldowns/timers. Key: override binding + Bindings.xml CLICK entry

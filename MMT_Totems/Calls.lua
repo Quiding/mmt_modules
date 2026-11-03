@@ -167,6 +167,32 @@ function mod.StartCalls()
 end
 
 ---------------------------------------------------------------------------
+-- Blizzard's totem bar hidden (setting hideBlizzardBar): moved into a hidden frame,
+-- out of combat only (its buttons are secure); back to its own parent when off.
+-- Its spells stay set, so the Call icon and SetMultiCastSpell keep working.
+---------------------------------------------------------------------------
+local hider, home
+function mod.BlizzardBarHidden()
+    local bar = rawget(_G, "MultiCastActionBarFrame")
+    return bar ~= nil and hider ~= nil and bar:GetParent() == hider
+end
+
+function mod.ApplyBlizzardBar()
+    local bar = rawget(_G, "MultiCastActionBarFrame")
+    if not bar then return end
+    local hide = M.enabled and M.db.hideBlizzardBar == true
+    if hide == mod.BlizzardBarHidden() then return end
+    if InCombatLockdown() then return end   -- mod.Refresh runs again after combat
+    if hide then
+        if not hider then hider = CreateFrame("Frame"); hider:Hide() end
+        home = bar:GetParent()
+        bar:SetParent(hider)
+    else
+        bar:SetParent(home or UIParent)
+    end
+end
+
+---------------------------------------------------------------------------
 -- Choosing a totem for a Call (settings, Calls tab)
 ---------------------------------------------------------------------------
 local function IconText(icon, text)

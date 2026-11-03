@@ -372,6 +372,7 @@ end
 function mod.Refresh()
     if InCombatLockdown() then pendingLayout = true; mod.UpdateIcons() return end
     pendingLayout = false
+    if mod.ApplyBlizzardBar then mod.ApplyBlizzardBar() end
     local c = M.db
     local seqBtn = mod.sequenceButton
     if not (M.enabled and c and c.shown) then

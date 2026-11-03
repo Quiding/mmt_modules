@@ -19,9 +19,9 @@ local CASTERS = {
         -- Mark / Gift of the Wild, Thorns, Leader of the Pack, Moonkin Aura
     MAGE = { 1459, 23028, 604, 1008 },
         -- Arcane Intellect / Brilliance, Dampen / Amplify Magic
-    PALADIN = { 19740, 25782, 19742, 25894, 20217, 25898, 1038, 25895, 19977, 25890, 20911, 25899,
+    PALADIN = { 19740, 25782, 19742, 25894, 20217, 25898, 20911, 25899,
         465, 7294, 19746, 19876, 19888, 19891, 20218 },
-        -- Blessings and Greater Blessings (Might, Wisdom, Kings, Salvation, Light, Sanctuary),
+        -- Blessings and Greater Blessings (Might, Wisdom, Kings, Sanctuary; Salvation and Light are gone),
         -- Devotion / Retribution / Concentration / Shadow / Frost / Fire Resistance Aura, Sanctity Aura
     WARRIOR = { 6673 },               -- Battle Shout
     HUNTER = { 19506, 20043 },        -- Trueshot Aura, Aspect of the Wild
@@ -130,9 +130,8 @@ end
 -- With "One blessing per paladin" (M.db.blessingLimit) a missing blessing doesn't
 -- count while the member already has as many blessings as there are paladins here.
 ---------------------------------------------------------------------------
--- Might, Wisdom, Kings, Light, Sanctuary. NOT Salvation: on Forever it's its own buff ("Salvation",
--- group version "Mass Salvation"), without the one-blessing-per-paladin rule, so it stacks with them
-local BLESSINGS = { 19740, 19742, 20217, 19977, 20911 }
+-- Might, Wisdom, Kings, Sanctuary (Salvation and Light were removed from the game on 2026-11-02)
+local BLESSINGS = { 19740, 19742, 20217, 20911 }
 local blessingNames, blessingsComplete
 local function Blessings()
     if blessingsComplete then return blessingNames end

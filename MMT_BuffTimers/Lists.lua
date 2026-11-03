@@ -22,8 +22,6 @@ local GROUP = {
     [25782] = 19740,  -- Greater Blessing of Might
     [25894] = 19742,  -- Greater Blessing of Wisdom
     [25898] = 20217,  -- Greater Blessing of Kings
-    [25895] = 1038,   -- Greater Blessing of Salvation
-    [25890] = 19977,  -- Greater Blessing of Light
     [25899] = 20911,  -- Greater Blessing of Sanctuary
 }
 
