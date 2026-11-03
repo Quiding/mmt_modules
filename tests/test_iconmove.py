@@ -272,6 +272,21 @@ print(lua.eval(r'''function(cd, bf)
   Redraw(); cr, br = Rows()
   Check(br.icons[2].data.spell == 71 and br.icons[2].data.state == "buff", "stance not second in Bob's buff row: " .. Ids(br))
   Check(bf.EntryName(shaman[2]) == "Stance / form" and bf.EntryKey(shaman[2]) == "stance", "entry name / key")
+  -- a paladin with no aura on: the stance icon shows missing (with their last aura's icon); others: nothing
+  local classOf = bf.ClassOf
+  bf.ClassOf = function(k) if k == "Bob-Stone" then return "PALADIN" end return classOf(k) end
+  BM.db.lists.PALADIN = shaman
+  local lastTex = br.icons[2].data.texture
+  S.OnMessage("Bob-Stone", "MST:0")
+  Redraw(); cr, br = Rows()
+  Check(br.icons[2] and br.icons[2].shown and br.icons[2].data.state == "missing" and br.icons[2].data.texture == lastTex,
+      "paladin without an aura: no missing icon")
+  bf.ClassOf = classOf
+  BM.db.lists.PALADIN = nil
+  Redraw(); cr, br = Rows()
+  Check(not (br.icons[2] and br.icons[2].shown and br.icons[2].data.oid == "b:stance"), "no stance shown missing for a non-paladin")
+  S.OnMessage("Bob-Stone", "MST:71")
+  Redraw(); cr, br = Rows()
   -- "Only for" warriors: not for Bob
   shaman[2].only = { classes = { WARRIOR = true } }
   Redraw(); cr, br = Rows()
@@ -311,6 +326,13 @@ print(lua.eval(r'''function(cd, bf)
   S.OwnChanged(); S.OwnChanged()
   Check(#sent == 1 and sent[1] == "MST:2457", "own stance message: " .. table.concat(sent, " "))
   Check(S.StanceOf("Anna-Smith") == 2457, "own stance not read live")
+  -- the icon is the spell's, not the form button's "active" picture
+  local icon = S.IconOf
+  S.IconOf = function(id) return id == 2457 and 132349 or nil end
+  Check(S.Data("Anna-Smith").texture == 132349, "own stance icon: " .. tostring(S.Data("Anna-Smith").texture))
+  S.IconOf = function() return nil end
+  Check(S.Data("Anna-Smith").texture == 132341, "no spell icon: the form's")
+  S.IconOf = icon
   -- export / import and reset of the Stance tab (either page) go to both copies
   local def2 = bf.TransferDef()
   local st = Section(def2, "stance")

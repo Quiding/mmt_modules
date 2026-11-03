@@ -14,7 +14,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local VERSION = 2
+local VERSION = 3
 local lib = rawget(_G, "MMTStanceLib")
 if not lib or (lib.version or 0) < VERSION then
     lib = lib or {}
@@ -97,9 +97,11 @@ if not lib or (lib.version or 0) < VERSION then
     function lib.Data(key)
         local id = lib.StanceOf(key)
         if not id or id <= 0 then return nil end
-        local texture
-        if MMT.IsSelf(key) then texture = select(2, lib.Own()) end
-        texture = texture or (lib.IconOf and lib.IconOf(id)) or 134400
+        -- the spell's own icon first: for the ACTIVE form the game's form icon is a generic
+        -- "active" picture (a paladin's aura showed a blue spark, not the aura)
+        local texture = lib.IconOf and lib.IconOf(id)
+        if not texture and MMT.IsSelf(key) then texture = select(2, lib.Own()) end
+        texture = texture or 134400
         local name = lib.NameOf and lib.NameOf(id)
         if type(name) ~= "string" then name = nil end
         return { id = id, texture = texture, name = name }

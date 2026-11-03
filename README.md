@@ -11,8 +11,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.0 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.3 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.1 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.6 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
@@ -58,7 +58,7 @@ whatever is on their stance bar) as an icon. In Buff Timers it's a list entry li
 box and that list's members get it in their row, where you drag it - add it to "Warrior: Fury", leave it out of the
 paladin lists; the cog limits it like a buff. The presets and default lists of warriors, paladins (their aura - one entry instead
 of one per aura), rogues (stealth), druids and Shadow priests have it (the Priest class list: off), and it was added once
-to existing lists of those classes / specs (paladin auras already in your lists stay; take them out if the stance is enough). It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
+to existing lists of those classes / specs (paladin auras already in your lists stay; take them out if the stance is enough). A paladin with no aura on shows it as missing. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
 tab, the same settings on both pages; works while either module is on). Each client tells the team once when its stance
 changes.
 

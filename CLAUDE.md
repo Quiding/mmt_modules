@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.2) / MMT_BuffTimers (v0.30.0) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.3) / MMT_BuffTimers (v0.30.1) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -370,6 +370,10 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   UPDATE_SHAPESHIFT_FORM(S), PLAYER_ENTERING_WORLD), heartbeat `stn` (Cooldowns) / `stb` (Buffs while Cooldowns is off);
   others = a message < 40 s old, else the heartbeat. Module OnEnable / OnDisable / OnProfileChanged wrapped to `lib.Apply()`;
   REFRESH too. Settings tab "Stance" (`mod.StanceTab`), TAB_KEYS stance = {"stance"}. Test: end of test_iconmove.py.
+  Lib v3 (Cooldowns 0.19.3 / Buffs 0.30.1): `lib.Data` texture = the SPELL's icon first (`lib.IconOf(id)`), the form
+  button's only as fallback: for the ACTIVE form GetShapeshiftFormInfo gives a generic "active" picture (a paladin's aura
+  showed a blue spark). Buffs Window: a PALADIN whose stance is known 0 (no aura) gets the stance entry as a MISSING icon
+  (Look(), tip "No aura", the aura icon last seen this session else Devotion Aura 135893); other classes: nothing, as before.
 - Party frames (IconBars v14, Cooldowns 0.15.0 / Buffs 0.18.0): cfg `onFrames` = each member row beside their unit frame,
   `allOnFrames` (Buffs: the All bar = label rows) above the TOP frame (highest, then leftmost); `framesSide` RIGHT/LEFT/TOP/BOTTOM,
   `framesX/Y`, `framesIconSize` (0 = iconSize; slider 12-100), `framesFit` (v15, 0.15.1 / 0.18.1: member rows as high as their frame = `FrameHeight` in UIParent units, also in the poll signature so a resized frame redraws; All bar keeps framesIconSize; the Icon size slider is greyed (alpha 0.4, its Slider child takes no mouse, wrapped `Refresh`) while framesFit and no All bar above the frames), `framesOthers` WINDOW | HIDE (no frame: in the window / gone), `allX/Y`.

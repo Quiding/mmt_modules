@@ -77,6 +77,16 @@ local function Look(i)
     return i
 end
 
+-- a paladin's stance is their aura: with none on, the stance icon shows as MISSING (other classes:
+-- no stance / form is normal - a druid in caster form, a rogue not in stealth). The icon then is
+-- the aura they had last (this session), else Devotion Aura's.
+local lastStance = {}
+local AURA_ICON = 135893
+local function StanceMissing(key)
+    if mod.ClassOf(key) ~= "PALADIN" or not MMTStanceLib then return false end
+    return MMTStanceLib.StanceOf(key) == 0   -- 0 = known: none; nil = not heard yet
+end
+
 -- icons of one member: the ones shown here (host nil), or the ones on another bar (host = its window: the
 -- Cooldowns bars, all of them while attached; ListKeys mod.HostOf); second value: every entry's id, in order
 local function Icons(key, host)
@@ -90,7 +100,11 @@ local function Icons(key, host)
             -- the member's stance / form (Stance.lua), where the list puts it; "Only for" counts
             if mod.HostOf(e) == host and (arranging or mod.Applies(e, key)) then
                 local d = MMTStanceLib and MMTStanceLib.Data(key)
-                if d or arranging then
+                if d then lastStance[key] = d.texture end
+                if not d and not arranging and StanceMissing(key) then
+                    icons[#icons + 1] = Look({ texture = lastStance[key] or AURA_ICON, state = "missing",
+                        tip = "No aura", oid = oid, anchor = host and e.after or nil })
+                elseif d or arranging then
                     icons[#icons + 1] = { texture = d and d.texture or mod.STANCE_ICON, state = d and "buff" or "ready",
                         activeAlpha = 1, readyAlpha = 1, spell = d and d.id or nil, look = M.db,
                         tip = d and ((d.name or "?") .. "  (stance / form)") or "Stance / form (none right now)",
