@@ -915,7 +915,11 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   font strings with text ("off", "+" / "-") - 4; marks the font record painted so None / the next Apply restores it. 0.3.4
   (user: Team bags' footer line cut by Modern's rim): the METAL bottom corners / edge (y = -3) and right pieces (x = 4) reach
   into the frame, so `MetalFrame` lays the rim METAL_BOTTOM 9 below / METAL_RIGHT 5 right of the window; grips follow; windowGap
-  20. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
+  20. 2026-11-03 (the core's tiled pages, MMT 0.9.61+; user: FTL's red intro line ran under the Settings tile): the core's
+  Intro places the tiles at -max(22, height + 10), measured once at build; a page built before the style's bigger font kept
+  that room. `mod.FitIntros()` (end of Apply): a recorded font string = an intro (one point TOPLEFT (0, 0) of its parent,
+  width >= 300) with frames anchored TOPLEFT below it -> shrunk 1 pt at a time (min 8) until ceil(height) <= -(highest
+  frame's y) - 10; record marked painted. Earlier note: the Team Gear gear window stayed black while the overview got stone (0.2.2 screenshot).
   Dialog background: UI-DialogBox-Border edgeSize 24 over `mod.ClassicBg()` (store `classicBg`: ROCK =
   FrameGeneral\UI-Background-Rock tinted 0.6 (default), MARBLE, TOOLTIP, DARK = UI-DialogBox-Background - nearly black, the
   user found the black an eyesore in 0.2.0; a file `GetFileIDFromPath` doesn't know -> DARK), edge only while the core's

@@ -90,7 +90,7 @@ function Object:GetText() return self._text or "" end
 function Object:SetFormattedText(f, ...) self._text = f:format(...) end
 function Object:SetTextColor(r, g, b, a) self._tc = { r, g, b, a or 1 } end
 function Object:GetTextColor() return self._tc[1], self._tc[2], self._tc[3], self._tc[4] end
-function Object:GetStringHeight() return 12 end
+function Object:GetStringHeight() if self._shFn then return self._shFn(self) end return 12 end
 function Object:GetStringWidth() if self._swPer and self._font then return #self:GetText() * self._swPer * self._font[2] end return 50 end
 -- any other method: a no-op (fields stay nil)
 setmetatable(Object, { __index = function(_, k) if type(k) == "string" and k:match("^%u") and not k:find("Backdrop") then return function() end end end })
@@ -377,6 +377,22 @@ navState:SetText(""); navLabel:SetText("Team")
 mod.SetStyle("NONE")
 assert(navLabel._font[1] == "Fonts\\FRIZQT__.TTF" and navLabel._font[2] == 12, "None: nav label not back to MMT's size")
 w.tabs[2] = nil
+-- a tiled page built in None (the core's Intro: tiles at -max(22, height + 10)); the style's bigger font made
+-- the intro taller than that room (FTL's red line under the Settings tile): a smaller size until it fits
+local tpage = CreateFrame("Frame", nil, UIParent); tpage:SetSize(700, 564)
+local intro = UI.Label(tpage, "FTL is short for ...")
+intro:SetPoint("TOPLEFT", 0, 0); intro:SetWidth(700)
+intro._shFn = function(s) return 3 * s._font[2] end   -- three lines
+local tile = CreateFrame("Frame", nil, tpage); tile:SetPoint("TOPLEFT", tpage, "TOPLEFT", 0, -40); tile:SetSize(344, 500)   -- 3 x 10 + 10
+local other = UI.Label(tpage, "not an intro"); other:SetPoint("TOPLEFT", 0, -200); other:SetWidth(700); other._shFn = intro._shFn
+mod.SetStyle("ELLESMERE")
+assert(intro._font[2] == 10, "intro under the tiles: not fitted into its room: " .. tostring(intro._font[2]))
+assert(other._font[2] == 12, "a label that isn't an intro was shrunk")
+tile:ClearAllPoints(); tile:SetPoint("TOPLEFT", tpage, "TOPLEFT", 0, -60)   -- a page built with the style's font: room enough
+mod.Apply()
+assert(intro._font[2] == 12, "an intro with room enough was shrunk")
+mod.SetStyle("NONE")
+assert(intro._font[2] == 10, "None: intro not back to MMT's size")
 
 -- the API (Team Inventory's own-skinned bags window): the colours it passes are the originals
 local bags = CreateFrame("Frame", "MMTTeamBagsWindow", UIParent); bags:SetSize(500, 400)

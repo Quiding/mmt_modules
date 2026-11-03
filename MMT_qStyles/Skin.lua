@@ -664,6 +664,44 @@ function mod.FitNav()
     end
 end
 
+-- The core's tiled pages (0.9.61+) start their tiles right below the grey intro line, measured once when
+-- the page is built (ConfigPages.lua Intro: -max(22, height + 10)). A page built before the style (or its
+-- bigger font) was picked kept that room, so the longer intro ran under the tiles (FTL's red line). An intro =
+-- a wrapped label at the TOPLEFT (0, 0) of its page with frames anchored below it; too tall for the room
+-- above the highest of them -> a smaller size until it fits (recorded fonts get it back on Apply).
+local function IntroRoom(fs)
+    if not (fs.GetNumPoints and fs:GetNumPoints() == 1 and fs.GetWidth and Num(fs:GetWidth()) >= 300) then return nil end
+    local page = fs.GetParent and fs:GetParent()
+    local p, rel, _, x, y = fs:GetPoint(1)
+    if not page or p ~= "TOPLEFT" or (rel and rel ~= page) or Num(x) ~= 0 or Num(y) ~= 0 then return nil end
+    local top
+    for _, c in ipairs(page.GetChildren and { page:GetChildren() } or {}) do
+        if not seen[c] and c.GetNumPoints and c:GetNumPoints() >= 1 then
+            local cp, crel, _, _, cy = c:GetPoint(1)
+            cy = Num(cy)
+            if cp == "TOPLEFT" and (crel == nil or crel == page) and cy < 0 and (not top or cy > top) then top = cy end
+        end
+    end
+    return top and -top - 10 or nil
+end
+
+function mod.FitIntros()
+    if not mod.M.enabled then return end
+    for fs in pairs(fonts) do
+        local room = fs.GetStringHeight and IntroRoom(fs)
+        if room and room > 0 then
+            local path, size, flags = fs:GetFont()
+            size = tonumber(size)
+            local n = 0
+            while path and size and math.ceil(Num(fs:GetStringHeight())) > room and size > 8 and n < 8 do
+                size, n = size - 1, n + 1
+                if not pcall(fs.SetFont, fs, path, size, flags or "") then break end
+            end
+            if n > 0 then fonts[fs].painted = true end
+        end
+    end
+end
+
 -- the settings window's base fill belongs to the core's background picker
 -- (pull request "settings-background") while a picture is chosen there
 function mod.BackgroundShown()
@@ -860,6 +898,7 @@ function mod.Apply()
     for t, rec in pairs(fills) do Try(PaintFill, t, rec, S) end
     for fs, rec in pairs(fonts) do Try(PaintFont, fs, rec, S) end
     Try(mod.FitNav)
+    Try(mod.FitIntros)
     for t, rec in pairs(colors) do Try(PaintColor, t, rec, S) end
     for fs, rec in pairs(texts) do Try(PaintText, fs, rec, S) end
     for fs, rec in pairs(headers) do Try(PaintHeader, fs, rec, S) end
