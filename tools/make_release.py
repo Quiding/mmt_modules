@@ -7,6 +7,8 @@ CLAUDE.md, ...), plus a changelog to paste with it. Run from anywhere in the rep
     python tools/make_release.py main --since "2026-10-29 19:40"
                                                      # changelog from a date (no release tag yet)
     python tools/make_release.py main --tag          # also tag it release-<name> and push the tag
+    python tools/make_release.py main --name 2026.11.03 --tag
+                                                     # a name of your choice instead of the commit's date
 
 A branch name packs GITHUB's copy of it (fetched first; a local branch can be behind), and a commit
 that already has a release tag is refused (--force to build it anyway).
@@ -36,6 +38,12 @@ if "--since" in args:
     del args[i:i + 2]
 args = [a for a in args if a != "--tag"]
 
+name_arg = None
+if "--name" in args:
+    i = args.index("--name")
+    name_arg = args[i + 1]
+    del args[i:i + 2]
+
 force = "--force" in args
 args = [a for a in args if a != "--force"]
 
@@ -62,6 +70,10 @@ if same and not force:
              "first, or add --force)." % (ref, ", ".join(sorted(same))))
 day = git("log", "-1", "--format=%cd", "--date=format:%Y.%m.%d", ref)
 name, n = day, 1
+if name_arg:
+    if "release-" + name_arg in tags:
+        sys.exit("release-%s exists already: delete that tag first, or pick another --name." % name_arg)
+    name = name_arg
 while "release-" + name in tags:
     n += 1
     name = "%s.%d" % (day, n)
