@@ -741,6 +741,35 @@ do
   mod.Apply()
   lines[#lines + 1] = "sync ok"
 end
+-- the core's tiles and tab strips (MMT 1.0.0): title / tab text, the line and the bar take the style's accent
+do
+  local keepAfter = C_Timer.After
+  C_Timer.After = function(_, fn) fn() end
+  mod.SetStyle("ELVUI"); mod.SetOpt("accent", true)
+  local ar, ag, ab = mod.STYLES.ELVUI.accent()
+  local A = UI.ACCENT
+  local tile = CreateFrame("Frame", nil, UIParent)
+  local title = UI.Label(tile, "Tile title", "GameFontNormalLarge")
+  title:SetTextColor(A[1], A[2], A[3])
+  local line = tile:CreateTexture(nil, "ARTWORK"); line:SetColorTexture(A[1], A[2], A[3], 0.35); line:SetHeight(1)
+  tile.title = title
+  mod.TileBits(tile, title)
+  assert(near(title._tc[1], ar) and near(title._tc[3], ab), "tile title not in the style's accent")
+  assert(near(line._color[1], ar) and near(line._color[4], 0.35), "tile line not in the style's accent")
+  local tab = CreateFrame("Button", nil, UIParent)
+  tab.label = UI.Label(tab, "Tab", "GameFontNormal")
+  tab.label:SetTextColor(0.7, 0.7, 0.7)
+  tab.bar = tab:CreateTexture(nil, "OVERLAY"); tab.bar:SetColorTexture(A[1], A[2], A[3], 0.9)
+  mod.TileBits(tab, tab.label)
+  assert(near(tab.label._tc[1], 0.7) and near(tab.label._tc[3], 0.7), "an unselected tab isn't grey")
+  assert(near(tab.bar._color[1], ar) and near(tab.bar._color[4], 0.9), "tab bar not in the style's accent")
+  tab.label:SetTextColor(A[1], A[2], A[3])   -- selected
+  assert(near(tab.label._tc[1], ar) and near(tab.label._tc[3], ab), "selected tab not in the style's accent")
+  mod.SetStyle("NONE")
+  assert(near(title._tc[1], A[1]) and near(line._color[1], A[1]) and near(tab.bar._color[1], A[1]), "None: MMT's accent not back")
+  C_Timer.After = keepAfter
+  lines[#lines + 1] = "tiles ok"
+end
 return "ok: " .. table.concat(lines, " | ")
 '''
 

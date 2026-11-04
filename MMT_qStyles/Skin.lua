@@ -748,6 +748,31 @@ local function Widget(frame, role, edge, label, extra)
 end
 
 ---------------------------------------------------------------------------
+-- The core's tiles and tab strips (MMT 1.0.0, ConfigHelpers.Tile / TabStrip).
+-- Most pages call the core's local Tile, so there's nothing to hook; the
+-- Label hook finds them a moment later by what the core leaves on them:
+--   tile  = frame.title is the label; its 1 px accent line under the title
+--   tab   = button.label is the label and button.bar its accent underline
+-- The title / tab text in MMT's accent colour and the line / bar take the
+-- style's accent (a grey, unselected tab stays grey). Their faint accent fill
+-- stays: coloured fills are left alone.
+---------------------------------------------------------------------------
+function mod.TileBits(frame, fs)
+    if not frame then return end
+    if rawget(frame, "title") == fs then
+        AddText(fs, "accent")
+        for _, t in ipairs(Regions(frame)) do
+            if not seen[t] and Type(t) == "Texture" and Layer(t) == "ARTWORK" and t.GetHeight and Num(t:GetHeight()) == 1 then
+                AddAccentTexture(t, nil, 0.35)
+            end
+        end
+    elseif rawget(frame, "label") == fs and type(rawget(frame, "bar")) == "table" then
+        AddText(fs, "accent")
+        if not seen[frame.bar] then AddAccentTexture(frame.bar, nil, 0.9) end
+    end
+end
+
+---------------------------------------------------------------------------
 -- The hooks
 ---------------------------------------------------------------------------
 local function Hook(tbl, name, fn)
@@ -778,6 +803,10 @@ local function Install()
         local fs = Newest(parent, "FontString", 1)[1]
         AddFont(fs)
         if fs and (template == nil or template == "GameFontHighlightSmall") then AddText(fs, "plain") end
+        -- a tile's title or a tab strip's label (MMT 1.0.0): their accent pieces are made after the label
+        if fs and (template == "GameFontNormalLarge" or template == "GameFontNormal") and C_Timer and C_Timer.After then
+            C_Timer.After(0, function() Try(mod.TileBits, parent, fs) end)
+        end
     end)
     H("Button", function(parent)
         local b = NewestChild(parent)

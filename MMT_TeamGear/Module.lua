@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.0"
+mod.VERSION = "0.3.1"
 
 local M = MMT.NewModule({
     name = "TeamGear",
@@ -26,7 +26,7 @@ local M = MMT.NewModule({
     defaults = {
         button = true,         -- button on the character panel
         minimap = true,        -- minimap button: left-click a member, right-click the whole team
-        minimapAngle = 220,    -- beside Team Inventory's (200)
+        minimapAngle = 250,    -- Team Inventory 200, MMT's own button 225 (Minimap.lua)
         includeSelf = false,   -- you in the member list too
         names = true,          -- item names beside the slots
         windowScale = 1,       -- the gear window

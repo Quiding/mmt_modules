@@ -18,7 +18,7 @@ function MMTTeamGear_ToggleOverview()
 end
 
 local function Place(b)
-    local a = math.rad(tonumber(M.db.minimapAngle) or 220)
+    local a = math.rad(tonumber(M.db.minimapAngle) or mod.MINIMAP_ANGLE)
     local r = (Minimap:GetWidth() / 2) + 6
     b:ClearAllPoints()
     b:SetPoint("CENTER", Minimap, "CENTER", math.cos(a) * r, math.sin(a) * r)
@@ -62,8 +62,16 @@ local function Build()
     return b
 end
 
+-- MMT 1.0.0 has its own minimap button at 225 degrees: ours was at 220, almost on top of it.
+-- Never dragged (still the old default, a drag never lands on exactly 220): to the other side of it.
+mod.MINIMAP_ANGLE = 250
+function mod.MoveOffCoreButton()
+    if M.db and tonumber(M.db.minimapAngle) == 220 then M.db.minimapAngle = mod.MINIMAP_ANGLE end
+end
+
 function mod.SetupMinimap()
     if not Minimap then return end
+    mod.MoveOffCoreButton()
     if not (M.enabled and M.db.minimap) then
         if mod.minimap then mod.minimap:Hide() end
         return

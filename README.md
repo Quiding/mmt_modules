@@ -15,11 +15,11 @@ MODULES, with its own settings page.
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.1 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.6 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
-| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.0 |
+| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.6 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.4 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.8 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 0.3.4 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.9 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 0.4.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your

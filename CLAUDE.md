@@ -564,7 +564,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
 
-### MMT_TeamGear (v0.3.0)
+### MMT_TeamGear (v0.3.1)
 - Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
   members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
   window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
@@ -572,7 +572,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   offsets from its TOPLEFT; member list via `MMT.UI.OpenList`), `Settings.lua`, `Talents.lua` + `TalentsView.lua`.
   Gear: sends nothing (Item Compare's data). Talents: see below.
 - `Minimap.lua` (0.3.0): minimap button `MMTTeamGearMinimapButton` like Team Inventory's (`minimap` default on,
-  `minimapAngle` 220 = beside Team Inventory's 200, in syncExclude; left = `mod.OpenMemberList`, right = whole team), and
+  `minimapAngle` 250 (0.3.1; MMT 1.0.0's own button sits at 225, ours was at 220 on top of it: `mod.MoveOffCoreButton` moves an untouched 220 to 250), Team Inventory's 200, in syncExclude; left = `mod.OpenMemberList`, right = whole team), and
   the key binding `MMTTEAMGEAR_ALL` (Bindings.xml, header MMT_TEAMGEAR) -> global `MMTTeamGear_ToggleOverview()`.
 - Item Compare's store is account-wide per character and never pruned (only its Clear), so `mod.Groups()`
   lists: this team, other profiles' teams (`MMTDB.profiles[name].team`, read only, skips `MMT.profileName`),
@@ -819,7 +819,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.4.0) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.4.1) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
