@@ -819,14 +819,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.3.4) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.4.0) – "Styles": another look for MMT's windows
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
   plainText / buttonText / headerText / headerUpper / headerLine, hover, chevron, art), `Skin.lua` (hooks, records,
   painting, API), `Art.lua` (Classic's game textures + dropdown arrow / close button of every style), `Hover.lua`, `Settings.lua`.
 - Saved PER ACCOUNT in `M.store` (style, fonts, accent; `mod.DEFAULTS`): a look is the screen's / player's, not a team
-  profile's (like the core's configScale). No sync. M.db stays empty. Reset = `mod.ResetSettings()` (store keys cleared).
+  profile's (like the core's configScale). Reset = `mod.ResetSettings()` (store keys cleared) + OnProfileChanged.
+  Sync (0.4.0, user: every module should have one): `sync = true`, defaults `{ look = {} }`; M.SyncData (the core's
+  method, wrapped on the module) first runs `mod.Mirror()` = the look into M.db.look, so only a SEND writes M.db (reset
+  must leave M.db = defaults: test_settings_matrix); OnSyncReceived -> `mod.TakeLook` (known keys of the right type, a style
+  this client knows) into M.store + Apply. `offered` stays per account. Test: test_qstyles "sync ok".
 - How it skins without touching the core: `hooksecurefunc` on `MMT.UI.Fill / Border / Label / Button / Check / Slider /
   Dropdown / Cycle (the alias holds the unhooked function) / Color / EditBox / TextArea / TextButton / SyncButton`, on the
   core's Column metatable `Header` (reached via `getmetatable(UI.Column(...))`), and `MMT.ToggleConfig` / `MMT.ApplyBackground`

@@ -10,18 +10,23 @@
 --   Settings.lua  settings page and debug report
 --
 -- The choice is ACCOUNT-wide (M.store): a look belongs to the screen and the
--- player, not to a team profile (like the core's window scale).
+-- player, not to a team profile (like the core's window scale). The core's
+-- Sync to team sends a module's PROFILE settings (M.db, collected by M:SyncData), so
+-- sending first copies the look into M.db.look; a sync that arrives writes it
+-- into this account's look (OnSyncReceived). "Use <style>?" answers
+-- (M.store.offered) stay per account.
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.3.4"
+mod.VERSION = "0.4.0"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
     title = "Styles",
     description = "Another look for MMT's settings window and the windows of MMT and its modules: ElvUI-like, EllesmereUI-like or Classic (the game's old window art), switched right away.",
-    defaults = {},
+    defaults = { look = {} },   -- look: the account's look, copied here for the core's sync (see above)
+    sync = true,
 })
 mod.M = M
 
@@ -38,6 +43,14 @@ function mod.Opt(key)
     if not s then return mod.DEFAULTS[key] end
     if s[key] == nil then return mod.DEFAULTS[key] end
     return s[key]
+end
+
+-- the account's look into M.db.look, for the core's Sync to team
+function mod.Mirror()
+    if not (M.db and M.store) then return end
+    local look = {}
+    for k in pairs(mod.DEFAULTS) do look[k] = mod.Opt(k) end
+    M.db.look = look
 end
 
 function mod.SetOpt(key, value)
@@ -62,6 +75,21 @@ function mod.ResetSettings()
     if not M.store then return end
     for k in pairs(mod.DEFAULTS) do M.store[k] = nil end
     mod.Apply()
+end
+
+-- a team member's look arrived (core sync): it becomes this account's look; only known keys of the
+-- right type (a style this client doesn't know is skipped)
+function mod.TakeLook(look)
+    if type(look) ~= "table" or not M.store then return 0 end
+    local n = 0
+    for k, default in pairs(mod.DEFAULTS) do
+        local v = look[k]
+        if v ~= nil and type(v) == type(default) and (k ~= "style" or v == "NONE" or mod.STYLES[v]) then
+            M.store[k] = v
+            n = n + 1
+        end
+    end
+    return n
 end
 
 -- A UI addon the player uses: its style is offered ONCE (only while no style was ever picked here).
@@ -103,6 +131,28 @@ end
 
 M.OnDisable = function()
     mod.Apply()   -- Current() is nil now: everything goes back
+end
+
+-- the look is per account: another profile changes nothing (the page shows it again)
+M.OnProfileChanged = function()
+    mod.Apply()
+end
+
+-- the core collects what Sync to team sends with M:SyncData() (= M.db): the look goes in first
+local baseSyncData = M.SyncData
+if type(baseSyncData) == "function" then
+    M.SyncData = function(self, ...)
+        mod.Mirror()
+        return baseSyncData(self, ...)
+    end
+end
+
+M.OnSyncReceived = function(_, from)
+    if mod.TakeLook(M.db and M.db.look) > 0 then
+        mod.Mirror()
+        mod.Apply()
+        MMT.Print("Styles: the look from %s (%s).", from or "the team", mod.StyleTitle(mod.Opt("style")))
+    end
 end
 
 -- /mmtstyle [none | elvui | ellesmere | modern | classic]

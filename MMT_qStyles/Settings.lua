@@ -7,17 +7,18 @@ local UI = MMT.UI
 local H = MMT.ConfigHelpers
 local COL_W, COL2_X = H.COL_W, H.COL2_X
 
--- "Reset to defaults" (click twice), bottom right (no Sync button: the style is per account)
+-- "Reset to defaults" (click twice), left of the core's Sync button (it sends this account's look, Module.lua)
 local function ResetButton(page, done)
     local b = H.ConfirmButton(page, 150, "Reset to defaults", function()
         for k in pairs(M.db) do M.db[k] = nil end
         for k, v in pairs(M.defaults or {}) do M.db[k] = MMT.CopyTable(v) end
         mod.ResetSettings()
+        if M.OnProfileChanged then M.OnProfileChanged(M) end
         if done then done() end
         if MMT.RefreshConfig then MMT.RefreshConfig() end
         MMT.Print("%s: settings reset to defaults.", M.title)
     end)
-    b:SetPoint("BOTTOMRIGHT", 0, 2)
+    b:SetPoint("BOTTOMRIGHT", M.sync and -(176 + 8) or 0, 2)
     UI.Tooltip(b, "Reset to defaults", "Back to MMT's own look, with the style's fonts and accent colour switched on for when you pick one. Click twice.")
     return b
 end

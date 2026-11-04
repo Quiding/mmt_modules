@@ -185,6 +185,7 @@ function MMT.NewModule(def)
   function M:On() end
   function M:Listen() end
   function M:Debug(...) DEBUGS[#DEBUGS + 1] = string.format(...) end
+  function M:SyncData() return copy(self.db) end   -- the core's: M.db without syncExclude keys
   return M
 end
 DEBUGS = {}
@@ -718,6 +719,28 @@ assert(M.store.style == nil and mod.Opt("style") == "NONE" and mod.Opt("fonts") 
 assert(eq(col(btnFill), 0.12, 0.12, 0.12, 1), "reset: look not back to MMT's")
 local lines = {}
 M.Report(M, function(l) lines[#lines + 1] = l end)
+-- Sync to team (0.4.0): the account's look travels in M.db.look and becomes the receiver's look
+do
+  local function copy(t) if type(t) ~= "table" then return t end local r = {} for k, v in pairs(t) do r[k] = copy(v) end return r end
+  local keepStore, keepDb = M.store, M.db
+  M.store, M.db = { style = "CLASSIC", fonts = false, classicBg = "MARBLE", offered = { ElvUI = true } }, copy(M.defaults)
+  local sent = M:SyncData()
+  if not (sent.look and sent.look.style == "CLASSIC" and sent.look.fonts == false and sent.look.classicBg == "MARBLE") then fail("look not in the sync") end
+  if sent.look.offered then fail("the style offers travelled") end
+  -- the receiver: another account, its own look; the core replaces M.db, runs OnProfileChanged, then OnSyncReceived
+  M.store, M.db = { style = "ELVUI", offered = { EllesmereUI = true } }, sent
+  M.OnProfileChanged(M)
+  M.OnSyncReceived(M, "Anna-Smith")
+  if M.store.style ~= "CLASSIC" or M.store.fonts ~= false or M.store.classicBg ~= "MARBLE" then fail("synced look not taken: " .. tostring(M.store.style)) end
+  if not (M.store.offered and M.store.offered.EllesmereUI) then fail("the receiver's own offers were lost") end
+  -- a style this client doesn't know is skipped
+  M.db = { look = { style = "MADEUP", accent = false } }
+  M.OnSyncReceived(M, "Anna-Smith")
+  if M.store.style ~= "CLASSIC" or M.store.accent ~= false then fail("unknown style taken / known key skipped") end
+  M.store, M.db = keepStore, keepDb
+  mod.Apply()
+  lines[#lines + 1] = "sync ok"
+end
 return "ok: " .. table.concat(lines, " | ")
 '''
 
