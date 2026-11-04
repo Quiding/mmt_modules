@@ -820,6 +820,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   confirmed in its popup, straight import without ask.
 
 ### MMT_qStyles (v0.4.1) – "Styles": another look for MMT's windows
+- 0.4.1: the core's tiles / tab strips (MMT 1.0.0, ConfigPages.lua's LOCAL `Tile` / `TabStrip`, not hookable): the Label hook (templates GameFontNormalLarge / GameFontNormal) runs `mod.TileBits(parent, fs)` one frame later - `parent.title == fs` = a tile (title text + its 1 px ARTWORK line), `parent.label == fs` with `parent.bar` = a tab (text + underline); kind `accent`, the faint accent fill stays.
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),
   `Styles.lua` (`mod.STYLES` ELVUI / ELLESMERE / CLASSIC, fields documented at its top: colours, edges, fonts, text levels
