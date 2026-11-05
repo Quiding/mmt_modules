@@ -88,7 +88,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 
 ## Modules
 
-- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7; SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
+- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7, Totems 0.5.9; SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
 ### MMT_PawnCompare (v0.5.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
@@ -294,7 +294,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Opacity; Buffs "Buffs" + "All bar counter"), Timer = `TimerTab.lua`. `mod.WindowShade(panel, state)` (FramesTab.lua, 0.17.2 / 0.22.2): state() -> "ALL" | "SOME", why
   (yellow line at the sub-panel's bottom) | "NONE", why (panel alpha 0.4 + a mouse-eating cover with the why as tooltip);
   updated on OnShow + M:Listen("REFRESH"). Cooldowns: NONE = onFrames + framesOthers HIDE; Buffs also counts attached and the
-  free All bar (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' LookTab unchanged.
+  free All bar (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' look is in tiles since 0.5.9 (LookTab removed).
 - Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all five: Cooldowns, Buffs, Totems, TeamInventory, QoL: `mod.Tabs`,
   `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
@@ -501,7 +501,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.8) – port of ema_totems
+### MMT_Totems (v0.5.9) – port of ema_totems
 - 2026-11-02 development notes: Totemic Projection is now called Totemic Call and TELEPORTS the totems to the shaman, so
   `mod.RECALL` (Data.lua) only holds Totemic Recall (a seen Totemic Call cast used to empty that shaman's slots).
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are
@@ -555,7 +555,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   0.5.2: the P button (per-shaman presets) is gone from bar and settings (functions / `presets` data kept, unused).
 - Profile data: `selected[key][element]`, `sequences[key]`, `presets[key][name]`, `calls[key]`, `teamPresets[name]` (old).
 - Shared files: `Compat.lua`, `Transfer.lua`, `SettingsKit.lua` (identical with Cooldowns / Buffs).
-- Settings tabs Bars / Look (`mod.LookTab` + inactiveAlpha, alpha) / Casting & presets; one status line.
+- Settings tabs Bars / Look / Casting / Calls, all in MMT 1.0.0 tiles (0.5.9, `mod.TileStack`): Look = Size + Text | Background and Border (`mod.LookBackground`) + Rows and Opacity (`mod.LookRows` + inactiveAlpha, alpha); one status line.
 - Look like IconBars: `Skin`/`Media` copied into Bars.lua (BackdropTemplate container + bars).
   Grouped: frame bg+border, `rowColor`/`rowAlpha` per bar, `bgTint` on textures; ungrouped: each bar gets bg+border
   (content inset by the border). Font = `M.db.font` via `MMT.ApplyFont`. Export "look" has the same keys.
