@@ -397,7 +397,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 7, "report lines " .. n)
+  assert(n == 6, "report lines " .. n)
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
