@@ -226,17 +226,16 @@ function mod.AcceptSpellLinks(box, onLink)
     elseif ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", OnInsertLink) end
 end
 
--- preset picker for the list editor: a dropdown + Add to list / Replace list.
+-- preset picker for the list editor: a dropdown + Add to list / Replace list (no header: put it in a tile).
 -- listKey() = the list being edited, id(e) tells entries apart, changed() redraws
 function mod.PresetBox(col, parent, listKey, id, changed, status)
     local UI, H = MMT.UI, MMT.ConfigHelpers
-    local COL_W = H.COL_W
+    local COL_W = tonumber(col.width) or H.COL_W   -- a tile's column is narrower
     local chosen, chosenFor
     local function Current()
         if chosenFor ~= listKey() or not chosen then chosen, chosenFor = mod.DefaultPreset(listKey()), listKey() end
         return chosen
     end
-    col:Header("Presets")
     col:Cycle("Preset", function() return mod.PresetChoices(listKey()) end, Current,
         function(v) chosen, chosenFor = v, listKey() end)
     local half = (COL_W - 8) / 2

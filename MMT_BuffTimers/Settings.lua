@@ -163,17 +163,19 @@ M.Page = function(_, page)
     local panels = mod.Tabs(page, { { "bars", "Bars", "INV_Misc_Book_09" }, { "look", "Look", "INV_Misc_Ribbon_01" }, { "lists", "Buffs", "Spell_Holy_WordFortitude" }, { "specs", "Specs", "Ability_Marksmanship" }, { "frames", "Frames", "INV_Misc_Spyglass_02" }, { "stance", "Stance", "Ability_Warrior_DefensiveStance" } })
     mod.ShareBar(page, status)
 
-    local FL = mod.FramesTab(panels.frames, Opt, status, { choices = WHERE, get = WhereGet, set = WhereSet })
-    FL:Header("All bar")
-    FL:Cycle("Place", {
-        { value = "FREE", text = "Free (in the window)" },
-        { value = "FRAMES", text = "Above the party frames" },
-    }, function() return M.db.allOnFrames and "FRAMES" or "FREE" end,
-       function(v) M.db.allOnFrames = (v == "FRAMES"); Apply() end)
-    local gax, sax = Opt("allX")
-    FL:Slider("X offset", -100, 100, 1, gax, sax)
-    local gay, say = Opt("allY")
-    FL:Slider("Y offset", -100, 100, 1, gay, say)
+    mod.FramesTab(panels.frames, Opt, status, { choices = WHERE, get = WhereGet, set = WhereSet, more = {
+        { "All Bar", "Spell_Holy_WordFortitude", function(FL)
+            FL:Cycle("Place", {
+                { value = "FREE", text = "Free (in the window)" },
+                { value = "FRAMES", text = "Above the party frames" },
+            }, function() return M.db.allOnFrames and "FRAMES" or "FREE" end,
+               function(v) M.db.allOnFrames = (v == "FRAMES"); Apply() end)
+            local gax, sax = Opt("allX")
+            FL:Slider("X offset", -100, 100, 1, gax, sax)
+            local gay, say = Opt("allY")
+            FL:Slider("Y offset", -100, 100, 1, gay, say)
+        end },
+    } })
 
     -- Bars ------------------------------------------------------------------
     local p = panels.bars
@@ -487,6 +489,7 @@ M.Page = function(_, page)
     local RS = UI.Column(lp, COL2_X, 0, COL_W)
     RS:Header("How lists work")
     RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to classes, specs or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil), stance for the stance / form the member is in. Drag a buff to reorder.")
+    RS:Header("Presets")
     mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
     RS:Header("Lists")
     local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()

@@ -223,41 +223,43 @@ end
 
 -- the "Stance" settings tab (the same settings on both pages)
 function mod.StanceTab(panel, status)
-    local UI, H = MMT.UI, MMT.ConfigHelpers
-    local COL_W, COL2_X = H.COL_W, H.COL2_X
+    local H = MMT.ConfigHelpers
+    local W, X2 = H.TILE_W, H.TILE_W + H.TILE_GAP
     local function G(k) return function() local c = MMTStanceLib.Cfg(); return c and c[k] end end
     local function S(k) return function(v) MMTStanceLib.Set(k, v) end end
-    local L = UI.Column(panel, 0, 0, COL_W)
-    L:Header("Own window")
-    L:Cycle("Stance window", {
-        { value = "OFF", text = "Off" },
-        { value = "WINDOW", text = "On: every member with a stance" },
-    }, function() local c = MMTStanceLib.Cfg(); return c and (c.where == "WINDOW" and "WINDOW" or "OFF") end, S("where"))
-    L:Check("Show the window", G("shown"), S("shown"))
-    L:Check("Lock position", G("locked"), S("locked"))
-    L:Slider("Icon size", 16, 64, 1, G("iconSize"), S("iconSize"))
-    L:Cycle("Names", {
-        { value = "OFF", text = "Off" },
-        { value = "FIRST", text = "First name" },
-        { value = "FULL", text = "First and last name" },
-    }, function()
-        local c = MMTStanceLib.Cfg()
-        if not (c and c.showNames) then return "OFF" end
-        return c.fullNames and "FULL" or "FIRST"
-    end, function(v)
-        MMTStanceLib.Set("showNames", v ~= "OFF")
-        MMTStanceLib.Set("fullNames", v == "FULL")
-    end)
-    local reset = UI.Button(panel, COL_W, "Reset position", function()
-        MMTStanceLib.Set("point", MMTStanceLib.DEFAULTS.point)
-        status.Show_("Stance window back in the middle of the screen.")
-    end)
-    L:Add(reset, UI.ROW + 2)
-
-    local R = UI.Column(panel, COL2_X, 0, COL_W)
-    R:Header("In the Buff Timers lists")
-    R:Note("Type stance in a Buff Timers list's add box (Buffs tab): that list's members get their stance / form as an icon in their row, where you drag it. Add it to the lists you want (e.g. Warrior: Fury) and leave it out of the others (Paladin); the cog limits it to classes / specs like a buff.")
-    R:Header("How it works")
-    R:Note("Warrior stances, druid forms, stealth, shadowform - whatever the game puts on the member's stance bar; nothing for a member in no stance. Each client tells the team once when its stance changes (needs Cooldown or Buff Timers on). The window settings are the same on both modules' pages.")
-    return L, R
+    mod.TileStack(panel, 0, 0, W, {
+        { "Own Window", "Ability_Warrior_DefensiveStance", function(L)
+            L:Cycle("Stance window", {
+                { value = "OFF", text = "Off" },
+                { value = "WINDOW", text = "On: every member with a stance" },
+            }, function() local c = MMTStanceLib.Cfg(); return c and (c.where == "WINDOW" and "WINDOW" or "OFF") end, S("where"))
+            L:Check("Show the window", G("shown"), S("shown"))
+            L:Check("Lock position", G("locked"), S("locked"))
+            L:Slider("Icon size", 16, 64, 1, G("iconSize"), S("iconSize"))
+            L:Cycle("Names", {
+                { value = "OFF", text = "Off" },
+                { value = "FIRST", text = "First name" },
+                { value = "FULL", text = "First and last name" },
+            }, function()
+                local c = MMTStanceLib.Cfg()
+                if not (c and c.showNames) then return "OFF" end
+                return c.fullNames and "FULL" or "FIRST"
+            end, function(v)
+                MMTStanceLib.Set("showNames", v ~= "OFF")
+                MMTStanceLib.Set("fullNames", v == "FULL")
+            end)
+            L:Button("Reset position", function()
+                MMTStanceLib.Set("point", MMTStanceLib.DEFAULTS.point)
+                status.Show_("Stance window back in the middle of the screen.")
+            end)
+        end },
+    })
+    mod.TileStack(panel, X2, 0, W, {
+        { "In the Buff Timers Lists", "Spell_Holy_WordFortitude", function(R)
+            R:Note("Type stance in a Buff Timers list's add box (Buffs tab): that list's members get their stance / form as an icon in their row, where you drag it. Add it to the lists you want (e.g. Warrior: Fury) and leave it out of the others (Paladin); the cog limits it to classes / specs like a buff.")
+        end },
+        { "How It Works", "INV_Misc_Book_09", function(R)
+            R:Note("Warrior stances, druid forms, stealth, shadowform - whatever the game puts on the member's stance bar; nothing for a member in no stance. Each client tells the team once when its stance changes (needs Cooldown or Buff Timers on). The window settings are the same on both modules' pages.")
+        end },
+    })
 end
