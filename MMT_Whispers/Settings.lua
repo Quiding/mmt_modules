@@ -5,7 +5,6 @@ local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 local function Opt(key)
     return function() return M.db[key] end, function(v) M.db[key] = v end
@@ -69,14 +68,25 @@ local function ResetButton(page, done)
     return b
 end
 
+-- tiles of one row get the height of the tallest one's content
+local function FitRow(row)
+    local h = 0
+    for _, r in ipairs(row) do h = math.max(h, -(tonumber(r[2].y) or -290) + 10) end
+    for _, r in ipairs(row) do r[1]:SetHeight(h) end
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)
     status:SetWidth(H.PAGE_W)
     ResetButton(page)
 
-    local L = UI.Column(page, 0, 0, COL_W)
-    L:Header("Forwarding (on the alts)")
+    local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
+    local IN = TILE_W - 16
+    local TOP = H.Intro(page, "Whispers your alts get show up on the character you play, and you answer through the alt.")
+
+    -- Forwarding (on the alts) --------------------------------------------------------------------
+    local lt, L = Tile(page, 0, TOP, TILE_W, 300, "Forwarding (on the Alts)", "Interface\\Icons\\INV_Letter_15")
     Check(L, "Forward whispers", "forward", "Whispers your alts get from players outside the team are shown on the receiver.")
     local tg, ts = Opt("to")
     L:Cycle("Send them to", TargetChoices, tg, function(v) ts(v); status.Show_("Whispers now go to: " .. ReceiverNames()) end)
@@ -84,7 +94,7 @@ M.Page = function(_, page)
     Check(L, "Battle.net whispers too", "bn", "Shown with the friend's character name or BattleTag, never the real name.")
     Check(L, "Keep automatic answers on the alt", "skipAddon", "Whispers starting with <...>, like \"<DBM> ... is busy fighting\".")
     L:Note("Keep whispers on the alt that contain (comma separated, Enter):")
-    local ignore = UI.EditBox(page, COL_W, "e.g. wts, boost", function(text, box)
+    local ignore = UI.EditBox(lt, IN, "e.g. wts, boost", function(text, box)
         M.db.ignore = text
         box:ClearFocus()
         status.Show_(text ~= "" and ("Ignored: " .. text) or "Nothing ignored.")
@@ -92,8 +102,8 @@ M.Page = function(_, page)
     ignore:SetText(M.db.ignore or "")
     L:Add(ignore, UI.ROW + 4)
 
-    local R = UI.Column(page, COL2_X, 0, COL_W)
-    R:Header("On the receiver")
+    -- On the receiver -------------------------------------------------------------------------------
+    local rt, R = Tile(page, X2, TOP, TILE_W, 300, "On the Receiver", "Interface\\Icons\\INV_Misc_Note_01")
     local cg, cs = Opt("chatFrame")
     R:Cycle("Chat window", ChatChoices, cg, cs)
     Check(R, "Timestamps", "stamp")
@@ -105,7 +115,13 @@ M.Page = function(_, page)
         { value = "NONE", text = "Don't change it" },
     }, rg, rs)
     Check(R, "Alts pass my whispers on", "relay", "Whisper an alt from the receiver: the alt whispers the text to whoever last whispered it.")
-    R:Note("Whisper an alt to answer through it. \"@Name text\" (or \"@First Last: text\") picks someone else than the last one. /mmtw test shows example lines.")
+    FitRow({ { lt, L }, { rt, R } })
+
+    -- How to answer (full width) ------------------------------------------------------------------------
+    local y2 = TOP - lt:GetHeight() - 8
+    local ht, N = Tile(page, 0, y2, H.PAGE_W, 100, "Answering", "Interface\\Icons\\Spell_Holy_Silence")
+    N:Note("Whisper an alt to answer through it. \"@Name text\" (or \"@First Last: text\") picks someone else than the last one. /mmtw test shows example lines.")
+    FitRow({ { ht, N } })
 
     page.OnRefresh = function()
         if not ignore:HasFocus() then ignore:SetText(M.db.ignore or ""); ignore:UpdatePlaceholder() end

@@ -5,7 +5,6 @@ local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 -- "Reset to defaults" (click twice), left of the core's "Sync to team" button
 local function ResetButton(page, done)
@@ -22,10 +21,21 @@ local function ResetButton(page, done)
     return b
 end
 
+-- tiles of one row get the height of the tallest one's content
+local function FitRow(row)
+    local h = 0
+    for _, r in ipairs(row) do h = math.max(h, -(tonumber(r[2].y) or -290) + 10) end
+    for _, r in ipairs(row) do r[1]:SetHeight(h) end
+    return h
+end
+
 M.Page = function(_, page)
     ResetButton(page, function() mod.SetupButton(); mod.SetupMinimap() end)
-    local L = UI.Column(page, 0, 0, COL_W)
-    L:Header("Team Gear")
+    local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
+    local TOP = H.Intro(page, "Any team member's equipped gear and talents, like inspecting them, or the whole team at once - also while they are offline.")
+
+    -- Buttons (top left) ------------------------------------------------------------------------------
+    local bt, L = Tile(page, 0, TOP, TILE_W, 260, "Buttons", "Interface\\Icons\\INV_Chest_Plate06")
     L:Check("Button on the character panel", function() return M.db.button end, function(v)
         M.db.button = v
         mod.SetupButton()
@@ -40,30 +50,37 @@ M.Page = function(_, page)
         if mod.window then mod.window:Hide() end
         if mod.overview then mod.overview:Hide() end
     end)
-    L:Check("Show yourself in the list", function() return M.db.includeSelf end, function(v) M.db.includeSelf = v end)
-    L:Check("Also show other teams", function() return M.db.others end, function(v) M.db.others = v end,
-        "Item Compare keeps every character it ever stored on this account. The list then shows Team 1 (this team), Team 2, ... (your other profiles' teams) and Other characters (former members), each with its members below it.")
-    L:Check("Item names beside the slots", function() return M.db.names end, function(v)
-        M.db.names = v
-        if mod.window and mod.window:IsShown() then mod.Refresh() end
-    end)
-    L:Slider("Gear window size", 0.5, 1.5, 0.05, function() return M.db.windowScale or 1 end, function(v)
-        M.db.windowScale = v
-        if mod.window then mod.window:SetScale(v) end
-    end, "%.2f")
-    L:Slider("Whole team window size", 0.5, 1.5, 0.05, function() return M.db.overviewScale or 1 end, function(v)
-        M.db.overviewScale = v
-        if mod.overview then mod.overview:SetScale(v) end
-    end, "%.2f")
+    L:Space(4)
     L:Button("Show a member's gear...", function(self) mod.OpenMemberList(self) end)
     L:Button("Show the whole team", function() mod.OpenOverview() end)
 
-    local R = UI.Column(page, COL2_X, 0, COL_W)
-    R:Header("Where the items come from")
-    R:Note("Item Compare keeps every member's equipped items, also while they are offline, and updates them when they change gear. This module only shows them.")
-    R:Header("Talents")
-    R:Note("The Talents button in the window shows a member's talent trees. Each client with Team Gear on tells the team its own talents when they change; the last ones known are kept for offline members.")
-    local warn = R:Note("")
+    -- Windows (top right) -----------------------------------------------------------------------------
+    local wt, R = Tile(page, X2, TOP, TILE_W, 260, "Windows", "Interface\\Icons\\INV_Misc_Spyglass_02")
+    R:Check("Show yourself in the list", function() return M.db.includeSelf end, function(v) M.db.includeSelf = v end)
+    R:Check("Also show other teams", function() return M.db.others end, function(v) M.db.others = v end,
+        "Item Compare keeps every character it ever stored on this account. The list then shows Team 1 (this team), Team 2, ... (your other profiles' teams) and Other characters (former members), each with its members below it.")
+    R:Check("Item names beside the slots", function() return M.db.names end, function(v)
+        M.db.names = v
+        if mod.window and mod.window:IsShown() then mod.Refresh() end
+    end)
+    R:Slider("Gear window size", 0.5, 1.5, 0.05, function() return M.db.windowScale or 1 end, function(v)
+        M.db.windowScale = v
+        if mod.window then mod.window:SetScale(v) end
+    end, "%.2f")
+    R:Slider("Whole team window size", 0.5, 1.5, 0.05, function() return M.db.overviewScale or 1 end, function(v)
+        M.db.overviewScale = v
+        if mod.overview then mod.overview:SetScale(v) end
+    end, "%.2f")
+    local topH = FitRow({ { bt, L }, { wt, R } })
+
+    -- Where the items come from (full width) ---------------------------------------------------------------
+    local y2 = TOP - topH - 8
+    local it, N = Tile(page, 0, y2, H.PAGE_W, 160, "Where the Items Come From", "Interface\\Icons\\INV_Misc_Book_09")
+    N:Note("Item Compare keeps every member's equipped items, also while they are offline, and updates them when they change gear. This module only shows them.")
+    local warn = N:Note("")
+    N:Note("Talents: the Talents button in the window shows a member's talent trees. Each client with Team Gear on tells the team its own talents when they change; the last ones known are kept for offline members.")
+    N:Note("Hover a slot for the tooltip, Shift-click to link the item in chat, Ctrl-click to try it on. /mmtgear <name> opens a member directly.")
+    FitRow({ { it, N } })
     page.OnRefresh = function()
         if mod.HasItemCompare() then
             warn:SetText("|cff66ff66Item Compare is on.|r")
@@ -72,7 +89,6 @@ M.Page = function(_, page)
         end
     end
     page.OnRefresh()
-    R:Note("Hover a slot for the tooltip, Shift-click to link the item in chat, Ctrl-click to try it on. /mmtgear <name> opens a member directly.")
 end
 
 M.Report = function(_, add)

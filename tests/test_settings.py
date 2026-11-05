@@ -27,6 +27,7 @@ setmetatable(_G, { __index = function(_, k) if MISSING[k] then return nil end re
 
 -- columns remember every getter / setter / choices; they are used after the page is built
 USES = {}
+TILES = {}    -- the core's tiles the page built (ConfigHelpers.Tile below)
 CYCLES = {}   -- [label] = choices of the Cycle with that label
 CYCLE_GS = {} -- [label] = { getter, setter }
 function USE(fn) USES[#USES + 1] = fn end
@@ -79,7 +80,11 @@ function UnitClass() return "Shaman", "SHAMAN" end
 function hooksecurefunc() end
 MMT = {
   UI = UI, CopyTable = copy, fonts = { { name = "Friz", path = "x" } },
-  ConfigHelpers = setmetatable({ COL_W = 248, COL2_X = 270, PAGE_W = 518 }, { __index = function() return function() return new() end end }),
+  ConfigHelpers = setmetatable({ COL_W = 248, COL2_X = 270, PAGE_W = 698, TILE_W = 344, TILE_GAP = 10, SYNC_RESERVE = 34,
+    -- the core's tiles (MMT 1.0.0): a frame with a column inside, looked up at call time (test_layout measures it)
+    Tile = function(parent, x, y, w, h) local t = CreateFrame("Frame"); t:SetSize(w, h); rawset(t, "_y", y); TILES[#TILES + 1] = t; return t, UI.Column(t, 8, -42, w - 16) end,
+    Intro = function() return -22, new() end,
+  }, { __index = function() return function() return new() end end }),
   db = { team = { ["Anna-Smith"] = { class = "SHAMAN" } }, roles = { Healer = {} } },
   IsSecret = function() return false end,
 }

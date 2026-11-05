@@ -40,17 +40,19 @@ UI.Column = function(parent, x, y, width)
   local col = STUB()
   local c = { y = y or 0, top = y or 0, zero = nil, parent = parent, x = x, width = width, name = CURRENT }
   COLUMNS[#COLUMNS + 1] = c
+  rawset(col, "y", c.y)   -- like the core's column: pages read it to size their tiles
   local function place(what, h)
     if c.zero then
       PROBLEMS[#PROBLEMS + 1] = ("%s: %s placed on the line of a 0-height %s (column x=%d, y=%d)"):format(c.name, what, c.zero, x or 0, -c.y)
     end
     c.zero = (h == 0) and what or nil
     c.y = c.y - h
+    rawset(col, "y", c.y)
   end
   local function W(f) return f or STUB() end
-  rawset(col, "Header", function(_, text) c.zero = nil; c.first = c.first or text; c.y = c.y - 28; return STUB() end)
+  rawset(col, "Header", function(_, text) c.zero = nil; c.first = c.first or text; c.y = c.y - 28; rawset(col, "y", c.y); return STUB() end)
   rawset(col, "Note", function(_, text) place("Note", Note(text, width or 248)); return STUB() end)
-  rawset(col, "Space", function(_, h) c.zero = nil; c.y = c.y - (h or 8) end)
+  rawset(col, "Space", function(_, h) c.zero = nil; c.y = c.y - (h or 8); rawset(col, "y", c.y) end)
   rawset(col, "Add", function(_, f, h) place("Add", h == nil and ROW or h); return W(f) end)
   rawset(col, "Check", function() place("Check", ROW); return STUB() end)
   rawset(col, "Slider", function() place("Slider", 36); return STUB() end)
@@ -99,6 +101,14 @@ for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_T
           out[#out + 1] = ("close: \"%s\" %d of %d px"):format(tostring(c.first), used, limit)
         end
         worst = math.max(worst, used / limit)
+      end
+      -- tiles (MMT 1.0.0 design): the lowest one ends above the status line and the Reset / Sync buttons
+      local ROOM = 564 - 50
+      for _, t in ipairs(TILES) do
+        local bottom = -(rawget(t, "_y") or 0) + (rawget(t, "_h") or 0)
+        if bottom > ROOM then
+          PROBLEMS[#PROBLEMS + 1] = ("%s: a tile ends %d px down, the room is %d px"):format(CURRENT, bottom, ROOM)
+        end
       end
       return table.concat(PROBLEMS, "\n"), table.concat(out, "; "), #COLUMNS, worst
     end''')(mod)

@@ -87,6 +87,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Do not write to `MMT.db` or other core internals.
 
 ## Modules
+
+- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
 ### MMT_PawnCompare (v0.5.1)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
@@ -560,7 +562,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Test: `tests/test_totems.py` loads every file of the TOC in Lua 5.1 with stubbed WoW API
   (secure frames throw in combat) and runs two clients passing messages.
 
-### MMT_Whispers (v0.1.4) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
+### MMT_Whispers (v0.1.5) – like EMA Talk (credit EMA / EbonyFaye in descriptions; EMA is "All Rights Reserved": never copy its code)
 - Files: `Module.lua` (defaults, `/mmtw`), `Forward.lua` (alts: CHAT_MSG_WHISPER / _INFORM / BN_WHISPER / BN_WHISPER_INFORM,
   `mod.Receivers()` from `to` = LEADER (group, default) | FTL (`MMT.FTLLeader()`, sent with `MMT.SendToLeader`) | CHAR:<key> | ROLE:<role>;
   profiles that got FTL as default in 0.1.1/0.1.2 go back to LEADER once (`toLeader` flag), pass-on of the receiver's whispers,
@@ -575,7 +577,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `C_ChatInfo.SendChatMessage` (fallback `SendChatMessage`), BN via `BNSendWhisper`.
 - Test: `tests/test_whispers.py` (two clients, Anna = leader/receiver, Bob = alt).
 
-### MMT_TeamGear (v0.3.1)
+### MMT_TeamGear (v0.3.2)
 - Files: `Module.lua` (data: reads Item Compare's `MMTDB.moduleData.ItemCompare.equipment[key]` READ ONLY,
   members, class/level from `MMT.status`, `UnitOf` for the model, `/mmtgear`), `Window.lua` (inspect-like
   window `MMTTeamGearWindow`, slots LEFT/RIGHT/BOTTOM, `mod.ItemData`, redraw on GET_ITEM_INFO_RECEIVED and
