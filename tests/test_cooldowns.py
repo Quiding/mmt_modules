@@ -238,6 +238,20 @@ print("A:", A.eval(r"""function(m)
   SPELLCD["Evocation"] = nil
   FIRE("SPELL_UPDATE_COOLDOWN")
   assert(#SENT == 0, "normal end announced: " .. tostring(SENT[1]))
+  -- used again right after it ran out, with no check in between: still a new cooldown to tell
+  NOW = 1500
+  SPELLCD["Evocation"] = { start = 1500, dur = 480 }
+  FIRE("SPELL_UPDATE_COOLDOWN")
+  assert(#SENT == 1, "evocation use not sent")
+  NOW = 1990
+  SPELLCD["Evocation"] = { start = 1990, dur = 480 }
+  FIRE("SPELL_UPDATE_COOLDOWN")
+  assert(#SENT == 2 and SENT[2]:find("^MCDU:s12051:480.0/480.0$"), "reuse right after the end not sent: " .. tostring(SENT[2]))
+  FIRE("SPELL_UPDATE_COOLDOWN")
+  assert(#SENT == 2, "the same cooldown sent twice")
+  SPELLCD["Evocation"] = nil
+  FIRE("SPELL_UPDATE_COOLDOWN")
+  SENT = {}
   NOW = 1010
   SENT = { "MCDU:s11958:r" }
   return "reset sent, normal end quiet"

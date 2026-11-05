@@ -46,7 +46,11 @@ local function Check()
             now[ek] = state
             local before = last and last[ek]
             local msg
-            if last and state ~= before and state ~= "ready" then
+            -- used again right after it came off cooldown, with no check in between (nothing fires
+            -- when a cooldown ends): still "cd" -> "cd", but it ends later than the old one did
+            local renewed = state == "cd" and before == "cd" and ends[ek] and start and dur
+                and start + dur > ends[ek] + 1
+            if last and (state ~= before or renewed) and state ~= "ready" then
                 msg = Message(e, ek, state, start, dur)
             elseif last and state == "ready" and (before == "active"
                 or (before == "cd" and ends[ek] and ends[ek] - t > EARLY)) then
