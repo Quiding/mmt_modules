@@ -103,8 +103,10 @@ for folder in ["MMT_PawnCompare", "MMT_CooldownTimers", "MMT_BuffTimers", "MMT_T
         worst = math.max(worst, used / limit)
       end
       -- tiles (MMT 1.0.0 design): the lowest one ends above the status line and the Reset / Sync buttons
-      local ROOM = 564 - 50
+      -- (in a tab: its panel's height, which already leaves that room)
       for _, t in ipairs(TILES) do
+        local parent = rawget(t, "_parent")
+        local ROOM = (parent == page or not parent or not rawget(parent, "_h")) and (564 - 50) or rawget(parent, "_h")
         local bottom = -(rawget(t, "_y") or 0) + (rawget(t, "_h") or 0)
         if bottom > ROOM then
           PROBLEMS[#PROBLEMS + 1] = ("%s: a tile ends %d px down, the room is %d px"):format(CURRENT, bottom, ROOM)

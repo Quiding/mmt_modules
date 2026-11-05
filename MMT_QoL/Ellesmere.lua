@@ -168,7 +168,7 @@ bulk = mod.Bulk({
 mod.EuiBulk = bulk
 
 F = mod.Feature({
-    key = "eui", slash = "eui", addon = "EllesmereUI", title = "EllesmereUI profiles", tabText = "EllesmereUI",
+    key = "eui", icon = "INV_Misc_Gear_01", slash = "eui", addon = "EllesmereUI", title = "EllesmereUI profiles", tabText = "EllesmereUI",
     checkText = "Send and take EllesmereUI profiles",
     tip = "Send one of your EllesmereUI profiles (complete: every module, layout, Cooldown Manager spells) or your full account export to a team member or the whole online team. What comes in opens EllesmereUI's own import page.",
     askText = function(who, n)

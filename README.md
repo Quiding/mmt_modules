@@ -11,14 +11,14 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.5 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.2 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.7 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.6 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.3 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.8 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.2 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.2 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.6 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.7 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 0.1.5 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.9 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 0.6.10 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 0.4.2 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**

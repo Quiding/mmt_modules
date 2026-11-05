@@ -1,8 +1,9 @@
 -- Settings helpers shared by MMT_Cooldowns and MMT_Buffs (they ship the same
 -- copy of this file: KEEP BOTH IDENTICAL):
---   mod.Tabs(page, { {id, text}, ... } [, opts]) -> panels[id]   tab buttons like /mmt > Help
+--   mod.Tabs(page, { {id, text, icon}, ... } [, opts]) -> panels[id]   tab strip like /mmt > Help
 --                                          (opts.key: remembers its own choice - sub-tabs inside a tab;
 --                                          opts.bottom: room below the panels, default 50; sub-tabs 0)
+--   mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)}, ... }) -> y below   MMT 1.0.0 tiles, stacked
 --   mod.ShareBar(page, status)             bottom bar on every tab: Import / Export,
 --                                          Reset to defaults, the core's "Sync to team"
 --   mod.ResetSettings()                    every setting of the module back to its default
@@ -23,30 +24,61 @@ local current = {}   -- [mod or opts.key] = selected tab id (kept while the game
 local tabText = {}   -- [tab id] = its button text
 local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 
--- list = { { id, text [, blocked = function() return why | nil end] }, ... }; a blocked tab
--- is greyed, can't be opened and says why in its tooltip (e.g. the addon it needs is missing)
+-- list = { { id, text, icon [, blocked = function() return why | nil end] }, ... }: the core's tab strip look
+-- (MMT 1.0.0 ConfigHelpers.TabStrip: an icon per tab, the chosen one in the accent colour and underlined);
+-- icon = a file name in Interface\Icons (default a gear). A blocked tab is greyed, can't be opened and says
+-- why in its tooltip (e.g. the addon it needs is missing)
+local TAB_H = 26
 function mod.Tabs(page, list, opts)
     local UI = MMT.UI
+    local A = UI.ACCENT
     local id0 = opts and opts.key or mod
     local bottom = opts and opts.bottom or BOTTOM
     local W = MMT.ConfigHelpers.PAGE_W
     local panels, buttons = {}, {}
-    local bw = math.floor((W - 8 * (#list - 1)) / #list)
+    local bw = math.floor((W - 6 * (#list - 1)) / #list)
     local function Blocked(t) return t.blocked and t.blocked() or nil end
     local function Show(id)
         current[id0] = id
         for k, p in pairs(panels) do p:SetShown(k == id) end
         for _, t in ipairs(list) do
             local b = buttons[t[1]]
+            local on = t[1] == id
             if Blocked(t) then b.label:SetTextColor(0.35, 0.35, 0.35)
-            elseif t[1] == id then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
+            elseif on then b.label:SetTextColor(A[1], A[2], A[3])
             else b.label:SetTextColor(0.7, 0.7, 0.7) end
+            b.bar:SetShown(on)
+            if b.icon.SetDesaturated then b.icon:SetDesaturated(Blocked(t) and true or false) end
         end
     end
+    local line = page:CreateTexture(nil, "ARTWORK")
+    line:SetColorTexture(1, 1, 1, 0.08)
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", 0, -TAB_H)
+    line:SetPoint("TOPRIGHT", 0, -TAB_H)
     for i, t in ipairs(list) do
         tabText[t[1]] = t[2]
-        local b = UI.Button(page, bw, t[2], function() if not Blocked(t) then Show(t[1]) end end)
-        b:SetPoint("TOPLEFT", (i - 1) * (bw + 8), 0)
+        local b = CreateFrame("Button", nil, page)
+        b:SetSize(bw, TAB_H)
+        b:SetPoint("TOPLEFT", (i - 1) * (bw + 6), 0)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+        local icon = b:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(16, 16)
+        icon:SetPoint("LEFT", 6, 0)
+        icon:SetTexture("Interface\\Icons\\" .. (t[3] or t.icon or "INV_Misc_Gear_01"))
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        b.icon = icon
+        b.label = UI.Label(b, t[2], "GameFontNormal")
+        b.label:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+        b.label:SetPoint("RIGHT", -4, 0)
+        b.label:SetJustifyH("LEFT")
+        b.label:SetWordWrap(false)
+        b.bar = b:CreateTexture(nil, "OVERLAY")
+        b.bar:SetColorTexture(A[1], A[2], A[3], 0.9)
+        b.bar:SetHeight(2)
+        b.bar:SetPoint("BOTTOMLEFT"); b.bar:SetPoint("BOTTOMRIGHT")
+        b:SetScript("OnClick", function() if not Blocked(t) then Show(t[1]) end end)
         if t.blocked then
             b:HookScript("OnEnter", function(self)
                 local why = Blocked(t)
@@ -60,8 +92,8 @@ function mod.Tabs(page, list, opts)
         end
         buttons[t[1]] = b
         local p = CreateFrame("Frame", nil, page)
-        p:SetPoint("TOPLEFT", 0, -30)
-        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - 30 - bottom))
+        p:SetPoint("TOPLEFT", 0, -(TAB_H + 8))
+        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - (TAB_H + 8) - bottom))
         panels[t[1]] = p
     end
     -- the tab shown last, else the first one that isn't blocked
@@ -74,6 +106,21 @@ function mod.Tabs(page, list, opts)
     end
     Show(start or list[1][1])
     return panels
+end
+
+-- MMT 1.0.0's tiles, stacked: items = { { title, icon, function(col, tile) ... end }, ... } (icon = a file name
+-- in Interface\Icons); each tile is as tall as what its function put in the column (widgets made on the tile,
+-- not the panel). Returns the y below the last tile. Two stacks side by side: x = 0 and H.TILE_W + H.TILE_GAP.
+function mod.TileStack(parent, x, y, w, items)
+    local H = MMT.ConfigHelpers
+    for _, it in ipairs(items) do
+        local t, col = H.Tile(parent, x, y, w, 200, it[1], "Interface\\Icons\\" .. it[2])
+        it[3](col, t)
+        local h = -(tonumber(col.y) or -190) + 10
+        t:SetHeight(h)
+        y = y - h - 8
+    end
+    return y
 end
 
 -- the share bar at the bottom of the page, like the tab buttons at the top:

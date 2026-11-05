@@ -151,7 +151,7 @@ bulk = mod.Bulk({
 mod.AurasBulk = bulk
 
 F = mod.Feature({
-    key = "auras", slash = "auras", addon = "ForeverAuras", title = "ForeverAuras",
+    key = "auras", icon = "Spell_Holy_MagicalSentry", slash = "auras", addon = "ForeverAuras", title = "ForeverAuras",
     checkText = "Send and take ForeverAuras auras",
     tip = "Send one aura, a group (with everything inside it) or all of them to a team member or the whole online team. What comes in opens in ForeverAuras' own import window (it shows what an update changes).",
     askText = function(who, n)

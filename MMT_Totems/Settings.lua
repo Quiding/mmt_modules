@@ -26,7 +26,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "casting", "Casting" }, { "calls", "Calls" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars", "Spell_Nature_StoneSkinTotem" }, { "look", "Look", "INV_Misc_Ribbon_01" }, { "casting", "Casting", "Spell_Nature_Lightning" }, { "calls", "Calls", "Spell_Nature_Purge" } })
     mod.ShareBar(page, status)
 
     -- Bars ------------------------------------------------------------------

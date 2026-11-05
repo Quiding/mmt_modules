@@ -160,7 +160,7 @@ M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)
-    local panels = mod.Tabs(page, { { "bars", "Bars" }, { "look", "Look" }, { "lists", "Buffs" }, { "specs", "Specs" }, { "frames", "Frames" }, { "stance", "Stance" } })
+    local panels = mod.Tabs(page, { { "bars", "Bars", "INV_Misc_Book_09" }, { "look", "Look", "INV_Misc_Ribbon_01" }, { "lists", "Buffs", "Spell_Holy_WordFortitude" }, { "specs", "Specs", "Ability_Marksmanship" }, { "frames", "Frames", "INV_Misc_Spyglass_02" }, { "stance", "Stance", "Ability_Warrior_DefensiveStance" } })
     mod.ShareBar(page, status)
 
     local FL = mod.FramesTab(panels.frames, Opt, status, { choices = WHERE, get = WhereGet, set = WhereSet })
@@ -281,7 +281,7 @@ M.Page = function(_, page)
 
     -- Look ------------------------------------------------------------------
     -- sub-tabs: Window (scale, text, background, border), Icons (size, zoom, opacity, ...), Timer (TimerTab.lua)
-    local look = mod.Tabs(panels.look, { { "window", "Window" }, { "icons", "Icons" }, { "timer", "Timer" } }, { key = "look", bottom = 0 })
+    local look = mod.Tabs(panels.look, { { "window", "Window", "INV_Misc_Note_01" }, { "icons", "Icons", "INV_Misc_QuestionMark" }, { "timer", "Timer", "INV_Misc_PocketWatch_01" } }, { key = "look", bottom = 0 })
     local WL = UI.Column(look.window, 0, 0, COL_W)
     WL:Header("Window")
     mod.LookWindowSizes(WL, Opt)
