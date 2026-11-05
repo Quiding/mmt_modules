@@ -6,7 +6,6 @@ local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 local function Opt(key)
     return function() return M.db[key] end,
@@ -34,19 +33,30 @@ local function ResetButton(page, done)
     return b
 end
 
+-- tiles of one row get the height of the tallest one's content
+local function FitRow(row)
+    local h = 0
+    for _, r in ipairs(row) do h = math.max(h, -(tonumber(r[2].y) or -290) + 10) end
+    for _, r in ipairs(row) do r[1]:SetHeight(h) end
+    return h
+end
+
 M.Page = function(_, page)
     ResetButton(page)
-    local L = UI.Column(page, 0, 0, COL_W)
-    local status
+    local status = H.StatusLine(page)
+    status:SetPoint("BOTTOMLEFT", 0, 32)
+    status:SetWidth(H.PAGE_W)
+    local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
+    local IN = TILE_W - 16
+    local TOP = H.Intro(page, "Adds Pawn scores to the Item Compare tooltips: the hovered item is scored with each member's own Pawn scales and compared with what they have equipped.")
 
-    L:Header("Pawn Compare")
-    L:Note("Adds Pawn scores to the Item Compare tooltips: the hovered item is scored with each member's own Pawn scales and compared with what they have equipped.")
-    local state = UI.Label(page, "")
-    state:SetWidth(COL_W)
+    -- Tooltips (left) ------------------------------------------------------------------------------------
+    local lt, L = Tile(page, 0, TOP, TILE_W, 300, "Tooltips", "Interface\\Icons\\INV_Misc_Note_01")
+    local state = UI.Label(lt, "")
+    state:SetWidth(IN)
     state:SetJustifyH("LEFT")
     state:SetWordWrap(true)
-    L:Add(state, 46)
-
+    L:Add(state, 40)
     local gc, sc = Opt("showInCompare")
     L:Check("Show Pawn scores in Item Compare", gc, sc)
     local ga, sa = Opt("allScales")
@@ -65,19 +75,14 @@ M.Page = function(_, page)
     L:Check("Message in chat on login", gg, sg)
     local gd, sd = Opt("askDelete")
     L:Check("Ask before changing scales for the team", gd, sd, "When a team member deletes or hides Pawn scales here and on the team, ask before doing the same on this character. Off: it is done right away. Also done right away while \"Auto-accept synced settings\" is on (MMT > Profiles).")
-    L:Space(4)
-    status = H.StatusLine(page)
-    status:SetWidth(COL_W)
-    L:Add(status, 30)
 
-    -- right: stored scales ------------------------------------------------
-    local R = UI.Column(page, COL2_X, 0, COL_W)
-    R:Header("Team scales")
+    -- Team scales (right) -----------------------------------------------------------------------------------
+    local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Team Scales", "Interface\\Icons\\INV_Misc_Book_09")
     R:Note("The scales visible in Pawn on each character, stored here so offline members and clients without Pawn can be compared too.")
     local lines, lineKeys = {}, {}
     for i = 1, 10 do
-        local row = CreateFrame("Frame", nil, page)
-        row:SetSize(COL_W, 18)
+        local row = CreateFrame("Frame", nil, rt)
+        row:SetSize(IN, 18)
         local fs = UI.Label(row, "")
         fs:SetPoint("LEFT")
         fs:SetPoint("RIGHT")
@@ -107,7 +112,7 @@ M.Page = function(_, page)
         mod.RequestAll()
         status.Show_("Asked the online team for their scales.")
     end)
-    local clear = H.ConfirmButton(page, COL_W, "Clear stored scales", function()
+    local clear = H.ConfirmButton(rt, IN, "Clear stored scales", function()
         mod.Clear()
         status.Show_("Stored scales cleared. They fill in again as members come online.")
         MMT.RefreshConfig()
@@ -115,13 +120,13 @@ M.Page = function(_, page)
     R:Add(clear, UI.ROW + 2)
     R:Space(6)
     R:Button("Pawn scales: list / delete...", function(self) mod.OpenScales(self) end)
-    local manageNote = UI.Label(page, "")
-    manageNote:SetWidth(COL_W)
+    local manageNote = UI.Label(rt, "")
+    manageNote:SetWidth(IN)
     manageNote:SetJustifyH("LEFT")
     manageNote:SetWordWrap(true)
     manageNote:SetTextColor(0.6, 0.6, 0.6)
     R:Add(manageNote, 30)
-
+    FitRow({ { lt, L }, { rt, R } })
 
     page.OnRefresh = function()
         local pawn = mod.PawnInstalled() and "|cff55ff55found|r" or "|cffff5555NOT installed|r (stored scales, approximate stats)"

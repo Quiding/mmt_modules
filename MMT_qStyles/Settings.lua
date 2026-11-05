@@ -5,7 +5,6 @@ local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 -- "Reset to defaults" (click twice), left of the core's Sync button (it sends this account's look, Module.lua)
 local function ResetButton(page, done)
@@ -23,42 +22,57 @@ local function ResetButton(page, done)
     return b
 end
 
+-- tiles of one row get the height of the tallest one's content
+local function FitRow(row)
+    local h = 0
+    for _, r in ipairs(row) do h = math.max(h, -(tonumber(r[2].y) or -290) + 10) end
+    for _, r in ipairs(row) do r[1]:SetHeight(h) end
+    return h
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)
     status:SetWidth(H.PAGE_W)
     ResetButton(page, function() status.Show_("Back to MMT's own look.") end)
+    local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
+    local TOP = H.Intro(page, "Another look for MMT's settings and windows. Saved for your account: every character and profile gets the same look, switched right away (no /reload).")
 
-    local L = UI.Column(page, 0, 0, COL_W)
-    L:Header("Style")
+    -- Style (left) -------------------------------------------------------------------------------------------
+    local lt, L = Tile(page, 0, TOP, TILE_W, 300, "Style", "Interface\\Icons\\INV_Misc_Ribbon_01")
     L:Cycle("Style", mod.StyleChoices, function() return mod.Opt("style") end, function(v)
         mod.SetStyle(v)
         status.Show_(v == "NONE" and "MMT's own look again." or ("Style: " .. mod.StyleTitle(v) .. "."))
     end)
     local desc = L:Note(mod.STYLES.ELLESMERE.description)   -- the longest: room for every one
-    local fontCheck = L:Check("Use the style's font", function() return mod.Opt("fonts") end, function(v) mod.SetOpt("fonts", v and true or false) end,
-        "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
-    L:Check("Keep the game's own font", function() return mod.Opt("gameFont") end, function(v) mod.SetOpt("gameFont", v and true or false) end,
-        "When another addon changes all game text (EllesmereUI's \"Apply to All Game Text\", ElvUI), MMT's windows keep the game's own font. "
-        .. "Works with any style, None too. The style's font, when it's used, wins.")
-    L:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
-        "Check marks, slider knobs, the selected page in the list, dropdown values and highlighted rows get the style's colour instead of MMT's blue.")
     L:Cycle("Classic: window background", mod.ClassicBgChoices, function() return mod.Opt("classicBg") end, function(v)
         mod.SetOpt("classicBg", v)
         status.Show_(mod.Opt("style") == "CLASSIC" and "Classic background changed." or "Used when the style is Classic.")
     end)
-    L:Space(8)
-    L:Note("Saved for your account: every character and profile gets the same look. Switches right away, no /reload. Also /mmtstyle none | elvui | ellesmere | modern | classic.")
+    L:Note("Also /mmtstyle none | elvui | ellesmere | modern | classic.")
 
-    local R = UI.Column(page, COL2_X, 0, COL_W)
-    R:Header("What gets the style")
-    R:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
+    -- Fonts & Colour (right) ------------------------------------------------------------------------------------
+    local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Fonts & Colour", "Interface\\Icons\\INV_Inscription_Tradeskill01")
+    local fontCheck = R:Check("Use the style's font", function() return mod.Opt("fonts") end, function(v) mod.SetOpt("fonts", v and true or false) end,
+        "Labels, buttons and edit boxes get the style's font (a little bigger). Off: MMT's fonts stay.")
+    R:Check("Keep the game's own font", function() return mod.Opt("gameFont") end, function(v) mod.SetOpt("gameFont", v and true or false) end,
+        "When another addon changes all game text (EllesmereUI's \"Apply to All Game Text\", ElvUI), MMT's windows keep the game's own font. "
+        .. "Works with any style, None too. The style's font, when it's used, wins.")
+    R:Check("Use the style's accent colour", function() return mod.Opt("accent") end, function(v) mod.SetOpt("accent", v and true or false) end,
+        "Check marks, slider knobs, the selected page in the list, dropdown values, highlighted rows and the tiles' titles get the style's colour instead of MMT's blue.")
+    local topH = FitRow({ { lt, L }, { rt, R } })
+
+    -- What gets the style / what keeps its look (second row) ------------------------------------------------------
+    local y2 = TOP - topH - 8
+    local gt, G = Tile(page, 0, y2, TILE_W, 150, "What Gets the Style", "Interface\\Icons\\Spell_Holy_MagicalSentry")
+    G:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
         .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
         .. "Item Compare's tooltips, the death panel and more.")
-    R:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
-    R:Header("What keeps its look")
-    R:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's XP window and distance display "
+    G:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
+    local kt, K = Tile(page, X2, y2, TILE_W, 150, "What Keeps Its Look", "Interface\\Icons\\INV_Misc_Spyglass_02")
+    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's XP window and distance display "
         .. "(built before Styles loads). Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
+    FitRow({ { gt, G }, { kt, K } })
 
     page.OnRefresh = function()
         local S = mod.STYLES[mod.Opt("style")]

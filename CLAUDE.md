@@ -88,8 +88,8 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 
 ## Modules
 
-- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
-### MMT_PawnCompare (v0.5.1)
+- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
+### MMT_PawnCompare (v0.5.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
   (adds lines to Item Compare's tips), `ItemTooltip.lua` (team list in GameTooltip),
@@ -832,7 +832,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v0.4.1) – "Styles": another look for MMT's windows
+### MMT_qStyles (v0.4.2) – "Styles": another look for MMT's windows
 - 0.4.1: the core's tiles / tab strips (MMT 1.0.0, ConfigPages.lua's LOCAL `Tile` / `TabStrip`, not hookable): the Label hook (templates GameFontNormalLarge / GameFontNormal) runs `mod.TileBits(parent, fs)` one frame later - `parent.title == fs` = a tile (title text + its 1 px ARTWORK line), `parent.label == fs` with `parent.bar` = a tab (text + underline); kind `accent`, the faint accent fill stays.
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),

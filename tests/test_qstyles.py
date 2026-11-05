@@ -167,7 +167,10 @@ MMT = ns
 MODULE = r'''
 local function copy(t) if type(t) ~= "table" then return t end local r = {} for k, v in pairs(t) do r[k] = copy(v) end return r end
 MMT.CopyTable = copy
-MMT.ConfigHelpers = { COL_W = 248, COL2_X = 270, PAGE_W = 518 }
+MMT.ConfigHelpers = { COL_W = 248, COL2_X = 270, PAGE_W = 698, TILE_W = 344, TILE_GAP = 10 }
+-- the core's tiles (MMT 1.0.0, ConfigPages.lua): a frame with a column inside
+function MMT.ConfigHelpers.Tile(parent, x, y, w, h) local t = CreateFrame("Frame", nil, parent); t:SetSize(w, h); return t, MMT.UI.Column(t, 8, -42, w - 16) end
+function MMT.ConfigHelpers.Intro(page, text) return -22, MMT.UI.Label(page, text) end
 function MMT.ConfigHelpers.StatusLine(page) local fs = MMT.UI.Label(page, ""); fs.Show_ = function() end; return fs end
 function MMT.ConfigHelpers.ConfirmButton(page, w, text, fn) local b = MMT.UI.Button(page, w, text, fn); CONFIRMS[#CONFIRMS + 1] = fn; return b end
 CONFIRMS = {}
