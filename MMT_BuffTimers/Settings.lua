@@ -8,7 +8,6 @@ local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 local function Apply() mod.Apply() end
 
@@ -178,118 +177,124 @@ M.Page = function(_, page)
     } })
 
     -- Bars ------------------------------------------------------------------
-    local p = panels.bars
-    local L = UI.Column(p, 0, 0, COL_W)
-    L:Header("Window")
-    Check(L, "Show the buffs", "shown")
-    L:Cycle("Where", WHERE, WhereGet, WhereSet)
-    Check(L, "Lock position", "locked")
-    Check(L, "Click-through", "clickThrough", "Mouse clicks go through the window (no tooltips, no dragging).")
-    L:Cycle("Growth direction", {
-        { value = "DOWN", text = "Top > Down" },
-        { value = "UP", text = "Down > Top" },
-        { value = "RIGHT", text = "Left > Right" },
-        { value = "LEFT", text = "Right > Left" },
-    }, function() return MMTIconBars.Growth(M.db) end, function(v)
-        M.db.growth = v
-        M.db.vertical = (v == "RIGHT" or v == "LEFT")
-        Apply()
-    end)
-    Check(L, "Include your own character", "includeSelf")
-    Check(L, "Only online or grouped members", "onlyOnline")
-    Check(L, "Hide buffs not learned yet", "hideUnlearned", "A class buff a character hasn't learned yet (Inner Fire, a seal, an armor) leaves their row; a buff cast on others (Fortitude, Blessings, ...) only shows while someone here has learned it. Each client tells the team what it hasn't learned; flasks and world buffs always show.")
-    Check(L, "One blessing per paladin", "blessingLimit", "A member can have one blessing from each paladin: once they have as many blessings as there are paladins in the group, the other blessings tracked for them don't count as missing. Blessings from paladins outside the group don't use up a slot.")
-    Check(L, "Hide buffs nobody here can cast", "hideNoCaster", "A class buff (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only shows when someone of that class is in your group or online in your team. World buffs, flasks and food always show.")
-    L:Cycle("Preview", {
-        { value = "OFF", text = "Off" },
-        { value = "REAL", text = "The team as it is" },
-        { value = "MIXED", text = "Mixed classes" },
-        { value = "ALL", text = "All classes (made-up names)" },
-    }, function() return mod.preview or "OFF" end, function(v) mod.SetPreview(v ~= "OFF" and v or nil) end)
-    L:Cycle("Names", {
-        { value = "OFF", text = "Off" },
-        { value = "FIRST", text = "First name" },
-        { value = "FULL", text = "First and last name" },
-    }, function()
-        if not M.db.showNames then return "OFF" end
-        return M.db.fullNames and "FULL" or "FIRST"
-    end, function(v)
-        M.db.showNames = v ~= "OFF"
-        M.db.fullNames = v == "FULL"
-        Apply()
-    end)
-    Check(L, "Show timers", "showTimers")
-    L:Space(6)
-    local half = (COL_W - 8) / 2
-    local test = UI.Button(p, half, "Test (10 s)", function() mod.Test() end)
-    L:Add(test, UI.ROW + 4)   -- Reset position sits beside it, Arrange icons below
-    local reset = UI.Button(p, half, "Reset position", function()
-        M.db.point = { "CENTER", "CENTER", -200, 0 }
-        Apply()
-    end)
-    reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
-    -- arrange mode (session only): every tracked buff shows, drag them to reorder
-    local arrange
-    arrange = UI.Button(p, COL_W, "", function() mod.ToggleArrange() end)
+    local W, X2 = H.TILE_W, H.TILE_W + H.TILE_GAP
+    local IN = W - 16   -- a tile's column width
+    local arrange, who
     local function ArrangeText() arrange.label:SetText(mod.Arranging("MMTBuffs") and "Stop arranging icons" or "Arrange icons (drag to reorder)") end
-    ArrangeText()
-    L:Add(arrange, UI.ROW + 2)
-    UI.Tooltip(arrange, "Arrange icons", "Every member's row and the All bar show everything their lists track (the hide options wait), with dots on the icons: drag one along its row to move it in its list, or onto a Cooldown Timers bar to show just that buff there (and back). Buff icons on the Cooldowns bars can go anywhere in the row. Cooldown Timers' bars arrange at the same time. Until you click again or /reload. Also /mmtbt arrange.")
-
-    local R = UI.Column(p, COL2_X, 0, COL_W)
-    R:Header("All bar")
-    R:Cycle("Show its buffs", {
-        { value = "ROW", text = "In one All bar" },
-        { value = "MEMBERS", text = "In each member's row" },
-    }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
-       function(v) M.db.allBar = (v == "ROW"); Apply() end)
-    local who
     local function WhoText()
         local n = 0
         for _ in pairs(M.db.allExclude) do n = n + 1 end
         return n == 0 and "All bar members: everyone" or ("All bar members: %d left out"):format(n)
     end
-    who = UI.Button(p, COL_W, WhoText(), function(self)
-        local items = {}
-        for _, key in ipairs(MMT.SortedMembers()) do
-            local out = M.db.allExclude[key]
-            items[#items + 1] = { value = key, text = (out and "|cff888888[  ] " or "|cff55ff55[x] ") .. MMT.FullDisplay(key) .. "|r" }
-        end
-        UI.OpenList(self, items, nil, function(key)
-            M.db.allExclude[key] = (not M.db.allExclude[key]) or nil
-            who.label:SetText(WhoText())
-            Apply()
-        end)
-    end)
-    UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
-    R:Add(who, UI.ROW + 2)
-    R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
-    -- only while Quality of life's SmartBuff alerts are on (Alerts.lua): looked at
-    -- again whenever the page refreshes, so switching it in Quality of life needs no /reload
-    local sbHead = R:Header("SmartBuff")
-    local gga, sga = Opt("glowAlerts")
-    local sbCheck = R:Check("Glow on SmartBuff alerts", gga, sga, "When SmartBuff says a member needs a buff (your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts), that buff's icon - theirs and the All bar's - glows until they have it again.")
-    local sbRefresh = sbCheck and sbCheck.Refresh
-    if sbCheck then
-        sbCheck.Refresh = function(...)
-            if sbRefresh then sbRefresh(...) end
-            local on = mod.SmartBuffAround()
-            sbCheck:SetShown(on)
-            if sbHead and sbHead.SetShown then sbHead:SetShown(on) end
-        end
-        sbCheck.Refresh()
-    end
-
+    mod.TileStack(panels.bars, 0, 0, W, {
+        { "Window", "INV_Misc_Book_09", function(L, tile)
+            Check(L, "Show the buffs", "shown")
+            L:Cycle("Where", WHERE, WhereGet, WhereSet)
+            Check(L, "Lock position", "locked")
+            Check(L, "Click-through", "clickThrough", "Mouse clicks go through the window (no tooltips, no dragging).")
+            L:Cycle("Growth direction", {
+                { value = "DOWN", text = "Top > Down" },
+                { value = "UP", text = "Down > Top" },
+                { value = "RIGHT", text = "Left > Right" },
+                { value = "LEFT", text = "Right > Left" },
+            }, function() return MMTIconBars.Growth(M.db) end, function(v)
+                M.db.growth = v
+                M.db.vertical = (v == "RIGHT" or v == "LEFT")
+                Apply()
+            end)
+            Check(L, "Include your own character", "includeSelf")
+            Check(L, "Only online or grouped members", "onlyOnline")
+            Check(L, "Hide buffs not learned yet", "hideUnlearned", "A class buff a character hasn't learned yet (Inner Fire, a seal, an armor) leaves their row; a buff cast on others (Fortitude, Blessings, ...) only shows while someone here has learned it. Each client tells the team what it hasn't learned; flasks and world buffs always show.")
+            Check(L, "One blessing per paladin", "blessingLimit", "A member can have one blessing from each paladin: once they have as many blessings as there are paladins in the group, the other blessings tracked for them don't count as missing. Blessings from paladins outside the group don't use up a slot.")
+            Check(L, "Hide buffs nobody here can cast", "hideNoCaster", "A class buff (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only shows when someone of that class is in your group or online in your team. World buffs, flasks and food always show.")
+            L:Cycle("Preview", {
+                { value = "OFF", text = "Off" },
+                { value = "REAL", text = "The team as it is" },
+                { value = "MIXED", text = "Mixed classes" },
+                { value = "ALL", text = "All classes (made-up names)" },
+            }, function() return mod.preview or "OFF" end, function(v) mod.SetPreview(v ~= "OFF" and v or nil) end)
+            L:Cycle("Names", {
+                { value = "OFF", text = "Off" },
+                { value = "FIRST", text = "First name" },
+                { value = "FULL", text = "First and last name" },
+            }, function()
+                if not M.db.showNames then return "OFF" end
+                return M.db.fullNames and "FULL" or "FIRST"
+            end, function(v)
+                M.db.showNames = v ~= "OFF"
+                M.db.fullNames = v == "FULL"
+                Apply()
+            end)
+            Check(L, "Show timers", "showTimers")
+            L:Space(6)
+            local half = (IN - 8) / 2
+            local test = UI.Button(tile, half, "Test (10 s)", function() mod.Test() end)
+            L:Add(test, UI.ROW + 4)   -- Reset position sits beside it, Arrange icons below
+            local reset = UI.Button(tile, half, "Reset position", function()
+                M.db.point = { "CENTER", "CENTER", -200, 0 }
+                Apply()
+            end)
+            reset:SetPoint("LEFT", test, "RIGHT", 8, 0)
+            -- arrange mode (session only): every tracked buff shows, drag them to reorder
+            arrange = UI.Button(tile, IN, "", function() mod.ToggleArrange() end)
+            ArrangeText()
+            L:Add(arrange, UI.ROW + 2)
+            UI.Tooltip(arrange, "Arrange icons", "Every member's row and the All bar show everything their lists track (the hide options wait), with dots on the icons: drag one along its row to move it in its list, or onto a Cooldown Timers bar to show just that buff there (and back). Buff icons on the Cooldowns bars can go anywhere in the row. Cooldown Timers' bars arrange at the same time. Until you click again or /reload. Also /mmtbt arrange.")
+        end },
+    })
+    mod.TileStack(panels.bars, X2, 0, W, {
+        { "All Bar", "Spell_Holy_WordFortitude", function(R, tile)
+            R:Cycle("Show its buffs", {
+                { value = "ROW", text = "In one All bar" },
+                { value = "MEMBERS", text = "In each member's row" },
+            }, function() return M.db.allBar and "ROW" or "MEMBERS" end,
+               function(v) M.db.allBar = (v == "ROW"); Apply() end)
+            who = UI.Button(tile, IN, WhoText(), function(self)
+                local items = {}
+                for _, key in ipairs(MMT.SortedMembers()) do
+                    local out = M.db.allExclude[key]
+                    items[#items + 1] = { value = key, text = (out and "|cff888888[  ] " or "|cff55ff55[x] ") .. MMT.FullDisplay(key) .. "|r" }
+                end
+                UI.OpenList(self, items, nil, function(key)
+                    M.db.allExclude[key] = (not M.db.allExclude[key]) or nil
+                    who.label:SetText(WhoText())
+                    Apply()
+                end)
+            end)
+            UI.Tooltip(who, "All bar members", "Click a name to leave it out of (or add it back to) the All bar.")
+            R:Add(who, UI.ROW + 2)
+            R:Note("The All bar turns red / grey when anyone in it misses a buff, otherwise it shows the shortest time left.")
+        end },
+        -- only while Quality of life's SmartBuff alerts are on (Alerts.lua): looked at
+        -- again whenever the page refreshes, so switching it in Quality of life needs no /reload
+        { "SmartBuff", "Spell_Holy_DivineSpirit", function(R, tile)
+            local gga, sga = Opt("glowAlerts")
+            local sbCheck = R:Check("Glow on SmartBuff alerts", gga, sga, "When SmartBuff says a member needs a buff (your own SmartBuff, or the team's alerts sent by Quality of life's SmartBuff alerts), that buff's icon - theirs and the All bar's - glows until they have it again.")
+            local sbRefresh = sbCheck and sbCheck.Refresh
+            if sbCheck then
+                sbCheck.Refresh = function(...)
+                    if sbRefresh then sbRefresh(...) end
+                    tile:SetShown(mod.SmartBuffAround() and true or false)
+                end
+                sbCheck.Refresh()
+            end
+        end },
+    })
 
     -- Look ------------------------------------------------------------------
     -- sub-tabs: Window (scale, text, background, border), Icons (size, zoom, opacity, ...), Timer (TimerTab.lua)
     local look = mod.Tabs(panels.look, { { "window", "Window", "INV_Misc_Note_01" }, { "icons", "Icons", "INV_Misc_QuestionMark" }, { "timer", "Timer", "INV_Misc_PocketWatch_01" } }, { key = "look", bottom = 0 })
-    local WL = UI.Column(look.window, 0, 0, COL_W)
-    WL:Header("Window")
-    mod.LookWindowSizes(WL, Opt)
-    WL:Header("Text")
-    mod.LookText(WL, Opt, Apply, false)   -- the timer's size and colour: Timer sub-tab
-    mod.LookFrame(UI.Column(look.window, COL2_X, 0, COL_W), Opt, Apply)
+    mod.TileStack(look.window, 0, 0, W, {
+        { "Window", "INV_Misc_Spyglass_02", function(L) mod.LookWindowSizes(L, Opt) end },
+        { "Text", "INV_Misc_Note_01", function(L) mod.LookText(L, Opt, Apply, false) end },   -- the timer's size and colour: Timer sub-tab
+    })
+    mod.TileStack(look.window, X2, 0, W, {
+        { "Background and Border", "INV_Fabric_Linen_01", function(R) mod.LookBackground(R, Opt, Apply) end },
+        { "Member Rows", "INV_Misc_GroupNeedMore", function(R)
+            mod.LookRows(R, Opt, Apply)
+            R:Note("Textures come from LibSharedMedia.")
+        end },
+    })
     mod.TimerTab(look.timer, Opt, Apply)
     mod.StanceTab(panels.stance, status)
     mod.WindowShade(look.window, function()
@@ -304,43 +309,47 @@ M.Page = function(_, page)
         return "NONE", "The members' buffs are " .. (mod.Attached() and "on the Cooldowns bars" or "beside the party frames (members without a frame hidden)")
             .. " and the All bar is " .. (M.db.allBar and "above the party frames" or "off") .. ": the window isn't used."
     end)
-    local LL, LR = UI.Column(look.icons, 0, 0, COL_W), UI.Column(look.icons, COL2_X, 0, COL_W)
-    LL:Header("Icons")
-    mod.LookIconSizes(LL, Opt)
-    LR:Header("All bar counter")
-    local gcp, scp = Opt("allCount")
-    LR:Cycle("Have / checked (while missing)", {
-        { value = "OFF", text = "Off" },
-        { value = "BOTTOMLEFT", text = "Bottom left" },
-        { value = "BOTTOMRIGHT", text = "Bottom right" },
-        { value = "TOPLEFT", text = "Top left" },
-        { value = "TOPRIGHT", text = "Top right" },
-    }, gcp, scp)
-    local gcs, scs = Opt("allCountSize")
-    LR:Slider("Counter size", 8, 24, 1, gcs, scs)
-    LR:Color("Counter colour", function() return M.db.allCountColor end, function(c)
-        M.db.allCountColor = { r = c.r, g = c.g, b = c.b }
-        Apply()
-    end)
-    LL:Header("Buffs")
-    LL:Cycle("Missing buffs", {
-        { value = "PLAIN", text = "Normal icon" },
-        { value = "RED", text = "Red" },
-        { value = "GREY", text = "Grey" },
-        { value = "PLAIN+", text = "Normal icon + glow" },
-        { value = "RED+", text = "Red + glow" },
-        { value = "GREY+", text = "Grey + glow" },
-    }, function()
-        return (M.db.allMissingLook or "PLAIN") .. (M.db.glowMissing and "+" or "")
-    end, function(v)
-        M.db.allMissingLook = v:gsub("%+$", "")
-        M.db.glowMissing = v:find("+", 1, true) ~= nil
-        Apply()
-    end)
-    local gac, sac = Opt("activeAlpha")
-    LL:Slider("Active opacity", 0, 1, 0.05, gac, sac, "%.2f")
-    local gm, sm = Opt("missingAlpha")
-    LL:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
+    mod.TileStack(look.icons, 0, 0, W, {
+        { "Icons", "INV_Misc_QuestionMark", function(LL) mod.LookIconSizes(LL, Opt) end },
+        { "Buffs", "Spell_Holy_WordFortitude", function(LL)
+            LL:Cycle("Missing buffs", {
+                { value = "PLAIN", text = "Normal icon" },
+                { value = "RED", text = "Red" },
+                { value = "GREY", text = "Grey" },
+                { value = "PLAIN+", text = "Normal icon + glow" },
+                { value = "RED+", text = "Red + glow" },
+                { value = "GREY+", text = "Grey + glow" },
+            }, function()
+                return (M.db.allMissingLook or "PLAIN") .. (M.db.glowMissing and "+" or "")
+            end, function(v)
+                M.db.allMissingLook = v:gsub("%+$", "")
+                M.db.glowMissing = v:find("+", 1, true) ~= nil
+                Apply()
+            end)
+            local gac, sac = Opt("activeAlpha")
+            LL:Slider("Active opacity", 0, 1, 0.05, gac, sac, "%.2f")
+            local gm, sm = Opt("missingAlpha")
+            LL:Slider("Missing opacity", 0, 1, 0.05, gm, sm, "%.2f")
+        end },
+    })
+    mod.TileStack(look.icons, X2, 0, W, {
+        { "All Bar Counter", "INV_Misc_Note_01", function(LR)
+            local gcp, scp = Opt("allCount")
+            LR:Cycle("Have / checked (while missing)", {
+                { value = "OFF", text = "Off" },
+                { value = "BOTTOMLEFT", text = "Bottom left" },
+                { value = "BOTTOMRIGHT", text = "Bottom right" },
+                { value = "TOPLEFT", text = "Top left" },
+                { value = "TOPRIGHT", text = "Top right" },
+            }, gcp, scp)
+            local gcs, scs = Opt("allCountSize")
+            LR:Slider("Counter size", 8, 24, 1, gcs, scs)
+            LR:Color("Counter colour", function() return M.db.allCountColor end, function(c)
+                M.db.allCountColor = { r = c.r, g = c.g, b = c.b }
+                Apply()
+            end)
+        end },
+    })
 
     -- Specs (Specs.lua) ---------------------------------------------------------------
     mod.SpecsTab(panels.specs, status, function() mod.BuildIndex() mod.ScanGroup() Apply() end)
@@ -350,154 +359,159 @@ M.Page = function(_, page)
     -- another tab, another settings page or the window closed: the popup goes too
     lp:HookScript("OnHide", mod.CloseFilter)
     page:HookScript("OnHide", mod.CloseFilter)
-    local LS = UI.Column(lp, 0, 0, COL_W)
     local class = mod.OwnListKey()
-    LS:Header("Tracked buffs")
-    local list
-    local pick = LS:Cycle("List", mod.ListChoices, function() return class end, function(v)
-        class = v
-        mod.CloseFilter()
-        list:Render(M.db.lists[class] or {})
-    end)
+    local list, pick, Changed
+    mod.TileStack(lp, 0, 0, W, {
+        { "Tracked Buffs", "Spell_Holy_WordFortitude", function(LS, tile)
+            pick = LS:Cycle("List", mod.ListChoices, function() return class end, function(v)
+                class = v
+                mod.CloseFilter()
+                list:Render(M.db.lists[class] or {})
+            end)
 
-    local function Changed()
-        mod.BuildIndex()
-        mod.ScanGroup()
-        Apply()
-        mod.KnownCheck()   -- which of the tracked class buffs we haven't learned (Known.lua)
-        list:Render(M.db.lists[class] or {})
-    end
-
-    list = H.List(lp, COL_W, 14, 22, function(parent, i)
-        local row = CreateFrame("Frame", nil, parent)
-        H.RowBackground(row, i)
-        row.icon = row:CreateTexture(nil, "ARTWORK")
-        row.icon:SetSize(18, 18)
-        row.icon:SetPoint("LEFT", mod.DragGrip(row), "RIGHT", 4, 0)   -- dots: drag to reorder
-        row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        row.del = UI.TextButton(row, "x", function() mod.CloseFilter(); table.remove(M.db.lists[class], row.index); Changed() end, 16)
-        row.del:SetPoint("RIGHT", -2, 0)
-        -- on / off: switched-off entries stay in the list but aren't tracked
-        row.toggle = UI.TextButton(row, "", function()
-            local e = M.db.lists[class][row.index]
-            if e then e.off = (not e.off) or nil; Changed() end
-        end, 26)
-        row.toggle:SetPoint("RIGHT", row.del, "LEFT", -4, 0)
-        UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
-        -- cog: who this buff is for (classes, specs, MMT roles: OnlyFor.lua)
-        row.cog = CreateFrame("Button", nil, row)
-        row.cog:SetSize(14, 14)
-        row.cog:SetPoint("RIGHT", row.toggle, "LEFT", -2, 0)
-        row.cog.tex = row.cog:CreateTexture(nil, "ARTWORK")
-        row.cog.tex:SetAllPoints()
-        row.cog.tex:SetTexture("Interface\\Icons\\Trade_Engineering")
-        row.cog.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        row.cog:SetScript("OnClick", function(self)
-            local e = M.db.lists[class] and M.db.lists[class][row.index]
-            if e then mod.OpenFilter(e, self, Changed) end
-        end)
-        row.cog:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Only for...")
-            local e = row.entry
-            GameTooltip:AddLine(e and mod.FilterText(e) or "Everyone. Click to limit it to classes, specs or MMT roles.", 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        row.cog:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        row.name = UI.Label(row, "")
-        row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-        row.name:SetPoint("RIGHT", row.cog, "LEFT", -4, 0)
-        row.name:SetJustifyH("LEFT")
-        row.name:SetWordWrap(false)
-        row:EnableMouse(true)
-        row:SetScript("OnEnter", function(self)
-            if not self.entry then return end
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            if mod.IsPattern(self.entry) then
-                GameTooltip:SetText(self.entry.name)
-                GameTooltip:AddLine("Any buff whose name matches (* = any text): the icon shows the one that's up.", 1, 1, 1, true)
-            elseif mod.IsStance(self.entry) then
-                GameTooltip:SetText(mod.EntryName(self.entry))
-                GameTooltip:AddLine("The stance or form the member is in (warrior stances, druid forms, stealth, ...), as an icon in their row. Add or leave it out per list, like a buff; the cog limits it to classes / specs.", 1, 1, 1, true)
-            elseif mod.IsWeapon(self.entry) then
-                GameTooltip:SetText(mod.EntryName(self.entry))
-                GameTooltip:AddLine("Any enchant on that weapon: shaman imbues, poisons, oils, sharpening stones. Members send theirs when it changes (they need this version).", 1, 1, 1, true)
-            else
-                GameTooltip:SetSpellByID(self.entry.id)
+            Changed = function()
+                mod.BuildIndex()
+                mod.ScanGroup()
+                Apply()
+                mod.KnownCheck()   -- which of the tracked class buffs we haven't learned (Known.lua)
+                list:Render(M.db.lists[class] or {})
             end
-            GameTooltip:AddLine("Drag to move it in the list.", 0.6, 0.6, 0.6)
-            GameTooltip:Show()
-        end)
-        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        return row
-    end, function(row, e, index)
-        row.entry, row.index = e, index
-        row.icon:SetTexture(mod.EntryIcon(e))
-        row.name:SetText(mod.EntryName(e))
-        row.toggle.label:SetText(e.off and "|cff777777off|r" or "|cff55ff55on|r")
-        row.icon:SetDesaturated(e.off and true or false)
-        row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
-        -- the cog lights up while the buff is only for some
-        local limited = mod.HasFilter(e)
-        -- only in the All bar (class / race / role / character lists are specific already); elsewhere
-        -- only while it still has a filter (set before), so it can be cleared
-        row.cog:SetShown(class == "ALL" or limited)
-        row.cog.tex:SetDesaturated(not limited)
-        row.cog.tex:SetAlpha(limited and 1 or 0.45)
-    end)
-    LS:Add(list, 14 * 22 + 6)
-    -- drag a row to reorder the list (SettingsKit)
-    mod.DragReorder(list, function() return M.db.lists[class] end, function()
-        mod.CloseFilter()
-        Changed()
-    end)
 
-    local box
-    -- picked from the search list, else a link / ID / known name, else the name index
-    local function Parse()
-        local text = box:GetText()
-        if box.picked and box.picked.text == text then return box.picked.id end
-        return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
-    end
-    local function Add()
-        local stance = mod.ParseStance(box:GetText())
-        local weapon = not stance and mod.ParseWeapon(box:GetText())
-        local pattern = not stance and not weapon and mod.ParsePattern(box:GetText())
-        local id = not stance and not weapon and not pattern and Parse()
-        if not id and not pattern and not weapon and not stance then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *), main hand / off hand, or stance.", true) return end
-        if stance then
-            for _, e in ipairs(M.db.lists[class] or {}) do
-                if mod.IsStance(e) then status.Show_("This list has the stance / form already.", true) return end
+            list = H.List(tile, IN, 14, 22, function(parent, i)
+                local row = CreateFrame("Frame", nil, parent)
+                H.RowBackground(row, i)
+                row.icon = row:CreateTexture(nil, "ARTWORK")
+                row.icon:SetSize(18, 18)
+                row.icon:SetPoint("LEFT", mod.DragGrip(row), "RIGHT", 4, 0)   -- dots: drag to reorder
+                row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                row.del = UI.TextButton(row, "x", function() mod.CloseFilter(); table.remove(M.db.lists[class], row.index); Changed() end, 16)
+                row.del:SetPoint("RIGHT", -2, 0)
+                -- on / off: switched-off entries stay in the list but aren't tracked
+                row.toggle = UI.TextButton(row, "", function()
+                    local e = M.db.lists[class][row.index]
+                    if e then e.off = (not e.off) or nil; Changed() end
+                end, 26)
+                row.toggle:SetPoint("RIGHT", row.del, "LEFT", -4, 0)
+                UI.Tooltip(row.toggle, "On / off", "Switched-off entries stay in the list but aren't tracked.")
+                -- cog: who this buff is for (classes, specs, MMT roles: OnlyFor.lua)
+                row.cog = CreateFrame("Button", nil, row)
+                row.cog:SetSize(14, 14)
+                row.cog:SetPoint("RIGHT", row.toggle, "LEFT", -2, 0)
+                row.cog.tex = row.cog:CreateTexture(nil, "ARTWORK")
+                row.cog.tex:SetAllPoints()
+                row.cog.tex:SetTexture("Interface\\Icons\\Trade_Engineering")
+                row.cog.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                row.cog:SetScript("OnClick", function(self)
+                    local e = M.db.lists[class] and M.db.lists[class][row.index]
+                    if e then mod.OpenFilter(e, self, Changed) end
+                end)
+                row.cog:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText("Only for...")
+                    local e = row.entry
+                    GameTooltip:AddLine(e and mod.FilterText(e) or "Everyone. Click to limit it to classes, specs or MMT roles.", 1, 1, 1, true)
+                    GameTooltip:Show()
+                end)
+                row.cog:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                row.name = UI.Label(row, "")
+                row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+                row.name:SetPoint("RIGHT", row.cog, "LEFT", -4, 0)
+                row.name:SetJustifyH("LEFT")
+                row.name:SetWordWrap(false)
+                row:EnableMouse(true)
+                row:SetScript("OnEnter", function(self)
+                    if not self.entry then return end
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    if mod.IsPattern(self.entry) then
+                        GameTooltip:SetText(self.entry.name)
+                        GameTooltip:AddLine("Any buff whose name matches (* = any text): the icon shows the one that's up.", 1, 1, 1, true)
+                    elseif mod.IsStance(self.entry) then
+                        GameTooltip:SetText(mod.EntryName(self.entry))
+                        GameTooltip:AddLine("The stance or form the member is in (warrior stances, druid forms, stealth, ...), as an icon in their row. Add or leave it out per list, like a buff; the cog limits it to classes / specs.", 1, 1, 1, true)
+                    elseif mod.IsWeapon(self.entry) then
+                        GameTooltip:SetText(mod.EntryName(self.entry))
+                        GameTooltip:AddLine("Any enchant on that weapon: shaman imbues, poisons, oils, sharpening stones. Members send theirs when it changes (they need this version).", 1, 1, 1, true)
+                    else
+                        GameTooltip:SetSpellByID(self.entry.id)
+                    end
+                    GameTooltip:AddLine("Drag to move it in the list.", 0.6, 0.6, 0.6)
+                    GameTooltip:Show()
+                end)
+                row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                return row
+            end, function(row, e, index)
+                row.entry, row.index = e, index
+                row.icon:SetTexture(mod.EntryIcon(e))
+                row.name:SetText(mod.EntryName(e))
+                row.toggle.label:SetText(e.off and "|cff777777off|r" or "|cff55ff55on|r")
+                row.icon:SetDesaturated(e.off and true or false)
+                row.name:SetTextColor(e.off and 0.5 or 1, e.off and 0.5 or 1, e.off and 0.5 or 1)
+                -- the cog lights up while the buff is only for some
+                local limited = mod.HasFilter(e)
+                -- only in the All bar (class / race / role / character lists are specific already); elsewhere
+                -- only while it still has a filter (set before), so it can be cleared
+                row.cog:SetShown(class == "ALL" or limited)
+                row.cog.tex:SetDesaturated(not limited)
+                row.cog.tex:SetAlpha(limited and 1 or 0.45)
+            end)
+            LS:Add(list, 14 * 22 + 6)
+            -- drag a row to reorder the list (SettingsKit)
+            mod.DragReorder(list, function() return M.db.lists[class] end, function()
+                mod.CloseFilter()
+                Changed()
+            end)
+
+            local box
+            -- picked from the search list, else a link / ID / known name, else the name index
+            local function Parse()
+                local text = box:GetText()
+                if box.picked and box.picked.text == text then return box.picked.id end
+                return mod.ParseEntry(text) or select(2, mod.FindByName(text, false))
             end
-        end
-        local entry = stance and { stance = true } or weapon and { weapon = weapon } or pattern and { name = pattern } or { id = id }
-        M.db.lists[class] = M.db.lists[class] or {}
-        table.insert(M.db.lists[class], entry)
-        box.picked = nil
-        box:SetText("")
-        box:ClearFocus()
-        status.Show_(("Added %s."):format(mod.EntryName(entry)))
-        Changed()
-    end
-    box = UI.EditBox(lp, COL_W - 58, "Buff name, ID, shift-click or Seal of *", function() Add() end)
-    mod.AcceptSpellLinks(box)
-    mod.AttachSearch(box, { items = false })
-    LS:Add(box, 0)
-    local add = UI.Button(lp, 54, "Add", Add)
-    add:SetPoint("LEFT", box, "RIGHT", 4, 0)
-
-    local RS = UI.Column(lp, COL2_X, 0, COL_W)
-    RS:Header("How lists work")
-    RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to classes, specs or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil), stance for the stance / form the member is in. Drag a buff to reorder.")
-    RS:Header("Presets")
-    mod.PresetBox(RS, lp, function() return class end, mod.EntryKey, Changed, status)
-    RS:Header("Lists")
-    local def = H.ConfirmButton(lp, COL_W, "Reset all lists to defaults", function()
-        M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
-        status.Show_("Lists reset.")
-        Changed()
-    end)
-    RS:Add(def, UI.ROW + 2)
+            local function Add()
+                local stance = mod.ParseStance(box:GetText())
+                local weapon = not stance and mod.ParseWeapon(box:GetText())
+                local pattern = not stance and not weapon and mod.ParsePattern(box:GetText())
+                local id = not stance and not weapon and not pattern and Parse()
+                if not id and not pattern and not weapon and not stance then status.Show_("Unknown spell: pick it from the list, use its ID or shift-click it in the spellbook - or a name with * (Seal of *), main hand / off hand, or stance.", true) return end
+                if stance then
+                    for _, e in ipairs(M.db.lists[class] or {}) do
+                        if mod.IsStance(e) then status.Show_("This list has the stance / form already.", true) return end
+                    end
+                end
+                local entry = stance and { stance = true } or weapon and { weapon = weapon } or pattern and { name = pattern } or { id = id }
+                M.db.lists[class] = M.db.lists[class] or {}
+                table.insert(M.db.lists[class], entry)
+                box.picked = nil
+                box:SetText("")
+                box:ClearFocus()
+                status.Show_(("Added %s."):format(mod.EntryName(entry)))
+                Changed()
+            end
+            box = UI.EditBox(tile, IN - 58, "Buff name, ID, shift-click or Seal of *", function() Add() end)
+            mod.AcceptSpellLinks(box)
+            mod.AttachSearch(box, { items = false })
+            LS:Add(box, UI.ROW + 2)   -- Add sits beside it
+            local add = UI.Button(tile, 54, "Add", Add)
+            add:SetPoint("LEFT", box, "RIGHT", 4, 0)
+        end },
+    })
+    mod.TileStack(lp, X2, 0, W, {
+        { "How Lists Work", "INV_Misc_Book_09", function(RS)
+            RS:Note("Lists per class, MMT role or character: a member tracks all lists that fit (class, All bar, their roles, their character). The cog of a buff in the All bar limits it to classes, specs or MMT roles. Any rank and the group version (Prayer of Fortitude, Greater Blessings, ...) count. Type Seal of * for any seal, main hand / off hand for that weapon's enchant (imbue, poison, oil), stance for the stance / form the member is in. Drag a buff to reorder.")
+        end },
+        { "Presets", "INV_Misc_Note_01", function(RS, tile)
+            mod.PresetBox(RS, tile, function() return class end, mod.EntryKey, function() Changed() end, status)
+        end },
+        { "Lists", "INV_Misc_Bag_10", function(RS, tile)
+            local def = H.ConfirmButton(tile, IN, "Reset all lists to defaults", function()
+                M.db.lists = MMT.CopyTable(mod.DEFAULT_LISTS)
+                status.Show_("Lists reset.")
+                Changed()
+            end)
+            RS:Add(def, UI.ROW + 2)
+        end },
+    })
 
     -- "Use spec lists" may have changed on the Specs tab: show a list that's
     -- offered (the page's widgets refresh before OnRefresh, so the dropdown again)

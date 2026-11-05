@@ -9,9 +9,8 @@
 --   mod.ResetSettings()                    every setting of the module back to its default
 --   mod.TAB_KEYS = { [tab id or "tab.sub"] = { M.db keys } }  (optional): the share bar's reset becomes
 --                                          "Reset..." = this tab's settings or everything; mod.ResetKeys(keys)
---   mod.LookIconSizes / LookWindowSizes(col, Opt), LookText(col, Opt, apply, timer), LookFrame(col, Opt, apply)
---                                          the look options in columns with headers
---   mod.LookBackground / LookRows(col, Opt, apply)   the same for tiles: background + border, member rows
+--   mod.LookIconSizes / LookWindowSizes(col, Opt), LookText(col, Opt, apply, timer)
+--   mod.LookBackground / LookRows(col, Opt, apply)   look options for tiles: background + border, member rows
 --   mod.DragReorder(list, getData, moved)  drag the rows of a ConfigHelpers.List to reorder its data
 --   mod.DragGrip(row)                      -> the dotted handle at a draggable row's left edge
 --   mod.MoveTab(frame, opts)               -> the move tab above a movable window's top-left corner
@@ -316,28 +315,7 @@ function mod.LookText(col, Opt, apply, timer)   -- font, [timer size / colour], 
     col:Slider("Name size", 8, 20, 1, gn, sn)
 end
 
-function mod.LookFrame(col, Opt, apply)   -- background, border, member rows
-    local M = mod.M
-    col:Header("Background")
-    col:Cycle("Texture", function() return mod.MediaChoices("background", "FLAT", "Flat") end, Opt("bgTexture"))
-    Color(col, "Colour", M, "bgColor", apply)
-    local gti, sti = Opt("bgTint")
-    col:Slider("Colour strength", 0, 1, 0.05, gti, sti, "%.2f")
-    local gb, sb = Opt("bgAlpha")
-    col:Slider("Opacity", 0, 1, 0.05, gb, sb, "%.2f")
-    col:Header("Border")
-    col:Cycle("Texture", function() return mod.MediaChoices("border", "NONE", "None") end, Opt("borderTexture"))
-    Color(col, "Colour", M, "borderColor", apply)
-    local gz, sz = Opt("borderSize")
-    col:Slider("Size", 4, 32, 1, gz, sz)
-    col:Header("Member rows")
-    Color(col, "Row background", M, "rowColor", apply)
-    local gr, sr = Opt("rowAlpha")
-    col:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
-    col:Note("Textures come from LibSharedMedia.")
-end
-
--- the same in MMT 1.0.0's tiles: background and border in one tile, member rows in another
+-- MMT 1.0.0's tiles: background and border in one tile, member rows in another
 function mod.LookBackground(col, Opt, apply)
     local M = mod.M
     col:Cycle("Background", function() return mod.MediaChoices("background", "FLAT", "Flat") end, Opt("bgTexture"))

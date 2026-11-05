@@ -88,7 +88,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 
 ## Modules
 
-- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7, Totems 0.5.9, Quality of life 0.6.11 (FeatureColumn: a tile per feature + How It Works), Cooldown Timers 0.19.7 (all tabs); the shared FramesTab (where.more = extra tiles), TimerTab, StanceTab, SpecsTab are tiles in Buff Timers 0.30.4 too, PresetBox has no header (put it in a tile); SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
+- **Settings pages in MMT 1.0.0's tile design** (all converted; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7, Totems 0.5.9, Quality of life 0.6.11 (FeatureColumn: a tile per feature + How It Works), Cooldown Timers 0.19.7 (all tabs); Buff Timers 0.30.5 (all tabs; the shared FramesTab (where.more = extra tiles), TimerTab, StanceTab, SpecsTab are tiles, PresetBox has no header: put it in a tile; LookFrame removed). All modules done; SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
 ### MMT_PawnCompare (v0.5.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
@@ -132,7 +132,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.7) / MMT_BuffTimers (v0.30.4) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.7) / MMT_BuffTimers (v0.30.5) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -288,15 +288,15 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 - Always create FontStrings WITH a template (e.g. "GameFontHighlightSmall"): SetText before a
   font is set errors ("Font not set"). The test stub enforces this.
 - Look sub-tabs (Cooldowns 0.17.0 / Buffs 0.21.0): `mod.Tabs(panels.look, {window, icons, timer}, { key = "look", bottom = 0 })`
-  (SettingsKit: opts.key = own remembered choice, opts.bottom = room below; all five copies updated). SettingsKit's LookTab
-  is built from pieces (`mod.LookIconSizes`, `LookWindowSizes`, `LookText(col, Opt, apply, timer)`, `LookFrame`; 0.17.1 / 0.22.1):
-  Window = window sizes + text without the timer + LookFrame, Icons = "Icons" (LookIconSizes) + the module's own (Cooldowns
+  (SettingsKit: opts.key = own remembered choice, opts.bottom = room below; all five copies updated). The look pieces
+  (`mod.LookIconSizes`, `LookWindowSizes`, `LookText(col, Opt, apply, timer)`, since 0.19.7 / 0.30.5 in tiles with `LookBackground` + `LookRows`):
+  Window = window sizes + text without the timer + background / border / rows, Icons = "Icons" (LookIconSizes) + the module's own (Cooldowns
   Opacity; Buffs "Buffs" + "All bar counter"), Timer = `TimerTab.lua`. `mod.WindowShade(panel, state)` (FramesTab.lua, 0.17.2 / 0.22.2): state() -> "ALL" | "SOME", why
   (yellow line at the sub-panel's bottom) | "NONE", why (panel alpha 0.4 + a mouse-eating cover with the why as tooltip);
   updated on OnShow + M:Listen("REFRESH"). Cooldowns: NONE = onFrames + framesOthers HIDE; Buffs also counts attached and the
   free All bar (identical in both: `mod.TimerTab(panel, Opt, apply)`). Totems' look is in tiles since 0.5.9 (LookTab removed).
 - Settings of Cooldowns / Buffs are tabbed (`SettingsKit.lua`, identical in all five: Cooldowns, Buffs, Totems, TeamInventory, QoL: `mod.Tabs`,
-  `mod.LookTab`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
+  `mod.TileStack`, `mod.ShareBar` = Import/Export bottom left under every tab, the core's Sync button bottom right (panels leave
   BOTTOM = 50 px), `mod.PresetBox`, `mod.AcceptSpellLinks(box, onLink)`): Bars / Look / lists.
   Status line just above the share bar. `mod.DragReorder(list, getData, moved)` = drag the rows of a core
   `ConfigHelpers.List` (rows need `row.index`; accent line marks the drop gap, cursor past an edge scrolls every 0.15 s,
@@ -431,7 +431,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Bars tab leaves the SmartBuff section out and nothing glows. Test: test_buffbar.py "SmartBuff alerts glow".
 - All bar counter: IconBars v12 icon `tally` / `tallyPos` / `tallySize` / `tallyColor` = a second number in its own
   corner; Buffs AllRow sets it to "have/checked" (e.g. "3/5", only while someone misses it; no separate missing count since 0.16.6) from `allCount` (corner | "OFF"), `allCountSize`,
-  `allCountColor` (Look tab right column: `mod.LookTab` returns L, R). Test: test_buffbar.py (whole Buffs with
+  `allCountColor` (Look > Icons: All Bar Counter tile). Test: test_buffbar.py (whole Buffs with
   test_settings' stubs).
 - Preview (`mod.preview` = nil | "REAL" | "MIXED" | "ALL" (shared ListKeys `mod.PreviewMembers()` = nine made-up
   "<Name>-Preview" keys, one per class; Members() returns them; rows get `color` = `mod.PreviewColor`), session only, `mod.SetPreview`, Bars tab Cycle, `/mmtct|mmtbf preview [mixed]`;
