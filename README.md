@@ -20,7 +20,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 1.0.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; no taskbar icon flashing *(new, not tested in game yet)* | 1.1.0 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.0.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
@@ -380,6 +380,13 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   right away when it changes, and again after each fight (also a fight only the group was in); the same alert from several characters shows once. Names follow
   MMT's privacy setting (Team > Privacy). Options: send my alerts, buffs running
   out too, how often, show the team's alerts on the leader / every character / not here, raid warning text, sound.
+- **No flash** (needs no other addon, off until you tick it): the WoW icon on the taskbar stops flashing. Each
+  source has a checkbox to let it through (none by default): whispers, ready checks, group invites / LFG / role
+  checks, battleground queues, entering combat, addons (RXPGuides and others), anything else. What you let through
+  flashes only on the FTL leader - or on every character, or nowhere - so one ready check doesn't flash five
+  windows. "A chat line for each flash" shows what was stopped and where it came from. Replaces the separate
+  !NoFlash addon (our own code; uninstall that one). A flash the game makes itself, outside the interface code,
+  can't be stopped by any addon.
 - Options for Dejunk and Baganator: additions and / or removals, ask before taking changes (a dialog with Apply / Ignore) or
   take them right away, a chat line per change, and a button that sends your whole list once (the others
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.

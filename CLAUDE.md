@@ -720,7 +720,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v1.0.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v1.1.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -734,6 +734,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
   another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
   Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.
+- `NoFlash.lua` (1.1.0, the user's request 2026-11-05; local feature: no `addon` field, `mod.AddonState(nil)` = true;
+  `noflash` default OFF): replaces the global `FlashClientIcon` at FILE LOAD (always, also while off = straight
+  through; MMT's OnEnable runs at PLAYER_LOGIN, too late for RXPGuides' local copy - "M" loads before "R").
+  Our own code: the old `D:\Games\!NoFlash` (Xalcon, NO license = all rights reserved) is read for the idea only, never copy it.
+  Source from `debugstack()` without our lines: keywords (ReadyCheck, ChatFrame, LFG, PVP, SetInCombat, ...), else a
+  non-`Blizzard_` AddOns folder = addons; a silent stack (UIParent_OnEvent) waits one frame (C_Timer.After 0) and takes
+  the event seen within 0.1 s (READY_CHECK, CHAT_MSG_WHISPER, PARTY_INVITE_REQUEST, ...), else "other". Sources
+  `nfWhisper/nfReady/nfGroup/nfPvp/nfCombat/nfAddons/nfOther` (all false = stopped); a ticked one flashes per `nfWhere`
+  LEADER (FTL leader, group leader without one, always solo) | ALL | OFF. `nfLog` chat line. Taint: Blizzard callers
+  go on tainted after the call (accepted by the user; nothing protected follows). Not tested in game yet: the
+  Forever caller names are guesses - the user's `nfLog` / debug dump `last=` shows the real stacks.
 - Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI), `QSB` (SmartBuff). One message per change; > 10 changes at once
   (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
 - `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private

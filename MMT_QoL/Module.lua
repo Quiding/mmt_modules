@@ -10,17 +10,18 @@
 --   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Ellesmere.lua  send EllesmereUI profiles to the team (EllesmereWindow.lua: the window)
 --   SmartBuffAlerts.lua  SmartBuff's missing-buff alerts called out to the team
+--   NoFlash.lua    no taskbar icon flashing (per source, allowed ones only on the FTL leader)
 --   Settings.lua   settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.0.0"
+mod.VERSION = "1.1.0"
 
 local M = MMT.NewModule({
     name = "QoL",
     title = "Quality of life",
-    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team.",
+    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team; no taskbar icon flashing.",
     sync = true,
     defaults = {
         -- Dejunk
@@ -58,6 +59,17 @@ local M = MMT.NewModule({
         sbShow = "LEADER",         -- show the team's alerts: LEADER (FTL leader) | ALL | OFF
         sbRaid = true,             -- raid warning text
         sbSound = true,            -- raid warning sound
+        -- No flash (local: needs no other addon; off on a new profile)
+        noflash = false,
+        nfWhere = "LEADER",        -- allowed flashes show on: LEADER (FTL leader) | ALL | OFF
+        nfWhisper = false,         -- the sources let through (all blocked by default)
+        nfReady = false,
+        nfGroup = false,
+        nfPvp = false,
+        nfCombat = false,
+        nfAddons = false,
+        nfOther = false,
+        nfLog = false,             -- a chat line for each flash
     },
 })
 mod.M = M
@@ -73,8 +85,9 @@ function mod.Feature(f)
     return f
 end
 
--- Is the addon loaded? false + why not
+-- Is the addon loaded? false + why not (no addon: a local feature, always "loaded")
 function mod.AddonState(name)
+    if name == nil then return true end
     local IsLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
     local ok, loaded = pcall(IsLoaded, name)
     if ok and loaded then return true end
