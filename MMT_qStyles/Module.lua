@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.4.2"
+mod.VERSION = "1.0.0"
 
 local M = MMT.NewModule({
     name = "qStyles",   -- the addon folder is MMT_qStyles
