@@ -720,7 +720,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v1.1.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v1.1.1) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -763,6 +763,16 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   while the player's own GameTooltip is up (max ~9 s), `GameTooltip:SetOwner(UIParent,"ANCHOR_NONE")` + SetItemByID +
   `button:Click()` + Hide. `expect["+GI<id>"]` (10 s) keeps Dejunk's resulting change (and its opposite-list removal)
   out of what we send. No button / option off -> the saved-state fallback below.
+  Dejunk 3.5.1 (1.1.1; installed 2026-11-05, broke the junk link: no buttons found -> saved state -> sold only after a
+  /reload, the user's report): its migration 3 merges each list's addTo / removeFrom into ONE toggle
+  `addOrRemove<List>` (`DejunkKeybinding_addOrRemove<List>`, Contains ? Remove : Add). `Button()` prefers it (returns
+  b, toggle). `SetupChords` -> `ToggleDejunk(kb)` (an addOrRemove key saved, or TOC Version >= 3.5.1): TOGGLE_CHORDS
+  F13/F15/F17/F19, our old-name chords removed. A toggle is clicked only when `Held(k, id)` (Dejunk's own copy = saved
+  state, minus pending "+", plus pending "-", or `held[]` = what our last click did, for 1 s) differs from the wanted
+  state; `expect` of the OPPOSITE sign is set before the click (a wrong-way toggle is neither sent nor junk-linked),
+  `Verify` after 1 s (Dejunk saves its copy debounced 0.1 s) clicks once more if the saved state is still wrong
+  (`dj.again`; an item Dejunk can't sell stays off). Also 3.5.1 keys `characterMap` on Forever by `GetUnitName("player")`
+  alone (migration 4): `CharKeys()` tries that first, then name-realm.
   The user's first in-game test read this as "not synced" (alt's Dejunk window empty, push said nothing new): chat lines
   say "in Dejunk after a /reload"; "Reload the team for Dejunk" (`QDJR`, `/mmtqol dejunk reload`) makes the characters
   with `dj.taken > 0` call `C_UI.Reload`/`ReloadUI` (after combat). Feature `commands = { word = fn }` for `/mmtqol <slash> <word>`.

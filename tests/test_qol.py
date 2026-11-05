@@ -441,6 +441,80 @@ run(B, bmod, r'''function(m)
   return "Bob: taken changes not linked again"
 end''')
 
+# --- Dejunk 3.5.1: one "add or remove" toggle per list ----------------------
+run(A, amod, r'''function(m)
+  local names = { GI = "GlobalInclusions", GE = "GlobalExclusions", PI = "ProfileInclusions", PE = "ProfileExclusions" }
+  for k, n in pairs(names) do
+    _G["DejunkKeybinding_addTo" .. n], _G["DejunkKeybinding_removeFrom" .. n] = nil, nil
+    _G["DejunkKeybinding_addOrRemove" .. n] = { Click = function()   -- like its addOrRemoveTooltipItem
+      CLICKS = CLICKS + 1; assert(TIP.item, "no item in the tooltip")
+      if DJ_CACHE[k][tostring(TIP.item)] then DJ_DEL(k, TIP.item) else DJ_ADD(k, TIP.item) end end }
+  end
+  m.M.db.junkLink = true; m.M.db.djLive = true; m.M.db.djAsk = false; SENT = {}
+  local function sent(msg) for _, x in ipairs(SENT) do if x == msg then return true end end return false end
+  -- the team's changes go into Dejunk right away, not sent back; a toggle is clicked only when needed
+  local c = CLICKS
+  DELIVER("Bob-Stone", "QDJ:+GI4000")
+  assert(CLICKS == c + 1 and DJ_CACHE.GI["4000"] and DJ_HAS("GI", 4000) and #SENT == 0, "toggle add: " .. table.concat(SENT, " | "))
+  DELIVER("Bob-Stone", "QDJ:+GI4000"); assert(CLICKS == c + 1 and DJ_CACHE.GI["4000"], "already on: toggled off")
+  DELIVER("Bob-Stone", "QDJ:-GI4000"); assert(CLICKS == c + 2 and not DJ_CACHE.GI["4000"] and #SENT == 0, "toggle remove")
+  DELIVER("Bob-Stone", "QDJ:-GI4000"); assert(CLICKS == c + 2 and not DJ_CACHE.GI["4000"], "already off: toggled on")
+  -- the user's report: into Baganator's Junk = on Dejunk's own junk list right away (so it sells), both sent
+  BG_MOVE("i:4100", nil, "default_junk"); m.BaganatorTick()
+  assert(DJ_CACHE.GI["4100"] and DJ_HAS("GI", 4100), "Baganator's Junk not on Dejunk's junk list")
+  assert(sent("QBG:+i:4100=default_junk") and sent("QDJ:+GI4100"), "sent: " .. table.concat(SENT, " | "))
+  SENT = {}
+  BG_MOVE("i:4100", "default_junk", nil); m.BaganatorTick()
+  assert(not DJ_CACHE.GI["4100"] and sent("QDJ:-GI4100"), "out of Junk: " .. table.concat(SENT, " | "))
+  -- Dejunk's own copy differs from its saved state: the toggle goes the wrong way and is clicked
+  -- again; the wrong way is neither sent nor linked back to Baganator's Junk
+  m.M.db.djLive = false; DELIVER("Bob-Stone", "QDJ:+GI4200"); m.M.db.djLive = true
+  assert(DJ_HAS("GI", 4200) and not DJ_CACHE.GI["4200"], "setup: in the saved state only")
+  DJ_CACHE.GI["4200"] = true                 -- Dejunk has it after all (not saved yet)
+  SENT = {}; c = CLICKS
+  local again = m.dj.again
+  BG_MOVE("i:4200", nil, "default_junk"); m.BaganatorTick()
+  assert(CLICKS == c + 2 and m.dj.again == again + 1, "not clicked again: " .. (CLICKS - c))
+  assert(DJ_CACHE.GI["4200"] and DJ_HAS("GI", 4200), "toggled off and left off")
+  assert(BG_IN("default_junk", "i:4200"), "the wrong way took it out of Baganator's Junk")
+  assert(not sent("QDJ:-GI4200") and not sent("QBG:-i:4200=default_junk"), "the wrong way was sent: " .. table.concat(SENT, " | "))
+  m.BaganatorTick(); assert(BG_IN("default_junk", "i:4200"), "unjunked later")
+  return "Anna: Dejunk 3.5.1 toggles, Baganator's Junk sells right away, a wrong-way toggle fixed"
+end''')
+run(A, amod, r'''function(m)
+  local saved = __DEJUNK_ADDON_V3_SAVED_VARIABLES__
+  local function kb() return __DEJUNK_ADDON_V3_SAVED_VARIABLES__.global.keybindings end
+  -- 3.5.1 after its migration: the "add to" key moved to the toggle, our old "remove from" chord is left over
+  __DEJUNK_ADDON_V3_SAVED_VARIABLES__ = { global = { keybindings = { addOrRemoveGlobalInclusions = "ALT-CTRL-SHIFT-F13",
+    removeFromGlobalInclusions = "ALT-CTRL-SHIFT-F14", addOrRemoveProfileExclusions = "CTRL-J", toggleMainWindow = "" } } }
+  m.DejunkSetupChords()
+  assert(kb().addOrRemoveGlobalExclusions == "ALT-CTRL-SHIFT-F15" and kb().addOrRemoveProfileInclusions == "ALT-CTRL-SHIFT-F17", "toggle chords")
+  assert(kb().addOrRemoveGlobalInclusions == "ALT-CTRL-SHIFT-F13" and kb().addOrRemoveProfileExclusions == "CTRL-J", "a set key changed")
+  assert(kb().removeFromGlobalInclusions == nil and kb().addToGlobalExclusions == nil and kb().toggleMainWindow == "", "old chords")
+  -- a fresh 3.5.1 (no keys yet) goes by its version; 3.4 gets add to / remove from
+  C_AddOns.GetAddOnMetadata = function(n, f) if n == "Dejunk" and f == "Version" then return "3.5.1" end end
+  __DEJUNK_ADDON_V3_SAVED_VARIABLES__ = { global = { keybindings = {} } }
+  m.DejunkSetupChords()
+  assert(kb().addOrRemoveGlobalInclusions == "ALT-CTRL-SHIFT-F13" and kb().addToGlobalInclusions == nil, "fresh 3.5.1")
+  C_AddOns.GetAddOnMetadata = function() return "3.4.0" end
+  __DEJUNK_ADDON_V3_SAVED_VARIABLES__ = { global = { keybindings = {} } }
+  m.DejunkSetupChords()
+  assert(kb().addToGlobalInclusions == "ALT-CTRL-SHIFT-F13" and kb().addOrRemoveGlobalInclusions == nil, "3.4 got toggles")
+  C_AddOns.GetAddOnMetadata = nil
+  __DEJUNK_ADDON_V3_SAVED_VARIABLES__ = saved
+  -- Forever: 3.5.1 keys a character by its full name alone, older Dejunk by name-realm
+  WOW_PROJECT_CAMELOT, WOW_PROJECT_ID = 99, 99
+  function GetUnitName() return "Anna Smith" end
+  DJ.profiles.characterMap["Anna Smith"] = "other"; DJ_FIRE()
+  local lists, id = m.DejunkState()
+  assert(id == "other" and lists.PI["111"], "3.5.1 key: " .. tostring(id))
+  DJ.profiles.characterMap["Anna Smith"] = nil; DJ.profiles.characterMap["Anna Smith-Realm"] = "other"
+  lists, id = m.DejunkState(); assert(id == "other", "old key: " .. tostring(id))
+  DJ.profiles.characterMap["Anna Smith-Realm"] = nil
+  WOW_PROJECT_ID = nil; DJ_FIRE()
+  return "Anna: chords for 3.5.1's toggles, its Forever profile key"
+end''')
+
 # --- ForeverAuras: send auras -------------------------------------------
 FA = r"""
 LOADED.ForeverAuras = true

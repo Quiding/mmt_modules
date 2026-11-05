@@ -12,6 +12,10 @@
 --     Dejunk's saved variables, before it reads them at login) unbound ones get
 --     an unused chord (ALT-CTRL-SHIFT-F13..F20). A change = show the item in
 --     GameTooltip (hidden), click the button. `expect` keeps those out of what we send.
+--     Dejunk 3.5.1 has one toggle per list instead ("Add or remove <list>",
+--     DejunkKeybinding_addOrRemove<List>, chords F13 / F15 / F17 / F19): clicked only
+--     when Dejunk's own copy differs from what is wanted (`Held`), and checked
+--     afterwards: a click that went the other way is clicked once more (`Verify`).
 --   * without the buttons (option off, the first login with this version):
 --     written into the lists in Dejunk's saved state (the same tables its store
 --     holds). Dejunk keeps its own copy of the lists in memory and only reads
@@ -40,25 +44,35 @@ local pending = { GI = {}, GE = {}, PI = {}, PE = {} }  -- [list][id] = "+" | "-
 local queued, reloadWanted
 local LATER = " - in Dejunk after a /reload"
 local BIND = { GI = "GlobalInclusions", GE = "GlobalExclusions", PI = "ProfileInclusions", PE = "ProfileExclusions" }
-local CHORDS = {
+local CHORDS = {   -- Dejunk before 3.5.1: add to / remove from
     addToGlobalInclusions = "ALT-CTRL-SHIFT-F13", removeFromGlobalInclusions = "ALT-CTRL-SHIFT-F14",
     addToGlobalExclusions = "ALT-CTRL-SHIFT-F15", removeFromGlobalExclusions = "ALT-CTRL-SHIFT-F16",
     addToProfileInclusions = "ALT-CTRL-SHIFT-F17", removeFromProfileInclusions = "ALT-CTRL-SHIFT-F18",
     addToProfileExclusions = "ALT-CTRL-SHIFT-F19", removeFromProfileExclusions = "ALT-CTRL-SHIFT-F20",
 }
+local TOGGLE_CHORDS = {   -- Dejunk 3.5.1: one toggle per list (its migration moves the "add to" key there)
+    addOrRemoveGlobalInclusions = "ALT-CTRL-SHIFT-F13", addOrRemoveGlobalExclusions = "ALT-CTRL-SHIFT-F15",
+    addOrRemoveProfileInclusions = "ALT-CTRL-SHIFT-F17", addOrRemoveProfileExclusions = "ALT-CTRL-SHIFT-F19",
+}
+local VERIFY_AFTER = 1         -- seconds after a toggle click: Dejunk saved its copy (0.1 s debounce) by then
 local EXPECT_FOR = 10          -- seconds a change we made through Dejunk's button is waited for
 local expect = {}              -- ["+GI2589"] = time: Dejunk's change caused by us, not sent
 local live = {}                -- changes waiting for Dejunk's buttons: { sign, list, id, tries }
+local held = {}                -- ["GI2589"] = true / false: Dejunk's own copy after our click, until it saved it
 local liveBusy
-local dj = { sent = 0, taken = 0, live = 0, chords = 0 }
+local dj = { sent = 0, taken = 0, live = 0, chords = 0, again = 0 }
+local Held, ClickFor, Verify
 mod.dj = dj
 
--- the same key Dejunk uses for its character -> profile map
-local function CharKey()
+-- the keys Dejunk uses for this character in its character -> profile map:
+-- 3.5.1 on Forever the full name alone, before that (and elsewhere) name-realm
+local function CharKeys()
     local forever = WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
     local name = forever and GetUnitName and GetUnitName("player") or UnitName("player")
     local realm = GetNormalizedRealmName and GetNormalizedRealmName() or ""
-    return ("%s-%s"):format(tostring(name), tostring(realm))
+    local old = ("%s-%s"):format(tostring(name), tostring(realm))
+    if forever then return tostring(name), old end
+    return old
 end
 
 -- the live list tables (key -> true, keys are item IDs as strings), profile ID
@@ -67,7 +81,9 @@ local function State()
     if type(sv) ~= "table" or type(sv.global) ~= "table" or type(sv.profiles) ~= "table" then return nil end
     local p = sv.profiles
     local map = type(p.profileMap) == "table" and p.profileMap or {}
-    local id = type(p.characterMap) == "table" and p.characterMap[CharKey()] or DEFAULT_PROFILE
+    local cm = type(p.characterMap) == "table" and p.characterMap or {}
+    local k1, k2 = CharKeys()
+    local id = cm[k1] or (k2 and cm[k2]) or DEFAULT_PROFILE
     if type(map[id]) ~= "table" then id = DEFAULT_PROFILE end
     local s = type(map[id]) == "table" and map[id].settings
     local function T(t) return type(t) == "table" and t or nil end
@@ -200,11 +216,28 @@ if DejunkApi and DejunkApi.AddListener then
     end)
 end
 
--- Dejunk's hidden button for a change, if it exists (and we may use it)
+-- Dejunk's hidden button for a change, if it exists (and we may use it), and
+-- whether it is 3.5.1's toggle
 local function Button(sign, k)
     if M.db.djLive == false then return nil end
-    local b = rawget(_G, "DejunkKeybinding_" .. (sign == "+" and "addTo" or "removeFrom") .. BIND[k])
-    if type(b) == "table" and type(b.Click) == "function" then return b end
+    local b = rawget(_G, "DejunkKeybinding_addOrRemove" .. BIND[k])
+    if type(b) == "table" and type(b.Click) == "function" then return b, true end
+    b = rawget(_G, "DejunkKeybinding_" .. (sign == "+" and "addTo" or "removeFrom") .. BIND[k])
+    if type(b) == "table" and type(b.Click) == "function" then return b, false end
+end
+
+-- Dejunk 3.5.1 or newer (one toggle per list), going by its saved keys or its version
+local function ToggleDejunk(kb)
+    for name, key in pairs(kb) do
+        if TOGGLE_CHORDS[name] and type(key) == "string" and key ~= "" then return true end
+    end
+    local meta = C_AddOns and C_AddOns.GetAddOnMetadata or rawget(_G, "GetAddOnMetadata")
+    if type(meta) ~= "function" then return false end
+    local ok, v = pcall(meta, "Dejunk", "Version")
+    local a, b, c = tostring(ok and v or ""):match("^(%d+)%.(%d+)%.?(%d*)")
+    if not a then return false end
+    a, b, c = tonumber(a), tonumber(b), tonumber(c) or 0
+    return a > 3 or (a == 3 and (b > 5 or (b == 5 and c >= 1)))
 end
 
 -- at load: Dejunk's saved variables are there, Dejunk reads them at login.
@@ -219,16 +252,24 @@ local function SetupChords()
     if type(sv.global) ~= "table" then sv.global = {} end
     if type(sv.global.keybindings) ~= "table" then sv.global.keybindings = {} end
     local kb = sv.global.keybindings
+    local set = CHORDS
+    if ToggleDejunk(kb) then
+        -- this Dejunk has no add to / remove from bindings: our chords on them go (keys the player set stay)
+        for name, chord in pairs(CHORDS) do if kb[name] == chord then kb[name] = nil end end
+        set = TOGGLE_CHORDS
+    end
     local used = {}
     for _, key in pairs(kb) do used[key] = true end
-    for name, chord in pairs(CHORDS) do
+    for name, chord in pairs(set) do
         if (kb[name] == nil or kb[name] == "") and not used[chord] then
             kb[name] = chord
+            used[chord] = true
             dj.chords = dj.chords + 1
         end
     end
 end
 SetupChords()
+mod.DejunkSetupChords = SetupChords
 
 -- ops = { {sign, list, id} }; returns how many lists changed
 local function ApplyState(ops)
@@ -266,12 +307,52 @@ local function TooltipBusy()
     return GameTooltip and GameTooltip:IsShown() and GameTooltip:GetOwner() ~= UIParent
 end
 
+-- is the item on list k in Dejunk's own copy? Its saved state, but not what the team
+-- wrote there (pending), and what our last click did until Dejunk saved it
+Held = function(k, item)
+    local h = held[k .. item]
+    if h ~= nil then return h end
+    local lists = State()
+    local on = lists and lists[k] and lists[k][item] and true or false
+    local pend = pending[k][item]
+    return (on and pend ~= "+") or pend == "-"
+end
+
+-- the item in GameTooltip (hidden), Dejunk's button clicked
+ClickFor = function(b, id)
+    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    GameTooltip:SetItemByID(id)
+    local ok, err = pcall(b.Click, b, "LeftButton")
+    GameTooltip:Hide()
+    if not ok then M:Debug("Dejunk button failed: %s", tostring(err)) end
+    return ok
+end
+
+-- after a toggle click, once Dejunk saved its copy: the other way round (its copy
+-- differed from ours)? Once more. An item Dejunk can't sell stays off (it says so itself).
+Verify = function(op, b)
+    local sign, k, item = op[1], op[2], op[3]
+    local want = sign == "+"
+    held[k .. item], held[OPPOSITE[k] .. item] = nil, nil
+    local lists = State()
+    local on = lists and lists[k] and lists[k][item] and true or false
+    if lists and on ~= want and not op.again then
+        op.again = true
+        dj.again = dj.again + 1
+        if not op.own then expect[sign .. k .. item] = Now() end
+        held[k .. item] = want
+        ClickFor(b, tonumber(item))
+        return After(VERIFY_AFTER, function() Verify(op, b) end)
+    end
+    expect[(want and "-" or "+") .. k .. item] = nil
+end
+
 -- one change at a time through Dejunk's buttons
 local function LiveStep()
     local op = live[1]
     if not op then liveBusy = false return end
     local sign, k, item = op[1], op[2], op[3]
-    local b = Button(sign, k)
+    local b, toggle = Button(sign, k)
     local lists = State()
     if not b or not lists or (sign == "-" and pending[k][item] == "+") then
         -- no button (or the team's item Dejunk doesn't know yet): the saved state
@@ -290,19 +371,32 @@ local function LiveStep()
     end
     if TooltipBusy() and op.tries <= 30 then return After(0.3, LiveStep) end
     table.remove(live, 1)
-    local on = lists[k] and lists[k][item]
-    if (sign == "-" and not on) or (sign == "+" and on and not pending[k][item]) then return After(0, LiveStep) end
+    local want = sign == "+"
+    if Held(k, item) == want then
+        -- Dejunk's copy has it so already: only its saved state may lag behind
+        if want and lists[k] and not lists[k][item] then
+            lists[k][item] = true
+            if snap and snap[k] then snap[k][item] = true end
+        end
+        pending[k][item] = nil
+        return After(0, LiveStep)
+    end
     local opp = OPPOSITE[k]
     if not op.own then   -- the team's change: not sent back (one from here, op.own, is sent like the player's)
         expect[sign .. k .. item] = Now()
-        if sign == "+" and lists[opp] and lists[opp][item] then expect["-" .. opp .. item] = Now() end
+        if want and lists[opp] and lists[opp][item] then expect["-" .. opp .. item] = Now() end
     end
     pending[k][item], pending[opp][item] = nil, nil
-    GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
-    GameTooltip:SetItemByID(id)
-    local ok, err = pcall(b.Click, b, "LeftButton")
-    GameTooltip:Hide()
-    if ok then dj.live = dj.live + 1 else M:Debug("Dejunk button failed: %s", tostring(err)) end
+    held[k .. item] = want
+    if want then held[opp .. item] = false end
+    -- a toggle that went the other way is no change (nor a junk link): Verify clicks again
+    if toggle then expect[(want and "-" or "+") .. k .. item] = Now() end
+    if ClickFor(b, id) then dj.live = dj.live + 1 end
+    if toggle then
+        After(VERIFY_AFTER, function() Verify(op, b) end)
+    else
+        After(VERIFY_AFTER, function() held[k .. item], held[opp .. item] = nil, nil end)
+    end
     After(0.05, LiveStep)
 end
 
@@ -487,8 +581,8 @@ F = mod.Feature({
             if Button("+", k) then buttons = buttons + 1 end
             if Button("-", k) then buttons = buttons + 1 end
         end
-        add(("Dejunk: ready=%s profile=%s %s sent=%d live=%d buttons=%d/8 chordsSet=%d waiting=%d taken=%d (in Dejunk after a reload) reloadWanted=%s"):format(
-            tostring(ready), tostring(id), table.concat(sizes, " "), dj.sent, dj.live, buttons, dj.chords, #live, dj.taken, tostring(reloadWanted)))
+        add(("Dejunk: ready=%s profile=%s %s sent=%d live=%d again=%d buttons=%d/8 chordsSet=%d waiting=%d taken=%d (in Dejunk after a reload) reloadWanted=%s"):format(
+            tostring(ready), tostring(id), table.concat(sizes, " "), dj.sent, dj.live, dj.again, buttons, dj.chords, #live, dj.taken, tostring(reloadWanted)))
     end,
 })
 
