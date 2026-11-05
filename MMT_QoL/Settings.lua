@@ -1,14 +1,13 @@
 -- MMT Quality of life: settings page and debug report.
 -- One tab per feature (SettingsKit's mod.Tabs): its on/off checkbox (greyed
 -- out with the reason when its addon isn't loaded), then its options (greyed
--- out while it is off); f.notes = lines for a column on the right.
+-- out while it is off), all in a tile; f.notes = lines for a tile on the right.
 
 local _, mod = ...
 local MMT = MMT
 local M = mod.M
 local UI = MMT.UI
 local H = MMT.ConfigHelpers
-local COL_W, COL2_X = H.COL_W, H.COL2_X
 
 -- "Reset to defaults" (click twice), left of the core's "Sync to team" button
 local function ResetButton(page, done)
@@ -25,45 +24,52 @@ local function ResetButton(page, done)
     return b
 end
 
+-- the feature in MMT 1.0.0's tiles: its switch and options on the left, f.notes on the right
 local function FeatureColumn(page, f, x, status)
-    local col = UI.Column(page, x, 0, COL_W)
-    col:Header(f.title)
-    local main = col:Check(f.checkText,
-        function() return M.db[f.key] and (f.sendOnly or (mod.AddonState(f.addon))) and true or false end,
-        function(v)
-            if not f.sendOnly and not (mod.AddonState(f.addon)) then return end
-            M.db[f.key] = v
-            if v and M.enabled and f.OnEnable then f.OnEnable() end
-            if not v and f.OnDisable then f.OnDisable() end
-        end, f.tip)
-
+    local W = H.TILE_W
+    local IN = W - 16
+    local main
     local gated = {}
     local function Gate(w) gated[#gated + 1] = w; return w end
     local function Set(key) return function(v) if mod.Active(f) then M.db[key] = v end end end
-    local ui = { status = status, col = col }
-    function ui.Check(text, key, tip)
-        return Gate(col:Check(text, function() return M.db[key] end, Set(key), tip))
-    end
-    function ui.Cycle(text, choices, key)
-        return Gate(col:Cycle(text, choices, function() return M.db[key] end, Set(key)))
-    end
-    function ui.Button(text, onClick, tip)
-        local b = col:Button(text, function() if mod.Active(f) then onClick() end end)
-        if tip then UI.Tooltip(b, text, tip) end
-        return Gate(b)
-    end
-    function ui.Confirm(text, onClick, tip)
-        local b = H.ConfirmButton(page, COL_W, text, function() if mod.Active(f) then onClick() end end)
-        col:Add(b, UI.ROW + 2)
-        if tip then UI.Tooltip(b, text, tip) end
-        return Gate(b)
-    end
-    function ui.Note(text) return col:Note(text) end
-    f.Page(ui)
+    mod.TileStack(page, x, 0, W, {
+        { f.title, f.icon or "INV_Misc_Gear_01", function(col, tile)
+            main = col:Check(f.checkText,
+                function() return M.db[f.key] and (f.sendOnly or (mod.AddonState(f.addon))) and true or false end,
+                function(v)
+                    if not f.sendOnly and not (mod.AddonState(f.addon)) then return end
+                    M.db[f.key] = v
+                    if v and M.enabled and f.OnEnable then f.OnEnable() end
+                    if not v and f.OnDisable then f.OnDisable() end
+                end, f.tip)
+            local ui = { status = status, col = col }
+            function ui.Check(text, key, tip)
+                return Gate(col:Check(text, function() return M.db[key] end, Set(key), tip))
+            end
+            function ui.Cycle(text, choices, key)
+                return Gate(col:Cycle(text, choices, function() return M.db[key] end, Set(key)))
+            end
+            function ui.Button(text, onClick, tip)
+                local b = col:Button(text, function() if mod.Active(f) then onClick() end end)
+                if tip then UI.Tooltip(b, text, tip) end
+                return Gate(b)
+            end
+            function ui.Confirm(text, onClick, tip)
+                local b = H.ConfirmButton(tile, IN, text, function() if mod.Active(f) then onClick() end end)
+                col:Add(b, UI.ROW + 2)
+                if tip then UI.Tooltip(b, text, tip) end
+                return Gate(b)
+            end
+            function ui.Note(text) return col:Note(text) end
+            f.Page(ui)
+        end },
+    })
     if f.notes then
-        local R = UI.Column(page, COL2_X, 0, COL_W)
-        R:Header("How it works")
-        for _, n in ipairs(f.notes) do R:Note(n) end
+        mod.TileStack(page, x + W + H.TILE_GAP, 0, W, {
+            { "How It Works", "INV_Misc_Book_09", function(R)
+                for _, n in ipairs(f.notes) do R:Note(n) end
+            end },
+        })
     end
 
     return function()

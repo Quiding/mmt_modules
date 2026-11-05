@@ -88,7 +88,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
 
 ## Modules
 
-- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7, Totems 0.5.9; SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
+- **Settings pages in MMT 1.0.0's tile design** (being converted one module at a time; done: Whispers 0.1.5, Team Gear 0.3.2, Pawn Compare 0.5.2, Styles 0.4.2, Team Inventory 0.10.7, Totems 0.5.9, Quality of life 0.6.11 (FeatureColumn: a tile per feature + How It Works); SettingsKit `mod.Tabs` = the core's tab strip look (icon = 3rd field) and `mod.TileStack(parent, x, y, w, { {title, icon, build(col, tile)} })` for tiles in tabs): `H.Intro(page, text)` returns the y where tiles start; `H.Tile(page, x, y, w, h, title, icon)` returns the tile and a column inside it (widgets made on the tile: `UI.EditBox(tile, ...)`, not on the page); two per row (`H.TILE_W`, right one at `H.TILE_W + H.TILE_GAP`), full width `H.PAGE_W`. A local `FitRow({ {tile, col}, ... })` sizes a row's tiles to the tallest content (`-col.y + 10`) and returns the height; the next row starts at `TOP - h - 8`. Keep the bottom 50 px free (status line at 32, Reset / Sync buttons): test_layout checks tile bottoms (ConfigHelpers.Tile stub in test_settings: TILES).
 ### MMT_PawnCompare (v0.5.2)
 - Files: `Module.lua` (module, lifecycle, `/mmtpc`), `Scales.lua` (own Pawn scales, team sync,
   `M.store.scales[key]`), `Score.lua` (item stats + Pawn value formula), `Tooltip.lua`
@@ -709,7 +709,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v0.6.10) – "Quality of life": home for small team conveniences
+### MMT_QoL (v0.6.11) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
