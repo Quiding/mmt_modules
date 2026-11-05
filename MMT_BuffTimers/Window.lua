@@ -32,7 +32,7 @@ end
 
 -- class, ALL (unless the All classes row has them), their roles, the character
 -- (second value: the list each one comes from)
-local function EntriesFor(key)
+local function BuildEntries(key)
     local list, from = mod.CollectEntries(key, not M.db.allBar, mod.BuffName)
     if not M.db.allBar then return list, from end
     -- a buff the All bar shows stays out of the member's row, even when a class list has it too
@@ -57,6 +57,21 @@ local function EntriesFor(key)
     end
     return out, outFrom
 end
+
+-- kept for a second per member (0.30.1: rebuilding them on every redraw was a good part of the garbage):
+-- lists changing (BuildIndex -> TrackedReset raises mod.idsGen) or the All bar switched rebuild at once;
+-- a member's spec / roles / race changing shows within the second
+local entriesCache = {}   -- [key] = { gen, allBar, time, list, from }
+local function EntriesFor(key)
+    local c = entriesCache[key]
+    local now, allBar = GetTime(), M.db.allBar and true or false
+    if c and c[1] == mod.idsGen and c[2] == allBar and now - c[3] < 1 then return c[4], c[5] end
+    local list, from = BuildEntries(key)
+    if c then c[1], c[2], c[3], c[4], c[5] = mod.idsGen, allBar, now, list, from
+    else entriesCache[key] = { mod.idsGen, allBar, now, list, from } end
+    return list, from
+end
+function mod.EntriesReset() wipe(entriesCache) end
 
 -- arrange mode for the member rows (ListKeys.lua): shared by our bars and the Cooldowns bars
 local function ArrangingRows()
@@ -299,6 +314,7 @@ function mod.Apply()
     mod.window:Refresh()   -- attached: only the All classes row, if on
     MMTIconBars.SetExtra(CD_WINDOW, "buffs", function(key)
         if not (M.enabled and M.db.shown) then return nil end
+        if not mod.Guesting() then return nil end   -- nothing of ours there: skip the whole entry list (garbage per redraw)
         return (Icons(key, CD_WINDOW))
     end, M.db.attach == "LEFT" and "LEFT" or "RIGHT")
 end

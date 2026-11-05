@@ -33,6 +33,8 @@ folder = 'MMT_BuffTimers'
 for f in [l.strip() for l in open(os.path.join(folder, folder + '.toc'), encoding='utf-8') if l.strip().endswith('.lua')]:
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(
         open(os.path.join(folder, f), encoding='utf-8').read(), folder + '/' + f, mod)
+# these sections change the lists in place (the game's editors run BuildIndex): every rows() fresh
+lua.eval('function(m) local r = m.window.def.rows; m.window.def.rows = function() m.EntriesReset() return r() end end')(mod)
 
 print(lua.eval(r'''function(m)
   ORIG_STATE = m.State

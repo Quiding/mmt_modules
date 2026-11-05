@@ -80,6 +80,7 @@ end
 -- our icons dragged onto Buff Timers' bars ride on its rows
 MMTIconBars.SetExtra(BF_WINDOW, "cooldowns", function(key)
     if not (M.enabled and M.db and M.db.shown) then return nil end
+    if not mod.Guesting() then return nil end   -- nothing of ours there: skip the whole entry list (garbage per redraw)
     return (Icons(key, BF_WINDOW))
 end, "RIGHT")
 

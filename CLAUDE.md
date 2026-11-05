@@ -130,7 +130,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v0.19.3) / MMT_BuffTimers (v0.30.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v0.19.4) / MMT_BuffTimers (v0.30.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -214,6 +214,17 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   collectgarbage("count") deltas around Buffs' UNIT_AURA scans, every MMTIconBars window's Refresh (wrapped on the
   instance by `mod.MemWrap`, 3 s after PLAYER_ENTERING_WORLD - keeps Live's hook) and lib.CheckFrames.
   0.25.7: + calls/s, KB each and the callers (debugstack, first 300 calls). In game: "redraw MMTBuffs" 3.6 MB/s.
+  0.30.2 (user: micro stutters + high RAM with Buff Timers on): measured in the harness (tests/test_garbage.py: both
+  modules, five members, the stand-in API's calls return ONE shared object so only our tables count): a Buffs redraw
+  57 KB -> 22 KB. (1) Compat `mod.SpellInfo` caches name / icon / ID (C_Spell.GetSpellInfo makes a new table per call
+  in game; ~50 calls per redraw): by ID kept, by name dropped on SPELLS_CHANGED, unknown (lazy data) not cached - all
+  three Compat copies. (2) The cross-bar extras (Cooldowns' "cooldowns" on the Buffs bars, Buffs' "buffs" on the
+  Cooldowns bars) return at once while `mod.Guesting()` is false - they rebuilt the other module's whole entry list per
+  member on every redraw. (3) IconBars v22: WithExtras asks the extras first and returns the row's own list when none
+  answers (sorted ids cached in `lib.extraOrder`, reset by SetExtra; a scratch table), `EMPTY` instead of `or {}`, Skin
+  calls SetBackdrop only when texture / edge / size change (`f.skinBg/skinEdge/skinSize`, false for none). (4) Buffs
+  Window `EntriesFor` cached per member for 1 s (`mod.idsGen` + allBar; `mod.EntriesReset()`; BuildIndex ->
+  TrackedReset raises idsGen) - tests that change lists in place call EntriesReset (the game's editors run BuildIndex).
   0.25.8 (user: icons "jump" when combat ends - the game's countdown font / format / swipe vs ours): Live overlays
   draw ALWAYS (SetOn true in and out of combat); the icon underneath is forced to missing only while `mod.live`.
   0.25.9 (user: at 0 the full icon flashed before the missing look - the countdown ends a moment before the game
@@ -334,7 +345,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   row its height when something else is placed beside it by SetPoint); it prints columns within 20 px of the limit.
 - `IconBars.lua` = shared window lib `MMTIconBars` (embedded-lib pattern, newest VERSION wins).
   **Both copies must stay identical** (`IconBars`, `Compat`, `Transfer`, `ListKeys`, `FramesTab`: `cmp` each pair);
-  bump VERSION on change (now 21: v21 CheckFrames / UnitFrames reuse their scratch tables; v20 Paint makes no garbage per tick - timer text only rebuilt when `TimeKey(rem)` changes (b.timerKey), swipe colour compared as numbers (b.swR..swA) instead of a formatted key string; v19 countdown look - cfg `swipeColor` / `swipeAlpha`, `soonSecs` / `urgentSecs` (0 = off) + `soon|urgentTextColor` / `soon|urgentSwipeColor`; Paint picks the stage by time left (`Stage`, urgent wins), `cd:SetSwipeColor` only on change (`b.swipeNow`); icon `look` = the owning module's M.db, read first by `LookOf` (guests keep their module's look); v18 while `lib.arrange[window]`, empty member rows stay (dropEmpty ignored, frame rows too) with `row.ph` = a faint 0.18 gold slot to drop on; v17 icon `readyAlpha` / `cdAlpha` / `glowActive` = Cooldowns icons keep their look on a Buffs bar (0.16.1); v16 guests, see "Icons between the bars"; v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
+  bump VERSION on change (now 22: v22 no garbage when nothing moved between the bars (WithExtras), SetBackdrop only on change, see Buffs 0.30.2; v21 CheckFrames / UnitFrames reuse their scratch tables; v20 Paint makes no garbage per tick - timer text only rebuilt when `TimeKey(rem)` changes (b.timerKey), swipe colour compared as numbers (b.swR..swA) instead of a formatted key string; v19 countdown look - cfg `swipeColor` / `swipeAlpha`, `soonSecs` / `urgentSecs` (0 = off) + `soon|urgentTextColor` / `soon|urgentSwipeColor`; Paint picks the stage by time left (`Stage`, urgent wins), `cd:SetSwipeColor` only on change (`b.swipeNow`); icon `look` = the owning module's M.db, read first by `LookOf` (guests keep their module's look); v18 while `lib.arrange[window]`, empty member rows stay (dropEmpty ignored, frame rows too) with `row.ph` = a faint 0.18 gold slot to drop on; v17 icon `readyAlpha` / `cdAlpha` / `glowActive` = Cooldowns icons keep their look on a Buffs bar (0.16.1); v16 guests, see "Icons between the bars"; v15 framesFit; v14 party frames, see "Party frames"; v13 icon `drag = {group, id, move}` = drag along its row (+ dotted `b.grip`), `lib.SetArrange` / `lib.Arranging`, see below; v11 cfg `iconZoom` = % cut off each icon edge, default 8, also used by Totems slots; v7 backdrop/border/row colours, font, timerColor; v5 icon/cfg `activeAlpha`; row `label`/`color`, icon `tint`/`desaturate`/`glow`/`after`, cfg `fullNames` + `lib.MemberName`). Buffs attaches to Cooldowns via `MMTIconBars.SetExtra("MMTCooldowns", ...)`.
 - Bar drag (IconBars v13, Cooldowns 0.14.4 / Buffs 0.17.5; own mode since 0.14.5 / 0.17.6 - tying it to "unlocked"
   showed everything on every profile: unlocked is the default): arrange mode = session-only `MMTIconBars.arrange[windowName]`
   (`lib.SetArrange(name, on)` refreshes that window, `lib.Arranging(name)`; shared ListKeys `mod.Arranging(name, ...)` = any
@@ -488,7 +499,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   loadstring. Dialog with a checkbox per section. Sections + validation in each `Export.lua`.
   Test it with lupa's Lua 5.1 (`pip install --target <scratch>/py lupa`, `from lupa.lua51 import LuaRuntime`).
 
-### MMT_Totems (v0.5.6) – port of ema_totems
+### MMT_Totems (v0.5.7) – port of ema_totems
 - 2026-11-02 development notes: Totemic Projection is now called Totemic Call and TELEPORTS the totems to the shaman, so
   `mod.RECALL` (Data.lua) only holds Totemic Recall (a seen Totemic Call cast used to empty that shaman's slots).
 - Bars per shaman (`Bars.lua`, own frames, NOT IconBars: own slots + `MMTTotemsSequenceButton` are

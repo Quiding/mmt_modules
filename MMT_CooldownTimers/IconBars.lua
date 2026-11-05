@@ -74,7 +74,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 21
+local VERSION = 22
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -82,6 +82,7 @@ MMTIconBars = lib
 lib.version = VERSION
 lib.windows = lib.windows or {}
 lib.extras = lib.extras or {}   -- [windowName] = { [id] = { fn, side } }
+lib.extraOrder = {}   -- (v22) [windowName] = its extras' ids, sorted (cleared by SetExtra)
 lib.arrange = lib.arrange or {}  -- [windowName] = true while its icons are being arranged (session only)
 
 function lib.Arranging(name) return lib.arrange[name] and true or false end
@@ -117,8 +118,10 @@ local function Media(kind, name)
 end
 
 -- background (+ border) of a frame; returns the inner padding the border needs
+local EMPTY = {}   -- (v22) for "or {}" on every redraw: no new table each time
+
 local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize, tint)
-    color = color or {}
+    color = color or EMPTY
     local file = Media("background", bgTex)
     -- a real texture: blend white (its own colours) towards the colour by tint
     local r, g, b = color.r or 0, color.g or 0, color.b or 0
@@ -134,11 +137,17 @@ local function Skin(f, bgTex, color, alpha, edgeName, edgeColor, edgeSize, tint)
     if f.bg then f.bg:Hide() end
     local size = edge and (edgeSize or 12) or nil
     local inset = edge and math.floor(size / 4 + 0.5) or 0
-    f:SetBackdrop({ bgFile = file or FLAT, edgeFile = edge, tile = false,
-        edgeSize = size, insets = { left = inset, right = inset, top = inset, bottom = inset } })
+    -- (v22) a new backdrop only when its textures / size changed: SetBackdrop on every redraw (the
+    -- window and every row) made two tables each time and rebuilt the textures
+    local bgFile = file or FLAT
+    if f.skinBg ~= bgFile or f.skinEdge ~= (edge or false) or f.skinSize ~= (size or false) then
+        f.skinBg, f.skinEdge, f.skinSize = bgFile, edge or false, size or false
+        f:SetBackdrop({ bgFile = bgFile, edgeFile = edge, tile = false,
+            edgeSize = size, insets = { left = inset, right = inset, top = inset, bottom = inset } })
+    end
     f:SetBackdropColor(r, g, b, alpha or 0)
     if edge then
-        edgeColor = edgeColor or {}
+        edgeColor = edgeColor or EMPTY
         f:SetBackdropBorderColor(edgeColor.r or 1, edgeColor.g or 1, edgeColor.b or 1, 1)
     end
     return inset
@@ -890,12 +899,35 @@ function Window:Row(i)
 end
 
 -- icons of a row including the other modules' extras
+-- (v22) asks every extra of the window first and returns the row's own icons untouched when none
+-- answers - the usual case (nothing moved between the bars) makes no tables at all
+local got = {}   -- scratch: { extra, list } pairs of this call
 local function WithExtras(name, key, icons, order)
     local ex = lib.extras[name]
     if not ex then return icons end
+    local ids = lib.extraOrder[name]
+    if not ids then
+        ids = {}
+        for id in pairs(ex) do ids[#ids + 1] = id end
+        table.sort(ids)
+        lib.extraOrder[name] = ids
+    end
+    local n = 0
+    for _, id in ipairs(ids) do
+        local e = ex[id]
+        if e then
+            local ok, list = pcall(e.fn, key)
+            if ok and type(list) == "table" and list[1] then
+                got[n + 1], got[n + 2] = e, list
+                n = n + 2
+            end
+        end
+    end
+    if n == 0 then return icons end
     local here, pos = {}, {}
     for _, i in ipairs(icons) do if i.oid then here[i.oid] = true end end
-    for k, oid in ipairs(order or {}) do pos[oid] = k end
+    order = order or EMPTY
+    for k, oid in ipairs(order) do pos[oid] = k end
     -- the row's own icon a guest goes after: its anchor, else the nearest shown one before it
     local function Follow(a)
         if a == "^" or here[a] then return a end
@@ -904,31 +936,24 @@ local function WithExtras(name, key, icons, order)
         for j = k - 1, 1, -1 do if here[order[j]] then return order[j] end end
         return "^"
     end
-    local ids = {}
-    for id in pairs(ex) do ids[#ids + 1] = id end
-    table.sort(ids)
-    local first, last, follow, any = {}, {}, {}, false
-    for _, id in ipairs(ids) do
-        local e = ex[id]
-        local ok, list = pcall(e.fn, key)
-        if ok and type(list) == "table" then
-            for _, i in ipairs(list) do
-                any = true
-                i.guest = true
-                local a = i.anchor and Follow(i.anchor)
-                if a == "^" then first[#first + 1] = i
-                elseif a then follow[a] = follow[a] or {}; table.insert(follow[a], i)
-                elseif e.side == "LEFT" then first[#first + 1] = i
-                else last[#last + 1] = i end
-            end
+    local first, last, follow = {}, {}, {}
+    for g = 1, n, 2 do
+        local e, list = got[g], got[g + 1]
+        got[g], got[g + 1] = nil, nil
+        for _, i in ipairs(list) do
+            i.guest = true
+            local a = i.anchor and Follow(i.anchor)
+            if a == "^" then first[#first + 1] = i
+            elseif a then follow[a] = follow[a] or {}; table.insert(follow[a], i)
+            elseif e.side == "LEFT" then first[#first + 1] = i
+            else last[#last + 1] = i end
         end
     end
-    if not any then return icons end
     local all = {}
     for _, i in ipairs(first) do all[#all + 1] = i end
     for _, i in ipairs(icons) do
         all[#all + 1] = i
-        for _, g in ipairs(i.oid and follow[i.oid] or {}) do all[#all + 1] = g end
+        for _, g in ipairs(i.oid and follow[i.oid] or EMPTY) do all[#all + 1] = g end
     end
     for _, i in ipairs(last) do all[#all + 1] = i end
     return all
@@ -1164,6 +1189,7 @@ end
 
 function lib.SetExtra(windowName, id, fn, side)
     lib.extras[windowName] = lib.extras[windowName] or {}
+    lib.extraOrder[windowName] = nil   -- (v22) WithExtras sorts the ids again
     lib.extras[windowName][id] = fn and { fn = fn, side = side or "RIGHT" } or nil
     local w = lib.windows[windowName]
     if w then w:Refresh() end

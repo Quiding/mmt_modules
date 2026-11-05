@@ -87,7 +87,8 @@ print(lua.eval(r'''function(cd, bf)
   bf.Castable = function() return true end
   BM.db.hideUnlearned, BM.db.allBar, BM.db.attach = false, false, "OFF"
   BM.db.lists = { SHAMAN = { { id = 11 }, { id = 12 } }, ALL = {} }
-  local function Redraw() bf.Apply(); cw:Refresh(); bw:Refresh(); Hoverable(cw); Hoverable(bw) end
+  -- (lists are changed in place below; the game's editors run BuildIndex, which drops Buff Timers' entry cache)
+  local function Redraw() bf.EntriesReset(); bf.Apply(); cw:Refresh(); bw:Refresh(); Hoverable(cw); Hoverable(bw) end
   Redraw()
   local function Rows() return RowOf(cw, "Bob-Stone"), RowOf(bw, "Bob-Stone") end
   local cr, br = Rows()

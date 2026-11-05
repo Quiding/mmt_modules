@@ -12,9 +12,12 @@ local function Clean(v)
     return v
 end
 
--- spell ID or name -> name, icon, spellID (nil if unknown)
-function mod.SpellInfo(spell)
-    if spell == nil then return nil end
+-- spell ID or name -> name, icon, spellID (nil if unknown). Kept once known: C_Spell.GetSpellInfo
+-- returns a NEW table on every call, and the bars ask for the same few spells on every redraw (that
+-- was most of Buff Timers' garbage - micro stutters from the collector). Names change when the
+-- character learns a rank, so lookups BY NAME are forgotten on SPELLS_CHANGED; by ID they stay.
+local infoCache, byNameCache = {}, {}
+local function Lookup(spell)
     if C_Spell and C_Spell.GetSpellInfo then
         local ok, i = pcall(C_Spell.GetSpellInfo, spell)
         if ok and type(i) == "table" then return Clean(i.name), Clean(i.iconID), Clean(i.spellID) end
@@ -24,6 +27,20 @@ function mod.SpellInfo(spell)
         local name, _, icon, _, _, _, id = GetSpellInfo(spell)
         return name, icon, id
     end
+end
+function mod.SpellInfo(spell)
+    if spell == nil then return nil end
+    local cache = type(spell) == "number" and infoCache or byNameCache
+    local c = cache[spell]
+    if c then return c[1], c[2], c[3] end
+    local name, icon, id = Lookup(spell)
+    if name then cache[spell] = { name, icon, id } end   -- not known yet (lazy spell data): asked again next time
+    return name, icon, id
+end
+if not mod.spellCacheFrame and CreateFrame then
+    mod.spellCacheFrame = CreateFrame("Frame")
+    pcall(mod.spellCacheFrame.RegisterEvent, mod.spellCacheFrame, "SPELLS_CHANGED")
+    mod.spellCacheFrame:SetScript("OnEvent", function() wipe(byNameCache) end)
 end
 
 function mod.SpellIcon(spell)

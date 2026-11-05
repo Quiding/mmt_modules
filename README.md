@@ -11,9 +11,9 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.3 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.1 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.6 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 0.19.4 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 0.30.2 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 0.5.7 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 0.5.1 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 0.3.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 0.10.6 |
