@@ -25,6 +25,8 @@ right links stay, a real folder in the way is moved to `D:\Games\MMT-modules-old
   (git archive of every MMT_* folder -> `dist/QMMTModules-<YYYY.MM.DD[.n]>.zip` + `dist/CHANGELOG-<name>.md` = module
   versions + commit subjects since the last `release-*` tag or `--since "<date>"`; `--tag` tags `release-<name>` and pushes the
   tag; the release name is CurseForge's display name, user's choice 2026-10-30 instead of upload dates like "29/10/2026 19:40");
+  Settings mockups without the game: `python tools/mockup_settings.py` (test_settings' stand-ins record every tile / widget /
+  value -> `dist/settings-mockups.html`, one view per tab and Look sub-tab; approximate fonts, icons from wow.zamimg.com).
   `.pkgmeta` (package-as QMMTModules + move-folders, one line per module) is for CurseForge's packager if it's ever
   hooked up - add new modules there too.
 
