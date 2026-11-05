@@ -11,6 +11,8 @@
 --                the scale value calculation.
 --   Tooltip.lua  adds the lines to Item Compare's tooltips.
 --   ItemTooltip.lua  team list in the normal item tooltip (GameTooltip).
+--   Loot.lua     master loot to the member an item is the biggest upgrade for
+--                (Loot Distribution's MMT.RegisterLootChooser, core 1.4.0+).
 --   Manage.lua   list of Pawn scales here and on the team, delete them on both.
 --   Settings.lua settings page and debug report.
 --
@@ -31,6 +33,9 @@ local M = MMT.NewModule({
         hideUnusable = true,  -- no values for members whose class can never use the item
         teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF
         askDelete = true,     -- ask before deleting the Pawn scales a team member deleted
+        lootByUpgrade = false, -- master loot: gear to the member it is the biggest upgrade for
+        lootMinGain = 1,      -- ... at least this many percent (an empty slot always counts)
+        lootScale = {},       -- [teamKey] = Pawn scale name that member's loot is judged by
     },
     sync = true,              -- the core's "Sync to team" (nothing here is per client)
 })
@@ -65,6 +70,7 @@ end
 local ticker
 
 M.OnEnable = function()
+    mod.RegisterLoot()   -- in case Loot Distribution loaded after us
     -- Pawn and the other modules need a moment after login
     C_Timer.After(3, function()
         if not M.enabled then return end
@@ -107,6 +113,12 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         MMT.Print("Pawn Compare: your scales were sent to the team.")
     elseif msg == "scales" then
         mod.OpenScales()
+    elseif msg:match("^loot") then
+        local link = msg:match("(item:[%d:%-]+)")   -- from a link (lower-cased above) or typed
+        local id = not link and tonumber(msg:match("^loot%s+(%d+)"))
+        link = link or (id and ("item:" .. id))
+        if not link then MMT.Print("Pawn Compare: /mmtpc loot <item link or ID> = who would get it as master loot.") return end
+        mod.PrintLootRanking(link)
     elseif msg == "request" then
         mod.RequestAll()
         MMT.Print("Pawn Compare: asked the online team for their scales.")
@@ -114,6 +126,6 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         MMT.Print("Pawn Compare %s - Pawn %s, Item Compare %s. Stored scales for %d characters.",
             mod.VERSION, mod.PawnInstalled() and "found" or "NOT installed",
             mod.ItemCompareActive() and "on" or "OFF", mod.StoredCount())
-        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs, /mmtpc scales = list / delete Pawn scales.")
+        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs, /mmtpc scales = list / delete Pawn scales, /mmtpc loot <item> = who would get it by upgrade.")
     end
 end

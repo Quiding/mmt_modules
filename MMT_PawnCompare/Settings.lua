@@ -41,6 +41,59 @@ local function FitRow(row)
     return h
 end
 
+-- Loot by Upgrade tab: switch, minimum gain and the scale each character's loot is judged by.
+-- Returns its refresh function.
+function mod.LootPage(panel, status)
+    local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
+    local IN = TILE_W - 16
+
+    local lt, L = Tile(panel, 0, 0, TILE_W, 300, "Master Loot by Upgrade", "Interface\\Icons\\INV_Misc_Coin_02")
+    local gl, sl = Opt("lootByUpgrade")
+    L:Check("Give gear to the biggest upgrade", gl, sl,
+        "As master looter, Loot Distribution hands each gear item to the team member it is the biggest upgrade for, judged by the Pawn scale chosen for them on the right. Needs Pawn and Loot Distribution 1.4.0 or newer.")
+    local gm, sm = Opt("lootMinGain")
+    L:Slider("Minimum upgrade (%)", 0, 25, 1, gm, sm)
+    L:Note("Upgrade = percent over what the member wears in that slot (the weaker ring or trinket; a two-hander against both hands). An empty slot beats any percentage. Equal: team order.")
+    L:Note("Left out: classes that can't use the item, members below its level, members without scales or known equipment, and members the game doesn't offer the item to or whose bags are full. An upgrade for nobody: the roles and round robin decide as before. Bind on Pickup and quest items are never part of it.")
+    local state = UI.Label(lt, "")
+    state:SetWidth(IN)
+    state:SetJustifyH("LEFT")
+    state:SetWordWrap(true)
+    L:Add(state, 44)
+
+    local rt, R = Tile(panel, X2, 0, TILE_W, 300, "Scale per Character", "Interface\\Icons\\INV_Misc_Book_09")
+    R:Note("The Pawn scale each character's loot is judged by. Default: their first visible scale. Shared with the team by the Sync button.")
+    local members = MMT.SortedMembers()
+    for i = 1, math.min(#members, 10) do
+        local key = members[i]
+        local cycle = R:Cycle(MMT.FirstName(key), function()
+            local rec = mod.ScalesOf(key)
+            local list = {}
+            for _, sc in ipairs(rec and rec.scales or {}) do list[#list + 1] = { value = sc.name, text = sc.name } end
+            if #list == 0 then list[1] = { value = "", text = "no scales yet" } end
+            return list
+        end, function()
+            local sc = mod.LootScale(key)
+            return sc and sc.name or ""
+        end, function(v)
+            M.db.lootScale = M.db.lootScale or {}
+            M.db.lootScale[key] = (v ~= "") and v or nil
+        end)
+        MMT.HoverMember(cycle, function() return key end)
+    end
+    if #members == 0 then R:Note("No team members yet.") end
+    FitRow({ { lt, L }, { rt, R } })
+
+    return function()
+        local why
+        if not mod.LootHookAvailable() then why = "|cffff5555Loot Distribution 1.4.0 or newer is needed|r (switched on, with Master Looter)."
+        elseif not mod.PawnReady() then why = "|cffff5555Pawn is not loaded on this character.|r"
+        elseif not M.db.lootByUpgrade then why = "|cff888888Off: Loot Distribution's roles decide.|r"
+        else why = "|cff55ff55On|r while this character is master looter. Check an item: /mmtpc loot <item>." end
+        state:SetText(why)
+    end
+end
+
 M.Page = function(_, page)
     ResetButton(page)
     local status = H.StatusLine(page)
@@ -50,8 +103,12 @@ M.Page = function(_, page)
     local IN = TILE_W - 16
     local TOP = H.Intro(page, "Adds Pawn scores to the Item Compare tooltips: the hovered item is scored with each member's own Pawn scales and compared with what they have equipped.")
 
+    local panels = H.TabStrip(page, TOP, {
+        { "tips", "Tooltips and Scales", "INV_Misc_Spyglass_03" }, { "loot", "Loot by Upgrade", "INV_Misc_Coin_02" } }, 50)
+    local tips = panels.tips
+
     -- Tooltips (left) ------------------------------------------------------------------------------------
-    local lt, L = Tile(page, 0, TOP, TILE_W, 300, "Tooltips", "Interface\\Icons\\INV_Misc_Note_01")
+    local lt, L = Tile(tips, 0, 0, TILE_W, 300, "Tooltips", "Interface\\Icons\\INV_Misc_Note_01")
     local state = UI.Label(lt, "")
     state:SetWidth(IN)
     state:SetJustifyH("LEFT")
@@ -77,7 +134,7 @@ M.Page = function(_, page)
     L:Check("Ask before changing scales for the team", gd, sd, "When a team member deletes or hides Pawn scales here and on the team, ask before doing the same on this character. Off: it is done right away. Also done right away while \"Auto-accept synced settings\" is on (MMT > Profiles).")
 
     -- Team scales (right) -----------------------------------------------------------------------------------
-    local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Team Scales", "Interface\\Icons\\INV_Misc_Book_09")
+    local rt, R = Tile(tips, X2, 0, TILE_W, 300, "Team Scales", "Interface\\Icons\\INV_Misc_Book_09")
     R:Note("The scales visible in Pawn on each character, stored here so offline members and clients without Pawn can be compared too.")
     local lines, lineKeys = {}, {}
     for i = 1, 10 do
@@ -128,7 +185,10 @@ M.Page = function(_, page)
     R:Add(manageNote, 30)
     FitRow({ { lt, L }, { rt, R } })
 
+    local LootRefresh = mod.LootPage(panels.loot, status)
+
     page.OnRefresh = function()
+        LootRefresh()
         local pawn = mod.PawnInstalled() and "|cff55ff55found|r" or "|cffff5555NOT installed|r (stored scales, approximate stats)"
         local ic = mod.ItemCompareActive() and "|cff55ff55on|r" or "|cffff5555OFF|r - switch it on, Pawn Compare needs it"
         state:SetText("Pawn: " .. pawn .. "\nItem Compare: " .. ic)
@@ -170,6 +230,13 @@ M.Report = function(_, add)
             for n in pairs(p[action] or {}) do t[#t + 1] = action .. " " .. n end
         end
         add(("scale changes waiting for %s: %s"):format(MMT.Repr(key), table.concat(t, ", ")))
+    end
+    add(("loot by upgrade=%s active=%s hook=%s minGain=%s%%"):format(tostring(M.db.lootByUpgrade),
+        tostring(mod.LootActive()), tostring(mod.LootHookAvailable()), tostring(M.db.lootMinGain)))
+    for _, key in ipairs(MMT.SortedMembers()) do
+        local sc = mod.LootScale(key)
+        add(("  loot scale %s: %s%s"):format(MMT.Repr(key), sc and sc.name or "none",
+            (M.db.lootScale or {})[key] and "" or " (first)"))
     end
     if mod.DeleteWaiting() > 0 then add(("scale change dialogs waiting: %d"):format(mod.DeleteWaiting())) end
 end

@@ -17,17 +17,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local SLOTS = {
-    INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_BODY = { 4 },
-    INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 }, INVTYPE_WAIST = { 6 }, INVTYPE_LEGS = { 7 },
-    INVTYPE_FEET = { 8 }, INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 },
-    INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 }, INVTYPE_CLOAK = { 15 },
-    INVTYPE_WEAPON = { 16, 17 }, INVTYPE_2HWEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 },
-    INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_SHIELD = { 17 }, INVTYPE_HOLDABLE = { 17 },
-    INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 },
-    INVTYPE_RELIC = { 18 },
-}
-local OFFHAND_WEAPON = { INVTYPE_WEAPON = true, INVTYPE_WEAPONOFFHAND = true }
+local SLOTS = mod.SLOTS
 
 local function EquipLoc(link)
     local fn = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
@@ -42,39 +32,7 @@ local function ReplaceOn(tip)
     return loc and SLOTS[loc] and mod.ScalesOf(MMT.PlayerFull() or "") and true or false
 end
 
----------------------------------------------------------------------------
--- Gain for one member and scale
----------------------------------------------------------------------------
--- value of the member's item in a slot; nil while the item isn't loaded
-local function SlotValue(key, slot, scale)
-    local link = mod.EquippedLink(key, slot)
-    if not link then return 0, link end
-    local stats = mod.ItemStats(link)
-    if not stats then return nil end
-    return (mod.Value(stats, scale)), link
-end
-
--- returns gain, old value ("loading" while items are missing, "unusable")
-local function Gain(key, loc, newStats, scale)
-    local new, unusable = mod.Value(newStats, scale)
-    if unusable then return "unusable" end
-    local slots = SLOTS[loc]
-    local old
-    if loc == "INVTYPE_2HWEAPON" then
-        local mh, oh = SlotValue(key, 16, scale), SlotValue(key, 17, scale)
-        if not mh or not oh then return "loading" end
-        old = mh + oh
-    else
-        for _, slot in ipairs(slots) do
-            local v, link = SlotValue(key, slot, scale)
-            if v == nil then return "loading" end
-            -- a one-hander only goes into the off hand if a weapon is there already
-            local usable = not (loc == "INVTYPE_WEAPON" and slot == 17 and not OFFHAND_WEAPON[EquipLoc(link) or ""])
-            if usable and (not old or v < old) then old = v end
-        end
-    end
-    return new - (old or 0), old or 0
-end
+local Gain = mod.Gain
 
 ---------------------------------------------------------------------------
 -- Tooltip lines

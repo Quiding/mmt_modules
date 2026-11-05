@@ -1,14 +1,14 @@
 ## Interface: 16001
 ## Title: MMT - Pawn Compare
 ## Notes: MMT module: adds Pawn scores for every team member to the Item Compare tooltips. Needs Item Compare.
-## Version: 1.0.0
+## Version: 1.1.0
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## DefaultState: disabled
 ## X-MMT-DefaultState: disabled
-## OptionalDeps: Pawn, MMT_ItemCompare
+## OptionalDeps: Pawn, MMT_ItemCompare, MMT_LootDistribution
 ## X-MMT-Module: 1
 ## X-MMT-Title: Pawn Compare
 ## IconTexture: Interface\Icons\INV_Misc_Spyglass_03
@@ -19,5 +19,6 @@ Score.lua
 Proficiency.lua
 Tooltip.lua
 ItemTooltip.lua
+Loot.lua
 Manage.lua
 Settings.lua

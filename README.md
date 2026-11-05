@@ -16,7 +16,7 @@ MODULES, with its own settings page.
 | [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.0 |
 | [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.0 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
-| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, delete or hide Pawn scales team-wide | 1.0.0 |
+| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.1.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
@@ -232,9 +232,15 @@ Pawn scores for the whole team. Needs MMT's Item Compare switched on.
   apply it here, or here and on the alts: your own scales are deleted, Pawn's built-in ones (which
   can't be deleted) are hidden, and with "Show hidden" hidden ones can be shown again. The alts
   are asked first unless you switch that off (or they have MMT's "Auto-accept synced settings" on); offline members are asked when they come online.
+- **Loot by Upgrade** (tab, off by default): as master looter, Loot Distribution gives each gear item to the
+  member it is the biggest upgrade for, in percent over what they wear in that slot, judged by the Pawn scale
+  chosen per character (default: their first). An empty slot beats any percentage, equal ones go by team order.
+  Classes that can't use the item, members below its level and members the game doesn't offer it to (or with
+  full bags) are left out; below the minimum upgrade (default 1%) the roles and round robin decide as before.
+  Needs Pawn and Loot Distribution 1.4.0 or newer (`MMT.RegisterLootChooser`).
 - Settings sync to the team with the Sync button.
 
-`/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales`
+`/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales` · `/mmtpc loot <item>` (who would get it)
 
 <img src="media/pawn_tooltip.png" alt="Team upgrades in the item tooltip" width="364">
 

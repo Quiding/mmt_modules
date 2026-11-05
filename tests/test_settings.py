@@ -84,7 +84,13 @@ MMT = {
     -- the core's tiles (MMT 1.0.0): a frame with a column inside, looked up at call time (test_layout measures it)
     Tile = function(parent, x, y, w, h) local t = CreateFrame("Frame"); t:SetSize(w, h); rawset(t, "_y", y); rawset(t, "_parent", parent); TILES[#TILES + 1] = t; return t, UI.Column(t, 8, -42, w - 16) end,
     Intro = function() return -22, new() end,
-  }, { __index = function() return function() return new() end end }),
+    -- the core's tab strip: panels below it, as tall as the page minus the strip and the reserve (test_layout measures tiles in them)
+    TabStrip = function(page, y, tabs, reserve)
+      local panels, h = {}, 564 + (y - 34) - (reserve or 0)
+      for _, t in ipairs(tabs) do local p = CreateFrame("Frame"); rawset(p, "_h", h); panels[t[1]] = p end
+      return panels, function() end, h
+    end,
+  },{ __index = function() return function() return new() end end }),
   db = { team = { ["Anna-Smith"] = { class = "SHAMAN" } }, roles = { Healer = {} } },
   IsSecret = function() return false end,
 }
