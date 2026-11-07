@@ -10,8 +10,9 @@
 --   * edges: 1 px in the style's border colour (none in MMT's own look)
 --   * accent pieces (the live tracker's top line and title, the tracker's scroll
 --     bar thumb): the style's accent colour while "Use the style's accent colour" is on
--- Classic and Modern Blizzard (game window art) leave these windows as they are:
--- the art is too heavy for a see-through window over the game.
+-- Classic and Modern Blizzard: the background picked under "Classic: window background" at
+-- the window's own opacity, and the game's thin tooltip border (the heavy dialog art is
+-- too much for a see-through window over the game).
 -- Each is an entry of the Windows list (Targets.lua): off = untouched; its cogwheel
 -- switches the background / edges / accent part off one by one.
 -- Nothing of theirs is replaced; their own SetColorTexture calls are followed
@@ -27,7 +28,7 @@ local function Flat(S) return S and not S.art end
 local function AccentOn() return mod.Opt("accent") and true or false end
 -- the style for this window and part (nil: MMT's own look); part = "bg" | "edges" | "accent"
 local function Want(rec, S, part)
-    if not Flat(S) or not mod.TargetOn(rec.id) then return nil end
+    if not S or not mod.TargetOn(rec.id) then return nil end
     if mod.TargetOpt(rec.id, part, true) == false then return nil end
     return S
 end
@@ -49,11 +50,36 @@ end
 local function PaintBg(rec, S)
     local t, o = rec.bg, rec.bgColour
     if rec.gradient then t:SetVertexColor(1, 1, 1, 1) rec.gradient = nil end
+    if rec.art then   -- back to a plain colour texture
+        if mod.Plain then mod.Plain(t) end
+        rec.art = nil
+    end
     rec.visible = o.a > 0 and DarkNeutral(o)   -- a background of the user's own colour stays theirs
     S = rec.visible and Want(rec, S, "bg") or nil
     rec.styled = S and true or false
     if not rec.styled then
         SetTex(t, o.r, o.g, o.b, o.a)
+        return
+    end
+    -- Classic / Modern Blizzard: the game's window background picked under "Classic: window
+    -- background" (stone, marble, tooltip blue, dark), at the window's own opacity
+    if S.art then
+        -- Modern has no background choice: its dark one
+        local bg
+        if S.modern then
+            for _, b in ipairs(mod.CLASSIC_BGS or {}) do if b.value == "DARK" then bg = b end end
+        end
+        bg = bg or (mod.ClassicBg and mod.ClassicBg())
+        if bg and bg.file then
+            t:SetTexture(bg.file, "REPEAT", "REPEAT")
+            if t.SetHorizTile then t:SetHorizTile(true) t:SetVertTile(true) end
+            local c = bg.tint or { 1, 1, 1 }
+            -- the art is lighter than a black fill: a little more opacity to read as well
+            t:SetVertexColor(c[1], c[2], c[3], math.min(1, o.a * 1.6))
+            rec.art = true
+            return
+        end
+        SetTex(t, 0.09, 0.09, 0.19, o.a)
         return
     end
     local p, top = S.panel, S.panelTop
@@ -67,8 +93,31 @@ local function PaintBg(rec, S)
     SetTex(t, p[1], p[2], p[3], o.a)
 end
 
+-- Classic / Modern: the game's thin tooltip border on a frame of our own over the window's edge
+local function ArtBorder(rec)
+    if rec.border then return rec.border end
+    local ok, b = pcall(CreateFrame, "Frame", nil, rec.frame, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    if not ok or not b or not b.SetBackdrop then return nil end
+    b:SetPoint("TOPLEFT", -3, 3)
+    b:SetPoint("BOTTOMRIGHT", 3, -3)
+    b:SetFrameLevel(rec.frame:GetFrameLevel() + 8)
+    b:EnableMouse(false)
+    b:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12 })
+    b:SetBackdropBorderColor(1, 1, 1, 1)
+    b:Hide()
+    rec.border = b
+    return b
+end
+
 local function PaintEdges(rec, S)
     S = rec.visible and Want(rec, S, "edges") or nil
+    if rec.border then rec.border:Hide() end
+    if S and S.art then
+        for _, t in ipairs(rec.edges) do t:Hide() end
+        local b = ArtBorder(rec)
+        if b then b:Show() end
+        return
+    end
     local c = S and S.border
     for _, t in ipairs(rec.edges) do
         if c then

@@ -179,7 +179,7 @@ M.Page = function(_, page)
     end
     W.y = startY - perCol * ROW_H - 8
     local note = W:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art. "
-        .. "The Quest Tracker, Info window and live tracker get the style in ElvUI and EllesmereUI (Classic's art is too heavy for a see-through window). "
+        .. "The Quest Tracker, Info window and live tracker keep their own opacity; in Classic they get the Classic window background and the game's thin tooltip border. "
         .. "Cooldown / Buff Timers and Totem bars have their own Look tab.")
     wt:SetHeight(-W.y + 10)
     local function RefreshRows()
