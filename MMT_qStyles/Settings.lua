@@ -69,11 +69,12 @@ M.Page = function(_, page)
     local gt, G = Tile(page, 0, y2, TILE_W, 150, "What Gets the Style", "Interface\\Icons\\Spell_Holy_MagicalSentry")
     G:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
         .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
-        .. "Item Compare's tooltips, the death panel, the MMT Auto-Mailing window, the Info window's column settings and more.")
+        .. "Item Compare's tooltips, the death panel, the MMT Auto-Mailing window, the Info window's column settings and more. "
+        .. "The Quest Tracker and Statistics' live tracker get the style's background, edges and accent (with their own opacity), in ElvUI and EllesmereUI.")
     G:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
     local kt, K = Tile(page, X2, y2, TILE_W, 150, "What Keeps Its Look", "Interface\\Icons\\INV_Misc_Spyglass_02")
-    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. The windows you play with keep MMT's look: "
-        .. "the Info window, the distance display, the Quest Tracker and Statistics' live tracker. Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
+    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's Info window and distance display "
+        .. "(built before Styles loads); in Classic and Modern Blizzard also the Quest Tracker and the live tracker. Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
     FitRow({ { gt, G }, { kt, K } })
 
     page.OnRefresh = function()
@@ -101,4 +102,5 @@ M.Report = function(_, add)
     for name, ok in pairs(mod.hooked) do hooks[#hooks + 1] = name .. (ok and "" or "(missing)") end
     table.sort(hooks)
     add("hooks: " .. table.concat(hooks, " "))
+    if mod.HudReport then add(mod.HudReport()) end
 end
