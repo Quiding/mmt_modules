@@ -131,17 +131,17 @@ M.Page = function(_, page)
     -- Windows: what gets the style, one by one (Targets.lua) ------------------------------------------------------
     local y2 = TOP - topH - 8
     local ROW_H, COLS = 20, 2
-    local perCol = math.ceil(#mod.TARGETS / COLS)
+    local perCol = math.ceil(#mod.TARGETS / COLS)   -- room for all; RefreshRows packs the shown ones
     local wt, W = Tile(page, 0, y2, H.PAGE_W, 60 + perCol * ROW_H + 50, "Windows", "Interface\\Icons\\Spell_Holy_MagicalSentry")
     local colW = math.floor((H.PAGE_W - 30 - 12) / COLS)
     local startY = W.y
     local rows = {}
     for i, t in ipairs(mod.TARGETS) do
-        local c, r = math.floor((i - 1) / perCol), (i - 1) % perCol
         local row = CreateFrame("Frame", nil, wt)
         row:SetSize(colW, ROW_H)
-        row:SetPoint("TOPLEFT", wt, "TOPLEFT", W.x + c * (colW + 12), startY - r * ROW_H)
-        if r % 2 == 0 then UI.Fill(row, 1, 1, 1, 0.03) end
+        row.stripe = row:CreateTexture(nil, "BACKGROUND")
+        row.stripe:SetAllPoints()
+        row.stripe:SetColorTexture(1, 1, 1, 0.03)
         row.toggle = UI.TextButton(row, "", function()
             mod.SetTargetOpt(t.id, "on", not mod.TargetOn(t.id))
             if page.OnRefresh then page.OnRefresh() end
@@ -178,12 +178,29 @@ M.Page = function(_, page)
         rows[#rows + 1] = row
     end
     W.y = startY - perCol * ROW_H - 8
-    W:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art. "
+    local note = W:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art. "
         .. "The Quest Tracker, Info window and live tracker get the style in ElvUI and EllesmereUI (Classic's art is too heavy for a see-through window). "
         .. "Cooldown / Buff Timers and Totem bars have their own Look tab.")
     wt:SetHeight(-W.y + 10)
     local function RefreshRows()
+        -- only the windows of modules that are on, packed into the two columns
+        local shown = {}
         for _, row in ipairs(rows) do
+            if mod.TargetAvailable(row.target) then shown[#shown + 1] = row else row:Hide() end
+        end
+        local per = math.max(1, math.ceil(#shown / COLS))
+        for i, row in ipairs(shown) do
+            local c, r = math.floor((i - 1) / per), (i - 1) % per
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", wt, "TOPLEFT", W.x + c * (colW + 12), startY - r * ROW_H)
+            row.stripe:SetShown(r % 2 == 0)
+            row:Show()
+        end
+        local noteY = startY - per * ROW_H - 8
+        note:ClearAllPoints()
+        note:SetPoint("TOPLEFT", wt, "TOPLEFT", W.x, noteY)
+        wt:SetHeight(-noteY + (note:GetStringHeight() or 30) + 18)
+        for _, row in ipairs(shown) do
             local on = mod.TargetOn(row.target.id)
             row.toggle.label:SetText(on and "|cff55ff55on|r" or "|cff777777off|r")
             row.label:SetTextColor(on and 1 or 0.5, on and 1 or 0.5, on and 1 or 0.5)
