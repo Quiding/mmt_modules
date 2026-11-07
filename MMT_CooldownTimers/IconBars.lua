@@ -61,6 +61,9 @@
 -- can also be dropped on a member row of one of those windows (another module's bar), and a guest icon
 -- anywhere in its row. anchor = oid of the row's own icon before the drop spot ("^" = none), nbr / after =
 -- the drag table of a same-group icon right before (after = true) / after the spot, to keep the list order.
+-- (v23) icons with `drag` show at full opacity, without countdown circle, timer or glow.
+-- (v23) drag.hide = fn(src): a small "x" in the icon's top right corner (arrange mode only) calls it with
+-- the icon's drag table, e.g. to switch the entry off.
 --
 -- Party / raid frames (v14): cfg.onFrames puts each member's row beside that member's unit frame
 -- (EllesmereUI's party / raid frames, Blizzard's compact party / raid frames, Blizzard's party
@@ -74,7 +77,7 @@
 -- follows re-sorts, roster changes and moved frames. Rows of several windows on the same frame and
 -- side line up one after the other, by def.frameOrder (lower = nearer the frame); label rows go last.
 
-local VERSION = 22
+local VERSION = 23
 if MMTIconBars and (MMTIconBars.version or 0) >= VERSION then return end
 
 local lib = MMTIconBars or {}
@@ -239,6 +242,31 @@ local function NewIcon(parent)
         end
     end
     b.grip:Hide()
+    -- (v23) hide button (top right) on icons whose drag table has hide
+    b.hide = CreateFrame("Button", nil, over)
+    b.hide:SetSize(12, 12)
+    b.hide:SetPoint("TOPRIGHT", -1, -1)
+    b.hide:SetFrameLevel(over:GetFrameLevel() + 2)
+    local hbg = b.hide:CreateTexture(nil, "ARTWORK")
+    hbg:SetAllPoints()
+    hbg:SetColorTexture(0, 0, 0, 0.6)
+    b.hide.x = b.hide:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.hide.x:SetPoint("CENTER", 0, 0)
+    b.hide.x:SetText("x")
+    b.hide.x:SetTextColor(1, 0.35, 0.35)
+    b.hide:SetScript("OnClick", function()
+        local i = b.data
+        if i and i.drag and i.drag.hide and not drag then i.drag.hide(i.drag) end
+    end)
+    b.hide:SetScript("OnEnter", function(self)
+        self.x:SetTextColor(1, 0.7, 0.7)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Hide")
+        GameTooltip:AddLine("Switches this icon off in its list. Switch it on again in the settings' list.", 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+    b.hide:SetScript("OnLeave", function(self) self.x:SetTextColor(1, 0.35, 0.35); GameTooltip:Hide() end)
+    b.hide:Hide()
     b:SetScript("OnEnter", function(self)
         local i = self.data
         if not i then return end
@@ -286,6 +314,13 @@ end
 -- alpha, glow and timer text of one icon (called on every tick)
 local function Paint(b, c)
     local i = b.data
+    -- (v23) arranging (icons with drag): fully visible, no glow and no timer (the dragged one dimmed)
+    if i.drag then
+        b:SetAlpha((drag and i.drag.id == drag.src.id and b:GetParent() == drag.row) and 0.4 or 1)
+        if b.glow:IsShown() then b.pulse:Stop(); b.glow:Hide() end
+        b.timer:Hide()
+        return
+    end
     local state, rem = i.state, Remaining(i)
     if state == "buff" and i.after and not rem then
         -- the buff ran out: show what comes after it (the cooldown)
@@ -338,9 +373,9 @@ end
 local function Setup(b, i, key, c)
     b.data, b.key = i, key
     b.tex:SetTexture(i.texture or 134400)
-    local t = i.tint
+    local t = not i.drag and i.tint or nil   -- (v23) arranging: plain icons
     b.tex:SetVertexColor(t and t[1] or 1, t and t[2] or 1, t and t[3] or 1)
-    if b.tex.SetDesaturated then b.tex:SetDesaturated(i.desaturate and true or false) end
+    if b.tex.SetDesaturated then b.tex:SetDesaturated(i.desaturate and not i.drag and true or false) end
     local z = math.max(0, math.min(40, tonumber(c.iconZoom) or 8)) / 100
     b.tex:SetTexCoord(z, 1 - z, z, 1 - z)
     local size = c.iconSize or 28
@@ -364,7 +399,7 @@ local function Setup(b, i, key, c)
         b.tally:Hide()
     end
     b.swR, b.timerKey = nil, nil   -- Paint sets the countdown circle's colour and the timer text
-    if (i.state == "cd" or i.state == "buff") and Remaining(i) then
+    if not i.drag and (i.state == "cd" or i.state == "buff") and Remaining(i) then
         b.cd:SetCooldown(i.start, i.duration)
         b.cd:Show()
     else
@@ -372,6 +407,7 @@ local function Setup(b, i, key, c)
     end
     b:EnableMouse(not c.clickThrough or i.drag ~= nil)
     b.grip:SetShown(i.drag ~= nil)
+    b.hide:SetShown(i.drag ~= nil and i.drag.hide ~= nil)
     Paint(b, c)
     b:Show()
 end

@@ -197,10 +197,24 @@ function mod.SetArrangeAll(on)
     for name in pairs(HOSTS) do MMTIconBars.Refresh(name) end
 end
 
+-- the "x" on an icon while arranging: switch its entry off (the list editor's on/off), say where it is
+local function HideIcon(src)
+    local e = src.id
+    e.off = true
+    local name = mod.EntryName and mod.EntryName(e)
+    if type(name) ~= "string" then name = (e.t == "i" and "Item " or "Spell ") .. tostring(e.id) end
+    MMT.Print("%s: %s hidden (switched off in %s). Switch it on again in the settings' list.",
+        mod.M.title, name, src.label or "its list")
+    mod.ListsChanged()
+end
+
 -- icon.drag for an entry of list lk (only while arranging)
 function mod.DragFor(lk, e)
     local l = lk and mod.M.db.lists[lk]
-    if l then return { group = l, id = e, move = MoveIcon, place = PlaceIcon, hosts = HOSTS } end
+    if l then
+        return { group = l, id = e, move = MoveIcon, place = PlaceIcon, hosts = HOSTS, hide = HideIcon,
+            label = mod.ListLabel(lk) }
+    end
 end
 
 function mod.ListLabel(k)

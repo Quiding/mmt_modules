@@ -13,8 +13,8 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.0 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.0 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.1 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.1 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.1.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
@@ -52,6 +52,8 @@ everyone, at the spot you dropped it; drag it back onto its own bar to bring it 
 in it, as a faint slot to drop on). Buff icons on the Cooldown
 Timers bars - moved one by one, or all of them with "Where: On the Cooldowns bars" - can be dropped anywhere in the
 row, between the cooldowns; switching "Where" back to its own window brings them all home.
+The small red **x** in an icon's top right corner hides it: it's switched off in the list it comes from (like its
+on / off in the settings' list, where you switch it on again).
 
 <img src="media/timers_arrange.webp" alt="Arrange mode: dots on every icon, the All bar's buffs and both modules' bars beside the party frames, icons dragged along the rows" width="712">
 
