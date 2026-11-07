@@ -43,13 +43,15 @@ M.Page = function(_, page)
     L:Cycle("Style", mod.StyleChoices, function() return mod.Opt("style") end, function(v)
         mod.SetStyle(v)
         status.Show_(v == "NONE" and "MMT's own look again." or ("Style: " .. mod.StyleTitle(v) .. "."))
+        if page.OnRefresh then page.OnRefresh() end
     end)
     local desc = L:Note(mod.STYLES.ELLESMERE.description)   -- the longest: room for every one
-    L:Cycle("Classic: window background", mod.ClassicBgChoices, function() return mod.Opt("classicBg") end, function(v)
-        mod.SetOpt("classicBg", v)
-        status.Show_(mod.Opt("style") == "CLASSIC" and "Classic background changed." or "Used when the style is Classic.")
-    end)
     L:Note("Also /mmtstyle none | elvui | ellesmere | modern | classic.")
+    -- only for Classic: shown while it is the style (last in the tile, so nothing moves up into a gap)
+    local classicBg = L:Cycle("Classic: window background", mod.ClassicBgChoices, function() return mod.Opt("classicBg") end, function(v)
+        mod.SetOpt("classicBg", v)
+        status.Show_("Classic background changed.")
+    end)
 
     -- Fonts & Colour (right) ------------------------------------------------------------------------------------
     local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Fonts & Colour", "Interface\\Icons\\INV_Inscription_Tradeskill01")
@@ -67,16 +69,17 @@ M.Page = function(_, page)
     local gt, G = Tile(page, 0, y2, TILE_W, 150, "What Gets the Style", "Interface\\Icons\\Spell_Holy_MagicalSentry")
     G:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
         .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
-        .. "Item Compare's tooltips, the death panel and more.")
+        .. "Item Compare's tooltips, the death panel, the MMT Auto-Mailing window, the Info window's column settings and more.")
     G:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
     local kt, K = Tile(page, X2, y2, TILE_W, 150, "What Keeps Its Look", "Interface\\Icons\\INV_Misc_Spyglass_02")
-    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's XP window and distance display "
-        .. "(built before Styles loads). Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
+    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. The windows you play with keep MMT's look: "
+        .. "the Info window, the distance display, the Quest Tracker and Statistics' live tracker. Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
     FitRow({ { gt, G }, { kt, K } })
 
     page.OnRefresh = function()
         local S = mod.STYLES[mod.Opt("style")]
         desc:SetText(S and S.description or "MMT's own flat look.")
+        classicBg:SetShown(mod.Opt("style") == "CLASSIC")
         -- Classic keeps MMT's (the game's) font: the option does nothing then
         local noFont = S and not S.font
         fontCheck.label:SetText(noFont and "Use the style's font (Classic keeps it)" or "Use the style's font")
