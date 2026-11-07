@@ -48,7 +48,7 @@ end
 mod.HoverReset = Leave
 
 local function Enter(f)
-    local S = mod.Current()
+    local S = mod.Gate(mod.Current(), f)
     local h = S and S.hover
     local w = mod.widgets[f]
     if not (h and w) then return end

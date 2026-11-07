@@ -172,6 +172,7 @@ local function UndoFill(t, rec)
 end
 
 local function PaintFill(t, rec, S)
+    S = mod.Gate(S, t)   -- its window switched off: MMT's own look (Targets.lua)
     if rec.skip and rec.skip() then return end
     UndoFill(t, rec)
     if S and S.art and mod.ArtFill and mod.ArtFill(t, rec, S) then
@@ -327,6 +328,7 @@ local function UndoBorder(rec)
 end
 
 local function PaintBorder(rec, S)
+    S = mod.Gate(S, rec.frame)
     if rec.painted then UndoBorder(rec) end
     rec.painted = nil
     if not S then return end
@@ -405,7 +407,8 @@ end
 mod.GameFace = GameFace
 
 local function PaintFont(fs, rec, S)
-    local file = S and S.font and mod.Opt("fonts") and S.font()
+    S = mod.Gate(S, fs)
+    local file = S and S.font and mod.TargetFonts(fs) and S.font()
     if not file then
         local own = GameFace(rec)
         if own then
@@ -449,6 +452,7 @@ mod.AddFont = AddFont
 -- Accent pieces, slider tracks (colour textures)
 ---------------------------------------------------------------------------
 local function PaintColor(t, rec, S)
+    S = mod.Gate(S, t)
     if rec.art then
         Plain(t)
         mod.RestorePoints(t, rec.points)
@@ -557,6 +561,7 @@ function mod.QuietTextColor(fs, r, g, b, a)
 end
 
 local function PaintText(fs, rec, S)
+    S = mod.Gate(S, fs)
     local cur = { fs:GetTextColor() }
     if rec.painted and not (Near(cur, rec.set[1], rec.set[2], rec.set[3]) and math.abs(Num(cur[4]) - Num(rec.set[4])) < 0.02) then
         rec.painted = nil   -- coloured again by its owner
@@ -599,6 +604,7 @@ mod.AddText = AddText
 
 -- Column:Header: EllesmereUI writes them in capitals, Elv in the accent colour; the line under it follows
 local function PaintHeader(fs, rec, S)
+    S = mod.Gate(S, fs)
     local cur = fs:GetText()
     if rec.upper and cur ~= rec.upper then rec.upper = nil end
     if not rec.upper then rec.text = cur end

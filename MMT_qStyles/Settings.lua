@@ -30,6 +30,70 @@ local function FitRow(row)
     return h
 end
 
+-- a window's cogwheel: its own settings in a small popup next to the row (one at a time)
+local popups = {}
+function mod.HideTargetOptions(except)
+    for id, p in pairs(popups) do if id ~= except then p:Hide() end end
+end
+local FONT_CHOICES = {
+    { value = "INHERIT", text = "Like Fonts & Colour" },
+    { value = "ON", text = "The style's font" },
+    { value = "OFF", text = "MMT's font" },
+}
+function mod.TargetOptions(owner, t)
+    mod.HideTargetOptions(t.id)
+    local p = popups[t.id]
+    if p and p:IsShown() then p:Hide() return end
+    if not p then
+        p = CreateFrame("Frame", nil, UIParent)
+        p:SetFrameStrata("FULLSCREEN_DIALOG")
+        p:SetClampedToScreen(true)
+        p:EnableMouse(true)
+        p:SetWidth(240)
+        p.widgets = {}
+        local A = UI.ACCENT
+        UI.Fill(p, 0.06, 0.06, 0.07, 0.97)
+        UI.Border(p, A[1], A[2], A[3], 0.6)
+        local title = UI.Label(p, t.title, "GameFontNormal")
+        title:SetPoint("TOPLEFT", 10, -8)
+        title:SetPoint("RIGHT", -26, 0)
+        title:SetJustifyH("LEFT")
+        title:SetWordWrap(false)
+        local close = UI.TextButton(p, "x", function() p:Hide() end, 18)
+        close:SetPoint("TOPRIGHT", -4, -4)
+        local C = UI.Column(p, 10, -30, 220)
+        local function Part(key) return function() return mod.TargetOpt(t.id, key, true) ~= false end,
+            function(v) mod.SetTargetOpt(t.id, key, v and true or false) end end
+        if t.play then
+            C:Check("Background", Part("bg"))
+            C:Check("Edges", Part("edges"))
+            C:Check("Accent colour", Part("accent"))
+            C:Note("Its own opacity, fonts and size stay as set in its own settings.")
+        else
+            local dd = C:Cycle("Font", FONT_CHOICES, function() return mod.TargetOpt(t.id, "font", "INHERIT") end,
+                function(v) mod.SetTargetOpt(t.id, "font", v) end)
+            -- the drop-down list above this popup (both FULLSCREEN_DIALOG)
+            if dd and dd.HookScript then
+                dd:HookScript("OnClick", function()
+                    local l = rawget(_G, "MMTDropdownList")
+                    if l and l:IsShown() then l:SetFrameLevel(p:GetFrameLevel() + 10) end
+                end)
+            end
+            C:Note("\"Like Fonts & Colour\" follows \"Use the style's font\" there.")
+        end
+        p:SetHeight(-C.y + 8)
+        UI.CloseOnEscape(p)
+        popups[t.id] = p
+    end
+    local parent, own = UIParent:GetEffectiveScale(), owner:GetEffectiveScale()
+    p:SetScale((parent > 0) and own / parent or 1)
+    p:SetFrameLevel(owner:GetFrameLevel() + 20)
+    p:ClearAllPoints()
+    p:SetPoint("TOPLEFT", owner, "TOPRIGHT", 8, 0)
+    for _, w in ipairs(p.widgets) do if w.Refresh then w.Refresh() end end
+    p:Show()
+end
+
 M.Page = function(_, page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)
@@ -64,18 +128,67 @@ M.Page = function(_, page)
         "Check marks, slider knobs, the selected page in the list, dropdown values, highlighted rows and the tiles' titles get the style's colour instead of MMT's blue.")
     local topH = FitRow({ { lt, L }, { rt, R } })
 
-    -- What gets the style / what keeps its look (second row) ------------------------------------------------------
+    -- Windows: what gets the style, one by one (Targets.lua) ------------------------------------------------------
     local y2 = TOP - topH - 8
-    local gt, G = Tile(page, 0, y2, TILE_W, 150, "What Gets the Style", "Interface\\Icons\\Spell_Holy_MagicalSentry")
-    G:Note("MMT's settings window, its dropdown lists, colour picker and dialogs, and every window built from MMT's widgets: "
-        .. "Team bags, Team Gear, Pawn scales, the ForeverAuras / EllesmereUI send windows, Totem presets, Import / Export, "
-        .. "Item Compare's tooltips, the death panel, the MMT Auto-Mailing window, the Info window's column settings and more. "
-        .. "The Quest Tracker and Statistics' live tracker get the style's background, edges and accent (with their own opacity), in ElvUI and EllesmereUI.")
-    G:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art.")
-    local kt, K = Tile(page, X2, y2, TILE_W, 150, "What Keeps Its Look", "Interface\\Icons\\INV_Misc_Spyglass_02")
-    K:Note("Cooldown / Buff Timers and Totem bars: they have their own Look tab. MMT's Info window and distance display "
-        .. "(built before Styles loads); in Classic and Modern Blizzard also the Quest Tracker and the live tracker. Coloured pieces like item quality borders. Secure buttons (Totems) keep the colour look in Classic.")
-    FitRow({ { gt, G }, { kt, K } })
+    local ROW_H, COLS = 20, 2
+    local perCol = math.ceil(#mod.TARGETS / COLS)
+    local wt, W = Tile(page, 0, y2, H.PAGE_W, 60 + perCol * ROW_H + 50, "Windows", "Interface\\Icons\\Spell_Holy_MagicalSentry")
+    local colW = math.floor((H.PAGE_W - 30 - 12) / COLS)
+    local startY = W.y
+    local rows = {}
+    for i, t in ipairs(mod.TARGETS) do
+        local c, r = math.floor((i - 1) / perCol), (i - 1) % perCol
+        local row = CreateFrame("Frame", nil, wt)
+        row:SetSize(colW, ROW_H)
+        row:SetPoint("TOPLEFT", wt, "TOPLEFT", W.x + c * (colW + 12), startY - r * ROW_H)
+        if r % 2 == 0 then UI.Fill(row, 1, 1, 1, 0.03) end
+        row.toggle = UI.TextButton(row, "", function()
+            mod.SetTargetOpt(t.id, "on", not mod.TargetOn(t.id))
+            if page.OnRefresh then page.OnRefresh() end
+        end, 40)
+        row.toggle:SetPoint("RIGHT", -2, 0)
+        row.gear = CreateFrame("Button", nil, row)
+        row.gear:SetSize(14, 14)
+        row.gear:SetPoint("RIGHT", row.toggle, "LEFT", -4, 0)
+        row.gear.icon = row.gear:CreateTexture(nil, "ARTWORK")
+        row.gear.icon:SetAllPoints()
+        row.gear.icon:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+        row.gear.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        row.gear.icon:SetDesaturated(true)
+        row.gear.icon:SetAlpha(0.75)
+        row.gear:SetScript("OnClick", function() mod.TargetOptions(row, t) end)
+        UI.Tooltip(row.gear, "Settings", t.play and "Background, edges and accent of this window, one by one." or "The font of this window.")
+        row.gear:HookScript("OnEnter", function(self) self.icon:SetDesaturated(false) self.icon:SetAlpha(1) end)
+        row.gear:HookScript("OnLeave", function(self) self.icon:SetDesaturated(true) self.icon:SetAlpha(0.75) end)
+        row.label = UI.Label(row, t.title)
+        row.label:SetPoint("LEFT", 6, 0)
+        row.label:SetPoint("RIGHT", row.gear, "LEFT", -4, 0)
+        row.label:SetJustifyH("LEFT")
+        row.label:SetWordWrap(false)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(t.title)
+            if t.tip then GameTooltip:AddLine(t.tip, 1, 1, 1, true) end
+            GameTooltip:AddLine("Off: this window keeps MMT's own look.", 0.6, 0.6, 0.6, true)
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row.target = t
+        rows[#rows + 1] = row
+    end
+    W.y = startY - perCol * ROW_H - 8
+    W:Note("ElvUI and EllesmereUI light up the widget under the mouse; Modern Blizzard and Classic use the game's own window art. "
+        .. "The Quest Tracker, Info window and live tracker get the style in ElvUI and EllesmereUI (Classic's art is too heavy for a see-through window). "
+        .. "Cooldown / Buff Timers and Totem bars have their own Look tab.")
+    wt:SetHeight(-W.y + 10)
+    local function RefreshRows()
+        for _, row in ipairs(rows) do
+            local on = mod.TargetOn(row.target.id)
+            row.toggle.label:SetText(on and "|cff55ff55on|r" or "|cff777777off|r")
+            row.label:SetTextColor(on and 1 or 0.5, on and 1 or 0.5, on and 1 or 0.5)
+        end
+    end
 
     page.OnRefresh = function()
         local S = mod.STYLES[mod.Opt("style")]
@@ -85,7 +198,9 @@ M.Page = function(_, page)
         local noFont = S and not S.font
         fontCheck.label:SetText(noFont and "Use the style's font (Classic keeps it)" or "Use the style's font")
         fontCheck.label:SetTextColor(noFont and 0.45 or 1, noFont and 0.45 or 1, noFont and 0.45 or 1)
+        RefreshRows()
     end
+    page:HookScript("OnHide", function() if mod.HideTargetOptions then mod.HideTargetOptions() end end)
     mod.ScanConfig()
 end
 
@@ -103,4 +218,11 @@ M.Report = function(_, add)
     table.sort(hooks)
     add("hooks: " .. table.concat(hooks, " "))
     if mod.HudReport then add(mod.HudReport()) end
+    local off = {}
+    for _, t in ipairs(mod.TARGETS) do
+        if not mod.TargetOn(t.id) then off[#off + 1] = t.id end
+        local o = mod.M.store and mod.M.store.targets and mod.M.store.targets[t.id]
+        if o then for k, v in pairs(o) do if k ~= "on" then off[#off + 1] = t.id .. "." .. k .. "=" .. tostring(v) end end end
+    end
+    add("windows off / changed: " .. (#off > 0 and table.concat(off, " ") or "none"))
 end

@@ -642,6 +642,7 @@ local function Chevron(f)
 end
 
 local function PaintWidget(f, w, S)
+    S = mod.Gate(S, f)
     local s = State(f)
     if w.arrow then
         local tex, lines = nil, nil

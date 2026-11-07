@@ -1,4 +1,4 @@
--- MMT Styles: the windows you play with (Quest Tracker, Statistics' live tracker).
+-- MMT Styles: the windows you play with (Quest Tracker, Info window, Statistics' live tracker).
 --
 -- They are drawn with their own textures, not MMT.UI's widgets, so Skin.lua's
 -- hooks never see them. This file finds them by their global names (they are
@@ -12,6 +12,8 @@
 --     bar thumb): the style's accent colour while "Use the style's accent colour" is on
 -- Classic and Modern Blizzard (game window art) leave these windows as they are:
 -- the art is too heavy for a see-through window over the game.
+-- Each is an entry of the Windows list (Targets.lua): off = untouched; its cogwheel
+-- switches the background / edges / accent part off one by one.
 -- Nothing of theirs is replaced; their own SetColorTexture calls are followed
 -- (hooksecurefunc on our record of the texture) so a changed setting is painted again.
 -- None, or the module switched off, puts back exactly the owner's colours.
@@ -23,6 +25,12 @@ local painting = false
 
 local function Flat(S) return S and not S.art end
 local function AccentOn() return mod.Opt("accent") and true or false end
+-- the style for this window and part (nil: MMT's own look); part = "bg" | "edges" | "accent"
+local function Want(rec, S, part)
+    if not Flat(S) or not mod.TargetOn(rec.id) then return nil end
+    if mod.TargetOpt(rec.id, part, true) == false then return nil end
+    return S
+end
 
 local function DarkNeutral(c)
     local hi = math.max(c.r, c.g, c.b)
@@ -41,7 +49,9 @@ end
 local function PaintBg(rec, S)
     local t, o = rec.bg, rec.bgColour
     if rec.gradient then t:SetVertexColor(1, 1, 1, 1) rec.gradient = nil end
-    rec.styled = Flat(S) and o.a > 0 and DarkNeutral(o) or false
+    rec.visible = o.a > 0 and DarkNeutral(o)   -- a background of the user's own colour stays theirs
+    S = rec.visible and Want(rec, S, "bg") or nil
+    rec.styled = S and true or false
     if not rec.styled then
         SetTex(t, o.r, o.g, o.b, o.a)
         return
@@ -58,7 +68,8 @@ local function PaintBg(rec, S)
 end
 
 local function PaintEdges(rec, S)
-    local c = rec.styled and S.border
+    S = rec.visible and Want(rec, S, "edges") or nil
+    local c = S and S.border
     for _, t in ipairs(rec.edges) do
         if c then
             t:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
@@ -70,8 +81,9 @@ local function PaintEdges(rec, S)
 end
 
 local function PaintAccents(rec, S)
+    S = Want(rec, S, "accent")
     for _, a in ipairs(rec.accents) do
-        if Flat(S) and AccentOn() then
+        if S and AccentOn() then
             local r, g, b = S.accent()
             SetTex(a.t, r, g, b, a.a)
         else
@@ -110,9 +122,9 @@ end
 
 -- There is no getter for a colour texture's colour: the owner's values start as the
 -- defaults it builds with (read from its code), then follow every SetColorTexture it makes.
-local function Add(frame, bg, bgDefault, accents)
+local function Add(id, frame, bg, bgDefault, accents)
     if windows[frame] or not bg then return end
-    local rec = { frame = frame, bg = bg, bgColour = bgDefault, edges = Edges(frame), accents = {} }
+    local rec = { id = id, frame = frame, bg = bg, bgColour = bgDefault, edges = Edges(frame), accents = {} }
     for _, a in ipairs(accents or {}) do
         if a.t then
             local entry = { t = a.t, r = a.r, g = a.g, b = a.b, a = a.a }
@@ -147,23 +159,33 @@ local function QuestTracker()
     local QT = MMT and MMT.modules and MMT.modules.QuestTracker
     local db = QT and QT.db
     local c = db and db.bg or { r = 0, g = 0, b = 0 }
-    Add(f, f.bg, { r = c.r or 0, g = c.g or 0, b = c.b or 0, a = db and db.bgAlpha or 0.35 }, accents)
+    Add("questtracker", f, f.bg, { r = c.r or 0, g = c.g or 0, b = c.b or 0, a = db and db.bgAlpha or 0.35 }, accents)
     return true
 end
 
 local function LiveTracker()
     local f = rawget(_G, "MMTStatsLiveTracker")
     if not f or windows[f] or not f.bg then return windows[f] ~= nil end
-    Add(f, f.bg, { r = 0, g = 0, b = 0, a = 0.6 }, { { t = f.line, r = A[1], g = A[2], b = A[3], a = 0.8 } })
+    Add("livetracker", f, f.bg, { r = 0, g = 0, b = 0, a = 0.6 }, { { t = f.line, r = A[1], g = A[2], b = A[3], a = 0.8 } })
     if f.title and mod.AddText then pcall(mod.AddText, f.title, "accent") end
+    return true
+end
+
+-- the Info window (MMT/XPWindow.lua): its background (black, "Background opacity"), the
+-- bars keep their colours; made when MMT loads, so found right away
+local function InfoWindow()
+    local f = rawget(_G, "MMTXPFrame")
+    if not f or windows[f] or not f.bg then return windows[f] ~= nil end
+    local x = MMT and MMT.db and MMT.db.xp
+    Add("infowindow", f, f.bg, { r = 0, g = 0, b = 0, a = x and x.bgAlpha or 0.35 }, {})
     return true
 end
 
 -- both are made when their addon loads or later (the live tracker on first use): look until found
 local ticker
 local function Find()
-    local a, b = QuestTracker(), LiveTracker()
-    if a and b and ticker then ticker:Cancel() ticker = nil end
+    local a, b, c = QuestTracker(), LiveTracker(), InfoWindow()
+    if a and b and c and ticker then ticker:Cancel() ticker = nil end
 end
 ticker = C_Timer.NewTicker(3, Find)
 C_Timer.After(0, Find)
