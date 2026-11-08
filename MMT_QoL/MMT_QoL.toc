@@ -1,14 +1,14 @@
 ## Interface: 16001
 ## Title: MMT - Quality of life
-## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team. Sends ForeverAuras auras and EllesmereUI profiles to the team, and calls out SmartBuff alerts.
-## Version: 1.1.2
+## Notes: MMT module: small team conveniences. Keeps Dejunk's junk lists and Baganator's category items the same on every character of the team. Sends ForeverAuras auras and EllesmereUI profiles to the team, calls out SmartBuff alerts, and lets RestedXP Guides wait for the party before its next step.
+## Version: 1.2.0
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
 ## Dependencies: MMT
 ## DefaultState: disabled
 ## X-MMT-DefaultState: disabled
-## OptionalDeps: Dejunk, Baganator, ForeverAuras, EllesmereUI, SmartBuff
+## OptionalDeps: Dejunk, Baganator, ForeverAuras, EllesmereUI, SmartBuff, RXPGuides
 ## X-MMT-Module: 1
 ## X-MMT-Title: Quality of life
 ## IconTexture: Interface\Icons\INV_Misc_Bag_10
@@ -23,5 +23,6 @@ AurasWindow.lua
 Ellesmere.lua
 EllesmereWindow.lua
 SmartBuffAlerts.lua
+RestedXP.lua
 SettingsKit.lua
 Settings.lua

@@ -10,17 +10,18 @@
 --   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Ellesmere.lua  send EllesmereUI profiles to the team (EllesmereWindow.lua: the window)
 --   SmartBuffAlerts.lua  SmartBuff's missing-buff alerts called out to the team
+--   RestedXP.lua   RestedXP Guides waits for the party before its next step
 --   Settings.lua   settings page and debug report
 
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.1.2"
+mod.VERSION = "1.2.0"
 
 local M = MMT.NewModule({
     name = "QoL",
     title = "Quality of life",
-    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team.",
+    description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team; RestedXP Guides waits for the party before its next step and shows the team's objective counts.",
     sync = true,
     defaults = {
         -- Dejunk
@@ -58,6 +59,12 @@ local M = MMT.NewModule({
         sbShow = "LEADER",         -- show the team's alerts: LEADER (FTL leader) | ALL | OFF
         sbRaid = true,             -- raid warning text
         sbSound = true,            -- raid warning sound
+        -- RestedXP Guides
+        rxp = false,               -- RestedXP Guides with the party (the two below)
+        rxWait = true,             -- hold a finished step until the group's team members on the same guide are done
+        rxCount = "TOTAL",         -- objective lines (Quest Tracker data): TOTAL team sum in place of mine | LOWEST | EACH | OFF
+        rxChat = true,             -- chat line: who we wait for, and when everyone is done
+        rxTimeout = 0,             -- go on anyway after (minutes, 0 = never)
     },
 })
 mod.M = M
@@ -146,6 +153,6 @@ SlashCmdList.MMTQOL = function(msg)
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat. Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat, /mmtqol rxp go. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end

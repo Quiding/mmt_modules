@@ -397,7 +397,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 6, "report lines " .. n)
+  assert(n == 7, "report lines " .. n)   -- one per feature + the module line
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -972,4 +972,192 @@ run(A, amod, r"""function(m)
   assert(#RAID == before + 1, "alert not shown without SmartBuff")
   LOADED.SmartBuff = true
   return "Anna without SmartBuff: still receives and shows alerts"
+end""")
+
+# --- RestedXP party steps ----------------------------------------------------
+# a stand-in RestedXP: its update loop (TICK) moves on when UpdateStepCompletion set loadNextStep
+RX = r"""
+LOADED.RXPGuides = true
+C_Timer.After = function(_, fn) fn() end
+SENT = {}
+function MMT.SendToTeam(msg) assert(#msg < 250, "too long " .. #msg); SENT[#SENT + 1] = msg end
+function hooksecurefunc(a, b, c)
+  local t, name, fn = a, b, c
+  if type(a) == "string" then t, name, fn = _G, a, b end
+  local orig = t[name]
+  t[name] = function(...) local r = orig(...); fn(...); return r end
+end
+function UnitIsConnected() return true end
+GROUPED = true
+function MMT.UnitForMember(k) if GROUPED and k ~= ME and (k == "Anna-Smith" or k == "Bob-Stone") then return "party1" end end
+PROGRESS, DONE = 1, {}
+RXP = { currentGuide = { key = "Elwynn 1-10", steps = {} } }
+function RXP.GetGuideProgress() return PROGRESS end
+function RXP.SetStep(n) PROGRESS = n end
+function RXP.UpdateStepCompletion()
+  if DONE[RXP.currentGuide.steps[PROGRESS].stepId] then RXP.loadNextStep = true end
+end
+function TICK()
+  RXP.UpdateStepCompletion()
+  if RXP.loadNextStep then RXP.loadNextStep = false; RXP.SetStep(PROGRESS + 1) end
+end
+function FINISH(id) DONE[id] = true; TICK() end
+-- an objective line: RestedXP rebuilds its text from the quest log each time
+function RXP.UpdateQuestCompletionData(ref) ref.element.text = ref.element.base; ref.element.tooltipText = "tip" end
+STEPTEXT = 0
+function RXP.UpdateStepText() STEPTEXT = STEPTEXT + 1 end
+"""
+A.execute(RX); B.execute(RX)
+# Anna's guide has a step for her class only (stepId 999)
+A.execute('for i, id in ipairs({ 101, 102, 999, 103, 104 }) do RXP.currentGuide.steps[i] = { stepId = id } end')
+B.execute('for i, id in ipairs({ 101, 102, 103, 104 }) do RXP.currentGuide.steps[i] = { stepId = id } end')
+ENABLE_RX = r"""function(m)
+  local f
+  for _, x in ipairs(m.features) do if x.key == "rxp" then f = x end end
+  assert(f and m.M.db.rxp == false, "RestedXP feature should be off by default")
+  m.M.db.rxp = true
+  SENT = {}
+  f.OnEnable()
+  local hello
+  for _, s in ipairs(SENT) do if s == "QRX:101:0:Elwynn 1-10" then hello = true end end
+  assert(hello, "no step sent on enable: " .. table.concat(SENT, " | "))
+  return ME .. ": RestedXP party steps on, step sent"
+end"""
+run(A, amod, ENABLE_RX); run(B, bmod, ENABLE_RX)
+deliver(take(A), B, "Anna-Smith"); deliver(take(B), A, "Bob-Stone")
+
+run(A, amod, r"""function(m)
+  PRINTS = {}
+  FINISH(101)
+  assert(PROGRESS == 1, "Anna moved on without Bob: step " .. PROGRESS)
+  assert(m.RestedXP.Held(), "not holding")
+  local done
+  for _, s in ipairs(SENT) do if s == "QRX:101:1:Elwynn 1-10" then done = true end end
+  assert(done, "done not sent: " .. table.concat(SENT, " | "))
+  assert(PRINTS[#PRINTS]:find("waiting for Bob", 1, true), "chat: " .. tostring(PRINTS[#PRINTS]))
+  TICK(); TICK()
+  assert(PROGRESS == 1, "moved on while Bob is behind")
+  return "Anna: step 1 done, holds for Bob"
+end""")
+deliver(take(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  FINISH(101)
+  assert(PROGRESS == 2, "Bob is last: should move on, step " .. PROGRESS)
+  return "Bob: step 1 done last, moves on at once"
+end""")
+deliver(take(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  TICK()
+  assert(PROGRESS == 2, "Anna not released: step " .. PROGRESS)
+  assert(not m.RestedXP.Held(), "still held")
+  assert(PRINTS[#PRINTS]:find("everyone is done", 1, true), "chat: " .. tostring(PRINTS[#PRINTS]))
+  return "Anna: Bob done too, both on step 2"
+end""")
+deliver(take(A), B, "Anna-Smith")
+
+# Bob first this time; Anna's next step is for her class only: Bob doesn't wait for it
+run(B, bmod, r"""function(m)
+  FINISH(102)
+  assert(PROGRESS == 2 and m.RestedXP.Held(), "Bob should hold for Anna")
+  return "Bob: step 2 done, holds for Anna"
+end""")
+deliver(take(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  FINISH(102)
+  assert(PROGRESS == 3, "Anna should move on to her class step: " .. PROGRESS)
+  return "Anna: step 2 done last, on to her class-only step"
+end""")
+deliver(take(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  TICK()
+  assert(PROGRESS == 3 and RXP.currentGuide.steps[3].stepId == 103, "Bob not released by Anna's class step: " .. PROGRESS)
+  return "Bob: Anna's class-only step doesn't make him wait"
+end""")
+deliver(take(B), A, "Bob-Stone")
+
+# Go on now, and nobody grouped
+run(B, bmod, r"""function(m)
+  DELIVER("Anna-Smith", "QRX:102:0:Elwynn 1-10")   -- Anna went back a step: behind Bob
+  FINISH(103)
+  assert(PROGRESS == 3 and m.RestedXP.Held(), "Bob should hold for Anna (she is behind)")
+  SlashCmdList.MMTQOL("rxp go"); TICK()
+  assert(PROGRESS == 4, "go didn't let the step through: " .. PROGRESS)
+  GROUPED = false
+  FINISH(104)
+  assert(PROGRESS == 5, "not grouped: should not wait")
+  GROUPED = true
+  return "Bob: /mmtqol rxp go lets it through; not grouped = no waiting"
+end""")
+
+# team counts on the objective lines (Quest Tracker data)
+run(A, amod, r"""function(m)
+  local function q(have, need, state) return { quests = { [33] = { state = state or 0, obj = { { have = have, need = need } } } } } end
+  MMT.modules = { QuestTracker = { enabled = true, store = { quests = {
+    ["Anna-Smith"] = q(7, 10), ["Bob-Stone"] = q(6, 10), ["Cara-Moon"] = q(1, 10),   -- Cara isn't in the group
+  } } } }
+  local el = { tag = "complete", questId = 33, obj = 1, flags = 0, base = "Kobold Vermin slain: 7/10", step = { active = true } }
+  local ref = { element = el }
+  -- default: the team's total in place of RestedXP's own count (Cara isn't grouped)
+  assert(m.M.db.rxCount == "TOTAL", "default count style")
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: |cff88ccff13/20|r", "total: " .. el.text)
+  -- RestedXP's own words without a count: the total goes after it
+  el.base = "Kill the kobolds"
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kill the kobolds |cff88ccff(team 13/20)|r", "no count in the line: " .. el.text)
+  el.base = "Kobold Vermin slain: 7/10"
+  m.M.db.rxCount = "EACH"
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: 7/10 |cff88ccff(Bob 6)|r", "each: " .. el.text)
+  m.M.db.rxCount = "LOWEST"
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: 7/10 |cff88ccff(team 6/10)|r", "lowest: " .. el.text)
+  assert(el.tooltipText:find("Anna: |cffffffff7/10", 1, true) and el.tooltipText:find("Bob: |cffffffff6/10", 1, true), "tip: " .. el.tooltipText)
+  assert(not el.tooltipText:find("Cara", 1, true), "Cara isn't grouped")
+  -- RestedXP rebuilds the line: the count is added once, not twice
+  RXP.UpdateQuestCompletionData(ref)
+  assert(select(2, el.text:gsub("team", "")) == 1, "added twice: " .. el.text)
+  -- Bob's quest is ready: he counts as done; Anna is the lowest now
+  MMT.modules.QuestTracker.store.quests["Bob-Stone"] = q(3, 10, 1)
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text:find("(team 7/10)", 1, true), "ready quest: " .. el.text)
+  -- RestedXP's cap (objMax) applies to everyone
+  el.objMax = 5
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text:find("(team 5/5)", 1, true), "cap: " .. el.text)
+  el.objMax = nil
+  -- nobody else on the quest, an inactive step, the option off, no Quest Tracker: the line stays as it is
+  MMT.modules.QuestTracker.store.quests["Bob-Stone"] = nil
+  RXP.UpdateQuestCompletionData(ref); assert(el.text == el.base, "alone: " .. el.text)
+  MMT.modules.QuestTracker.store.quests["Bob-Stone"] = q(6, 10)
+  el.step.active = false
+  RXP.UpdateQuestCompletionData(ref); assert(el.text == el.base, "inactive step: " .. el.text)
+  el.step.active = true
+  m.M.db.rxCount = "OFF"
+  RXP.UpdateQuestCompletionData(ref); assert(el.text == el.base, "option off: " .. el.text)
+  m.M.db.rxCount = "LOWEST"
+  MMT.modules.QuestTracker.enabled = false
+  RXP.UpdateQuestCompletionData(ref); assert(el.text == el.base, "Quest Tracker off: " .. el.text)
+  MMT.modules.QuestTracker.enabled = true
+  -- new Quest Tracker data: the current step's lines are rebuilt
+  MMT.modules.QuestTracker.store.quests["Bob-Stone"] = q(9, 10)
+  LISTEN.QUESTS_CHANGED("Bob-Stone")
+  assert(el.text:find("(team 7/10)", 1, true), "not refreshed: " .. el.text)
+  return "Anna: objective lines count the group (total by default, lowest, each), tooltip each member's"
+end""")
+
+# the RestedXP tab says so while the Quest Tracker (where the counts come from) is off or missing
+run(A, amod, r"""function(m)
+  local f
+  for _, x in ipairs(m.features) do if x.key == "rxp" then f = x end end
+  local shown
+  f.qtWarn = { SetShown = function(_, v) shown = v end }
+  m.M.db.rxCount = "TOTAL"
+  MMT.modules.QuestTracker.enabled = true;  f.Refresh(); assert(shown == false, "note with the Quest Tracker on")
+  MMT.modules.QuestTracker.enabled = false; f.Refresh(); assert(shown == true, "no note with the Quest Tracker off")
+  local qt = MMT.modules.QuestTracker
+  MMT.modules.QuestTracker = nil;           f.Refresh(); assert(shown == true, "no note without the Quest Tracker")
+  m.M.db.rxCount = "OFF";                   f.Refresh(); assert(shown == false, "note while counts are off")
+  MMT.modules.QuestTracker = qt; qt.enabled = true; m.M.db.rxCount = "TOTAL"; f.qtWarn = nil
+  return "Anna: the RestedXP tab notes when the Quest Tracker is off or missing"
 end""")
