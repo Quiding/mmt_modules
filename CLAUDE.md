@@ -720,7 +720,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v1.1.2) – "Quality of life": home for small team conveniences
+### MMT_QoL (v1.2.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -739,8 +739,18 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   Forever in-combat values are SECRET - LowHealthFrame:SetInCombat -> EvaluateVisibleState then failed ("attempt to perform
   arithmetic on a secret number value (execution tainted by 'MMT_QoL')") on every fight, with the feature OFF too. The same goes
   for the old !NoFlash addon. Only a CVar (if the client has one) could do it taint-free. Rule: never replace a Blizzard global function.
-- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI), `QSB` (SmartBuff). One message per change; > 10 changes at once
+- Tags: `QDJ`, `QDJL`, `QDJR` (Dejunk), `QBG`, `QBGL`, `QBGF` (Baganator), `QWAH`, `QWA`, `QWAR` (ForeverAuras), `QEUH`, `QEU`, `QEUR` (EllesmereUI), `QSB` (SmartBuff), `QRX` / `QRQ` (RestedXP). One message per change; > 10 changes at once
   (import, Remove all, reset) are NOT sent (chat hint). Full pushes via `MMT.SendLong`, receivers merge (add only).
+- `RestedXP.lua` (1.2.0): RestedXP's addon table is the global `RXP` (its "debug" global). Its update loop: `addon.UpdateStepCompletion()`
+  marks the step completed and sets `addon.loadNextStep`; next frame `addon.SetStep(GetGuideProgress() + 1)`. We post-hook
+  UpdateStepCompletion (hooksecurefunc on RXP's table) and clear `loadNextStep` while a grouped team member on the same
+  guide (`guide.key`) is behind; release = set it again. Steps compared by `step.stepId` (guide line + guideId: the same on
+  every class; class-only steps are missing in the others' guides -> no wait). Manual clicks (`addon.nextStep`) untouched.
+  Team counts (`rxCount` TOTAL (default: the sum replaces the last "%d+/%d+" in the line) | LOWEST | EACH | OFF): post-hook `addon.UpdateQuestCompletionData(ref)` (rebuilds `ref.element.text` from the quest log
+  every time, so editing it is safe) and put in the group's counts from the core Quest Tracker's synced data
+  (`MMT.modules.QuestTracker.store.quests[key].quests[questID].obj[element.obj]` = { have, need, done }; same objective
+  order as the game). `QUESTS_CHANGED` (MMT.Fire from the Quest Tracker) re-runs it for the active step's elements.
+  Reading another module's store is unofficial: a Quest Tracker format change breaks it (a public getter would need a core PR).
 - `Dejunk.lua`: Dejunk 3.4 has NO list API (DejunkApi = IsJunk + AddListener; its Lists / store are in the private
   addon table). Read + write `__DEJUNK_ADDON_V3_SAVED_VARIABLES__` (rewritten as a shallow copy on every state change;
   `.global.inclusions/exclusions` and `.profiles.profileMap[characterMap[<GetUnitName-realm>] or "DEFAULT_PROFILE"]
@@ -858,7 +868,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   interactive import / full account functions; profile in parts, busy import page, full account always asked +
   confirmed in its popup, straight import without ask.
 
-### MMT_qStyles (v1.0.0) – "Styles": another look for MMT's windows
+### MMT_qStyles (v1.2.0) – "Styles": another look for MMT's windows
+- 1.1.0 / 1.2.0: `Hud.lua` styles the play windows (Quest Tracker, Info window `MMTXPFrame`, live tracker
+  `MMTStatsLiveTracker`) by their globals - background / edges / accent, Classic + Modern with the Classic background
+  and a tooltip-border backdrop frame. `Targets.lua`: `mod.TARGETS` (id, title, global frame `names`, `module`, `play`),
+  per-window options in `M.store.targets[id]` (on, font INHERIT|ON|OFF, bg / edges / accent); `mod.Gate(S, obj)` =
+  nil when the object's top window is off (Skin.lua's Paint* call it), `mod.TargetFonts(obj)`. Settings "Windows" tile.
 - 0.4.1: the core's tiles / tab strips (MMT 1.0.0, ConfigPages.lua's LOCAL `Tile` / `TabStrip`, not hookable): the Label hook (templates GameFontNormalLarge / GameFontNormal) runs `mod.TileBits(parent, fs)` one frame later - `parent.title == fs` = a tile (title text + its 1 px ARTWORK line), `parent.label == fs` with `parent.bar` = a tab (text + underline); kind `accent`, the faint accent fill stays.
 - Module name `qStyles` (the core derives the addon folder `MMT_` .. name), title "Styles", `/mmtstyle [none|elvui|ellesmere|classic]`.
   Files: `Module.lua` (`mod.Opt` / `SetOpt` / `SetStyle` / `Current` / `ResetSettings`, OnEnable / OnDisable = `mod.Apply`),

@@ -20,8 +20,8 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader *(new, not tested in game yet)* | 1.1.2 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.0.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts *(new, not tested in game yet)* | 1.2.0 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -383,11 +383,21 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   right away when it changes, and again after each fight (also a fight only the group was in); the same alert from several characters shows once. Names follow
   MMT's privacy setting (Team > Privacy). Options: send my alerts, buffs running
   out too, how often, show the team's alerts on the leader / every character / not here, raid warning text, sound.
+- **RestedXP with the party** (off by default), for [RestedXP Guides](https://www.curseforge.com/wow/addons/rxp-guides):
+  - *Wait for the party*: when your step is done, the guide stays on it (ticked off) until every team member in your
+    group on the same guide has done it too, or is past it - then everyone moves on. Steps only for one class or race
+    don't make anyone wait; clicking a step or RestedXP's arrows still moves at once. Options: a chat line saying who
+    you wait for, stop waiting after 2 / 5 / 10 minutes (or never), and Go on now (`/mmtqol rxp go`). Every character
+    that should wait (or be waited for) needs it on.
+  - *Objective counts*: objective lines count the whole group. By default the team's total replaces your own count
+    ("Kobold Vermin slain: 23/30" for three of you); or your count plus the lowest ("7/10 (team 6/10)"), plus each
+    member's ("7/10 (Bob 10, Cara 6)"), or only yours. The tooltip shows each member's count. The counts come from
+    MMT's Quest Tracker (it has to be on).
 - Options for Dejunk and Baganator: additions and / or removals, ask before taking changes (a dialog with Apply / Ignore) or
   take them right away, a chat line per change, and a button that sends your whole list once (the others
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.
 
-`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat`
+`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat` · `/mmtqol rxp go`
 
 ## Styles
 
@@ -418,6 +428,13 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
   pressed), the yellow check mark, the metal slider knob, the round close button, gold where MMT is blue.
 - Options: the style's font, the style's accent colour, and "Keep the game's own font" (when EllesmereUI's
   "Apply to All Game Text" or ElvUI changes all game text, MMT's windows keep the game's font; works with None too). Saved per account (every character and profile).
+- The windows you play with get the style too: the Quest Tracker, the Info window and Statistics' live tracker
+  (background, edges and accent; their own opacity stays; in Classic / Modern Blizzard the "Classic: window
+  background" and the game's thin tooltip border).
+- **Windows** list: switch the style on or off window by window (settings window, dialogs, Auto-Mailing, Team
+  Inventory, Team Gear, the play windows ...); a window that's off keeps MMT's own look. Each has its own font
+  choice, and the play windows can leave their background, edges or accent alone. Only windows of modules that are
+  installed and on are listed.
 - With EllesmereUI or ElvUI installed, switching Styles on asks once whether MMT should match it (only while you
   haven't picked a style yourself).
 - Made new from colours and WoW's own fonts: nothing of ElvUI or EllesmereUI is copied, and MMT's files aren't

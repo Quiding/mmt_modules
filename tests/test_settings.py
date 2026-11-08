@@ -32,10 +32,12 @@ CYCLES = {}   -- [label] = choices of the Cycle with that label
 CYCLE_GS = {} -- [label] = { getter, setter }
 function USE(fn) USES[#USES + 1] = fn end
 local function Choices(c) if type(c) == "function" then c = c() end return c end
-local function Column()
+local function Column(_, x, y, width)
   local col = new()
+  -- the real column's position fields (pages lay out rows from col.y)
+  rawset(col, "x", x or 8); rawset(col, "y", y or -42); rawset(col, "width", width or 330)
   rawset(col, "Header", function() return new() end)
-  rawset(col, "Note", function() return new() end)
+  rawset(col, "Note", function() local fs = new(); rawset(fs, "GetStringHeight", function() return 24 end); return fs end)
   rawset(col, "Space", function() end)
   rawset(col, "Add", function(_, f) return f end)
   rawset(col, "Button", function() return new() end)
@@ -62,7 +64,7 @@ end
 
 local function copy(t) if type(t) ~= "table" then return t end local r = {} for k, v in pairs(t) do r[k] = copy(v) end return r end
 UI = { ROW = 22, ACCENT = { 0.3, 0.7, 1 } }
-UI.Column = function() return Column() end
+UI.Column = function(...) return Column(...) end
 setmetatable(UI, { __index = function() return function() return new() end end })
 local frames = {}
 function CreateFrame(_, name) local f = new(); if name then rawset(_G, name, f) end return f end

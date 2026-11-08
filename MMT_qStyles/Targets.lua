@@ -62,8 +62,9 @@ end
 -- installed and switched on (Manage modules)
 function mod.TargetAvailable(t)
     if not t.module then return true end
-    local m = MMT and MMT.modules and MMT.modules[t.module]
-    return m and m.enabled and true or false
+    local mods = MMT and rawget(MMT, "modules")
+    local m = type(mods) == "table" and mods[t.module]
+    return type(m) == "table" and m.enabled and true or false
 end
 
 function mod.TargetOn(id) return mod.TargetOpt(id, "on", true) ~= false end

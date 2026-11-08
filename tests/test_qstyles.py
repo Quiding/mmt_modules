@@ -148,7 +148,7 @@ function hooksecurefunc(tbl, name, fn)
 end
 function CreateColor(r, g, b, a) return { r = r, g = g, b = b, a = a } end
 PixelUtil = { SetHeight = function(t, v) t._h = v; t._pixel = true end, SetWidth = function(t, v) t._w = v; t._pixel = true end }
-C_Timer = { After = function() end }
+C_Timer = { After = function() end, NewTicker = function() return { Cancel = function() end } end }
 function InCombatLockdown() return false end
 function GetTime() return 1000 end
 SlashCmdList = {}
