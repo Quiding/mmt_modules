@@ -143,7 +143,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   armor skills per class (mail/plate count before 40); `hideUnusable` skips those members (test_proficiency.py).
 - Ideas: ring/trinket best-slot pick, showing own-scale scores without ItemCompare.
 
-### MMT_CooldownTimers (v1.0.1) / MMT_BuffTimers (v1.0.1) – ports of ema_cooldowns / ema_buffs
+### MMT_CooldownTimers (v1.0.1) / MMT_BuffTimers (v1.0.2) – ports of ema_cooldowns / ema_buffs
 - Renamed 2026-10-25 (the user plans a real buff module): module names "CooldownTimers" / "BuffTimers", titles
   "Cooldown Timers" / "Buff Timers", slash `/mmtct` / `/mmtbt`. Old names "Cooldowns" / "Buffs": `TakeOver()` in each
   Module.lua (OnEnable + OnProfileChanged) copies `MMT.db.modules[OLD]` (READ only) into M.db once per profile and
@@ -459,6 +459,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `M.store.unlearned[key]`. `mod.Unlearned(key, e)`: own row skips it (Window Icons); `Castable` needs a caster of
   the class here who learned it (`ClassesHere` returns present, who[class] = keys + `stranger` for non-team units =
   counts as able). Name patterns: learned when a learned spellbook spell matches (`C_SpellBook.GetSpellBookItemType` == Spell, so not FutureSpell; ID = 3rd value OR the action ID, like EllesmereUI), for patterns in own lists + `caster == class`; sent after "#" (`MBFK:<ids>#<pattern>...`), `rec.patterns`. Weapon entries: `#@imbue` when `mod.OwnCanImbue()` is false (shaman without a "... Weapon" imbue spell, rogue without Poisons; other classes always can). `mod.KnownCheck()` on list change / profile / sync / SPELLS_CHANGED; `mod.KnownReset()` clears caches.
+- Talent procs (Buffs 1.0.2, Ret capstone "Echo of *"): `mod.PATTERN_IDS[pattern] = { ids, timed }` (Presets.lua) gives a
+  pattern its spell IDs up front - a proc only up in combat is never read, so Tracker never learns them and Live.lua
+  couldn't draw it; `Known.lua` never counts such a pattern unlearned (no spellbook spell matches a proc). Class
+  defaults: `SPEC_ONLY` patterns are on with "Only for" the specs that have them (spec lists are off by default).
+  `mod.NEW_ENTRIES` + `mod.AddNewEntries()` (OnEnable / OnProfileChanged, `M.store.entriesAdded[profile]` = round)
+  put later default additions into existing lists once (`update = true`: switch an untouched earlier one).
 - Blessings (`Casters.lua`, `blessingLimit`, default on): `mod.BlessingCovered(key, e)` = a missing blessing (`IsBlessing`:
   canonical name of Might / Wisdom / Kings / Sanctuary; Blessing of Salvation and Blessing of Light (+ Greater, Mass Salvation) were REMOVED from the game in the 2026-11-02 development notes: Buffs 0.29.0 dropped them from presets / CASTERS / BLESSINGS / GROUP, and `mod.DropRemovedBuffs()` (Presets.lua, `mod.REMOVED_BUFFS`, every OnEnable + OnProfileChanged) takes them out of existing lists) while the member has >= `mod.PaladinsHere()`
   (paladin units in the group; preview: its team) blessings CAST BY A GROUP UNIT (`a.group` from Compat `mod.Buff`'s 6th

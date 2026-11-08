@@ -119,6 +119,8 @@ mod.Tracked = Tracked
 
 -- has this entry's buff been seen with a timer (not a permanent aura)?
 function mod.Timed(e)
+    local pre = mod.IsPattern(e) and mod.PATTERN_IDS and mod.PATTERN_IDS[e.name]
+    if pre and pre.timed then return true end
     local timed = M.store.timed
     if not timed then return false end
     if mod.IsPattern(e) then

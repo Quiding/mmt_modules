@@ -125,7 +125,8 @@ function mod.OwnUnlearnedPatterns()
     local own = MMT.PlayerFull and MMT.PlayerFull()
     local candidates, seen = {}, {}
     local function Add(e)
-        if mod.IsPattern(e) and not seen[e.name] then seen[e.name] = true; candidates[#candidates + 1] = e end
+        -- a talent's proc (Presets.lua PATTERN_IDS) is no spell in the book: never "unlearned"
+        if mod.IsPattern(e) and not seen[e.name] and not (mod.PATTERN_IDS and mod.PATTERN_IDS[e.name]) then seen[e.name] = true; candidates[#candidates + 1] = e end
     end
     for _, lk in ipairs(own and mod.ListKeysFor(own, false) or {}) do
         for _, e in ipairs(M.db.lists[lk] or {}) do Add(e) end
@@ -235,6 +236,7 @@ function mod.Unlearned(key, e)
     if mod.preview or not (e.id or mod.IsPattern(e) or mod.IsWeapon(e)) then return false end
     local name = mod.IsWeapon(e) and IMBUE or mod.BuffName(e)
     if not name then return false end
+    if mod.IsPattern(e) and mod.PATTERN_IDS and mod.PATTERN_IDS[e.name] then return false end   -- a proc (also old lists)
     if MMT.IsSelf(key) then
         if not ownNames then OwnText() end
         return ownNames and ownNames[name] or false

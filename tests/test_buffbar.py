@@ -116,6 +116,35 @@ print(lua.eval(r"""function(m)
   m.M.db.lists.PALADIN = { { id = 1038 }, { id = 19740 }, { id = 25890 }, { id = 19977, off = true } }
   assert(m.DropRemovedBuffs() == 3 and #m.M.db.lists.PALADIN == 1 and m.M.db.lists.PALADIN[1].id == 19740, "removed buffs kept")
   m.M.db.lists.PALADIN = keep
+  -- Ret's capstone "Echo of *": in the preset (on), the paladin default (off), and once into old lists
+  local ret = Ids(m.PresetByKey("PALADIN:RET").entries)
+  local echoKey = m.EntryKey({ name = "Echo of *" })
+  assert(ret[echoKey] and not ret[echoKey].off, "Echo of * not on in the Ret preset")
+  local pal = Ids(m.DEFAULT_LISTS.PALADIN)
+  assert(pal[echoKey] and not pal[echoKey].off and pal[echoKey].only.specs["PALADIN:RET"]
+    and not pal[echoKey].only.specs["PALADIN:HOLY"], "paladin default: Echo on, Only for Ret")
+  local keepRet, keepPal, keepStore = m.M.db.lists["SPEC:PALADIN:RET"], m.M.db.lists.PALADIN, m.M.store.entriesAdded
+  m.M.store.entriesAdded = nil
+  m.M.db.lists["SPEC:PALADIN:RET"] = { { id = 20050 } }
+  m.M.db.lists.PALADIN = { { id = 19740 } }
+  assert(m.AddNewEntries() == 2, "Echo not added to old lists")
+  assert(m.M.db.lists.PALADIN[2].only.specs["PALADIN:RET"] and not m.M.db.lists.PALADIN[2].off, "class list: Echo for Ret")
+  -- a profile that got round 1 when it put Echo in off: switched on for Ret once
+  m.M.store.entriesAdded = { ["?"] = 1 }
+  m.M.db.lists.PALADIN = { { id = 19740 }, { name = "Echo of *", off = true } }
+  assert(m.AddNewEntries() == 1 and not m.M.db.lists.PALADIN[2].off and m.M.db.lists.PALADIN[2].only, "round 2 update")
+  -- one switched off by hand after that stays off
+  m.M.db.lists.PALADIN[2].off = true
+  assert(m.AddNewEntries() == 0 and m.M.db.lists.PALADIN[2].off, "hand switch undone")
+  m.M.store.entriesAdded = nil
+  m.M.db.lists["SPEC:PALADIN:RET"] = { { id = 20050 } }
+  m.M.db.lists.PALADIN = { { id = 19740 } }
+  m.AddNewEntries()
+  local oldRet = m.M.db.lists["SPEC:PALADIN:RET"]
+  assert(#oldRet == 2 and oldRet[2].name == "Echo of *" and not oldRet[2].off, "Ret list: Echo on at the end")
+  table.remove(oldRet, 2)
+  assert(m.AddNewEntries() == 0 and #oldRet == 1, "a taken-out Echo came back")
+  m.M.db.lists["SPEC:PALADIN:RET"], m.M.db.lists.PALADIN, m.M.store.entriesAdded = keepRet, keepPal, keepStore
   assert(not def[19506] and not def[17007] and not def[24907], "auras in the default")
   local raid, auras = m.PresetByKey("ALL:RAID"), m.PresetByKey("ALL:RAIDAURAS")
   assert(raid and auras, "raid presets")
@@ -457,6 +486,14 @@ print(lua.eval(r"""function(m)
   assert(m.Unlearned("Bob-Stone", aspects), "hunter without aspects")
   TEAM_MESSAGE("Bob-Stone", "MBFK:")
   assert(not m.Unlearned("Bob-Stone", aspects), "hunter learned one")
+  -- a talent proc (Echo of *) is never in the spellbook: never unlearned, own or from an old record
+  local echo = { name = "Echo of *" }
+  m.M.db.lists.SHAMAN = { ls, echo }
+  m.KnownReset()
+  for _, p in ipairs(m.OwnUnlearnedPatterns()) do assert(p ~= "Echo of *", "Echo counted as unlearned") end
+  assert(not m.Unlearned("Anna-Smith", echo), "own Echo unlearned")
+  TEAM_MESSAGE("Bob-Stone", "MBFK:#Echo of *")
+  assert(not m.Unlearned("Bob-Stone", echo), "an old record's Echo unlearned")
   m.SpellInfo, Enum, C_SpellBook = oldInfo, oldEnum, oldSB
   rawset(MMT, "Safe", oldSafe)
   MMT.db.team["Bob-Stone"] = nil
@@ -880,6 +917,11 @@ print(lua.eval(r"""function(m)
   assert(ids and ids[12970], "live IDs")
   assert(m.Timed(fl), "Flurry not known as a timed buff (its icon gate)")
   assert(not m.Timed({ name = "Devotion*" }), "a never-seen buff counted as timed")
+  -- a combat-only proc never seen readable: its IDs known up front (Echo of *, Ret capstone)
+  local echo = { name = "Echo of *" }
+  local eids = m.LiveIds(echo)
+  assert(eids and eids[1311703] and eids[1311704], "Echo IDs not drawn live")
+  assert(m.Timed(echo), "Echo not timed")
   m.Redraw()
   -- out of combat too: underneath always the missing look (the widget draws the buff)
   local underOut

@@ -53,6 +53,8 @@ local function Collect(e)
         for name, set in pairs(known) do
             if mod.Matches(e, name) then for id in pairs(set) do ids[id], any = true, true end end
         end
+        local pre = mod.PATTERN_IDS and mod.PATTERN_IDS[e.name]   -- known up front (Presets.lua)
+        for _, id in ipairs(pre and pre.ids or {}) do ids[id], any = true, true end
     else
         local name = mod.BuffName(e)
         for id in pairs(name and known[name] or {}) do ids[id], any = true, true end

@@ -69,8 +69,9 @@ local SPECS = {
         { "HOLY", "Holy", { S(), P("Seal of *") } },                     -- aura, any seal
         { "PROT", "Protection", { S(), B(25780), B(20928), P("Seal of *") } },
             -- aura, Righteous Fury, Holy Shield, any seal (Seal of Fury)
-        { "RET", "Retribution", { S(), P("Seal of *"), B(20050) } },
-            -- aura, any seal (Command / Crusader / Righteousness, swapped with Twist of Light), Vengeance
+        { "RET", "Retribution", { S(), P("Seal of *"), B(20050), { name = "Echo of *", icon = 1311703 } } },
+            -- aura, any seal (Command / Crusader / Righteousness, swapped with Twist of Light), Vengeance,
+            -- the capstone talent's "Echo of ..." buff (Buffs 1.0.2)
     },
     HUNTER = {
         { "BM", "Beast Mastery", { P("Aspect of the *") } },             -- any aspect (Hawk, Monkey, Wild, ...)
@@ -123,7 +124,9 @@ end
 -- default lists of a new profile: the party buffs in the All bar (for everyone: set
 -- "Only for" with the cog; "Hide buffs nobody here can cast" leaves out the ones nobody casts);
 -- per class every spec's buffs once, on only when on in every spec (a seal or form
--- of one spec stays off)
+-- of one spec stays off). specOnly = a buff only some specs ever get (a talent's proc):
+-- on in the class list, "Only for" those specs - spec lists are off by default.
+local SPEC_ONLY = { ["Echo of *"] = true }
 mod.DEFAULT_LISTS = { ALL = PartyBuffs() }
 for class, specs in pairs(SPECS) do
     local list, at, onIn = {}, {}, {}
@@ -135,10 +138,15 @@ for class, specs in pairs(SPECS) do
                 list[#list + 1] = c; at[k] = #list
             end
             if not e.off then onIn[k] = (onIn[k] or 0) + 1 end
+            if SPEC_ONLY[k] and not e.off then
+                local c = list[at[k]]
+                c.only = c.only or { specs = {} }
+                c.only.specs[class .. ":" .. sp[1]] = true
+            end
         end
     end
     for _, e in ipairs(list) do
-        if (onIn[mod.EntryKey(e)] or 0) < #specs then e.off = true end
+        if not e.only and (onIn[mod.EntryKey(e)] or 0) < #specs then e.off = true end
     end
     mod.DEFAULT_LISTS[class] = list
 end
@@ -178,6 +186,58 @@ function mod.DropRemovedBuffs()
     for _, list in pairs(db.lists) do
         for i = #list, 1, -1 do
             if list[i].id and mod.REMOVED_BUFFS[list[i].id] then table.remove(list, i); n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- Spell IDs known up front for a pattern: a buff that only comes up in combat (a proc) is never seen
+-- readable, so its IDs are never learned (Tracker.lua) and the in-combat drawing (Live.lua) can't find
+-- it. timed = it has a countdown (mod.Timed). Echo of Command / Echo of Righteousness: Ret capstone, 15 s.
+mod.PATTERN_IDS = {
+    ["Echo of *"] = { ids = { 1311703, 1311704 }, timed = true },
+}
+
+-- Entries added to the defaults after release: put into existing lists once per profile (round by
+-- round, M.store.entriesAdded[profile] = done round), at the end, switched like in the defaults; a list
+-- that has the entry keeps its own, one where it was taken out afterwards stays without it.
+--   NEW_ENTRIES[round] = { { listKey, entry, update = true }, ... }
+-- update = the entry as an earlier round put it in (off, no "Only for") is changed to this one;
+-- one switched or limited by hand stays as it is.
+local function EchoForRet() return { name = "Echo of *", icon = 1311703, only = { specs = { ["PALADIN:RET"] = true } } } end
+mod.NEW_ENTRIES = {
+    { { "SPEC:PALADIN:RET", { name = "Echo of *", icon = 1311703 } },
+      { "PALADIN", EchoForRet() } },                                  -- 1.0.2: Ret capstone
+    { { "PALADIN", EchoForRet(), update = true } },                   -- 1.0.2: round 1 had put it in off
+}
+
+local function Copy(t)
+    if type(t) ~= "table" then return t end
+    local c = {} for k, v in pairs(t) do c[k] = Copy(v) end
+    return c
+end
+
+function mod.AddNewEntries()
+    local db, store = mod.M.db, mod.M.store
+    if not (db and db.lists and store) then return 0 end
+    local profile = type(MMT.profileName) == "string" and MMT.profileName or "?"
+    store.entriesAdded = store.entriesAdded or {}
+    local done = tonumber(store.entriesAdded[profile]) or 0
+    if done >= #mod.NEW_ENTRIES then return 0 end
+    store.entriesAdded[profile] = #mod.NEW_ENTRIES
+    local n = 0
+    for round = done + 1, #mod.NEW_ENTRIES do
+        for _, add in ipairs(mod.NEW_ENTRIES[round]) do
+            local list, e = db.lists[add[1]], add[2]
+            if list then   -- a list not made yet gets it from its preset / default
+                local k, has = mod.EntryKey(e), nil
+                for _, x in ipairs(list) do if mod.EntryKey(x) == k then has = x end end
+                if not has then
+                    if not add.update then list[#list + 1] = Copy(e); n = n + 1 end
+                elseif add.update and has.off and not mod.HasFilter(has) then
+                    has.off, has.only = e.off, Copy(e.only); n = n + 1
+                end
+            end
         end
     end
     return n
