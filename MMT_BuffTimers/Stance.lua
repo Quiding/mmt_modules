@@ -14,7 +14,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local VERSION = 3
+local VERSION = 4
 local lib = rawget(_G, "MMTStanceLib")
 if not lib or (lib.version or 0) < VERSION then
     lib = lib or {}
@@ -81,9 +81,11 @@ if not lib or (lib.version or 0) < VERSION then
         return 0, nil
     end
 
-    -- a member's stance spell ID: own read live, others the newest of message / heartbeat
+    -- a member's stance spell ID: own read live, others the newest of message / heartbeat;
+    -- nil for a member who is offline (their last stance would stay on the bar)
     function lib.StanceOf(key)
         if MMT.IsSelf(key) then return (lib.Own()) end
+        if MMT.IsOnline and not MMT.IsOnline(key) then return nil end
         local t = lib.told[key]
         if t and GetTime() - t[2] < 40 then return t[1] end
         local s = MMT.status and MMT.status[key]
