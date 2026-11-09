@@ -28,6 +28,7 @@ function MMT.Print(fmt, ...) PRINTS[#PRINTS + 1] = select("#", ...) > 0 and fmt:
 function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
 function MMT.SendToTeam(msg) assert(#msg < 250, "message too long: " .. #msg); SENT[#SENT + 1] = msg end
 function MMT.SendLong(msg) SENT[#SENT + 1] = msg end
+function MMT.RegisterLootSkip(sk) LOOTSKIP = sk end
 function MMT.UI.Confirm(text, accept, onAccept, cancel, onCancel) DIALOG = { text = text, ok = onAccept, no = onCancel } end
 function MMT.NewModule(def)
   local M = def
@@ -995,7 +996,8 @@ RXP = { currentGuide = { key = "Elwynn 1-10", steps = {} } }
 function RXP.GetGuideProgress() return PROGRESS end
 function RXP.SetStep(n) PROGRESS = n end
 function RXP.UpdateStepCompletion()
-  if DONE[RXP.currentGuide.steps[PROGRESS].stepId] then RXP.loadNextStep = true end
+  local step = RXP.currentGuide.steps[PROGRESS]
+  if DONE[step.stepId] then step.completed = true; RXP.loadNextStep = true end   -- like RestedXP
 end
 function TICK()
   RXP.UpdateStepCompletion()
@@ -1003,7 +1005,13 @@ function TICK()
 end
 function FINISH(id) DONE[id] = true; TICK() end
 -- an objective line: RestedXP rebuilds its text from the quest log each time
-function RXP.UpdateQuestCompletionData(ref) ref.element.text = ref.element.base; ref.element.tooltipText = "tip" end
+function RXP.UpdateQuestCompletionData(ref)
+  local el = ref.element
+  el.text = el.base; el.tooltipText = "tip"
+  if el.doneHere then el.completed, el.skip = true, true end   -- like SetElementComplete
+end
+INCOMPLETE = 0
+function RXP.SetElementIncomplete(ref) INCOMPLETE = INCOMPLETE + 1 end
 STEPTEXT = 0
 function RXP.UpdateStepText() STEPTEXT = STEPTEXT + 1 end
 """
@@ -1160,4 +1168,122 @@ run(A, amod, r"""function(m)
   m.M.db.rxCount = "OFF";                   f.Refresh(); assert(shown == false, "note while counts are off")
   MMT.modules.QuestTracker = qt; qt.enabled = true; m.M.db.rxCount = "TOTAL"; f.qtWarn = nil
   return "Anna: the RestedXP tab notes when the Quest Tracker is off or missing"
+end""")
+
+# kill objectives: the group shares the kill, so the line shows who needs the most (not a sum)
+run(A, amod, r"""function(m)
+  local function q(have) return { quests = { [33] = { state = 0, obj = { { have = have, need = 10 } } } } } end
+  local QT = MMT.modules.QuestTracker.store.quests
+  QT["Anna-Smith"], QT["Bob-Stone"], QT["Cara-Moon"] = q(7), q(5), nil
+  m.M.db.rxCount = "TOTAL"
+  RXP.GetQuestObjectives = function() return { { type = "monster" } } end
+  local el = { tag = "complete", questId = 33, obj = 1, flags = 0, base = "Kobold Vermin slain: 7/10", step = { active = true, index = 1 } }
+  local ref = { element = el }
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: |cff88ccff5/10|r |cff88ccff(Bob)|r", "Bob needs the most: " .. el.text)
+  QT["Bob-Stone"] = q(9)
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: |cff88ccff7/10|r |cff88ccff(you)|r", "Anna needs the most: " .. el.text)
+  QT["Bob-Stone"] = q(7)
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text == "Kobold Vermin slain: |cff88ccff7/10|r", "in sync: no name: " .. el.text)
+  -- an item objective stays the team's total
+  RXP.GetQuestObjectives = function() return { { type = "item" } } end
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.text:find("14/20", 1, true), "items: total: " .. el.text)
+  RXP.GetQuestObjectives = nil
+  return "Anna: kill objectives show who needs the most, items the team total"
+end""")
+
+
+# waiting, objective by objective: a done objective stays open while a grouped member still needs it
+# (also on a step shown beside the current one - RestedXP's sticky steps finish on their own)
+run(A, amod, r"""function(m)
+  local function q(have, need) return { quests = { [44] = { state = 0, obj = { { have = have, need = need } } } } } end
+  local QT = MMT.modules.QuestTracker.store.quests
+  QT["Anna-Smith"], QT["Bob-Stone"] = q(1, 1), q(0, 1)
+  m.M.db.rxWait, m.M.db.rxChat, m.M.db.rxCount = true, true, "TOTAL"
+  PRINTS = {}
+  local el = { tag = "complete", questId = 44, obj = 1, flags = 0, base = "1/1 Pristine Tigress Fang", title = "Pristine Tigress Fang",
+    step = { active = true, sticky = true, index = 9 }, doneHere = true }
+  local ref = { element = el }
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.completed == false and el.skip == false and INCOMPLETE >= 1, "Anna's fang should stay open for Bob")
+  assert(el.text:find("1/2", 1, true), "team count: " .. el.text)
+  assert(PRINTS[#PRINTS]:find("Pristine Tigress Fang done - waiting for Bob", 1, true), "chat: " .. tostring(PRINTS[#PRINTS]))
+  local said = #PRINTS
+  RXP.UpdateQuestCompletionData(ref)
+  assert(el.completed == false and #PRINTS == said, "held again, said once")
+  -- Bob loots his: the Quest Tracker's data comes in, the objective is done for everyone
+  QT["Bob-Stone"] = q(1, 1)
+  LISTEN.QUESTS_CHANGED("Bob-Stone")
+  assert(el.completed == true and el.skip == true, "not ticked once Bob has it")
+  assert(PRINTS[#PRINTS]:find("everyone has Pristine Tigress Fang", 1, true), "chat: " .. tostring(PRINTS[#PRINTS]))
+  assert(m.RestedXP.HeldObjectives() == 0, "still held")
+  -- Go on now lets a held objective go
+  el.step.active = false   -- (that step is done)
+  QT["Bob-Stone"] = q(0, 1)
+  local el2 = { tag = "complete", questId = 44, obj = 1, flags = 0, base = "1/1 Pristine Tigress Fang", title = "Fang",
+    step = { active = true, index = 9 }, doneHere = true }
+  RXP.UpdateQuestCompletionData({ element = el2 })
+  assert(el2.completed == false and m.RestedXP.HeldObjectives() == 1, "el2 not held")
+  SlashCmdList.MMTQOL("rxp go")
+  assert(el2.completed == true and m.RestedXP.HeldObjectives() == 0, "go didn't let it through: completed=" .. tostring(el2.completed) .. " held=" .. m.RestedXP.HeldObjectives() .. " " .. table.concat(PRINTS, " | "))
+  -- waiting off: ticks at once
+  m.M.db.rxWait = false
+  local el3 = { tag = "complete", questId = 44, obj = 1, flags = 0, base = "x 1/1", step = { active = true }, doneHere = true }
+  RXP.UpdateQuestCompletionData({ element = el3 })
+  assert(el3.completed == true, "waiting off should not hold")
+  m.M.db.rxWait = true
+  return "Anna: a done objective waits for Bob (sticky steps too), ticks when he has it; Go on now"
+end""")
+
+# --- Never loot (Loot Distribution's hook) ----------------------------------
+run(A, amod, r"""function(m)
+  assert(LOOTSKIP and LOOTSKIP.name == "QoL" and #LOOTSKIP.options == 2, "not registered")
+  local ITEMS = { [10] = { 0, 5 }, [11] = { 0, 0 }, [12] = { 1, 50 }, [13] = { 0, 7 }, [14] = { 2, 90 } }   -- quality, sell price
+  C_Item.GetItemInfo = function(link) local id = tonumber(tostring(link):match("item:(%d+)")); local it = ITEMS[id]
+    if it then return "x", link, it[1], 1, 1, nil, nil, 1, nil, 1, it[2] end end
+  local function L(id) return "|Hitem:" .. id .. "::|h[x]|h" end
+  local skip = LOOTSKIP.skip
+  -- both off by default: nothing skipped
+  assert(skip(L(10)) == nil and skip(L(12)) == nil, "off by default")
+  -- Dejunk: global junk list, the profile's "not junk" wins
+  DJ.global.inclusions["12"] = true; DJ.global.inclusions["14"] = true
+  DJ.profiles.profileMap.DEFAULT_PROFILE.settings.exclusions["14"] = true
+  DJ_FIRE()
+  m.M.db.lsDejunk = true
+  assert(skip(L(12)) == "Dejunk junk list", "dejunk 12: " .. tostring(skip(L(12))))
+  assert(skip(L(14)) == nil, "profile not-junk should win")
+  assert(skip(L(10)) == nil, "grey without baganator option")
+  -- Dejunk not loaded: greyed, nothing skipped
+  LOADED.Dejunk = nil
+  local ok, why = LOOTSKIP.options[1].usable()
+  assert(not ok and why:find("Dejunk"), "usable: " .. tostring(why))
+  assert(skip(L(12)) == nil, "dejunk not loaded")
+  LOADED.Dejunk = true
+  m.M.db.lsDejunk = false
+  -- Baganator: greys with a sell price, Junk by hand, another category by hand wins
+  m.M.db.lsBaganator = true
+  assert(skip(L(10)) == "Baganator junk", "grey with value")
+  assert(skip(L(11)) == nil, "grey without value")
+  assert(skip(L(12)) == nil, "white not junk")
+  BG_MOVE("i:12", nil, "default_junk")
+  assert(skip(L(12)) == "Baganator junk", "junk by hand")
+  BG_MOVE("i:13", nil, "default_other")
+  assert(skip(L(13)) == nil, "grey put into another category")
+  -- Baganator takes its junk from Dejunk: Dejunk's "not junk" beats the grey rule
+  BG().junk_plugin = "dejunk"
+  DJ.global.exclusions["10"] = true; DJ_FIRE()
+  assert(skip(L(10)) == nil, "dejunk not-junk via baganator")
+  DJ.global.inclusions["14"] = nil; DJ.profiles.profileMap.DEFAULT_PROFILE.settings.exclusions["14"] = nil
+  DJ.global.inclusions["14"] = true; DJ_FIRE()
+  assert(skip(L(14)) == "Baganator junk", "dejunk junk via baganator")
+  -- module off: nothing, options greyed with the reason
+  m.M.enabled = false
+  assert(skip(L(12)) == nil, "module off")
+  local ok2, why2 = LOOTSKIP.options[2].usable()
+  assert(not ok2 and why2:find("switched off"), "usable off: " .. tostring(why2))
+  m.M.enabled = true
+  return "Anna: never loot - Dejunk lists and Baganator junk for Loot Distribution's hook"
 end""")

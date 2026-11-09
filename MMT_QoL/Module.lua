@@ -6,6 +6,7 @@
 --   Ask.lua        "ask before applying": one dialog per sender and feature
 --   Dejunk.lua     Dejunk's junk / not-junk lists, the same on the team
 --   Baganator.lua  Baganator's items put into categories, the same on the team
+--   LootSkip.lua   Dejunk / Baganator junk on Loot Distribution's "Never Loot" tab
 --   Bulk.lua       sending big import strings (chunks, ask, one import at a time)
 --   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Ellesmere.lua  send EllesmereUI profiles to the team (EllesmereWindow.lua: the window)
@@ -16,7 +17,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.2.0"
+mod.VERSION = "1.3.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -40,6 +41,9 @@ local M = MMT.NewModule({
         bgAsk = false,
         bgChat = true,
         junkLink = true,           -- Baganator's Junk <-> Dejunk's global junk list (on this character)
+        -- Loot Distribution's "Never Loot" tab (LootSkip.lua): left on the corpse as master looter
+        lsDejunk = false,          -- items on Dejunk's junk lists
+        lsBaganator = false,       -- Baganator junk
         -- ForeverAuras
         auras = true,              -- send / take auras
         waAsk = true,              -- a dialog before ForeverAuras' import window

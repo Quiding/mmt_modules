@@ -20,7 +20,8 @@
 --
 -- Team counts (rxCount). A "complete" objective line of the current step shows the
 -- group's team members on that quest: TOTAL (default) puts the sum in place of
--- RestedXP's own count ("Kobold Vermin slain: 23/30"), LOWEST adds the lowest
+-- RestedXP's own count ("Linen Cloth: 23/30") - for kills (shared by the group) the
+-- count of who needs the most ("Kobold Vermin slain: 5/10 (Bob)"), LOWEST adds the lowest
 -- ("7/10 (team 6/10)"), EACH adds the others' ("7/10 (Bob 10, Cara 6)"), OFF
 -- leaves it; the tooltip always gets each member's count. The counts come
 -- from MMT's Quest Tracker, which already syncs every member's quest log
@@ -130,6 +131,9 @@ local function AfterCompletion()
     if not a or not a.loadNextStep or not mod.Active(F) or not M.db.rxWait or not IsInGroup() then return end
     local guide, index, stepId = Current()
     if not guide then return end
+    -- only a finished current step is held (another step shown beside it - a sticky one - finishing
+    -- doesn't make the current one "done"; its objectives are held one by one, AfterObjective)
+    if not guide.steps[index].completed then return end
     if skipOnce then skipOnce = false return end
     if passed and passed.guide == guide.key and passed.stepId == stepId then return end
     local behind = Behind()
@@ -185,6 +189,7 @@ end
 -- Team counts on the objective lines
 ---------------------------------------------------------------------------
 local refs = setmetatable({}, { __mode = "k" })   -- [element] = the ref RestedXP updates it with
+local HoldObjective
 
 -- the Quest Tracker's synced quest logs, or nil (module missing or off)
 local function QuestData()
@@ -221,17 +226,63 @@ local function TeamCounts(questID, objIndex, cap)
     return rows
 end
 
+-- a "slay" objective (the game's type "monster"): the group gets the kill together, so a
+-- sum means nothing - who needs the most does. RestedXP just read the objectives (cached).
+local function IsKill(el)
+    local a = RXP()
+    if not (a and type(a.GetQuestObjectives) == "function") then return false end
+    local ok, objs = pcall(a.GetQuestObjectives, el.questId, el.step and el.step.index)
+    local o = ok and type(objs) == "table" and objs[el.obj]
+    return type(o) == "table" and o.type == "monster"
+end
+
+-- Waiting, objective by objective: an objective done here stays open (unticked, its step stays)
+-- while a team member in the group who has the quest still needs it. This holds every step
+-- RestedXP shows - also the ones beside the current step (sticky), which finish on their own
+-- without RestedXP moving on. The Quest Tracker's new data runs it again (RefreshObjectives).
+local heldObj = setmetatable({}, { __mode = "k" })    -- [element] = names waited for
+local passedObj = setmetatable({}, { __mode = "k" })  -- [element] = true: let go by hand
+HoldObjective = function(ref, el, rows)
+    if not el.completed or not M.db.rxWait or not IsInGroup() or passedObj[el] then heldObj[el] = nil return end
+
+    local behind = {}
+    for _, r in ipairs(rows) do if not r.self and r.have < r.need then behind[#behind + 1] = r.key end end
+    if #behind == 0 then
+        if heldObj[el] and M.db.rxChat then MMT.Print("|cff88ccffRestedXP:|r everyone has %s.", el.title or "it") end
+        heldObj[el] = nil
+        return
+    end
+    -- undo RestedXP's tick: not completed, not skipped (its step check reads both)
+    el.completed, el.skip = false, false
+    local a = RXP()
+    if a and a.SetElementIncomplete then pcall(a.SetElementIncomplete, ref) end
+    local names = Names(behind)
+    if heldObj[el] ~= names then
+        if not heldObj[el] then rxs.holds = rxs.holds + 1 end
+        if M.db.rxChat then MMT.Print("|cff88ccffRestedXP:|r %s done - waiting for %s.", el.title or "objective", names) end
+        heldObj[el] = names
+    end
+end
+
+-- Go on now: every objective waited on counts as done here
+local function PassObjectives()
+    local n = 0
+    for el in pairs(heldObj) do passedObj[el] = true; heldObj[el] = nil; n = n + 1 end
+    return n
+end
+
 local function AfterObjective(ref)
     local el = type(ref) == "table" and ref.element
     if type(el) ~= "table" or el.tag ~= "complete" or not el.obj or type(el.questId) ~= "number" then return end
     if (tonumber(el.flags) or 0) % 2 == 1 then return end   -- a line RestedXP doesn't show
     refs[el] = ref
-    local style = M.db.rxCount
-    if not mod.Active(F) or style == "OFF" or not (el.step and el.step.active) then return end
-    if type(el.text) ~= "string" or not el.text:find("%S") then return end
+    if not mod.Active(F) or not (el.step and el.step.active) then return end
     local rows = TeamCounts(el.questId, el.obj, el.objMax)
-    if not rows then return end
-    el.text = mod.RestedXPCountText(el.text, rows, style)
+    if not rows then heldObj[el] = nil return end
+    HoldObjective(ref, el, rows)
+    local style = M.db.rxCount
+    if style == "OFF" or type(el.text) ~= "string" or not el.text:find("%S") then return end
+    el.text = mod.RestedXPCountText(el.text, rows, style, IsKill(el))
     local lines = {}
     for _, r in ipairs(rows) do
         local c = r.have >= r.need and "|cff55ff55" or "|cffffffff"
@@ -244,7 +295,39 @@ end
 
 -- RestedXP's line with the team's counts (rows: TeamCounts, me first)
 local BLUE = "|cff88ccff"
-function mod.RestedXPCountText(text, rows, style)
+
+-- the line with its last "have/need" (RestedXP's own count) replaced, or nil when it has none
+local function SwapCount(text, count)
+    local s, e, at, stop = 1, nil, nil, nil
+    while true do
+        s, e = text:find("%d+/%d+", s)
+        if not s then break end
+        at, stop, s = s, e, e + 1
+    end
+    if at then return text:sub(1, at - 1) .. count .. text:sub(stop + 1) end
+end
+
+-- kill objectives: the count of whoever needs the most, and who ("you" for this character)
+local function Neediest(text, rows)
+    local low
+    for _, r in ipairs(rows) do if not low or r.have < low.have then low = r end end
+    local who, same = {}, true
+    for _, r in ipairs(rows) do
+        if r.have ~= low.have then same = false end
+        if r.have == low.have then who[#who + 1] = r.self and "you" or Names({ r.key }) end
+    end
+    local count = ("%s%d/%d|r"):format(BLUE, low.have, low.need)
+    local tag = ""
+    if not same then
+        tag = #who > 2 and ("%s +%d"):format(who[1], #who - 1) or table.concat(who, ", ")
+        tag = (" %s(%s)|r"):format(BLUE, tag)
+    end
+    local swapped = SwapCount(text, count)
+    if swapped then return swapped .. tag end
+    return ("%s %s(team %d/%d%s)|r"):format(text, BLUE, low.have, low.need, same and "" or (", " .. (#who > 2 and ("%s +%d"):format(who[1], #who - 1) or table.concat(who, ", "))))
+end
+
+function mod.RestedXPCountText(text, rows, style, kill)
     if style == "LOWEST" then
         local low
         for _, r in ipairs(rows) do if not low or r.have < low.have then low = r end end
@@ -254,18 +337,12 @@ function mod.RestedXPCountText(text, rows, style)
         for _, r in ipairs(rows) do if not r.self then t[#t + 1] = ("%s %d"):format(Names({ r.key }), r.have) end end
         return ("%s %s(%s)|r"):format(text, BLUE, table.concat(t, ", "))
     end
-    -- TOTAL: the sum in place of RestedXP's own "have/need" (the last one in the line)
+    -- TOTAL: kills - who needs the most; anything else - the sum, both in place of RestedXP's own count
+    if kill then return Neediest(text, rows) end
     local have, need = 0, 0
     for _, r in ipairs(rows) do have, need = have + r.have, need + r.need end
-    local total = ("%s%d/%d|r"):format(BLUE, have, need)
-    local s, e, at, stop = 1, nil, nil, nil
-    while true do
-        s, e = text:find("%d+/%d+", s)
-        if not s then break end
-        at, stop, s = s, e, e + 1
-    end
-    if at then return text:sub(1, at - 1) .. total .. text:sub(stop + 1) end
-    return ("%s %s(team %d/%d)|r"):format(text, BLUE, have, need)
+    return SwapCount(text, ("%s%d/%d|r"):format(BLUE, have, need))
+        or ("%s %s(team %d/%d)|r"):format(text, BLUE, have, need)
 end
 
 -- the Quest Tracker got new data: rebuild the current step's objective lines
@@ -311,9 +388,9 @@ F = mod.Feature({
     checkText = "RestedXP Guides with the party",
     tip = "RestedXP Guides waits for the party before its next step, and its objective lines show the team's counts (see the options).",
     notes = {
-        "Waiting: each character tells the team its RestedXP guide and step. When your step is done, RestedXP stays on it (ticked off) until every team member in your group on the same guide has done it too, or is past it - then everyone moves on.",
+        "Waiting: a quest objective you've done stays open (and its step with it) while a team member in your group who has the quest still needs it - also on steps RestedXP shows beside the current one. Other steps: each character tells the team its guide and step, and a finished step waits until everyone on the same guide has done it or is past it.",
         "Only team members in your group who have this module on and RestedXP on the same guide count. Steps only for one class or race don't make anyone wait. Clicking a step or RestedXP's arrows still moves at once; /mmtqol rxp go lets the step you're waiting on go now.",
-        "Team counts: objective lines count the whole group - by default the team's total in place of yours (\"Kobold Vermin slain: 23/30\"), or the lowest, or each member's; the line's tooltip shows each one's. They come from MMT's Quest Tracker, which has to be on (it shares the quest logs).",
+        "Team counts: objective lines count the whole group - by default the team's total in place of yours (\"Linen Cloth: 23/30\"); kills are shared by the group, so they show who needs the most (\"Kobold Vermin slain: 5/10 (Bob)\"). Or the lowest, or each member's; the line's tooltip shows each one's. They come from MMT's Quest Tracker, which has to be on (it shares the quest logs).",
     },
     tags = { QRX = OnStep, QRQ = OnAsk },
     OnEnable = function()
@@ -330,23 +407,22 @@ F = mod.Feature({
         ui.Check("Wait for the party before the next step", "rxWait", "RestedXP goes to its next step only when every team member in your group on the same guide has done the step too.")
         ui.Cycle("Objective counts", { { value = "TOTAL", text = "Team total" }, { value = "LOWEST", text = "Mine + lowest" },
             { value = "EACH", text = "Mine + each" }, { value = "OFF", text = "Only mine" } }, "rxCount")
-        ui.Note("Team total: 23/30 for three of you. Mine + lowest: 7/10 (team 6/10). Mine + each: 7/10 (Bob 10, Cara 6).")
+        ui.Note("Team total: 23/30 for three of you; kills (shared) show who needs the most: 5/10 (Bob). Mine + lowest: 7/10 (team 6/10). Mine + each: 7/10 (Bob 10, Cara 6).")
         -- the counts come from the Quest Tracker: say so while it's off or missing (F.Refresh)
         F.qtWarn = ui.Note("MMT's Quest Tracker is off or not installed on this character: the objective counts need it (it shares the quest logs).")
         F.qtWarn:SetTextColor(1, 0.6, 0.2)
         ui.Check("Chat line while waiting", "rxChat", "Says who you wait for when your step is done, and when everyone is.")
         ui.Cycle("Stop waiting after", { { value = 0, text = "Never" }, { value = 2, text = "2 minutes" },
             { value = 5, text = "5 minutes" }, { value = 10, text = "10 minutes" } }, "rxTimeout")
-        ui.Button("Go on now", function()
-            if held then Release("by hand", true) else MMT.Print("RestedXP: not waiting for anyone.") end
-        end, "Lets the step you're waiting on go now (/mmtqol rxp go).")
+        ui.Button("Go on now", function() F.commands.go() end, "Lets the step and objectives you're waiting on go now (/mmtqol rxp go).")
     end,
     Report = function(add)
         local guide, index, stepId = Current()
-        local n = 0
+        local n, h = 0, 0
         for _ in pairs(refs) do n = n + 1 end
-        add(("RestedXP: wait=%s count=%s questData=%s objectives=%d hooked=%s guide=%s step=%s (%s) held=%s behind=%s holds=%d released=%d sent=%d got=%d"):format(
-            tostring(M.db.rxWait), tostring(M.db.rxCount), tostring(QuestData() ~= nil), n, tostring(hooked), guide and guide.key or "-", tostring(index), tostring(stepId),
+        for _ in pairs(heldObj) do h = h + 1 end
+        add(("RestedXP: wait=%s count=%s questData=%s objectives=%d (held %d) hooked=%s guide=%s step=%s (%s) held=%s behind=%s holds=%d released=%d sent=%d got=%d"):format(
+            tostring(M.db.rxWait), tostring(M.db.rxCount), tostring(QuestData() ~= nil), n, h, tostring(hooked), guide and guide.key or "-", tostring(index), tostring(stepId),
             held and tostring(held.index) or "no", Names(Behind()), rxs.holds, rxs.released, rxs.sent, rxs.got))
         for key, s in pairs(others) do
             add(("  %s: %s step %s done=%s %ds ago grouped=%s"):format(key, tostring(s.guide), tostring(s.stepId),
@@ -362,7 +438,10 @@ end
 
 F.commands = {
     go = function()
-        if held then Release("by hand", true) else skipOnce = true; MMT.Print("RestedXP: not waiting; the next finished step goes on at once.") end
+        local objs = PassObjectives()
+        if objs > 0 then RefreshObjectives() end
+        if held then Release("by hand", true)
+        elseif objs == 0 then skipOnce = true; MMT.Print("RestedXP: not waiting; the next finished step goes on at once.") end
     end,
 }
 
@@ -371,5 +450,5 @@ M:Listen("QUESTS_CHANGED", function() RefreshObjectives() end)
 M:On("GROUP_JOINED", function() C_Timer.After(2, Ask) end)
 
 -- for the tests
-mod.RestedXP = { QuestData = QuestData, TeamCounts = TeamCounts, Behind = Behind, Check = Check, AfterCompletion = AfterCompletion, others = others,
+mod.RestedXP = { HeldObjectives = function() local n = 0 for _ in pairs(heldObj) do n = n + 1 end return n end, QuestData = QuestData, TeamCounts = TeamCounts, Behind = Behind, Check = Check, AfterCompletion = AfterCompletion, others = others,
     Held = function() return held end }

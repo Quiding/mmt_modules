@@ -726,7 +726,7 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   in totals or the hash; older clients ignore it). Drag / drop / Holders use Tradeable; `WhyNot` tooltip line.
 - Tests: `tests/test_teaminventory.py` (two clients, incl. gifts + trade), `tests/test_teambags.py` (window, Baganator categories, drag, stand-ins).
 
-### MMT_QoL (v1.2.0) – "Quality of life": home for small team conveniences
+### MMT_QoL (v1.3.0) – "Quality of life": home for small team conveniences
 - One file per feature, registered with `mod.Feature{ key, slash, addon, title, checkText, tip, tags = { TAG = fn(key,
   sender, body) }, SendAll, OnEnable, OnDisable, Page(ui), Report(add) }` (Module.lua). `mod.Active(f)` = module on +
   `M.db[f.key]` + `mod.AddonState(f.addon)` (C_AddOns.IsAddOnLoaded; false + why: MISSING / DISABLED / not loaded).
@@ -740,6 +740,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   `mod.Ask(from, f, lines, apply, ignored)` queues one `MMT.UI.Confirm` per sender + feature (a dialog replaced by
   another counts as Ignore; `ignored()` runs then); `f.askText(who, n)` / `f.askAccept` word the dialog.
   Slash: `commands[""]` = `/mmtqol <slash>`; a command returning nothing prints nothing.
+- `LootSkip.lua` (1.3.0, not a Feature/tab): `MMT.RegisterLootSkip` (core Loot Distribution 1.6.0, bnetworking/MMT PR #17; without it nothing registers) with
+  `skip(link)` + two `options` that core draws on its "Never Loot" tab (`usable()` -> greyed + reason). The user wants
+  NO Dejunk/Baganator mention in core: core only has the generic hook. `lsDejunk` reads `mod.DejunkState()` (PE > PI >
+  GE > GI), `lsBaganator` = Junk category items by hand (`category_modifications[*].addedItems["i:<id>"]`, another
+  category wins) + greys with a sell price (Dejunk's lists first if `junk_plugin == "dejunk"`). OptionalDeps
+  MMT_LootDistribution so the hook exists at load.
 - **No taskbar-flash feature, ever, by wrapping `FlashClientIcon`** (1.1.0 had one, removed in 1.1.2 the same day): an addon
   writing that global (even writing the original back) taints it for the session; Blizzard's callers go on tainted, and on
   Forever in-combat values are SECRET - LowHealthFrame:SetInCombat -> EvaluateVisibleState then failed ("attempt to perform
@@ -752,7 +758,12 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   UpdateStepCompletion (hooksecurefunc on RXP's table) and clear `loadNextStep` while a grouped team member on the same
   guide (`guide.key`) is behind; release = set it again. Steps compared by `step.stepId` (guide line + guideId: the same on
   every class; class-only steps are missing in the others' guides -> no wait). Manual clicks (`addon.nextStep`) untouched.
-  Team counts (`rxCount` TOTAL (default: the sum replaces the last "%d+/%d+" in the line) | LOWEST | EACH | OFF): post-hook `addon.UpdateQuestCompletionData(ref)` (rebuilds `ref.element.text` from the quest log
+  1.2.1: RXP shows sticky steps beside the current one; they finish on their own (`RXPCData.stepSkip`, no loadNextStep), so
+  waiting is also per objective: in the UpdateQuestCompletionData post-hook a ticked "complete" element is un-ticked
+  (`completed`/`skip` = false + `SetElementIncomplete`) while a grouped member on the quest has have < need; the
+  step-level hold only acts when the CURRENT step is `completed`. Go on now = `passedObj` + refresh.
+  Team counts (`rxCount` TOTAL (default: the sum replaces the last "%d+/%d+" in the line; 1.2.1: kill objectives - RXP's
+  `GetQuestObjectives(id)[obj].type == "monster"`, credit shared by the group - show the lowest count + who instead) | LOWEST | EACH | OFF): post-hook `addon.UpdateQuestCompletionData(ref)` (rebuilds `ref.element.text` from the quest log
   every time, so editing it is safe) and put in the group's counts from the core Quest Tracker's synced data
   (`MMT.modules.QuestTracker.store.quests[key].quests[questID].obj[element.obj]` = { have, need, done }; same objective
   order as the game). `QUESTS_CHANGED` (MMT.Fire from the Quest Tracker) re-runs it for the active step's elements.
