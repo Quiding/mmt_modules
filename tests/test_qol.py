@@ -1279,6 +1279,13 @@ run(A, amod, r"""function(m)
   DJ.global.inclusions["14"] = nil; DJ.profiles.profileMap.DEFAULT_PROFILE.settings.exclusions["14"] = nil
   DJ.global.inclusions["14"] = true; DJ_FIRE()
   assert(skip(L(14)) == "Baganator junk", "dejunk junk via baganator")
+  -- shown only when installed: switched off still shown (greyed), not installed hidden
+  assert(LOOTSKIP.options[1].shown() and LOOTSKIP.options[2].shown(), "installed: shown")
+  LOADED.Dejunk = false
+  assert(LOOTSKIP.options[1].shown(), "switched off: still shown")
+  LOADED.Dejunk = nil
+  assert(not LOOTSKIP.options[1].shown() and LOOTSKIP.options[2].shown(), "not installed: hidden")
+  LOADED.Dejunk = true
   -- module off: nothing, options greyed with the reason
   m.M.enabled = false
   assert(skip(L(12)) == nil, "module off")

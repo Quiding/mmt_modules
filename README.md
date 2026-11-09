@@ -364,8 +364,8 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   **Send my whole category setup** gives the team your categories, order and sections through Baganator's
   own import (each character is asked first).
 - **Never loot junk** (needs MMT's Loot Distribution with its "Never Loot" tab): two more options show up on that
-  tab - **Include Dejunk's junk lists** and **Include Baganator junk** (off by default, greyed out when the addon
-  isn't loaded). As master looter, those items are left on the corpse. Dejunk: its junk lists (profile and
+  tab - **Include Dejunk's junk lists** and **Include Baganator junk** (off by default; only shown when that addon
+  is installed, greyed out while it is switched off). As master looter, those items are left on the corpse. Dejunk: its junk lists (profile and
   global; its "not junk" lists win). Baganator: items put into Junk by hand, and grey items with a sell price
   (Dejunk's lists first when Baganator takes its junk from Dejunk). The master looter's own settings count.
   Dejunk's other rules (item level, price, ...) only work on items in bags, so they don't count here.

@@ -62,6 +62,15 @@ local function Usable(addon)
 end
 local dejunkUsable, baganatorUsable = Usable("Dejunk"), Usable("Baganator")
 
+-- installed (switched off counts: shown greyed out with the reason); not installed: not on the tab
+local function Installed(addon)
+    return function()
+        local GetInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
+        local ok, _, _, _, _, reason = pcall(GetInfo, addon)
+        return not (ok and reason == "MISSING")
+    end
+end
+
 function mod.LootSkipReason(link)
     if not M.enabled then return nil end
     if M.db.lsDejunk and dejunkUsable() and mod.DejunkJunk(ItemID(link)) then return "Dejunk junk list" end
@@ -78,11 +87,11 @@ if MMT.RegisterLootSkip then
             { text = "Include Dejunk's junk lists",
               tip = "Items on Dejunk's junk lists (this character's profile and the global list) are never looted; Dejunk's \"not junk\" lists win, as in Dejunk. Its other rules (item level, price, ...) only work on items in your bags, so they don't count here.\nThe master looter's own lists are used.",
               get = function() return M.db.lsDejunk end, set = function(v) M.db.lsDejunk = v end,
-              usable = dejunkUsable },
+              usable = dejunkUsable, shown = Installed("Dejunk") },
             { text = "Include Baganator junk",
               tip = "What Baganator puts into Junk: items put there by hand, and grey items with a sell price (unless put into another category by hand). When Baganator takes its junk from Dejunk, Dejunk's lists decide first.\nThe master looter's own settings are used.",
               get = function() return M.db.lsBaganator end, set = function(v) M.db.lsBaganator = v end,
-              usable = baganatorUsable },
+              usable = baganatorUsable, shown = Installed("Baganator") },
         },
     })
 end
