@@ -13,15 +13,15 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.1 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.2 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.3 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.4 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
-| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.1.0 |
+| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.2.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter *(new, not tested in game yet)* | 1.3.0 |
-| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared *(new, not tested in game yet)* | 1.6.0 |
+| [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -63,8 +63,9 @@ box and that list's members get it in their row, where you drag it - add it to "
 paladin lists; the cog limits it like a buff. The presets and default lists of warriors, paladins (their aura - one entry instead
 of one per aura), rogues (stealth), druids and Shadow priests have it (the Priest class list: off), and it was added once
 to existing lists of those classes / specs (paladin auras already in your lists stay; take them out if the stance is enough). A paladin with no aura on shows it as missing. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
-tab, the same settings on both pages; works while either module is on). Each client tells the team once when its stance
-changes.
+tab, the same settings on both pages; works while either module is on). Its **Look** sub-tab sets the window's icon
+size, zoom and spacing, scale, row spacing, growth direction, font, name size, background, border and row colours. Each
+client tells the team once when its stance changes.
 
 **Beside the party frames** (Cooldown Timers and Buff Timers, **Frames** tab): each member's icons sit next
 to their own party or raid frame instead of in the window - right, left, above or below it, with X / Y offsets and
@@ -240,6 +241,8 @@ Pawn scores for the whole team. Needs MMT's Item Compare switched on.
   Classes that can't use the item, members below its level and members the game doesn't offer it to (or with
   full bags) are left out; below the minimum upgrade (default 1%) the roles and round robin decide as before.
   Needs Pawn and Loot Distribution 1.4.0 or newer (`MMT.RegisterLootChooser`).
+- **Don't show offline team members**: leaves offline members out of both tooltips (off by default: their stored
+  scales and gear are still compared).
 - Settings sync to the team with the Sync button.
 
 `/mmtpc` · `/mmtpc send` · `/mmtpc request` · `/mmtpc scales` · `/mmtpc loot <item>` (who would get it)
@@ -369,6 +372,29 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   global; its "not junk" lists win). Baganator: items put into Junk by hand, and grey items with a sell price
   (Dejunk's lists first when Baganator takes its junk from Dejunk). The master looter's own settings count.
   Dejunk's other rules (item level, price, ...) only work on items in bags, so they don't count here.
+- **Role items beside the bags** (on by default): a small panel docked to your open bags ([Baganator](https://www.curseforge.com/wow/addons/baganator)'s
+  backpack window, else the game's bags) shows one MMT role's items - pick the role in its dropdown. Drop an item
+  from your bags on it (or click its box and shift-click an item) to put it on that role; the x on a line takes it
+  off. It also says who has the role. Trading with that team member hands the items over, and at a mailbox MMT's
+  **Mail to team** mails them - a role made just for that (e.g. "Bank" on your bank character) works well. These are
+  MMT's own roles, so Loot Distribution goes by them too: while that member isn't in the group, its "Role members
+  have no room" setting decides ("Next team member with room" hands the item out as usual). What you add or take off
+  goes to the whole team right away (a role a member lacks is made for them; who has which role isn't sent);
+  **Send all role items to the team** (`/mmtqol roles send`) gets everyone level once. "-" folds the panel into a
+  small "Role items" button on top of the bags; it stays open or folded the way you left it (folded the first time).
+- **Auctionator prices** (for [Auctionator](https://www.curseforge.com/wow/addons/auctionator)): when your full scan at the
+  auction house is done, today's prices (lowest price and how many were listed, per item) go to the online team by
+  themselves, and their Auctionator takes them like its own scan - tooltips, price history and posting know them.
+  Only today's prices, not the whole history: ~25-35 KB for 5,000 items, ~100 KB for a busy auction house - a minute
+  or two in the background (in a guild once for everybody, without one once per member). A member whose own scan is
+  newer, or who is on another realm, keeps its own. Options: send after a scan, take the team's prices, chat lines,
+  **Send today's prices now** (`/mmtqol ah send`).
+- **FojjiCore auction scan** (for FojjiCore Professions' **Scan** button at the auction house - it keeps its prices in
+  FojjiCore's own data, not Auctionator's): when your scan is done, its prices (lowest price and how many are up, per
+  item) go to the online team by themselves. Their FojjiCore takes them for every item where its own price is older,
+  and their Auctionator gets them too, as that day's price. A member whose own scan is newer, or on another realm or
+  faction, keeps its own. Options: send after a scan, take the team's prices, into Auctionator too, chat lines,
+  **Send my last scan now** (`/mmtqol fojji send`; `/mmtqol fojji status` / `/mmtqol ah status` say where each stands).
 - **ForeverAuras**: send an aura, a group (with everything inside it) or all your auras to one team member or the
   whole online team. Open the window with the **Send to team** button above ForeverAuras' options (it opens beside
   them), `/mmtqol auras` or the settings page; pick the aura (sorted into Loaded / Not loaded like ForeverAuras' list; groups start closed: + or double-click opens one) and who gets it, Send. Opened beside ForeverAuras, it closes with it. The others are told it's coming,
@@ -406,7 +432,7 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   take them right away, a chat line per change, and a button that sends your whole list once (the others
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.
 
-`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat` · `/mmtqol rxp go`
+`/mmtqol` · `/mmtqol dejunk send` · `/mmtqol dejunk reload` · `/mmtqol baganator send` · `/mmtqol auras` · `/mmtqol eui` · `/mmtqol smartbuff combat` · `/mmtqol rxp go` · `/mmtqol roles` · `/mmtqol roles send` · `/mmtqol ah send` · `/mmtqol fojji send`
 
 ## Styles
 

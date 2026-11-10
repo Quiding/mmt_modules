@@ -7,6 +7,8 @@
 --   Dejunk.lua     Dejunk's junk / not-junk lists, the same on the team
 --   Baganator.lua  Baganator's items put into categories, the same on the team
 --   LootSkip.lua   Dejunk / Baganator junk on Loot Distribution's "Never Loot" tab
+--   MailList.lua   role items beside the bags (what a role gets by trade, mail and loot)
+--   AuctionatorShare.lua  Auctionator prices to the team after a full scan
 --   Bulk.lua       sending big import strings (chunks, ask, one import at a time)
 --   ForeverAuras.lua  send ForeverAuras auras to the team (AurasWindow.lua: the window)
 --   Ellesmere.lua  send EllesmereUI profiles to the team (EllesmereWindow.lua: the window)
@@ -17,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.3.0"
+mod.VERSION = "1.6.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -44,6 +46,24 @@ local M = MMT.NewModule({
         -- Loot Distribution's "Never Loot" tab (LootSkip.lua): left on the corpse as master looter
         lsDejunk = false,          -- items on Dejunk's junk lists
         lsBaganator = false,       -- Baganator junk
+        -- Role items beside the bags (MailList.lua; keys still say "ml": it began as the mail list)
+        mlist = true,
+        mlDock = true,             -- show it with the bags
+        mlOpen = false,            -- the panel open (else only its button); kept for the next time the bags open
+        mlSync = true,             -- send what is added / taken off to the team, take theirs
+        mlChat = true,             -- a chat line for the team's changes
+        -- Auctionator prices (AuctionatorShare.lua)
+        ahshare = true,
+        ahAuto = true,             -- send today's prices after a full scan
+        ahTake = true,             -- take the team's prices (unless our own scan is newer)
+        ahChat = true,             -- chat lines for what is sent / taken
+        -- FojjiCore's auction scan (FojjiShare.lua)
+        fjshare = true,
+        fjAuto = true,             -- send the scan's prices when it is done
+        fjTake = true,             -- take the team's (where ours are older)
+        fjAuctionator = true,      -- and put what is taken into Auctionator too
+        fjChat = true,
+        mlRole = nil,              -- the role shown (nil / gone: the first)
         -- ForeverAuras
         auras = true,              -- send / take auras
         waAsk = true,              -- a dialog before ForeverAuras' import window
@@ -134,11 +154,22 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     if not ok then M:Debug("%s from %s failed: %s", tag, tostring(key), tostring(err)) end
 end)
 
+-- each feature on its own: one that fails doesn't keep the ones after it from starting
 M.OnEnable = function()
-    for _, f in ipairs(mod.features) do if f.OnEnable then f.OnEnable() end end
+    for _, f in ipairs(mod.features) do
+        if f.OnEnable then
+            local ok, err = pcall(f.OnEnable)
+            if not ok then f.startError = tostring(err); M:Debug("%s start failed: %s", f.key, tostring(err)) end
+        end
+    end
 end
 M.OnDisable = function()
-    for _, f in ipairs(mod.features) do if f.OnDisable then f.OnDisable() end end
+    for _, f in ipairs(mod.features) do
+        if f.OnDisable then
+            local ok, err = pcall(f.OnDisable)
+            if not ok then M:Debug("%s stop failed: %s", f.key, tostring(err)) end
+        end
+    end
 end
 M.OnProfileChanged = M.OnEnable
 M.OnSyncReceived = M.OnEnable
@@ -149,7 +180,7 @@ SlashCmdList.MMTQOL = function(msg)
     if not M.enabled then MMT.Print("Quality of life is switched off (/mmt modules).") return end
     local which, cmd = msg:match("^(%a+)%s*(%a*)$")
     for _, f in ipairs(mod.features) do
-        local fn = which == f.slash and f.commands and f.commands[cmd]
+        local fn = (which == f.slash or (f.slashAlias and which == f.slashAlias)) and f.commands and f.commands[cmd]
         if fn then
             local ok, err = fn()
             -- a command that opens something returns nothing
@@ -157,6 +188,6 @@ SlashCmdList.MMTQOL = function(msg)
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat, /mmtqol rxp go. Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat, /mmtqol rxp go, /mmtqol roles | send, /mmtqol ah send | status, /mmtqol fojji send | status. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end

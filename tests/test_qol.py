@@ -398,7 +398,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 7, "report lines " .. n)   -- one per feature + the module line
+  assert(n == 12, "report lines " .. n)   -- one per feature + the module line + role items sync + Auctionator status
   return "Anna: whole setup asked, imported, report ok"
 end''')
 

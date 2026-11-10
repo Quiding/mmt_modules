@@ -4,7 +4,7 @@
 --   * Buff Timers lists: the entry { stance = true } (type "stance" in a list's add box) shows the member's
 --     stance icon where the list puts it - per class / spec / character list, "Only for" counts (Window.lua)
 --   * its own window (M.db.stance.where = WINDOW, MMTIconBars window "MMTStance"): every member with one
--- Settings (M.db.stance, one table) live in Cooldown Timers' profile settings when that addon is loaded
+-- Settings (M.db.stance, one table; Window and Look sub-tabs) live in Cooldown Timers' profile settings when that addon is loaded
 -- (even switched off), else in Buff Timers'; both settings pages show the same "Stance" tab.
 -- Others' stances: each client sends "MST:<spellID>" (0 = none) once per change, and its heartbeat
 -- carries it (stn from Cooldown Timers, stb from Buff Timers while Cooldown Timers is off).
@@ -14,7 +14,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local VERSION = 4
+local VERSION = 5
 local lib = rawget(_G, "MMTStanceLib")
 if not lib or (lib.version or 0) < VERSION then
     lib = lib or {}
@@ -26,6 +26,10 @@ if not lib or (lib.version or 0) < VERSION then
     lib.DEFAULTS = {
         where = "OFF", shown = true, locked = false, clickThrough = false, iconSize = 28, showNames = true,
         fullNames = false, nameSize = 11, growth = "DOWN", spacing = 2, rowGap = 4, scale = 1, bgAlpha = 0.4,
+        -- the Look sub-tab's (VERSION 5), as Buff / Cooldown Timers' own windows start
+        iconZoom = 8, bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,
+        borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,
+        rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0,
         point = { "CENTER", "CENTER", 0, -150 },
     }
     local DEFAULTS = lib.DEFAULTS
@@ -223,12 +227,42 @@ function mod.AfterReset(keys)
     for _, k in ipairs(keys) do if k == "stance" then MMTStanceLib.SetAll(nil) return end end
 end
 
--- the "Stance" settings tab (the same settings on both pages)
+-- the "Stance" settings tab (the same settings on both pages): Window and Look sub-tabs
 function mod.StanceTab(panel, status)
     local H = MMT.ConfigHelpers
     local W, X2 = H.TILE_W, H.TILE_W + H.TILE_GAP
     local function G(k) return function() local c = MMTStanceLib.Cfg(); return c and c[k] end end
     local function S(k) return function(v) MMTStanceLib.Set(k, v) end end
+    -- the Look pieces (SettingsKit) read and write through this: the shared stance settings
+    local function Opt(k) return G(k), S(k) end
+    local function Apply() MMTStanceLib.Apply() end
+    local sub = mod.Tabs(panel, { { "window", "Window", "Ability_Warrior_DefensiveStance" }, { "look", "Look", "INV_Misc_Ribbon_01" } },
+        { key = "stance", bottom = 0 })
+    local look = sub.look
+    panel = sub.window
+    mod.TileStack(look, 0, 0, W, {
+        { "Icons", "INV_Misc_QuestionMark", function(L) mod.LookIconSizes(L, Opt) end },
+        { "Window", "INV_Misc_Spyglass_02", function(L)
+            mod.LookWindowSizes(L, Opt)
+            L:Cycle("Growth direction", {
+                { value = "DOWN", text = "Top > Down" },
+                { value = "UP", text = "Down > Top" },
+                { value = "RIGHT", text = "Left > Right" },
+                { value = "LEFT", text = "Right > Left" },
+            }, function() local c = MMTStanceLib.Cfg(); return c and MMTIconBars and MMTIconBars.Growth(c) or "DOWN" end, function(v)
+                MMTStanceLib.Set("vertical", v == "RIGHT" or v == "LEFT")
+                MMTStanceLib.Set("growth", v)
+            end)
+        end },
+        { "Text", "INV_Misc_Note_01", function(L) mod.LookText(L, Opt, Apply, false) end },
+    })
+    mod.TileStack(look, X2, 0, W, {
+        { "Background and Border", "INV_Fabric_Linen_01", function(R) mod.LookBackground(R, Opt, Apply) end },
+        { "Member Rows", "INV_Misc_GroupNeedMore", function(R)
+            mod.LookRows(R, Opt, Apply)
+            R:Note("Textures come from LibSharedMedia. The same look on both modules' pages.")
+        end },
+    })
     mod.TileStack(panel, 0, 0, W, {
         { "Own Window", "Ability_Warrior_DefensiveStance", function(L)
             L:Cycle("Stance window", {
@@ -237,7 +271,7 @@ function mod.StanceTab(panel, status)
             }, function() local c = MMTStanceLib.Cfg(); return c and (c.where == "WINDOW" and "WINDOW" or "OFF") end, S("where"))
             L:Check("Show the window", G("shown"), S("shown"))
             L:Check("Lock position", G("locked"), S("locked"))
-            L:Slider("Icon size", 16, 64, 1, G("iconSize"), S("iconSize"))
+            L:Check("Click-through", G("clickThrough"), S("clickThrough"), "Mouse clicks go through the window (no tooltips, no dragging).")
             L:Cycle("Names", {
                 { value = "OFF", text = "Off" },
                 { value = "FIRST", text = "First name" },

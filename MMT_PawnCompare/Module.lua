@@ -31,6 +31,7 @@ local M = MMT.NewModule({
         allScales = true,     -- every visible scale of the member, or only the first
         showPercent = true,
         hideUnusable = true,  -- no values for members whose class can never use the item
+        hideOffline = false,  -- leave out team members who are offline (item tooltip and Item Compare's)
         teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF
         askDelete = true,     -- ask before deleting the Pawn scales a team member deleted
         lootByUpgrade = false, -- master loot: gear to the member it is the biggest upgrade for

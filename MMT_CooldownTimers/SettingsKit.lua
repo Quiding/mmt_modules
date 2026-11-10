@@ -35,7 +35,10 @@ function mod.Tabs(page, list, opts)
     local bottom = opts and opts.bottom or BOTTOM
     local W = MMT.ConfigHelpers.PAGE_W
     local panels, buttons = {}, {}
-    local bw = math.floor((W - 6 * (#list - 1)) / #list)
+    -- more than 6 tabs: two rows (opts.perRow sets how many per row), so their names stay readable
+    local perRow = opts and opts.perRow or (#list > 6 and math.ceil(#list / 2) or #list)
+    local rows = math.ceil(#list / perRow)
+    local bw = math.floor((W - 6 * (perRow - 1)) / perRow)
     local function Blocked(t) return t.blocked and t.blocked() or nil end
     local function Show(id)
         current[id0] = id
@@ -53,13 +56,13 @@ function mod.Tabs(page, list, opts)
     local line = page:CreateTexture(nil, "ARTWORK")
     line:SetColorTexture(1, 1, 1, 0.08)
     line:SetHeight(1)
-    line:SetPoint("TOPLEFT", 0, -TAB_H)
-    line:SetPoint("TOPRIGHT", 0, -TAB_H)
+    line:SetPoint("TOPLEFT", 0, -TAB_H * rows)
+    line:SetPoint("TOPRIGHT", 0, -TAB_H * rows)
     for i, t in ipairs(list) do
         tabText[t[1]] = t[2]
         local b = CreateFrame("Button", nil, page)
         b:SetSize(bw, TAB_H)
-        b:SetPoint("TOPLEFT", (i - 1) * (bw + 6), 0)
+        b:SetPoint("TOPLEFT", ((i - 1) % perRow) * (bw + 6), -math.floor((i - 1) / perRow) * TAB_H)
         local hl = b:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
         local icon = b:CreateTexture(nil, "ARTWORK")
@@ -91,8 +94,8 @@ function mod.Tabs(page, list, opts)
         end
         buttons[t[1]] = b
         local p = CreateFrame("Frame", nil, page)
-        p:SetPoint("TOPLEFT", 0, -(TAB_H + 8))
-        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - (TAB_H + 8) - bottom))
+        p:SetPoint("TOPLEFT", 0, -(TAB_H * rows + 8))
+        p:SetSize(W, math.max(100, (page:GetHeight() or 560) - (TAB_H * rows + 8) - bottom))
         panels[t[1]] = p
     end
     -- the tab shown last, else the first one that isn't blocked
@@ -276,11 +279,10 @@ local function FontChoices()
     return t
 end
 
-local function Color(col, text, M, key, apply)
-    col:Color(text, function() return M.db[key] end, function(c)
-        M.db[key] = { r = c.r, g = c.g, b = c.b }
-        apply()
-    end)
+-- a colour setting through Opt (getter, setter that applies), so the Look pieces work on any settings table
+local function Color(col, text, Opt, key)
+    local g, s = Opt(key)
+    col:Color(text, g, function(c) s({ r = c.r, g = c.g, b = c.b }) end)
 end
 
 -- the pieces of the Look tab (column `col`), for modules that place them on sub-tabs
@@ -301,15 +303,12 @@ function mod.LookWindowSizes(col, Opt)   -- scale, row spacing
 end
 
 function mod.LookText(col, Opt, apply, timer)   -- font, [timer size / colour], name size
-    local M = mod.M
-    col:Cycle("Font", FontChoices, function() return M.db.font or "" end, function(v)
-        M.db.font = (v ~= "") and v or nil
-        apply()
-    end)
+    local gf, sf = Opt("font")
+    col:Cycle("Font", FontChoices, function() return gf() or "" end, function(v) sf((v ~= "") and v or nil) end)
     if timer then
         local gt, st = Opt("timerSize")
         col:Slider("Timer size", 8, 32, 1, gt, st)
-        Color(col, "Timer colour", M, "timerColor", apply)
+        Color(col, "Timer colour", Opt, "timerColor")
     end
     local gn, sn = Opt("nameSize")
     col:Slider("Name size", 8, 20, 1, gn, sn)
@@ -317,22 +316,20 @@ end
 
 -- MMT 1.0.0's tiles: background and border in one tile, member rows in another
 function mod.LookBackground(col, Opt, apply)
-    local M = mod.M
     col:Cycle("Background", function() return mod.MediaChoices("background", "FLAT", "Flat") end, Opt("bgTexture"))
-    Color(col, "Background colour", M, "bgColor", apply)
+    Color(col, "Background colour", Opt, "bgColor")
     local gti, sti = Opt("bgTint")
     col:Slider("Colour strength", 0, 1, 0.05, gti, sti, "%.2f")
     local gb, sb = Opt("bgAlpha")
     col:Slider("Background opacity", 0, 1, 0.05, gb, sb, "%.2f")
     col:Cycle("Border", function() return mod.MediaChoices("border", "NONE", "None") end, Opt("borderTexture"))
-    Color(col, "Border colour", M, "borderColor", apply)
+    Color(col, "Border colour", Opt, "borderColor")
     local gz, sz = Opt("borderSize")
     col:Slider("Border size", 4, 32, 1, gz, sz)
 end
 
 function mod.LookRows(col, Opt, apply)
-    local M = mod.M
-    Color(col, "Row background", M, "rowColor", apply)
+    Color(col, "Row background", Opt, "rowColor")
     local gr, sr = Opt("rowAlpha")
     col:Slider("Row opacity", 0, 1, 0.05, gr, sr, "%.2f")
 end

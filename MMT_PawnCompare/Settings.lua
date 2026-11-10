@@ -108,7 +108,7 @@ M.Page = function(_, page)
     local tips = panels.tips
 
     -- Tooltips (left) ------------------------------------------------------------------------------------
-    local lt, L = Tile(tips, 0, 0, TILE_W, 300, "Tooltips", "Interface\\Icons\\INV_Misc_Note_01")
+    local lt, L = Tile(tips, 0, 0, TILE_W, 330, "Tooltips", "Interface\\Icons\\INV_Misc_Note_01")
     local state = UI.Label(lt, "")
     state:SetWidth(IN)
     state:SetJustifyH("LEFT")
@@ -122,6 +122,8 @@ M.Page = function(_, page)
     L:Check("Show the change in percent", gp, sp)
     local gu, su = Opt("hideUnusable")
     L:Check("Skip classes that can't use the item", gu, su, "No values for members whose class can never use it, e.g. a bow for a shaman or plate for a mage. Mail and plate count from the start for the classes that learn them at 40.")
+    local go, so = Opt("hideOffline")
+    L:Check("Don't show offline team members", go, so, "Leaves members who are offline out of the team list in the item tooltip and out of the Pawn lines in Item Compare's tooltips. Off: their stored scales and gear are still compared.")
     local gt, st = Opt("teamTooltip")
     L:Cycle("Team in the item tooltip", {
         { value = "REPLACE", text = "Replace Pawn's lines" },
@@ -134,7 +136,7 @@ M.Page = function(_, page)
     L:Check("Ask before changing scales for the team", gd, sd, "When a team member deletes or hides Pawn scales here and on the team, ask before doing the same on this character. Off: it is done right away. Also done right away while \"Auto-accept synced settings\" is on (MMT > Profiles).")
 
     -- Team scales (right) -----------------------------------------------------------------------------------
-    local rt, R = Tile(tips, X2, 0, TILE_W, 300, "Team Scales", "Interface\\Icons\\INV_Misc_Book_09")
+    local rt, R = Tile(tips, X2, 0, TILE_W, 330, "Team Scales", "Interface\\Icons\\INV_Misc_Book_09")
     R:Note("The scales visible in Pawn on each character, stored here so offline members and clients without Pawn can be compared too.")
     local lines, lineKeys = {}, {}
     for i = 1, 10 do

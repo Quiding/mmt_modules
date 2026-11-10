@@ -746,6 +746,37 @@ source in `MMT/Help.lua` and `MMT/Modules.lua`) so core updates don't break us:
   GE > GI), `lsBaganator` = Junk category items by hand (`category_modifications[*].addedItems["i:<id>"]`, another
   category wins) + greys with a sell price (Dejunk's lists first if `junk_plugin == "dejunk"`). OptionalDeps
   MMT_LootDistribution so the hook exists at load.
+- `MailList.lua` (1.4.0, Feature `mlist` "Role items" - renamed from "Mail list": roles count for trade, mail AND loot; slash `roles`, alias `mail` via `f.slashAlias`): a panel docked beside the open bags, found by a 0.2 s
+  `C_Timer` ticker (`mod.MailBagFrame`: Baganator's `Baganator_{Single,Category}ViewBackpackViewFrame<skin>` - names
+  found once by a `_G` prefix scan, the suffix is the skin - else `ContainerFrameCombinedBags`, else `ContainerFrame1`).
+  Built lazily (no frames at load: the tests have no CreateFrame). The lists ARE core MMT role rules (user's call
+  2026-11-09, after trying separate lists + a core `MMT.RegisterMailChooser` hook - branch `mail-chooser`, never
+  PR'd): `MMT.AddRule(role, {type="item", itemID})` / `MMT.RemoveRule`, `MMT.DescribeRule`, `MMT.HasRole` for
+  "Mailed to"; core's Mail.lua ("Mail to team") mails them. Loot Distribution reads the same rules: an offline role
+  member + its `noRoom=LEAVE` leaves the item in the loot window (the user's setting; "RR" hands it out).
+  `mlRole` = shown role (falls back to the first); `mlOpen` = open / folded, kept (default folded).
+  Team sync (`mlSync`): `QML:<+|->:<role esc>:i<id>|n<name esc>,...` (240 bytes max); receivers `MMT.AddRole` a
+  missing role on "+", match removes by item ID / name. Only item rules. `/mmtqol roles send` = every role's items.
+- `AuctionatorShare.lua` (1.5.0, Feature `ahshare`, addon Auctionator, slash `ah`): registers on Auctionator's
+  internal `Auctionator.EventBus` for `FullScan.Events.ScanComplete` (+ `IncrementalScan` on the modern AH) AND wraps `Auctionator.Database.ProcessScan` (a batch of 300+ items = a scan, whatever kind; once per 30 s); retries the hook every 5 s for 2 min and on AUCTION_HOUSE_SHOW (1.5.0 in game: the event alone never fired). The public
+  `API.v1.RegisterForDBUpdate` also fires on every search, so not used). Sends today's entries of
+  `Auctionator.Database.db` (the realm's table; today = `floor((time() - Constants.SCAN_DAY_0) / 86400)`, entries with
+  `h[today]`): `key=m[,a[today]];...` sorted, `MMT.Pack`ed, `QAPH` head + `QAP` parts of 6000 via `MMT.SendLong`.
+  Receivers write with `Auctionator.Database:SetPrice(key, price, avail)` 400 a frame; refused when `M.store.ahScan`
+  (own last scan) is newer than the sender's, another `Variables.GetConnectedRealmRoot()`, or `ahTake` off.
+- `FojjiShare.lua` (1.6.0, Feature `fjshare`, addon FojjiCore_Professions, slash `fojji`): the user's "Scan" button at
+  the AH is FOJJICORE's (`FojjiCoreNS.Auctions`, FojjiCore_Professions/Auctions.lua), not Auctionator's - found
+  2026-11-09 after the Auctionator auto-send "never fired" (Auctionator's SavedState had no scan time on any account).
+  FojjiCore keeps `FojjiCoreDB.auctions["<realm>-<faction>"] = { items[itemID] = { min, n, t, atLeast, before, days[day] },
+  scanned, partial, fullAt }`; its finish() stamps every priced item `t = now` and sets `scanned` (or `partial`), then
+  calls its `OnChange` listeners. We listen there: not `Scanning()` and max(scanned, partial) moved on = a scan done
+  -> send items with `t ==` that time: `QFPH:<batch>:<n>:<count>:<bytes>:<time>:<realm-faction esc>` + `QFP` parts
+  (`id=price,count[,+]`; price keeps FojjiCore's one decimal). Receivers write items whose own `t` is older (t = the
+  sender's scan time, so they are never re-sent: payload is `t == own last scan`), keep FojjiCore's 7-day `days`, set
+  `s.shared` (not `scanned`), and with `fjAuctionator` + `ahTake` also `Auctionator.Database:SetPrice(tostring(id))`.
+  Refused: own max(scanned, partial) newer, other realm-faction, `fjTake` off. test_qol_fojji.py runs FojjiCore's real
+  Auctions.lua when `FOJJI_REAL=<path>` is set (passes), else a stand-in with the same shape.
+- QoL's `M.OnEnable` pcalls each feature's OnEnable (1.6.0: one failing used to stop all the later ones silently).
 - **No taskbar-flash feature, ever, by wrapping `FlashClientIcon`** (1.1.0 had one, removed in 1.1.2 the same day): an addon
   writing that global (even writing the original back) taints it for the session; Blizzard's callers go on tainted, and on
   Forever in-combat values are SECRET - LowHealthFrame:SetInCombat -> EvaluateVisibleState then failed ("attempt to perform

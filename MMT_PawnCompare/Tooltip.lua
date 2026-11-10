@@ -113,6 +113,7 @@ local function AddPawn(tip)
     if not hovered then return end
     local key = MemberOf(tip)
     if not key then return end
+    if M.db.hideOffline and not MMT.IsSelf(key) and not MMT.IsOnline(key) then return end
     local first = _G[tip:GetName() .. "TextLeft1"]
     local firstText = first and first:GetText() or ""
     if firstText:find("^No item data") then return end
