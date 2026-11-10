@@ -75,6 +75,7 @@ function mod.LootSkipReason(link)
     if not M.enabled then return nil end
     if M.db.lsDejunk and dejunkUsable() and mod.DejunkJunk(ItemID(link)) then return "Dejunk junk list" end
     if M.db.lsBaganator and baganatorUsable() and mod.BaganatorJunk(link) then return "Baganator junk" end
+    if M.db.lsPrice and mod.PriceSkipReason then return mod.PriceSkipReason(link) end   -- LootPrice.lua
     return nil
 end
 
@@ -92,6 +93,13 @@ if MMT.RegisterLootSkip then
               tip = "What Baganator puts into Junk: items put there by hand, and grey items with a sell price (unless put into another category by hand). When Baganator takes its junk from Dejunk, Dejunk's lists decide first.\nThe master looter's own settings are used.",
               get = function() return M.db.lsBaganator end, set = function(v) M.db.lsBaganator = v end,
               usable = baganatorUsable, shown = Installed("Baganator") },
+            { text = "Items worth too little at the auction house",
+              tip = "Items whose Auctionator / FojjiCore price is below the amount set in Quality of life > Loot by price (also the quality, the fallback without a price, and more). Items a role of the team wants are looted.\nThe master looter's own prices and settings are used.",
+              get = function() return M.db.lsPrice end, set = function(v) M.db.lsPrice = v end,
+              usable = function()
+                  if not M.enabled then return false, "Quality of life is switched off (/mmt modules)." end
+                  return true
+              end },
         },
     })
 end

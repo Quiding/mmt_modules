@@ -82,7 +82,7 @@ function UI.Dropdown(parent, w, text, choices, get, set)
   b.Refresh = function() b.value = get() end
   return b
 end
-function UI.EditBox(parent, w, ph, onEnter) local e = W(parent); e:SetScript("OnEnterPressed", function(self) onEnter(self:GetText(), self) end); return e end
+function UI.EditBox(parent, w, ph, onEnter) local e = W(parent); e.text = ""; e:SetScript("OnEnterPressed", function(self) onEnter(self:GetText(), self) end); return e end
 function UI.AcceptItemLinks() end
 MMT = { UI = UI, IsSecret = function() return false end, db = { roles = {}, team = {} } }
 function MMT.Print(fmt, ...) PRINTS[#PRINTS + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
@@ -199,7 +199,7 @@ print(lua.eval(r'''function(m)
   assert(p.points[1][1] == "TOPRIGHT" and p.points[1][2] == bags and p.points[1][3] == "TOPLEFT", "left of the bags")
   assert(p.role.value == "Tailor", "dropdown shows the role")
   assert(p.to.text:find("Bob, Cara"), "mailed to: " .. tostring(p.to.text))
-  assert(p.rows[1]:IsShown() and p.rows[1].text.text == "Linen Cloth" and not p.rows[3]:IsShown(), "rows drawn")
+  assert(p.rows[1]:IsShown() and p.rows[1].text.text == "Linen Cloth" and not p.rows[3]:IsShown(), "rows drawn: " .. tostring(p.rows[1].text.text) .. " search=" .. tostring(p.search:GetText()) .. " count=" .. tostring(p.count.text))
   assert(p.count.text:find("2 on the list"), "count: " .. tostring(p.count.text))
 
   -- drop an item from the cursor
@@ -230,6 +230,16 @@ print(lua.eval(r'''function(m)
   -- the x on a row
   p.rows[1].remove:GetScript("OnClick")()
   assert(#m.MailEntries("Tailor") == 3 and m.MailEntries("Tailor")[1].rule.name == "Mageweave Cloth", "removed by x")
+
+  -- the search box: only matching entries, any case; x / Esc clears it
+  p.search.text = "MAGEweave"; p.search.scripts.OnTextChanged()
+  assert(p.rows[1]:IsShown() and not p.rows[2]:IsShown() and p.count.text:find("^1 of 3 match"), "search: " .. tostring(p.count.text))
+  assert(p.rows[1].entry.rule.name == "Mageweave Cloth", "search found the wrong one")
+  p.search.text = "zzz"; p.search.scripts.OnTextChanged()
+  assert(not p.rows[1]:IsShown() and p.empty.text:find("matches the search"), "no match")
+  p.search:GetScript("OnEscapePressed")(p.search); p.search.scripts.OnTextChanged()
+  assert(p.search.text == "" and p.count.text:find("^3 on the list"), "cleared")
+  assert(#m.MailFilter(m.MailEntries("Tailor"), "  ") == 3, "blank search = all")
 
   -- another role from the dropdown
   p.role.set("cloth")
@@ -319,6 +329,33 @@ print(lua.eval(r'''function(m)
   DELIVER("QML:-:Nope:i1")                       -- unknown role, remove: nothing
   assert(MMT.db.roles.Nope == nil)
 
+  -- batched: changes wait 5 s after the last one, then go together (one message per role and sign);
+  -- added then taken off again sends only the removal; at most 30 s after the first change
+  local after, due = C_Timer.After, {}
+  C_Timer.After = function(d, fn) due[#due + 1] = { TIME + d, fn } end
+  local function RUN() local d = due; due = {}; for _, x in ipairs(d) do if x[1] <= TIME then x[2]() else due[#due + 1] = x end end end
+  TAKE()
+  for id = 8001, 8006 do assert(m.MailAdd("Tailor", id)); TIME = TIME + 1; RUN() end
+  assert(#TAKE() == 0 and m.ml.queued == 6, "waiting while items keep coming")
+  for i, e in ipairs(m.MailEntries("Tailor")) do if e.rule.itemID == 8003 then idx = e.index end end
+  m.MailRemove("Tailor", idx)
+  TIME = TIME + 4.9; RUN()
+  assert(#TAKE() == 0, "not yet: 5 s after the last change")
+  TIME = TIME + 0.2; RUN()
+  sent = TAKE()
+  assert(#sent == 2 and sent[1] == "QML:-:Tailor:i8003" and sent[2] == "QML:+:Tailor:i8001,i8002,i8004,i8005,i8006",
+    "one batch: " .. table.concat(sent, " | "))
+  assert(m.ml.queued == 0 and PRINTS[#PRINTS]:find("6 changes sent"), tostring(PRINTS[#PRINTS]))
+  for id = 8101, 8140 do m.MailAdd("Tailor", id); TIME = TIME + 1; RUN() end
+  sent = TAKE()
+  assert(#sent == 1 and select(2, sent[1]:gsub(",", "")) == 29, "sent 30 s after the first: " .. #sent)
+  TIME = TIME + 5; RUN()
+  assert(#TAKE() == 1 and m.ml.queued == 0, "the rest 5 s later")
+  m.MailAdd("Tailor", 8201)
+  M.OnDisable(M)
+  assert(#TAKE() == 1, "switched off: what waits goes now")
+  M.OnEnable(M)
+  C_Timer.After = after
   -- sync off: nothing sent, nothing taken
   M.db.mlSync = false
   m.MailAdd("Tailor", 7002)

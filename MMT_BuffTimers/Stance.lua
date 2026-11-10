@@ -4,6 +4,7 @@
 --   * Buff Timers lists: the entry { stance = true } (type "stance" in a list's add box) shows the member's
 --     stance icon where the list puts it - per class / spec / character list, "Only for" counts (Window.lua)
 --   * its own window (M.db.stance.where = WINDOW, MMTIconBars window "MMTStance"): every member with one
+--   * a column of MMT's Info window (MMT.RegisterXPPiece "stance", VERSION 6): the icon on each member's row
 -- Settings (M.db.stance, one table; Window and Look sub-tabs) live in Cooldown Timers' profile settings when that addon is loaded
 -- (even switched off), else in Buff Timers'; both settings pages show the same "Stance" tab.
 -- Others' stances: each client sends "MST:<spellID>" (0 = none) once per change, and its heartbeat
@@ -14,7 +15,7 @@ local _, mod = ...
 local MMT = MMT
 local M = mod.M
 
-local VERSION = 5
+local VERSION = 7
 local lib = rawget(_G, "MMTStanceLib")
 if not lib or (lib.version or 0) < VERSION then
     lib = lib or {}
@@ -30,6 +31,9 @@ if not lib or (lib.version or 0) < VERSION then
         iconZoom = 8, bgTexture = "FLAT", bgColor = { r = 0, g = 0, b = 0 }, bgTint = 1,
         borderTexture = "NONE", borderColor = { r = 0.3, g = 0.3, b = 0.3 }, borderSize = 12,
         rowColor = { r = 0, g = 0, b = 0 }, rowAlpha = 0,
+        pieceName = false,            -- the Info window column also shows the stance's name (VERSION 6)
+        pieceSize = 0,                -- its icon size in px, 0 = the text's height (VERSION 7)
+        pieceFit = false,             -- its icon as tall as the row (VERSION 7)
         point = { "CENTER", "CENTER", 0, -150 },
     }
     local DEFAULTS = lib.DEFAULTS
@@ -143,8 +147,13 @@ if not lib or (lib.version or 0) < VERSION then
         return rows
     end
 
+    -- MMT's Info window (its "Stance / form" column)
+    local function XPRedraw() if MMT.UpdateXPWindow then MMT.UpdateXPWindow() end end
+    lib.XPRedraw = XPRedraw
+
     function lib.Apply()
         if lib.window then lib.window:Refresh() end
+        XPRedraw()
     end
 
     -- the redraw after a stance changed somewhere: the Buff Timers bars (list entries) and the window
@@ -158,6 +167,7 @@ if not lib or (lib.version or 0) < VERSION then
         if id and not MMT.IsSelf(key) then
             lib.told[key] = { id, GetTime() }
             lib.Redraw()
+            XPRedraw()
         end
     end
 
@@ -170,6 +180,7 @@ if not lib or (lib.version or 0) < VERSION then
             MMT.SendToTeam("MST:" .. id, true)
         end
         lib.Redraw()
+        XPRedraw()
     end
     lib.OwnChanged = OwnChanged
     if not lib.events then
@@ -190,6 +201,51 @@ if not lib or (lib.version or 0) < VERSION then
             active = function() return lib.WindowWanted() end,
         })
         return lib.window
+    end
+
+    -- the Info window column (Info Window > Column Visibility & Order), off until switched on there
+    local ICON_CROP = ":0:0:0:0:64:64:6:58:6:58|t"
+    -- the column's icon size: the row's height (as the Info window works it out), a size, or the text's
+    local function PieceIcon(tex)
+        local c = lib.Cfg() or DEFAULTS
+        local size = tonumber(c.pieceSize) or 0
+        local x = MMT.db and MMT.db.xp
+        if c.pieceFit and x then
+            size = math.max(tonumber(x.barHeight) or 0, (tonumber(x.size) or 12) + 4) - 2
+        end
+        if size <= 0 then return "|T" .. tex .. ICON_CROP end
+        size = math.floor(size + 0.5)
+        return ("|T%s:%d:%d:0:0:64:64:6:58:6:58|t"):format(tostring(tex), size, size)
+    end
+    lib.PieceIcon = PieceIcon
+    if MMT.RegisterXPPiece then
+        MMT.RegisterXPPiece{ id = "stance", title = "Stance / form", side = "RIGHT", on = false, before = "layer",
+            icon = "START", sample = "|T" .. [[Interface\Icons\Ability_Warrior_DefensiveStance]] .. ICON_CROP,
+            tip = "The member's stance / form / aura icon (warrior stances, druid forms, paladin auras, stealth, ...), from Cooldown or Buff Timers - one of them has to be on. Its cogwheel adds the name.",
+            hidden = function() return not lib.AnyOn() end,
+            options = {
+                { "Check", "Also the stance's name",
+                    function() local c = lib.Cfg(); return c and c.pieceName or false end,
+                    function(v) lib.Set("pieceName", v and true or false); XPRedraw() end },
+                { "Check", "Fit the icon to the row's height",
+                    function() local c = lib.Cfg(); return c and c.pieceFit or false end,
+                    function(v) lib.Set("pieceFit", v and true or false); XPRedraw() end,
+                    "As tall as the Info window's rows (bar height or font). Off: the size below." },
+                { "Slider", "Icon size (0 = text height)", 0, 40, 1,
+                    function() local c = lib.Cfg(); return c and tonumber(c.pieceSize) or 0 end,
+                    function(v) lib.Set("pieceSize", v); XPRedraw() end, "%d" },
+            },
+            text = function(key)
+                if not lib.AnyOn() then return nil end
+                local d = lib.Data(key)
+                if not d then return "" end
+                local tex = d.texture
+                if type(tex) ~= "number" and type(tex) ~= "string" then tex = 134400 end
+                local t = PieceIcon(tex)
+                local c = lib.Cfg()
+                if c and c.pieceName and d.name then t = t .. " " .. d.name end
+                return t
+            end }
     end
 
     -- a module registers itself (both do; Cooldown Timers' settings win as the host)
@@ -293,6 +349,9 @@ function mod.StanceTab(panel, status)
     mod.TileStack(panel, X2, 0, W, {
         { "In the Buff Timers Lists", "Spell_Holy_WordFortitude", function(R)
             R:Note("Type stance in a Buff Timers list's add box (Buffs tab): that list's members get their stance / form as an icon in their row, where you drag it. Add it to the lists you want (e.g. Warrior: Fury) and leave it out of the others (Paladin); the cog limits it to classes / specs like a buff.")
+        end },
+        { "In the Info Window", "INV_Misc_Spyglass_03", function(R)
+            R:Note("MMT's Info window can show it too: switch on \"Stance / form\" in Info Window > Column Visibility & Order (its cogwheel: the name, the icon size, fit to the row).")
         end },
         { "How It Works", "INV_Misc_Book_09", function(R)
             R:Note("Warrior stances, druid forms, stealth, shadowform - whatever the game puts on the member's stance bar; nothing for a member in no stance. Each client tells the team once when its stance changes (needs Cooldown or Buff Timers on). The window settings are the same on both modules' pages.")

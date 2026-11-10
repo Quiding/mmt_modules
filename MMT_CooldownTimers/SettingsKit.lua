@@ -28,6 +28,13 @@ local BOTTOM = 50    -- room below the tabs' panels: status line + share bar
 -- icon = a file name in Interface\Icons (default a gear). A blocked tab is greyed, can't be opened and says
 -- why in its tooltip (e.g. the addon it needs is missing)
 local TAB_H = 26
+
+-- an icon: a file name in Interface\Icons, or a whole path / file ID (an addon's own logo)
+local function IconPath(i)
+    if type(i) == "number" or (type(i) == "string" and i:find("[\\/]")) then return i, true end
+    return "Interface\\Icons\\" .. (i or "INV_Misc_Gear_01"), false
+end
+mod.IconPath = IconPath
 function mod.Tabs(page, list, opts)
     local UI = MMT.UI
     local A = UI.ACCENT
@@ -68,8 +75,9 @@ function mod.Tabs(page, list, opts)
         local icon = b:CreateTexture(nil, "ARTWORK")
         icon:SetSize(16, 16)
         icon:SetPoint("LEFT", 6, 0)
-        icon:SetTexture("Interface\\Icons\\" .. (t[3] or t.icon or "INV_Misc_Gear_01"))
-        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        local path, whole = IconPath(t[3] or t.icon)
+        icon:SetTexture(path)
+        if whole then icon:SetTexCoord(0, 1, 0, 1) else icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
         b.icon = icon
         b.label = UI.Label(b, t[2], "GameFontNormal")
         b.label:SetPoint("LEFT", icon, "RIGHT", 6, 0)
@@ -98,14 +106,19 @@ function mod.Tabs(page, list, opts)
         p:SetSize(W, math.max(100, (page:GetHeight() or 560) - (TAB_H * rows + 8) - bottom))
         panels[t[1]] = p
     end
+    local function First()
+        for _, t in ipairs(list) do if not Blocked(t) then return t[1] end end
+    end
+    -- opts.first: every time the page is opened again, it starts on the first tab
+    if opts and opts.first and page.HookScript then
+        page:HookScript("OnShow", function() Show(First() or list[1][1]) end)
+    end
     -- the tab shown last, else the first one that isn't blocked
     local start = current[id0] and panels[current[id0]] and current[id0]
     for _, t in ipairs(list) do
         if t[1] == start and Blocked(t) then start = nil end
     end
-    if not start then
-        for _, t in ipairs(list) do if not Blocked(t) then start = t[1] break end end
-    end
+    if not start then start = First() end
     Show(start or list[1][1])
     return panels
 end
@@ -116,7 +129,7 @@ end
 function mod.TileStack(parent, x, y, w, items)
     local H = MMT.ConfigHelpers
     for _, it in ipairs(items) do
-        local t, col = H.Tile(parent, x, y, w, 200, it[1], "Interface\\Icons\\" .. it[2])
+        local t, col = H.Tile(parent, x, y, w, 200, it[1], (IconPath(it[2])))
         it[3](col, t)
         local h = -(tonumber(col.y) or -190) + 10
         t:SetHeight(h)

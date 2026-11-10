@@ -123,7 +123,7 @@ end
 mod.TAB_KEYS = {
     bars = { "shown", "attach", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "hideUnlearned",
         "blessingLimit", "hideNoCaster", "showNames", "fullNames", "showTimers", "point", "hidden", "allBar", "allExclude",
-        "glowAlerts" },
+        "glowAlerts", "autoSend", "autoTake" },
     ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
         "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
     ["look.timer"] = { "timerSize", "timerColor", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor",
@@ -278,6 +278,10 @@ M.Page = function(_, page)
                 end
                 sbCheck.Refresh()
             end
+        end },
+        { "Team", "INV_Misc_GroupNeedMore", function(T)
+            Check(T, "Send my changes to the team", "autoSend", "Every change to these settings (lists, looks, options) goes to the online team by itself, a few seconds after your last one - no Sync to team each time. Window positions stay on each client.")
+            Check(T, "Take the team's changes", "autoTake", "Changes a team member makes here are applied on this client at once, without a dialog. Off: only Sync to team (with its dialog) changes them.")
         end },
     })
 
@@ -534,6 +538,7 @@ end
 
 M.Report = function(_, add)
     mod.SpecReport(add)
+    mod.AutoSyncReport(add)
     -- buffs not learned yet (Known.lua): own, and as the team told us
     local own = {}
     for _, id in ipairs(mod.OwnUnlearned() or {}) do own[#own + 1] = tostring(mod.SpellInfo(id) or id) end

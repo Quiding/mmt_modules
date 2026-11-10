@@ -189,12 +189,13 @@ M:Listen("TEAM_CHANGED", MapUnits)
 
 -- start, duration of a timed aura called name on unit, or nil: helpful first,
 -- then harmful (a few self "buffs" are debuffs, e.g. Death Wish)
+-- (third value: the aura's spell ID, when the read gives it)
 local function AuraTime(read, unit, name)
     for i = 1, 40 do
-        local n, _, _, dur, expiration = read(unit, i)
+        local n, _, _, dur, expiration, _, spellId = read(unit, i)
         if not n or n == "secret" then return nil, true end
         if n == name then
-            if dur and dur > 0 and expiration then return expiration - dur, dur end
+            if dur and dur > 0 and expiration then return expiration - dur, dur, spellId end
             return nil, false
         end
     end
@@ -202,21 +203,84 @@ local function AuraTime(read, unit, name)
 end
 
 local function UnitBuffTime(unit, name)
-    local start, dur = AuraTime(mod.Buff, unit, name)
-    if start then return start, dur end
+    local start, dur, id = AuraTime(mod.Buff, unit, name)
+    if start then return start, dur, id end
     if dur == false then return nil end   -- found as a buff without a timer
-    start, dur = AuraTime(mod.Debuff, unit, name)
-    if start then return start, dur end
+    start, dur, id = AuraTime(mod.Debuff, unit, name)
+    if start then return start, dur, id end
     return nil
 end
 mod.UnitBuffTime = UnitBuffTime
+
+-- the spell IDs an entry's buff is known by (Live.lua: the game draws it in combat by these):
+-- learned whenever the buff is read (M.store.buffIds[entryKey] = { [id] = true }, every rank seen),
+-- plus the spell's own ID / the item's use spell (most buffs share the cast's ID)
+mod.buffIdsGen = 0
+local function NoteBuffId(e, id)
+    if type(id) ~= "number" or MMT.IsSecret(id) then return end
+    M.store.buffIds = M.store.buffIds or {}
+    local ek = mod.EntryKey(e)
+    local set = M.store.buffIds[ek]
+    if not set then set = {}; M.store.buffIds[ek] = set end
+    if not set[id] then set[id] = true; mod.buffIdsGen = mod.buffIdsGen + 1 end
+end
+
+function mod.BuffIds(e)
+    local ids, any = {}, false
+    local learned = M.store.buffIds and M.store.buffIds[mod.EntryKey(e)]
+    for id in pairs(learned or {}) do ids[id], any = true, true end
+    if e.t == "s" then
+        ids[e.id], any = true, true
+    else
+        local _, sid = mod.ItemSpell(e.id)
+        sid = tonumber(sid)
+        if sid and not MMT.IsSecret(sid) then ids[sid], any = true, true end
+    end
+    return any and ids or nil
+end
+
+-- the group unit of a member ("player" for this character), nil outside the group
+function mod.UnitOf(key)
+    if MMT.IsSelf(key) then return "player" end
+    local unit = unitOf[key]
+    if unit and UnitExists(unit) then return unit end
+end
+
+-- the buff's length, learned whenever it is read (M.store.buffDur[entryKey]): while the game
+-- hides auras (combat) the buff is timed from the cast with it - Death Wish and the like,
+-- which the game's own aura widget (Live.lua) doesn't always draw
+local function NoteBuffDur(e, dur)
+    if type(dur) ~= "number" or dur <= 0 or MMT.IsSecret(dur) then return end
+    M.store.buffDur = M.store.buffDur or {}
+    M.store.buffDur[mod.EntryKey(e)] = dur
+end
+
+function mod.BuffDur(e) return M.store.buffDur and M.store.buffDur[mod.EntryKey(e)] end
+
+-- when member key last used entry e (this session), or nil
+local function LastUse(key, e)
+    local ek = mod.EntryKey(e)
+    if MMT.IsSelf(key) then return ownCast[ek] end
+    local c = mod.cds[key] and mod.cds[key][ek]
+    return c and (c.start or c.pending) or nil
+end
 
 -- start, duration of the buff entry e gave member key right now, or nil
 function mod.ActiveBuff(key, e)
     local name = mod.CastName(e)
     if not name then return nil end
     local unit = MMT.IsSelf(key) and "player" or unitOf[key]
-    if unit and UnitExists(unit) then return UnitBuffTime(unit, name) end
+    if unit and UnitExists(unit) then
+        local start, dur, id = UnitBuffTime(unit, name)
+        if id then NoteBuffId(e, id) end
+        if start then NoteBuffDur(e, dur) return start, dur end
+        -- the game hides auras: from the last use and the learned length
+        if mod.AurasHidden() then
+            local cast, d = LastUse(key, e), mod.BuffDur(e)
+            if cast and d and GetTime() < cast + d then return cast, d end
+        end
+        return nil
+    end
     -- outside the group: the time their client sent with the use message
     local c = mod.cds[key] and mod.cds[key][mod.EntryKey(e)]
     if c and c.buffStart and c.buffStart + c.buffDur > GetTime() then return c.buffStart, c.buffDur end

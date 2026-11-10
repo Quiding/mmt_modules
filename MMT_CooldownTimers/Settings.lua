@@ -25,7 +25,7 @@ end
 -- the settings of each tab, for "Reset..." in the share bar (SettingsKit; tests check every default is in one)
 mod.TAB_KEYS = {
     bars = { "shown", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "showNames", "fullNames",
-        "showTimers", "glowActive", "showBuffs", "hideReady", "hideUnknown", "hideUnseenItems", "point", "hidden" },
+        "showTimers", "glowActive", "showBuffs", "hideReady", "hideUnknown", "hideUnseenItems", "point", "hidden", "autoSend", "autoTake" },
     ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
         "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
     ["look.timer"] = { "timerSize", "timerColor", "swipeColor", "swipeAlpha", "soonSecs", "soonTextColor", "soonSwipeColor",
@@ -124,6 +124,10 @@ M.Page = function(_, page)
             Check(R, "Hide what you don't have", "hideUnknown", "Spells a character hasn't learned yet - yours and, as their clients tell us, the team's - and items you don't carry (your own row).")
             Check(R, "Others' items only after first use", "hideUnseenItems", "Trinkets and potions of other members show up once you have seen them used.")
             R:Note("Each client sends one short message when its character uses a tracked cooldown (needs Cooldowns on that client too). Group members are also seen directly.")
+        end },
+        { "Team", "INV_Misc_GroupNeedMore", function(T)
+            Check(T, "Send my changes to the team", "autoSend", "Every change to these settings (lists, looks, options) goes to the online team by itself, a few seconds after your last one - no Sync to team each time. Window positions stay on each client.")
+            Check(T, "Take the team's changes", "autoTake", "Changes a team member makes here are applied on this client at once, without a dialog. Off: only Sync to team (with its dialog) changes them.")
         end },
     })
 
@@ -335,6 +339,7 @@ end
 
 M.Report = function(_, add)
     mod.SpecReport(add)
+    mod.AutoSyncReport(add)
     local n = 0
     for _, l in pairs(M.db.lists or {}) do n = n + #l end
     add(("-- Cooldowns %s: shown=%s entries=%d onFrames=%s (%s) frames: %s"):format(mod.VERSION, tostring(M.db.shown), n,

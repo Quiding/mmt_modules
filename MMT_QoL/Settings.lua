@@ -33,7 +33,7 @@ local function FeatureColumn(page, f, x, status)
     local function Gate(w) gated[#gated + 1] = w; return w end
     local function Set(key) return function(v) if mod.Active(f) then M.db[key] = v end end end
     mod.TileStack(page, x, 0, W, {
-        { f.title, f.icon or "INV_Misc_Gear_01", function(col, tile)
+        { f.title, mod.FeatureIcon(f) or "INV_Misc_Gear_01", function(col, tile)
             main = col:Check(f.checkText,
                 function() return M.db[f.key] and (f.sendOnly or (mod.AddonState(f.addon))) and true or false end,
                 function(v)
@@ -93,12 +93,12 @@ M.Page = function(_, page)
     local tabs = {}
     for _, f in ipairs(mod.features) do
         -- the tab of a feature whose addon isn't loaded is greyed and says why (SettingsKit)
-        tabs[#tabs + 1] = { f.key, f.tabText or f.title, f.icon, blocked = f.addon and not f.sendOnly and function()
+        tabs[#tabs + 1] = { f.key, f.tabText or f.title, mod.FeatureIcon(f), blocked = f.addon and not f.sendOnly and function()
             local ok, why = mod.AddonState(f.addon)
             if not ok then return (why or "") .. " This tab needs it." end
         end or nil }
     end
-    local panels = mod.Tabs(page, tabs)
+    local panels = mod.Tabs(page, tabs, { first = true })   -- opens on the first tab, not the one seen last
     local refresh = {}
     for _, f in ipairs(mod.features) do
         refresh[#refresh + 1] = FeatureColumn(panels[f.key], f, 0, status)

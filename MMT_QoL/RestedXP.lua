@@ -384,7 +384,7 @@ local function Hook()
 end
 
 F = mod.Feature({
-    key = "rxp", icon = "Spell_Nature_Sleep", slash = "rxp", addon = "RXPGuides", title = "RestedXP with the party", tabText = "RestedXP",
+    key = "rxp", icon = "Spell_Nature_Sleep", iconPath = [[Interface\AddOns\RXPGuides\Textures\rxp_logo-64]], slash = "rxp", addon = "RXPGuides", title = "RestedXP with the party", tabText = "RestedXP",
     checkText = "RestedXP Guides with the party",
     tip = "RestedXP Guides waits for the party before its next step, and its objective lines show the team's counts (see the options).",
     notes = {

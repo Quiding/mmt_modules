@@ -17,6 +17,9 @@ FRAMES = bd.split("FRAMES = r'''", 1)[1].split("'''", 1)[0]
 
 COMMON = r'''
 NAMEW = 56
+PIECES, XPUPD = {}, 0
+MMT.RegisterXPPiece = function(d) PIECES[d.id] = d end
+MMT.UpdateXPWindow = function() XPUPD = XPUPD + 1 end
 MMT.status = {}
 MMT.SortedMembers = function() return { "Bob-Stone" } end
 MMT.IsSelf = function(k) return k == "Anna-Smith" end
@@ -261,6 +264,32 @@ print(lua.eval(r'''function(cd, bf)
   S.told = {}
   S.OnMessage("Bob-Stone", "MST:71")
   Check(S.StanceOf("Bob-Stone") == 71, "stance message not taken")
+  -- the Info window column: Bob's stance icon, the name on its cogwheel, redrawn on a change
+  local P = PIECES.stance
+  Check(P and P.on == false and P.title == "Stance / form", "no Info window piece")
+  Check(XPUPD > 0, "Info window not redrawn on a stance message")
+  local t = P.text("Bob-Stone")
+  Check(type(t) == "string" and t:find("^|T") and not t:find(" "), "piece text: " .. tostring(t))
+  local nameOf = S.NameOf
+  S.NameOf = function() return "Defensive Stance" end
+  P.options[1][4](true)
+  Check(P.options[1][3]() == true and P.text("Bob-Stone"):find("|t Defensive Stance$"), "piece name: " .. tostring(P.text("Bob-Stone")))
+  P.options[1][4](false)
+  S.NameOf = nameOf
+  Check(P.text("Nobody-X") == "" and not P.hidden(), "no stance: empty")
+  -- its icon size: the text's height, a size, or fit to the row (max(bar height, font + 4) - 2)
+  Check(P.text("Bob-Stone"):find("^|T134400:0:0:"), "text height by default")
+  local fit, size = P.options[2], P.options[3]
+  Check(fit[1] == "Check" and size[1] == "Slider", "size options")
+  size[7](20)
+  Check(size[6]() == 20 and P.text("Bob-Stone"):find("^|T134400:20:20:"), "icon size: " .. P.text("Bob-Stone"))
+  MMT.db.xp = { barHeight = 22, size = 12 }
+  fit[4](true)
+  Check(fit[3]() == true and P.text("Bob-Stone"):find("^|T134400:20:20:"), "fit to a 22 px row: " .. P.text("Bob-Stone"))
+  MMT.db.xp = { barHeight = 10, size = 14 }
+  Check(P.text("Bob-Stone"):find("^|T134400:16:16:"), "fit to the font's row: " .. P.text("Bob-Stone"))
+  fit[4](false); size[7](0)
+  Check(P.text("Bob-Stone"):find("^|T134400:0:0:"), "back to text height")
   -- settings: one table, kept in Cooldown Timers' settings (the host), written into both copies
   Check(S.Host().M == CM, "the host isn't Cooldown Timers")
   S.Set("iconSize", 30)

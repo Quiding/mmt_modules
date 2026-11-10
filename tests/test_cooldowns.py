@@ -621,3 +621,193 @@ print("A:", A.eval(r"""function(m)
   SPELLCD = {}
   return "hidden own cooldowns ok"
 end""")(amod))
+
+# a spell's buff in combat (Live.lua): auras are hidden from addons then, so each cooldown icon gets
+# the game's aura widget (a stand-in here) set to the member's unit and the buff's spell IDs - the
+# spell's own, plus the ones learned while the buff was readable; it draws the buff with its real
+# time over the icon, the cooldown underneath shows once it's gone
+L, lmod = client("Anna-Smith", "Bob-Stone")
+print("L:", L.eval(r"""function(m)
+  rawset(_G, "CustomAuraContainerAuraProcessingPolicy", { None = 0 })
+  assert(m.LiveAvailable(true), "the stand-in widget isn't seen")
+  local oldCF, made = CreateFrame, {}
+  CreateFrame = function(kind, ...)
+    if kind ~= "AuraContainer" then return oldCF(kind, ...) end
+    local c = oldCF("Frame")
+    local rec = { enabled = false }
+    made[#made + 1] = rec
+    c.SetEnabled = function(_, on) rec.enabled = on end
+    c.SetUnit = function(_, u) rec.unit = u end
+    c.AddAuraSlot = function(_, name, filter, opts)
+      rec.filters = rec.filters or {}
+      rec.filters[filter] = name
+      rec.ids = opts.candidateFilters.includeSpellIDs
+      local b = oldCF("Frame")
+      b.SetIcon = function() rec.icon = true end
+      b.SetDurationCooldown = function() rec.cooldown = true end
+      opts.initializeFrame(b)
+    end
+    c.SetAuraSlotCandidateFilters = function(_, name, f) rec.ids = f.includeSpellIDs end
+    return c
+  end
+  SPELLS[20554] = "Berserking"
+  m.M.db.lists["CHAR:Anna-Smith"] = { { t = "s", id = 20554, cd = 180 } }
+  m.M.db.hideReady = false
+  local oldMembers = m.Members
+  m.Members = function() return { "Anna-Smith" } end
+  m.BuildIndex()
+  local e = m.M.db.lists["CHAR:Anna-Smith"][1]
+  -- readable (out of combat): the buff is read by name, its spell ID learned
+  local oldExists = UnitExists
+  UnitExists = function(u) return u == "player" end
+  C_UnitAuras = { GetBuffDataByIndex = function(_, i)
+    if i == 1 then return { name = "Berserking", duration = 10, expirationTime = NOW + 8, spellId = 26297 } end
+  end, GetDebuffDataByIndex = function() end }
+  local s, d = m.ActiveBuff("Anna-Smith", e)
+  assert(s == NOW - 2 and d == 10, "buff not read: " .. tostring(s))
+  local ids = m.LiveIds(e)
+  assert(ids and ids[20554] and ids[26297], "learned + own ID")
+  C_UnitAuras = nil
+  -- the bar: the icon is tagged, the widget made out of combat and set to the player and the IDs
+  m.window:Refresh()
+  m.LiveSync()
+  local ov
+  for _, r in ipairs(made) do if r.ids and r.ids[26297] then ov = r end end
+  local n = #made
+  assert(ov and n > 1, "overlays made: " .. n .. " (one per icon of hers)")
+  assert(ov.enabled and ov.unit == "player" and ov.filters.HELPFUL and ov.filters.HARMFUL and ov.ids[26297] and ov.ids[20554], "overlay set wrong")
+  assert(ov.icon and ov.cooldown, "it doesn't draw icon / countdown")
+  -- combat: nothing new is built, the one there keeps drawing
+  IN_COMBAT = true
+  m.LiveSync()
+  assert(#made == n and ov.enabled, "combat")
+  IN_COMBAT = false
+  -- items: the use spell's ID
+  m.ItemSpell = function(id) if id == 5555 then return "Trinket Buff", 9999 end end
+  local tids = m.LiveIds({ t = "i", id = 5555 })
+  assert(tids and tids[9999], "item use spell ID")
+  -- a buff the game files as a debuff (Death Wish): its aura ID is learned too
+  SPELLS[12328] = "Death Wish"
+  local dw = { t = "s", id = 12328, cd = 180 }
+  C_UnitAuras = { GetBuffDataByIndex = function() end, GetDebuffDataByIndex = function(_, i)
+    if i == 1 then return { name = "Death Wish", duration = 30, expirationTime = NOW + 20, spellId = 12329 } end
+  end }
+  s, d = m.ActiveBuff("Anna-Smith", dw)
+  assert(s == NOW - 10 and d == 30, "debuff buff not read: " .. tostring(s))
+  C_UnitAuras = nil
+  local dids = m.LiveIds(dw)
+  assert(dids and dids[12328] and dids[12329], "debuff aura ID not learned")
+  -- auras hidden (combat): timed from the cast with the length learned above (30 s)
+  assert(m.BuffDur(dw) == 30, "length not learned: " .. tostring(m.BuffDur(dw)))
+  table.insert(m.M.db.lists["CHAR:Anna-Smith"], dw)
+  m.BuildIndex()
+  local oldHidden = m.AurasHidden
+  m.AurasHidden = function() return true end
+  C_UnitAuras = { GetBuffDataByIndex = function() return nil end, GetDebuffDataByIndex = function() return nil end }
+  assert(m.ActiveBuff("Anna-Smith", dw) == nil, "buff before any cast")
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 12328)
+  s, d = m.ActiveBuff("Anna-Smith", dw)
+  assert(s == NOW and d == 30, "not timed from the cast: " .. tostring(s) .. " / " .. tostring(d))
+  local oldNow = NOW
+  NOW = NOW + 31
+  assert(m.ActiveBuff("Anna-Smith", dw) == nil, "still up after its length")
+  NOW = oldNow
+  m.AurasHidden = oldHidden
+  C_UnitAuras = nil
+  table.remove(m.M.db.lists["CHAR:Anna-Smith"])
+  m.BuildIndex()
+  -- report
+  local lines = {}
+  m.LiveReport(function(l) lines[#lines + 1] = l end)
+  assert(#lines == 3 and lines[2]:find("drawing " .. n) and lines[3]:find("s20554 26297"), table.concat(lines, " | "))
+  -- the setting off: the overlay stops
+  m.M.db.showBuffs = false
+  m.window:Refresh(); m.LiveSync()
+  assert(not ov.enabled, "still drawing with the setting off")
+  m.M.db.showBuffs = true
+  m.window:Refresh(); m.LiveSync()
+  assert(ov.enabled, "back on")
+  -- switched off
+  m.M.OnDisable()
+  assert(not ov.enabled, "still drawing with the module off")
+  CreateFrame = oldCF
+  m.Members = oldMembers
+  UnitExists = oldExists
+  return "buffs drawn in combat ok"
+end""")(lmod))
+
+# settings changes go to the team by themselves (AutoSync.lua): only what changed, positions stay
+_prof = open(r"D:\Games\MMT-src\MMT\Profiles.lua", encoding="utf-8").read()
+SER = ('''local ns = MMT
+ns.Trim = function(s) return (s:match("^%s*(.-)%s*$")) end
+'''
+       + "local function ser(v, out, depth)" + _prof.split("local function ser(v, out, depth)")[1].split("function ns.ExportProfile()")[0])
+for L in (A, B):
+    L.execute(SER)
+    L.execute(r"""
+TIMERS = {}
+C_Timer.After = function(d, f) TIMERS[#TIMERS + 1] = { at = NOW + d, f = f } end
+function RUNTIMERS(secs)
+  NOW = NOW + secs
+  local guard = 0
+  while true do
+    local due
+    for i, t in ipairs(TIMERS) do if t.at <= NOW then due = i break end end
+    if not due then break end
+    local t = table.remove(TIMERS, due); t.f()
+    guard = guard + 1; assert(guard < 100, "timers loop")
+  end
+end
+PRINTED = {}
+function MMT.Print(fmt, ...) PRINTED[#PRINTED + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
+""")
+for L, m in ((A, amod), (B, bmod)):
+    L.eval('function(m) LONG = {}; m.AutoSyncReset() end')(m)
+
+print("S:", A.eval(r"""function(m)
+  local db = m.M.db
+  assert(db.autoSend and db.autoTake, "defaults")
+  db.iconSize = 41
+  db.point = { "TOPLEFT", "TOPLEFT", 10, 10 }
+  db.lists.WARRIOR = db.lists.WARRIOR or {}
+  table.insert(db.lists.WARRIOR, { t = "s", id = 12328, cd = 180 })
+  m.AutoSyncCheck(true)
+  RUNTIMERS(2)
+  assert(#LONG == 0, "sent before it was quiet")
+  RUNTIMERS(4)
+  assert(#LONG == 1 and LONG[1].msg:find("^MCDA:"), "not sent once: " .. #LONG)
+  local t = MMT.Deserialize(LONG[1].msg:sub(6))
+  assert(#t.c == 2, "only the changes: " .. #t.c)
+  -- nothing new: nothing more
+  m.AutoSyncCheck(true); RUNTIMERS(6)
+  assert(#LONG == 1, "sent again without a change")
+  return "sent: the 2 changes in one message, quiet first"
+end""")(amod))
+
+msg = A.eval('LONG[1].msg')
+print("S:", B.eval(r"""function(m, msg)
+  local db = m.M.db
+  local point = db.point
+  DELIVER("Anna-Smith", msg)
+  assert(db == m.M.db and m.M.db.iconSize == 41, "size not taken")
+  assert(m.M.db.point == point, "position taken")
+  local found
+  for _, e in ipairs(m.M.db.lists.WARRIOR) do if e.id == 12328 then found = true end end
+  assert(found, "list not taken")
+  assert(PRINTED[#PRINTED]:find("2 setting change"), tostring(PRINTED[#PRINTED]))
+  -- not sent back
+  m.AutoSyncCheck(true); RUNTIMERS(6)
+  assert(#LONG == 0, "echoed back")
+  -- the same again: nothing to apply, no line
+  local n = #PRINTED
+  DELIVER("Anna-Smith", msg)
+  assert(#PRINTED == n, "a no-op printed")
+  -- take off: not applied
+  m.M.db.autoTake = false
+  m.M.db.iconSize = 20
+  m.AutoSyncReset()
+  DELIVER("Anna-Smith", msg)
+  assert(m.M.db.iconSize == 20, "taken while off")
+  m.M.db.autoTake = true
+  return "taken: lists and looks, position kept, not sent back"
+end""")(bmod, msg))

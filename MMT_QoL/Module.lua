@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.6.0"
+mod.VERSION = "1.7.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -46,6 +46,16 @@ local M = MMT.NewModule({
         -- Loot Distribution's "Never Loot" tab (LootSkip.lua): left on the corpse as master looter
         lsDejunk = false,          -- items on Dejunk's junk lists
         lsBaganator = false,       -- Baganator junk
+        lsPrice = false,           -- items worth too little at the auction house (LootPrice.lua)
+        lpMin = 5000,              -- ... below this (copper, one item)
+        lpQuality = 1,             -- ... only up to this quality (0 Poor, 1 Common, 2 Uncommon, 3 Rare)
+        lpAuctionator = true,      -- Auctionator's price
+        lpFojji = true,            -- FojjiCore Professions' last scan
+        lpOrder = "AUCTIONATOR",   -- both have one: AUCTIONATOR | FOJJI first | NEWEST
+        lpAge = 0,                 -- a price older than this many days doesn't count (0 = any age)
+        lpFallback = "LOOT",       -- no auction price: LOOT | VENDOR (vendor price below the amount: left) | LEAVE
+        lpRoles = true,            -- items a role of the team wants are always looted
+        lpStack = false,           -- stackable items: a full stack's worth against the amount
         -- Role items beside the bags (MailList.lua; keys still say "ml": it began as the mail list)
         mlist = true,
         mlDock = true,             -- show it with the bags
@@ -89,6 +99,11 @@ local M = MMT.NewModule({
         rxCount = "TOTAL",         -- objective lines (Quest Tracker data): TOTAL team sum in place of mine | LOWEST | EACH | OFF
         rxChat = true,             -- chat line: who we wait for, and when everyone is done
         rxTimeout = 0,             -- go on anyway after (minutes, 0 = never)
+        -- profile with other names (NameSwap.lua)
+        nx = true,                 -- the window (/mmtqol names)
+        nxSwitch = true,           -- "Make a profile" switches this character to it
+        nxSkip = {},               -- parts left out: core | roleitems | m:<module name> = true
+        nxKeepMine = true,         -- "Make a profile": left-out parts from the current profile
     },
 })
 mod.M = M
@@ -102,6 +117,16 @@ function mod.Feature(f)
     mod.features[#mod.features + 1] = f
     for tag, fn in pairs(f.tags or {}) do byTag[tag] = { f = f, fn = fn } end
     return f
+end
+
+-- the feature's icon: its addon's own logo (the addon's TOC IconTexture) when it has one
+function mod.FeatureIcon(f)
+    if f.addon then
+        local Get = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+        local ok, v = pcall(Get, f.addon, "IconTexture")
+        if ok and type(v) == "string" and v ~= "" then return v end
+    end
+    return f.iconPath or f.icon
 end
 
 -- Is the addon loaded? false + why not (no addon: a local feature, always "loaded")
@@ -188,6 +213,6 @@ SlashCmdList.MMTQOL = function(msg)
             return
         end
     end
-    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat, /mmtqol rxp go, /mmtqol roles | send, /mmtqol ah send | status, /mmtqol fojji send | status. Settings: /mmt > Quality of life.")
+    MMT.Print("Quality of life: /mmtqol dejunk send | reload, /mmtqol baganator send, /mmtqol auras, /mmtqol eui, /mmtqol smartbuff combat, /mmtqol rxp go, /mmtqol roles | send, /mmtqol ah send | status, /mmtqol fojji send | status, /mmtqol names. Settings: /mmt > Quality of life.")
     MMT.ToggleConfig("QoL")
 end

@@ -56,6 +56,8 @@ local function Icons(key, host)
                     readyAlpha = M.db.readyAlpha, cdAlpha = M.db.cdAlpha, glowActive = M.db.glowActive,
                     look = M.db,   -- countdown circle / timer colours (Timer tab)
                 }
+                -- the game draws the buff over the icon while auras are hidden (combat; Live.lua)
+                if M.db.showBuffs and not arranging then icon.cdLive = { key = key, e = e } end
                 if bStart then
                     -- buff up: glow with its time left, then the cooldown
                     icon.after = { state = state, start = start, duration = dur }

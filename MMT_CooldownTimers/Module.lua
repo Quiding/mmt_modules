@@ -39,6 +39,8 @@ local M = MMT.NewModule({
         showBuffs = true,           -- while the spell's buff is up: glow with the buff's time left
         hideUnknown = true,         -- spells a character hasn't learned (shared, Known.lua) / items you don't carry
         hideUnseenItems = false,    -- other members' items only after you saw them used
+        autoSend = true,            -- settings changes go to the team by themselves, 5 s after the last one (AutoSync.lua)
+        autoTake = true,            -- the team's changes are applied here at once (no dialog)
         point = { "CENTER", "CENTER", 200, 0 },
         onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
         framesSide = "RIGHT", framesX = 0, framesY = 0, framesIconSize = 22, framesFit = false,
@@ -93,10 +95,12 @@ M.OnEnable = function()
     mod.BuildIndex()
     mod.RestoreRunning()   -- the team's timers from before a /reload (Share.lua)
     mod.window:Refresh()
+    if mod.LiveSync then mod.LiveSync() end   -- buffs drawn in combat (Live.lua)
 end
 
 M.OnDisable = function()
     mod.window:Hide()
+    if mod.StopLive then mod.StopLive() end
 end
 
 M.OnProfileChanged = function()
@@ -132,7 +136,10 @@ SlashCmdList.MMTCOOLDOWNTIMERS = function(msg)
         mod.ToggleArrange()
     elseif msg == "spec" then
         mod.SpecReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
+    elseif msg == "live" then
+        mod.LiveSync()
+        mod.LiveReport(function(line) MMT.Print("%s %s", M.title .. ":", line) end)
     else
-        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct arrange, /mmtct spec, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
+        MMT.Print("/mmtct = show/hide, /mmtct lock, /mmtct arrange, /mmtct spec, /mmtct live, /mmtct test, /mmtct preview [mixed|all], /mmtct export. Settings: /mmt > MODULES > Cooldown Timers.")
     end
 end

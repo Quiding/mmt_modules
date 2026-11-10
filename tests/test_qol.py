@@ -398,7 +398,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 12, "report lines " .. n)   -- one per feature + the module line + role items sync + Auctionator status
+  assert(n == 14, "report lines " .. n)   -- one per feature (names, loot by price too) + the module line + role items sync + Auctionator status
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -1240,7 +1240,7 @@ end""")
 
 # --- Never loot (Loot Distribution's hook) ----------------------------------
 run(A, amod, r"""function(m)
-  assert(LOOTSKIP and LOOTSKIP.name == "QoL" and #LOOTSKIP.options == 2, "not registered")
+  assert(LOOTSKIP and LOOTSKIP.name == "QoL" and #LOOTSKIP.options == 3, "not registered")
   local ITEMS = { [10] = { 0, 5 }, [11] = { 0, 0 }, [12] = { 1, 50 }, [13] = { 0, 7 }, [14] = { 2, 90 } }   -- quality, sell price
   C_Item.GetItemInfo = function(link) local id = tonumber(tostring(link):match("item:(%d+)")); local it = ITEMS[id]
     if it then return "x", link, it[1], 1, 1, nil, nil, 1, nil, 1, it[2] end end
@@ -1293,4 +1293,78 @@ run(A, amod, r"""function(m)
   assert(not ok2 and why2:find("switched off"), "usable off: " .. tostring(why2))
   m.M.enabled = true
   return "Anna: never loot - Dejunk lists and Baganator junk for Loot Distribution's hook"
+end""")
+
+# --- Never loot by auction price (LootPrice.lua) ----------------------------
+run(A, amod, r"""function(m)
+  local db = m.M.db
+  db.lsDejunk, db.lsBaganator = false, false
+  local ITEMS = { [20] = { 1, 30 }, [21] = { 1, 30 }, [22] = { 1, 9000 }, [23] = { 2, 10 }, [24] = { 1, 30 } }   -- quality, sell price
+  C_Item.GetItemInfo = function(link) local id = tonumber(tostring(link):match("item:(%d+)")); local it = ITEMS[id]
+    if it then return "x", link, it[1], 1, 1, nil, nil, 1, nil, 1, it[2] end end
+  local function L(id) return "|Hitem:" .. id .. "::|h[x]|h" end
+  local AH = { [20] = { 400, 1 }, [21] = { 80000, 2 }, [23] = { 10, 0 }, [24] = { 900, 30 } }   -- price, age (days)
+  Auctionator = { API = { v1 = {
+    GetAuctionPriceByItemLink = function(_, link) local a = AH[tonumber(link:match("item:(%d+)"))]; return a and a[1] end,
+    GetAuctionAgeByItemLink = function(_, link) local a = AH[tonumber(link:match("item:(%d+)"))]; return a and a[2] end,
+  } } }
+  time = time or os.time
+  local FJ = { [20] = { min = 99999, t = time() - 86400 * 5 }, [22] = { min = 700, t = time() } }
+  FojjiCoreNS = { Auctions = { Store = function() return { items = FJ } end } }
+  local skip = LOOTSKIP.skip
+  assert(skip(L(20)) == nil, "off by default")
+  db.lsPrice = true
+  -- the amount as written
+  local P = m.ParseMoney
+  assert(P("1g 20s 5c") == 12005 and P("50s") == 5000 and P("1g20s") == 12000 and P("75c") == 75, "g/s/c")
+  assert(P("2.5g") == 25000 and P("2") == 20000 and P("0,5") == 5000 and P(" 3G ") == 30000, "plain / decimals")
+  assert(P("") == nil and P("abc") == nil and P("5x") == nil and P("1g fish") == nil and P("-1") == nil, "bad text")
+  assert(m.Money(12005) == "1g 20s 5c" and m.Money(5000) == "50s" and m.Money(0) == "0c", "shown back")
+  -- below 50s at Auctionator: left; above: looted
+  assert(tostring(skip(L(20))):find("4s.*Auctionator.*50s"), "cheap: " .. tostring(skip(L(20))))
+  assert(skip(L(21)) == nil, "worth it")
+  -- quality above the cap: looted however cheap
+  assert(skip(L(23)) == nil, "green looted")
+  db.lpQuality = 2
+  assert(skip(L(23)), "green left when the cap allows")
+  db.lpQuality = 1
+  -- only FojjiCore has it
+  assert(tostring(skip(L(22))):find("FojjiCore"), "fojji price: " .. tostring(skip(L(22))))
+  -- FojjiCore first: its 9g99s for item 20
+  db.lpOrder = "FOJJI"
+  assert(skip(L(20)) == nil, "fojji first")
+  -- the newest: Auctionator's (1 day) beats FojjiCore's (5 days)
+  db.lpOrder = "NEWEST"
+  assert(skip(L(20)), "newest")
+  db.lpOrder = "AUCTIONATOR"
+  -- too old: no price -> the fallback
+  db.lpAge = 7
+  assert(skip(L(24)) == nil, "old price, fallback loot")
+  db.lpFallback = "VENDOR"
+  assert(tostring(skip(L(24))):find("vendor"), "vendor fallback: " .. tostring(skip(L(24))))
+  db.lpFallback = "LEAVE"
+  assert(skip(L(24)) == "no auction price", "leave fallback")
+  db.lpAge, db.lpFallback = 0, "LOOT"
+  -- a source switched off
+  db.lpFojji = false
+  assert(skip(L(22)) == nil, "fojji off: no price, looted")
+  db.lpFojji = true
+  -- a full stack's worth: 4s x 20 = 80s, above the 50s
+  ITEMS[20][3] = 20
+  C_Item.GetItemInfo = function(link) local id = tonumber(tostring(link):match("item:(%d+)")); local it = ITEMS[id]
+    if it then return "x", link, it[1], 1, 1, nil, nil, it[3] or 1, nil, 1, it[2] end end
+  db.lpStack = true
+  assert(skip(L(20)) == nil, "full stack worth it")
+  db.lpMin = 100000
+  assert(tostring(skip(L(20))):find("stack of 20"), "stack text: " .. tostring(skip(L(20))))
+  db.lpMin, db.lpStack = 5000, false
+  -- a role wants it: looted
+  MMT.MembersForItem = function() return { "Bob-Stone" } end
+  assert(skip(L(20)) == nil, "role wants it")
+  MMT.MembersForItem = nil
+  -- the Never Loot tab's checkbox is the same setting
+  LOOTSKIP.options[3].set(false)
+  assert(skip(L(20)) == nil and db.lsPrice == false, "tab checkbox")
+  Auctionator, FojjiCoreNS = nil, nil
+  return "Anna: never loot by auction price - sources, order, age, fallbacks, quality, roles"
 end""")

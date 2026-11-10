@@ -13,14 +13,14 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.3 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.4 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.5 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.5 |
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.2.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared *(new, not tested in game yet)* | 1.6.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.0 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
@@ -64,7 +64,9 @@ paladin lists; the cog limits it like a buff. The presets and default lists of w
 of one per aura), rogues (stealth), druids and Shadow priests have it (the Priest class list: off), and it was added once
 to existing lists of those classes / specs (paladin auras already in your lists stay; take them out if the stance is enough). A paladin with no aura on shows it as missing. It can also have its own window (Cooldown Timers and Buff Timers, **Stance**
 tab, the same settings on both pages; works while either module is on). Its **Look** sub-tab sets the window's icon
-size, zoom and spacing, scale, row spacing, growth direction, font, name size, background, border and row colours. Each
+size, zoom and spacing, scale, row spacing, growth direction, font, name size, background, border and row colours. MMT's
+**Info window** can show it as a column too: switch on **Stance / form** in Info Window > Column Visibility & Order (its
+cogwheel: the stance's name, an icon size, or fit the icon to the row's height; needs Cooldown or Buff Timers on). Each
 client tells the team once when its stance changes.
 
 **Beside the party frames** (Cooldown Timers and Buff Timers, **Frames** tab): each member's icons sit next
@@ -121,7 +123,10 @@ important spells, trinkets and potions.
   other reductions included), remembered for the next time. The seconds in a list are only the fallback - click
   them to change.
 - While a spell's buff is up (Berserking, Evasion, Death Wish, trinkets, ...) its icon glows with
-  the buff's time left.
+  the buff's time left - **in combat too**, for you and the members in your group: the game hides auras from addons
+  then, so it draws the buff over the icon itself (its real time left), and the cooldown shows once the buff is gone.
+  It knows a buff by the spell's own ID (the item's use spell for trinkets) and by every one it has read out of
+  combat; `/mmtct live` says what it knows.
 - "Hide what you don't have": spells a character hasn't learned yet are hidden on every client's bars
   (each client tells the team which tracked spells it hasn't learned), and items you don't carry on your own row.
 - Lists per class, race, MMT role or character; entries can be switched off without deleting them.
@@ -131,6 +136,8 @@ important spells, trinkets and potions.
   cooldowns, defensives and control on, the rotation in the list but off; racials per race, potions & runes.
 - **Name search** in the add box: every spell (also ones your character doesn't know) and the items
   you carry; shift-click a spell or item works too.
+
+- **Changes go to the team by themselves** (Bars > Team, on by default): a few seconds after your last change to these settings - lists, looks, options - what changed is sent to the online team and applied there at once, no Sync to team or dialog. Window positions stay on each client.
 
 `/mmtct` · `/mmtct test` · `/mmtct preview [mixed|all]` · `/mmtct export`
 
@@ -188,6 +195,8 @@ tracked for them, with exact timers.
 - **Only for...** (the cog of each buff in the All bar): limit a buff to specs (Paladin: Retribution, ...), classes
   and / or MMT roles (/mmt > Roles) - e.g. Blessing of Might only for warriors, rogues and Retribution paladins.
   Members it isn't for don't count as missing it.
+
+- **Changes go to the team by themselves** (Bars > Team, on by default): a few seconds after your last change to these settings - lists, looks, options - what changed is sent to the online team and applied there at once, no Sync to team or dialog. Window positions stay on each client.
 
 `/mmtbt` · `/mmtbt test` · `/mmtbt preview [mixed|all]` · `/mmtbt export`
 
@@ -372,6 +381,11 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   global; its "not junk" lists win). Baganator: items put into Junk by hand, and grey items with a sell price
   (Dejunk's lists first when Baganator takes its junk from Dejunk). The master looter's own settings count.
   Dejunk's other rules (item level, price, ...) only work on items in bags, so they don't count here.
+- **Never loot by auction price** (the Loot by price tab, and **Items worth too little at the auction house** on the
+  Never Loot tab; off by default): as master looter, items whose auction price is below the amount (any, like 1g 20s; optionally a full stack's) are
+  left on the corpse. Prices from Auctionator and FojjiCore Professions' last scan - Auctionator first, FojjiCore first
+  or the newest - and a max age. No price: loot it, go by the vendor price, or leave it. Only up to the quality you
+  pick (white by default), and items a role of the team wants are always looted.
 - **Role items beside the bags** (on by default): a small panel docked to your open bags ([Baganator](https://www.curseforge.com/wow/addons/baganator)'s
   backpack window, else the game's bags) shows one MMT role's items - pick the role in its dropdown. Drop an item
   from your bags on it (or click its box and shift-click an item) to put it on that role; the x on a line takes it
@@ -379,9 +393,18 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   **Mail to team** mails them - a role made just for that (e.g. "Bank" on your bank character) works well. These are
   MMT's own roles, so Loot Distribution goes by them too: while that member isn't in the group, its "Role members
   have no room" setting decides ("Next team member with room" hands the item out as usual). What you add or take off
-  goes to the whole team right away (a role a member lacks is made for them; who has which role isn't sent);
+  goes to the whole online team together, 5 seconds after your last change (at most 30 seconds after the first), so
+  adding a pile of items is one message per role (a role a member lacks is made for them; who has which role isn't sent);
   **Send all role items to the team** (`/mmtqol roles send`) gets everyone level once. "-" folds the panel into a
-  small "Role items" button on top of the bags; it stays open or folded the way you left it (folded the first time).
+  small "Role items" button on top of the bags; it stays open or folded the way you left it (folded the first time). A search box above the list shows only the items
+  whose name has what you type.
+- **Profile with other names** (`/mmtqol names` or `/mmtqol export`, the Export / Import tab): a window that renames the team in a copy of your MMT
+  profile - the team list and every module setting kept per character. **Export without names** makes every member
+  Class + number (Paladin1, Paladin2, ...); **Export with these names** uses the names you type (empty = kept);
+  **Make a profile** saves the copy as a new profile, e.g. your team set up again for new characters. Paste an export
+  and **Read** it to name its members instead. The exports are normal MMT exports (MMT's own Import takes them).
+  A list on the right picks what goes along: MMT core settings, the role items and each module (untick to leave
+  out); a new profile can take the left-out parts from your current one.
 - **Auctionator prices** (for [Auctionator](https://www.curseforge.com/wow/addons/auctionator)): when your full scan at the
   auction house is done, today's prices (lowest price and how many were listed, per item) go to the online team by
   themselves, and their Auctionator takes them like its own scan - tooltips, price history and posting know them.

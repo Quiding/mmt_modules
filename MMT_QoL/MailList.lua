@@ -9,8 +9,9 @@
 -- MMT.AddRule / MMT.RemoveRule. Loot Distribution goes by them too.
 -- Nothing is created until the bags are first open with the feature on.
 -- Team sync (mlSync): MMT core shares roles only with a whole profile sync, so
--- what is added / taken off here goes to the team right away (the one mailing
--- needs the list): QML:<+|->:<role>:<i<itemID>|n<name>>,...  ("+" makes the role
+-- what is added / taken off here goes to the team together, 5 seconds after the last
+-- change (at most 30 s after the first; MailQueue / MailFlush), so adding a pile of items
+-- is one message per role (the one mailing needs the list): QML:<+|->:<role>:<i<itemID>|n<name>>,...  ("+" makes the role
 -- on a member who hasn't got it; who has which role isn't sent). Item entries
 -- only - other rules (all grey items, ...) stay on the Roles page.
 
@@ -66,6 +67,24 @@ function mod.MailMembers(role)
     return t
 end
 
+-- the entries whose text has query (plain text, any case; "" = all of them)
+local function Plain(s)
+    return (tostring(s or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):lower())
+end
+function mod.MailFilter(entries, query)
+    query = tostring(query or ""):match("^%s*(.-)%s*$")
+    if query == "" then return entries end
+    query = query:lower()
+    local t = {}
+    for _, e in ipairs(entries) do
+        local r = e.rule or {}
+        local text = MMT.DescribeRule and (MMT.DescribeRule(r)) or ""
+        local hay = Plain(text) .. " " .. Plain(r.name) .. " " .. tostring(r.itemID or "")
+        if hay:find(query, 1, true) then t[#t + 1] = e end
+    end
+    return t
+end
+
 local function ItemID(x)
     return tonumber(x) or (type(x) == "string" and tonumber(x:match("item:(%d+)"))) or nil
 end
@@ -82,7 +101,7 @@ function mod.MailAdd(role, item)
     end
     if not rule then return false, "Drop or shift-click an item." end
     local ok, err = MMT.AddRule(role, rule)
-    if ok then mod.MailSend("+", role, { rule }) end
+    if ok then mod.MailQueue("+", role, rule) end
     return ok, err
 end
 
@@ -91,7 +110,7 @@ function mod.MailRemove(role, index)
     local rule = r and r.rules[index]
     if not rule then return end
     MMT.RemoveRule(role, index)
-    mod.MailSend("-", role, { rule })
+    mod.MailQueue("-", role, rule)
 end
 
 ---------------------------------------------------------------------------
@@ -143,8 +162,57 @@ function mod.MailSend(sign, role, rules, force)
     return n
 end
 
+-- changes made here wait QUIET seconds after the last one (at most MAX_WAIT after the first)
+-- and then go out together: per role, the adds and the removals, each in as few messages as fit.
+-- An item added and taken off again in that time only sends its last change.
+local QUIET, MAX_WAIT = 5, 30
+local queue, queueOrder, queueGen, queueFirst = {}, {}, 0, nil
+ml.queued = 0
+
+function mod.MailFlush()
+    if not next(queue) then return 0 end
+    local q, order = queue, queueOrder
+    queue, queueOrder, queueFirst, ml.queued = {}, {}, nil, 0
+    local n = 0
+    for _, role in ipairs(order) do
+        local byToken = q[role]
+        if byToken then
+            local add, remove = {}, {}
+            for _, t in ipairs(byToken.order) do
+                local e = byToken[t]
+                if e.sign == "+" then add[#add + 1] = e.rule else remove[#remove + 1] = e.rule end
+            end
+            -- forced: they were checked when queued (and switching the feature off sends what waits)
+            n = n + mod.MailSend("-", role, remove, true) + mod.MailSend("+", role, add, true)
+        end
+    end
+    ml.flushes = (ml.flushes or 0) + 1
+    ml.lastFlush = n
+    if n > 0 and M.db.mlChat then
+        MMT.Print("Role items: %d change%s sent to the team.", n, n == 1 and "" or "s")
+    end
+    return n
+end
+
+function mod.MailQueue(sign, role, rule)
+    if not role or not (M.db.mlSync and mod.Active(F)) then return end
+    local t = Token(rule)
+    if not t then return end
+    local r = queue[role]
+    if not r then r = { order = {} }; queue[role] = r; queueOrder[#queueOrder + 1] = role end
+    if not r[t] then r.order[#r.order + 1] = t; ml.queued = ml.queued + 1 end
+    r[t] = { sign = sign, rule = rule }
+    local now = GetTime and GetTime() or 0
+    queueFirst = queueFirst or now
+    queueGen = queueGen + 1
+    local gen = queueGen
+    local wait = math.max(0, math.min(QUIET, MAX_WAIT - (now - queueFirst)))
+    C_Timer.After(wait, function() if gen == queueGen then mod.MailFlush() end end)
+end
+
 -- every role's item entries to the team (they add what they lack; nothing is taken off)
 function mod.MailSendAll()
+    mod.MailFlush()
     local roles, items = 0, 0
     for _, role in ipairs(Roles()) do
         local r = RoleData(role)
@@ -310,8 +378,18 @@ local function Build()
     local add = UI.Button(p, 44, "Add", function() p.box:GetScript("OnEnterPressed")(p.box) end)
     add:SetPoint("LEFT", p.box, "RIGHT", 4, 0)
 
+    -- search: only the list's entries whose text has it (name, any part, any case)
+    p.search = UI.EditBox(p, W - 38, "Search the list", function(_, box) box:ClearFocus() end)
+    p.search:SetPoint("TOPLEFT", p.box, "BOTTOMLEFT", 0, -6)
+    p.search:HookScript("OnTextChanged", function() p.offset = 0; Render() end)
+    UI.Tooltip(p.search, "Search", "Shows only the items on this role's list whose name has what you type. Esc or the x clears it.")
+    p.search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    local clear = UI.TextButton(p, "x", function() p.search:SetText(""); p.search:ClearFocus() end, 18)
+    clear:SetPoint("LEFT", p.search, "RIGHT", 4, 0)
+    UI.Tooltip(clear, "Clear the search")
+
     local list = CreateFrame("Frame", nil, p)
-    list:SetPoint("TOPLEFT", p.box, "BOTTOMLEFT", 0, -6)
+    list:SetPoint("TOPLEFT", p.search, "BOTTOMLEFT", 0, -4)
     list:SetSize(W - 16, ROWS * ROW_H + 4)
     UI.Fill(list, 0.08, 0.08, 0.09, 1)
     UI.Border(list, 0.2, 0.2, 0.22, 1)
@@ -373,7 +451,7 @@ local function Build()
     p.status:SetWidth(W - 16)
     p.status:SetJustifyH("LEFT")
     p.status:SetWordWrap(false)
-    p:SetHeight(26 + 22 + 16 + 25 + 24 + 6 + ROWS * ROW_H + 4 + 34)
+    p:SetHeight(26 + 22 + 16 + 25 + 24 + 6 + ((UI.ROW or 24) + 2) + ROWS * ROW_H + 4 + 34)
 
     -- folded away: a small button beside the bags
     -- in a named (empty) holder: Styles tells its windows apart by the name of the frame on UIParent
@@ -398,7 +476,9 @@ Render = function()
         panel.to:SetText(#who > 0 and ("|cff999999Who has it:|r " .. table.concat(who, ", "))
             or "|cffff9966Nobody has this role yet (MMT settings > Roles).|r")
     end
-    local entries = mod.MailEntries(role)
+    local all = mod.MailEntries(role)
+    local query = panel.search and panel.search:GetText() or ""
+    local entries = mod.MailFilter(all, query)
     local maxOff = math.max(0, #entries - ROWS)
     panel.offset = math.min(math.max(panel.offset, 0), maxOff)
     for i, r in ipairs(panel.rows) do
@@ -415,9 +495,13 @@ Render = function()
             r:Hide()
         end
     end
-    panel.empty:SetText(role and #entries == 0 and "Nothing on this list yet: drop an item here." or "")
+    local empty = ""
+    if role and #all == 0 then empty = "Nothing on this list yet: drop an item here."
+    elseif role and #entries == 0 then empty = "Nothing on this list matches the search." end
+    panel.empty:SetText(empty)
     local more = maxOff > 0 and ("  (%d-%d, scroll for more)"):format(panel.offset + 1, math.min(panel.offset + ROWS, #entries)) or ""
-    panel.count:SetText(role and (("%d on the list"):format(#entries) .. more) or "")
+    local count = #entries == #all and ("%d on the list"):format(#all) or ("%d of %d match"):format(#entries, #all)
+    panel.count:SetText(role and (count .. more) or "")
 end
 mod.MailFrames = function() return panel, tab end
 mod.MailRender = function() if Render then Render() end end
@@ -472,7 +556,7 @@ F = mod.Feature({
     notes = {
         "Pick a role in the dropdown, then drop an item from your bags on the panel (or click its box and shift-click an item): it goes on that role's items. The x on a line takes it off.",
         "These are MMT's own roles (MMT settings > Roles shows the same). Trading with a team member hands over what their role wants, and at a mailbox MMT's \"Mail to team\" mails it to them - a role made just for that (e.g. \"Bank\" on your bank character) works well. Loot Distribution goes by the roles too: with the role's member away, Loot Distribution's \"Role members have no room\" decides (\"Next team member with room\" hands it out as usual).",
-        "Changes made here go to the team right away (the one at the mailbox needs the list); a role a member doesn't have yet is made for them. Who has which role isn't sent. \"Send all role items\" gets everyone level once.",
+        "Changes made here go to the online team together, 5 seconds after your last one (the one at the mailbox needs the list), so adding many items is one message; a role a member doesn't have yet is made for them. Who has which role isn't sent. \"Send all role items\" gets everyone level once.",
         "With the bags only a small \"Role items\" button shows, on top of them: it opens the panel (or /mmtqol roles with the bags open); \"-\" folds it again. It stays the way you left it: open or folded the next time the bags open.",
     },
     tags = { QML = OnSync },
@@ -493,6 +577,7 @@ F = mod.Feature({
         end
     end,
     OnDisable = function()
+        mod.MailFlush()
         if ticker then ticker:Cancel(); ticker = nil end
         if panel then panel:Hide(); tab:Hide() end
         dockedTo = nil
@@ -501,7 +586,7 @@ F = mod.Feature({
     Page = function(ui)
         ui.Check("Show it beside the bags", "mlDock", "The panel opens and closes with your bags (Baganator's backpack window, else the game's bags).")
         ui.Note("Roles and who has them: MMT settings > Roles. The \"Role items\" button on top of the bags (or /mmtqol roles) opens the panel.")
-        ui.Check("Share changes with the team", "mlSync", "An item added to or taken off a role here goes on or off the same role on every team member right away (the one at the mailbox needs it). MMT's own Roles page doesn't send its changes - use \"Send all role items\" or MMT's profile sync for those.")
+        ui.Check("Share changes with the team", "mlSync", "An item added to or taken off a role here goes on or off the same role on every online team member - all your changes together, 5 seconds after the last one (the one at the mailbox needs it). MMT's own Roles page doesn't send its changes - use \"Send all role items\" or MMT's profile sync for those.")
         ui.Check("Chat line for the team's changes", "mlChat", "Says what a team member added or took off.")
         ui.Button("Send all role items to the team", function() F.commands.send() end, "Every role's items to the online team: they add what they don't have yet (nothing is taken off). Also /mmtqol roles send.")
     end,
@@ -516,11 +601,14 @@ F = mod.Feature({
             tostring(M.db.mlDock), tostring(M.db.mlOpen), tostring(role), #mod.MailEntries(role),
             bag and (bag.GetName and bag:GetName() or "?") or "none", tostring(bag and bag:GetLeft()),
             bagNames and #bagNames or -1, Where(panel), Where(tab)))
-        add(("  sync=%s sent=%d got=%d added=%d removed=%d"):format(tostring(M.db.mlSync), ml.sent, ml.got, ml.added, ml.removed))
+        add(("  sync=%s sent=%d got=%d added=%d removed=%d waiting=%d batches=%d lastBatch=%s"):format(tostring(M.db.mlSync), ml.sent, ml.got,
+            ml.added, ml.removed, ml.queued, ml.flushes or 0, tostring(ml.lastFlush or "-")))
     end,
 })
 
 M:Listen("ROLES_CHANGED", function() mod.MailRender() end)
+-- logging out / a loading screen within the 5 seconds: send what waits now
+M:On("PLAYER_LEAVING_WORLD", function() mod.MailFlush() end)
 M:Listen("TEAM_CHANGED", function() mod.MailRender() end)
 M:Listen("PROFILE_CHANGED", function() mod.MailRender() end)
 local itemQueued = false

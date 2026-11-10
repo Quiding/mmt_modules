@@ -134,14 +134,16 @@ end
 -- the same for harmful auras (some self buffs are debuffs, e.g. Death Wish)
 function mod.Debuff(unit, i)
     if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
+        if mod.AurasHidden() then return "secret" end
         local ok, a = pcall(C_UnitAuras.GetDebuffDataByIndex, unit, i)
         if not ok or type(a) ~= "table" then return nil end
         if MMT.IsSecret(a.name) then return "secret" end
-        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime)
+        -- the same 7 values as mod.Buff: the aura's spell ID is how it's learned (Death Wish)
+        return a.name, Clean(a.icon), Clean(a.applications), Clean(a.duration), Clean(a.expirationTime), Clean(a.sourceUnit), Clean(a.spellId)
     end
     if UnitDebuff then
-        local name, icon, count, _, duration, expiration = UnitDebuff(unit, i)
-        return name, icon, count, duration, expiration
+        local name, icon, count, _, duration, expiration, source, _, _, spellId = UnitDebuff(unit, i)
+        return name, icon, count, duration, expiration, source, spellId
     end
 end
 

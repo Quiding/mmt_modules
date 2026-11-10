@@ -27,9 +27,7 @@ local ends = {}     -- [entryKey] = when its running cooldown would end
 local function Message(e, ek, state, start, dur)
     if state == "active" then return ("MCDU:%s:a"):format(ek) end
     local msg = ("MCDU:%s:%.1f/%.1f"):format(ek, start + dur - GetTime(), dur)
-    local name = mod.CastName(e)
-    local bStart, bDur
-    if name then bStart, bDur = mod.UnitBuffTime("player", name) end
+    local bStart, bDur = mod.ActiveBuff(MMT.PlayerFull(), e)   -- in combat: from the cast and the learned length
     if bStart then msg = msg .. (":b%.1f/%.1f"):format(bStart + bDur - GetTime(), bDur) end
     return msg
 end

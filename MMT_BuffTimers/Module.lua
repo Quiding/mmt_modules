@@ -36,6 +36,8 @@ local M = MMT.NewModule({
         swipeColor = { r = 0, g = 0, b = 0 }, swipeAlpha = 0.8,   -- the countdown circle on the icons (Timer tab)
         soonSecs = 0, soonTextColor = { r = 1, g = 0.82, b = 0 }, soonSwipeColor = { r = 0.4, g = 0.3, b = 0 },     -- 0 = off
         urgentSecs = 0, urgentTextColor = { r = 1, g = 0.2, b = 0.2 }, urgentSwipeColor = { r = 0.5, g = 0, b = 0 },
+        autoSend = true,            -- settings changes go to the team by themselves, 5 s after the last one (AutoSync.lua)
+        autoTake = true,            -- the team's changes are applied here at once (no dialog)
         glowAlerts = true,         -- a SmartBuff alert (own or the team's) makes the buff's icon glow (Alerts.lua)
         point = { "CENTER", "CENTER", -200, 0 },
         onFrames = false,          -- icons beside each member's party / raid frame (IconBars v14, FramesTab.lua)
