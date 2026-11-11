@@ -104,6 +104,7 @@ function mod.Tabs(page, list, opts)
         local p = CreateFrame("Frame", nil, page)
         p:SetPoint("TOPLEFT", 0, -(TAB_H * rows + 8))
         p:SetSize(W, math.max(100, (page:GetHeight() or 560) - (TAB_H * rows + 8) - bottom))
+        p.mmtTab = { label = t[2], show = function() if not Blocked(t) then Show(t[1]) end end }   -- MMT's settings search opens it
         panels[t[1]] = p
     end
     local function First()
