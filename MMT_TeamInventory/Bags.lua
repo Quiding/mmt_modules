@@ -208,7 +208,7 @@ local function Contents(who, place)
     end
     local sum = {}
     for key, rec in pairs(mod.Chars()) do
-        if mod.Shown(key) then
+        if mod.Counted(key) then
             for id, n in pairs(rec[place] or {}) do sum[id] = (sum[id] or 0) + n end
         end
     end
@@ -297,7 +297,7 @@ function mod.ItemKinds(id, class, count, who, place)
             local rec = mod.Chars()[who]
             n = rec and rec.s and rec.s[id] or 0
         else
-            for key, rec in pairs(mod.Chars()) do if mod.Shown(key) then n = n + (rec.s and rec.s[id] or 0) end end
+            for key, rec in pairs(mod.Chars()) do if mod.Counted(key) then n = n + (rec.s and rec.s[id] or 0) end end
         end
         bound = n >= count
     end
@@ -493,6 +493,12 @@ function Drop(s, to)
 end
 mod.DropSlot = Drop
 
+-- Quality of life's role items panel, when it is open (an item dragged onto it goes on the role)
+function mod.RolePanel()
+    local p = rawget(_G, "MMTQoLMailList")
+    if type(p) == "table" and type(p.mmtAcceptItem) == "function" and p.IsVisible and p:IsVisible() then return p end
+end
+
 local function CanDrag(s)
     local f = mod.bags
     if not (s and not s.planned and not s.outgoing and f and f.place == "b"
@@ -590,7 +596,7 @@ local function NewSlot(parent)
         end
     end)
     b:SetScript("OnDragStart", function(self)
-        if not CanDrag(self.slot) then return end
+        if not self.slot or not (CanDrag(self.slot) or mod.RolePanel()) then return end
         local d = DragIcon()
         d:SetSize(SIZE, SIZE)
         d.tex:SetTexture(self.slot.icon)
@@ -602,7 +608,13 @@ local function NewSlot(parent)
         local s = self.dragging
         self.dragging = nil
         if dragIcon then dragIcon:Hide() end
-        if s and mod.bags then Drop(s, KeyAtCursor(mod.bags)) end
+        -- onto Quality of life's role items panel: the item goes on its role
+        local rp = mod.RolePanel()
+        if s and rp and rp:IsMouseOver() then
+            pcall(rp.mmtAcceptItem, s.id)
+            return
+        end
+        if s and mod.bags and CanDrag(s) then Drop(s, KeyAtCursor(mod.bags)) end
     end)
     return b
 end
@@ -695,7 +707,7 @@ end
 function mod.ByCharacter(place, search)
     local out = {}
     for _, key in ipairs(mod.BagOwners()) do
-        local slots = mod.BagSlots(key, place, search)
+        local slots = not mod.IsLeftOut(key) and mod.BagSlots(key, place, search) or {}
         if #slots > 0 then
             local planned, rest = {}, {}
             for _, s in ipairs(slots) do
@@ -720,6 +732,37 @@ function OwnerText(who)
     return ("|cff%02x%02x%02x%s|r"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), MMT.FullDisplay(who)) .. RulesetTag(who)
 end
 
+-- Escape closes the window (MMT's UI.CloseOnEscape: the window takes the keyboard and
+-- passes every other key on). The game doesn't let that pass-through be set in combat:
+-- a window first built in combat kept EVERY key (the hotkey, Escape, moving) until it
+-- was closed with its X. So the keyboard is taken only out of combat - at once, or when
+-- the fight ends. In combat Escape opens the game menu as usual; it closes this window too.
+local function CloseOnEscape(f)
+    local function Arm()
+        if rawget(f, "escArmed") then return true end
+        if InCombatLockdown() then return false end
+        UI.CloseOnEscape(f)
+        f.escArmed = true
+        return true
+    end
+    if Arm() then return end
+    local w = CreateFrame("Frame")
+    f.escWait = w   -- (tests / debug)
+    w:RegisterEvent("PLAYER_REGEN_ENABLED")
+    w:SetScript("OnEvent", function(self) if Arm() then self:UnregisterAllEvents() end end)
+end
+mod.CloseOnEscape = CloseOnEscape
+
+local escHooked = false
+local function HookEscapeInCombat()
+    if escHooked or type(rawget(_G, "ToggleGameMenu")) ~= "function" then return end
+    escHooked = true
+    -- a post-hook (nothing of the game's changes): Escape in combat goes to the game menu
+    hooksecurefunc("ToggleGameMenu", function()
+        if InCombatLockdown() and mod.bags and mod.bags:IsShown() then mod.bags:Hide() end
+    end)
+end
+
 local function Build()
     local f = CreateFrame("Frame", "MMTTeamBagsWindow", UIParent)
     f:SetFrameStrata("DIALOG")
@@ -735,7 +778,8 @@ local function Build()
         if l then M.db.bagsPoint = { "TOPLEFT", "BOTTOMLEFT", l, t } end
     end)
     SkinFrame(f)   -- defaults like MMT's settings window; settings > Look
-    UI.CloseOnEscape(f)
+    CloseOnEscape(f)
+    HookEscapeInCombat()
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
         self.offset = math.max(0, (self.offset or 0) - delta)
@@ -797,7 +841,7 @@ local function Build()
         if f.filters:IsShown() then f.filters:Hide() else f.filters:Show() end
     end)
     f.filter:SetPoint("TOPRIGHT", -PAD, -PAD - 28)
-    UI.Tooltip(f.filter, "Filter", "Show / hide / only: Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), crafting reagents (cloth, ore, herbs, leather, ...). They all apply at once.")
+    UI.Tooltip(f.filter, "Filter", "Show / hide / only: Bind on Equip weapons and armour, soulbound items (Bind on Pickup, quest items, and what each character's client reports as bound), crafting reagents (cloth, ore, herbs, leather, ...). They all apply at once. Below them: the characters - one left out isn't in the whole team's bags, \"By character\" or the total gold.")
     -- the filters: one row per kind, click = Show -> Hide -> Include, right-click = Show;
     -- stays open; a line at the bottom says what Include leaves
     f.filters = CreateFrame("Frame", nil, f)
@@ -822,6 +866,19 @@ local function Build()
         UI.Tooltip(b, k.text, "Click: Show -> Hide -> Include. Right-click: Show. Include: only the included kinds are shown (any of them); Hide always removes.")
         b.kind = k
         f.filterRows[i] = b
+    end
+    -- the characters: click = left out of the whole team / by character, or counted again
+    f.filters.charTitle = f.filters:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.filters.charTitle:SetText("Characters")
+    f.charRows = {}
+    function f.CharRow(i)
+        if f.charRows[i] then return f.charRows[i] end
+        local b
+        b = UI.Button(f.filters, 194, "", function() mod.SetLeftOut(b.key, not mod.IsLeftOut(b.key)) end)
+        b:SetHeight(22)
+        UI.Tooltip(b, "Character", "Click: left out of the whole team's bags, \"By character\", the team list beside the window and the total gold - or counted again. Picking the character on its own still shows its bags.")
+        f.charRows[i] = b
+        return b
     end
     f.filters:Hide()
 
@@ -954,14 +1011,19 @@ function mod.RefreshTeam(f)
     -- on all stored the other teams, each under a title with its gold added up
     local keys, titleAt = {}, {}
     local titles = mod.CharsMode() ~= "TEAM"
+    -- characters left out (Filter > Characters) aren't listed: not in the gold either
     for _, g in ipairs(mod.TeamGroups(true)) do
-        if titles then titleAt[#keys + 1] = g end
-        for _, key in ipairs(g.keys) do keys[#keys + 1] = key end
+        local kept = {}
+        for _, key in ipairs(g.keys) do if not mod.IsLeftOut(key) then kept[#kept + 1] = key end end
+        if #kept > 0 then
+            if titles then titleAt[#keys + 1] = { group = g, keys = kept } end
+            for _, key in ipairs(kept) do keys[#keys + 1] = key end
+        end
     end
     local nTitle = 0
     local y = -30
     for i, key in ipairs(keys) do
-        local g = titleAt[i]
+        local g = titleAt[i] and titleAt[i].group
         if g then
             nTitle = nTitle + 1
             local t = f.teamTitles[nTitle]
@@ -972,7 +1034,7 @@ function mod.RefreshTeam(f)
                 f.teamTitles[nTitle] = t
             end
             local sum, any = 0, false
-            for _, k in ipairs(g.keys) do
+            for _, k in ipairs(titleAt[i].keys) do
                 local gold = mod.Gold(k)
                 if gold then sum, any = sum + gold, true end
             end
@@ -1132,7 +1194,9 @@ function mod.RefreshBags()
     local quality = M.db.bagQuality ~= false
     local who, place = f.who, f.place
     f.owner.label:SetText(OwnerText(who))
+    local owners = mod.BagOwners()
     local on = mod.FiltersOn()
+    for _, key in ipairs(owners) do if mod.IsLeftOut(key) then on = on + 1 end end
     f.filter.label:SetText(on > 0 and ("|cffffd100Filter (" .. on .. ")|r") or "Filter")
     local COLOR = { SHOW = "|cff999999", HIDE = "|cffff6060", ONLY = "|cff40ff40" }
     for _, b in ipairs(f.filterRows) do
@@ -1141,7 +1205,24 @@ function mod.RefreshBags()
     end
     local only = mod.IncludedText()
     f.filters.only:SetText(only and ("|cff40ff40Showing only:|r " .. only) or "")
-    f.filters:SetHeight(8 + #mod.FILTER_KINDS * 24 + 4 + (only and ((tonumber(f.filters.only:GetStringHeight()) or 12) + 6) or 0))
+    local top = 8 + #mod.FILTER_KINDS * 24 + 4 + (only and ((tonumber(f.filters.only:GetStringHeight()) or 12) + 6) or 0)
+    -- the characters under the kinds, 12 to a column
+    f.filters.charTitle:ClearAllPoints()
+    f.filters.charTitle:SetPoint("TOPLEFT", 8, -top)
+    top = top + 16
+    local PER_COL = 12
+    for i, key in ipairs(owners) do
+        local b = f.CharRow(i)
+        b.key = key
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 6 + math.floor((i - 1) / PER_COL) * 200, -top - ((i - 1) % PER_COL) * 24)
+        b.label:SetText(("%s:  %s"):format(NameTag(key), mod.IsLeftOut(key) and "|cffff6060Left out|r" or "|cff999999Counted|r"))
+        b:Show()
+    end
+    for i = #owners + 1, #f.charRows do f.charRows[i]:Hide() end
+    local cols = math.max(1, math.ceil(#owners / PER_COL))
+    f.filters:SetWidth(206 + (cols - 1) * 200)
+    f.filters:SetHeight(top + math.min(#owners, PER_COL) * 24 + 4)
     for p, b in pairs(f.tabs) do
         if p == place then b.label:SetTextColor(UI.ACCENT[1], UI.ACCENT[2], UI.ACCENT[3])
         else b.label:SetTextColor(0.8, 0.8, 0.8) end

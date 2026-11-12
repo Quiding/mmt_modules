@@ -279,6 +279,26 @@ print(lua.eval(r'''function(m)
   TICK()
   assert(p:IsShown() and p.points[1][2] == bg and p.points[1][1] == "TOPLEFT" and p.points[1][3] == "TOPRIGHT", "right of Baganator")
 
+  -- Team Inventory's team bags, opened after Baganator's backpack: the panel goes beside them,
+  -- away from their member list
+  TIME = 30
+  local tb = Frame.new("MMTTeamBagsWindow", UIParent); tb.left = 800; tb.team = Frame.new(); tb.team.left = false; tb:Show()
+  TICK()
+  assert(p.points[1][2] == tb and p.points[1][1] == "TOPRIGHT" and p.points[1][3] == "TOPLEFT", "left of the team bags (list on their right)")
+  tb.team.left = true; TICK()
+  assert(p.points[1][2] == tb and p.points[1][1] == "TOPLEFT" and p.points[1][3] == "TOPRIGHT", "right of the team bags (list on their left)")
+  -- an item dragged out of the team bags (Team Inventory calls this)
+  local before = #m.MailEntries("Tailor")
+  p.mmtAcceptItem(8000)
+  assert(#m.MailEntries("Tailor") == before + 1, "team bags item not added")
+  -- team bags closed: back beside Baganator; opened again: beside them (opened last)
+  tb:Hide(); TICK(); assert(p.points[1][2] == bg, "back to Baganator")
+  TIME = 40; tb:Show(); TICK(); assert(p.points[1][2] == tb, "opened last")
+  -- only the team bags open
+  bg:Hide(); TICK(); assert(p:IsShown() and p.points[1][2] == tb, "team bags alone")
+  bg:Show(); tb:Hide(); TICK()
+  _G.MMTTeamBagsWindow = nil
+
   -- option off, feature off
   M.db.mlDock = false
   TICK()

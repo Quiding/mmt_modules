@@ -31,6 +31,7 @@ U.__index = function(t, k)
   if k == "GetFrameLevel" then return function() return 1 end end
   return function() return new() end
 end
+function InCombatLockdown() return false end
 function CreateFrame(_, name) local f = new(); if name then _G[name] = f end return f end
 STUBFRAME = new
 UIParent, Minimap = new(), new()
@@ -133,6 +134,30 @@ print(lua.eval(r'''function(m)
   local potion
   for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if s and s.id == 13446 then potion = s.count end end
   assert(potion == 7, "whole team bags: " .. tostring(potion))
+  -- a character left out (Filter > Characters): not in the whole team's bags nor "by character"
+  f.filter._click(f.filter)
+  local anna
+  for _, b in ipairs(f.charRows) do if b:IsShown() and b.key == "Anna-Smith" then anna = b end end
+  assert(anna and anna.label:GetText():find("Counted", 1, true), "Anna's row in the filter")
+  anna._click(anna)
+  assert(m.IsLeftOut("Anna-Smith") and anna.label:GetText():find("Left out", 1, true), "not left out")
+  assert(f.filter.label:GetText():find("(1)", 1, true), "filter count: " .. f.filter.label:GetText())
+  local p2 = 0
+  for _, b in ipairs(f.slots) do local s = rawget(b, "slot") if b:IsShown() and s and s.id == 13446 then p2 = s.count end end
+  assert(p2 == (chars["Bob-Stone"].b[13446] or 0) and p2 < 7, "whole team without Anna: " .. p2)
+  -- not in the side panel's list (with its gold) either
+  for _, tb in ipairs(f.teamButtons) do assert(not (tb:IsShown() and tb.key == "Anna-Smith"), "Anna still in the team list") end
+  f.who = "__BYCHAR__"; m.RefreshBags()
+  local hs = {}
+  for _, h in ipairs(f.headers) do if h:IsShown() then hs[#hs + 1] = h:GetText() end end
+  assert(#hs == 1 and hs[1]:find("Bob Stone", 1, true), "by character without Anna: " .. table.concat(hs, " / "))
+  -- picking her alone still shows her bags
+  f.who = "Anna-Smith"; m.RefreshBags()
+  assert(rawget(f.slots[1], "slot"), "Anna alone")
+  anna._click(anna)
+  assert(not m.IsLeftOut("Anna-Smith") and anna.label:GetText():find("Counted", 1, true), "counted again")
+  f.filter._click(f.filter)
+  m.OpenBags("b", "__ALL__")
   -- the character picker
   f.owner._click(f.owner)
   assert(LIST.items[1].value == "__ALL__" and LIST.items[2].value == "__BYCHAR__" and LIST.items[3].value == "Anna-Smith" and LIST.items[4].value == "Bob-Stone", "picker")
@@ -373,6 +398,15 @@ print(lua.eval(r'''function(m)
     local s = rawget(x, "slot")
     if x:IsShown() and s then x._OnDragStart(x); assert(not rawget(x, "dragging"), "dragging from the bank") end
   end
+  -- Quality of life's role items panel open: an item (also from the bank) dragged onto it goes on the role
+  local got = {}
+  MMTQoLMailList = { IsVisible = function() return true end, IsMouseOver = function() return true end,
+    mmtAcceptItem = function(id) got[#got + 1] = id end }
+  for _, x in ipairs(f.slots) do
+    local s = rawget(x, "slot")
+    if x:IsShown() and s then x._OnDragStart(x); x._OnDragStop(x); assert(got[1] == s.id, "not dropped on the role panel"); break end
+  end
+  MMTQoLMailList = nil
   -- clicking a name shows that character
   m.OpenBags("b", "Anna-Smith")
   assert(not bobButton.bar:IsShown(), "Bob marked while Anna is shown")
@@ -902,3 +936,30 @@ print(lua.eval(r"""function(m)
   return "teams grouped ok"
 end"""
 )(mod))
+
+# Escape: the window takes the keyboard only out of combat (built in a fight it kept every key)
+print(lua.eval(r'''function(m)
+  local calls, last = 0, nil
+  local UI = MMT.UI
+  local oldEsc, oldCF, oldICL = rawget(UI, "CloseOnEscape"), CreateFrame, InCombatLockdown
+  rawset(UI, "CloseOnEscape", function() calls = calls + 1 end)
+  CreateFrame = function(...) last = oldCF(...); return last end
+  local COMBAT = true
+  InCombatLockdown = function() return COMBAT end
+  local w = oldCF("Frame")
+  m.CloseOnEscape(w)
+  assert(calls == 0, "keyboard taken in combat")
+  local watcher = rawget(w, "escWait")
+  COMBAT = false
+  watcher._OnEvent(watcher, "PLAYER_REGEN_ENABLED")
+  assert(calls == 1, "not armed after the fight")
+  watcher._OnEvent(watcher, "PLAYER_REGEN_ENABLED")
+  m.CloseOnEscape(w)
+  assert(calls == 1, "armed twice: " .. calls)
+  -- out of combat: at once
+  local w2 = oldCF("Frame")
+  m.CloseOnEscape(w2)
+  assert(calls == 2, "not armed out of combat")
+  rawset(UI, "CloseOnEscape", oldEsc); CreateFrame, InCombatLockdown = oldCF, oldICL
+  return "escape: keyboard only taken out of combat"
+end''')(mod))

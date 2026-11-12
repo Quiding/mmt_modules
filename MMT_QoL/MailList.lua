@@ -8,6 +8,10 @@
 -- The lists ARE MMT's role items (MMT settings > Roles shows the same):
 -- MMT.AddRule / MMT.RemoveRule. Loot Distribution goes by them too.
 -- Nothing is created until the bags are first open with the feature on.
+-- Team Inventory's team bags window (MMTTeamBagsWindow) counts as bags too: with
+-- both open the panel sits beside the one opened last, on the side away from the
+-- team bags' member list. An item dragged out of the team bags onto the panel goes
+-- on the role (Team Inventory calls panel.mmtAcceptItem(itemID)).
 -- Team sync (mlSync): MMT core shares roles only with a whole profile sync, so
 -- what is added / taken off here goes to the team together, 5 seconds after the last
 -- change (at most 30 s after the first; MailQueue / MailFlush), so adding a pile of items
@@ -279,14 +283,27 @@ local function BaganatorFrames()
     return t
 end
 
--- the open bag frame to dock beside: Baganator's backpack, else the game's (all bags in one, else the backpack)
-function mod.MailBagFrame()
+-- my own open bags: Baganator's backpack, else the game's (all bags in one, else the backpack)
+local function OwnBags()
     for _, f in ipairs(BaganatorFrames()) do if Open(f) then return f end end
     local combined = rawget(_G, "ContainerFrameCombinedBags")
     if Open(combined) then return combined end
     local backpack = rawget(_G, "ContainerFrame1")
     if Open(backpack) then return backpack end
     return nil
+end
+
+-- the open bag frame to dock beside: my bags or Team Inventory's team bags - with both
+-- open, the one opened last
+local openedAt = setmetatable({}, { __mode = "k" })   -- [frame] = GetTime() it was first seen open
+function mod.MailBagFrame()
+    local own = OwnBags()
+    local team = rawget(_G, "MMTTeamBagsWindow")
+    if not Open(team) then team = nil end
+    for _, f in ipairs({ own, team }) do if not openedAt[f] then openedAt[f] = GetTime() end end
+    for f in pairs(openedAt) do if f ~= own and f ~= team then openedAt[f] = nil end end
+    if own and team then return (openedAt[team] > openedAt[own]) and team or own end
+    return own or team
 end
 
 ---------------------------------------------------------------------------
@@ -340,6 +357,8 @@ local function Build()
     p:Hide()
     p.offset = 0
     panel = p
+    -- an item dragged out of Team Inventory's team bags (not the cursor: its own drag)
+    p.mmtAcceptItem = function(itemID) return Add(itemID) end
 
     local title = UI.Label(p, "MMT role items", "GameFontNormal")
     title:SetPoint("TOPLEFT", 8, -7)
@@ -508,11 +527,19 @@ mod.MailRender = function() if Render then Render() end end
 
 -- the panel beside the bag frame, on the side with room (in screen pixels: the bag
 -- frame has its own scale); kept on screen
-local function Place(frame, bag)
-    frame:ClearAllPoints()
+-- which side the panel goes: left of the bags when there's room; beside the team bags,
+-- away from their member list (on their right, or left when the screen has no room)
+local function RightSide(frame, bag)
+    local list = bag == rawget(_G, "MMTTeamBagsWindow") and rawget(bag, "team") or nil
+    if type(list) == "table" and list:IsShown() then return list.left and true or false end
     local left = bag:GetLeft()
     local roomLeft = left and left * bag:GetEffectiveScale() or 0
-    if roomLeft < (frame:GetWidth() + 12) * frame:GetEffectiveScale() then
+    return roomLeft < (frame:GetWidth() + 12) * frame:GetEffectiveScale()
+end
+
+local function Place(frame, bag)
+    frame:ClearAllPoints()
+    if RightSide(frame, bag) then
         frame:SetPoint("TOPLEFT", bag, "TOPRIGHT", 4, 0)
     else
         frame:SetPoint("TOPRIGHT", bag, "TOPLEFT", -4, 0)
@@ -539,8 +566,9 @@ function mod.MailDock()
     end
     Build()
     local wasShown = panel:IsShown()
-    if bag ~= dockedTo then
-        dockedTo = bag
+    local side = RightSide(panel, bag)
+    if bag ~= dockedTo or side ~= panel.side then
+        dockedTo, panel.side = bag, side
         Place(panel, bag)
         PlaceTab(bag)
     end
@@ -557,6 +585,7 @@ F = mod.Feature({
         "Pick a role in the dropdown, then drop an item from your bags on the panel (or click its box and shift-click an item): it goes on that role's items. The x on a line takes it off.",
         "These are MMT's own roles (MMT settings > Roles shows the same). Trading with a team member hands over what their role wants, and at a mailbox MMT's \"Mail to team\" mails it to them - a role made just for that (e.g. \"Bank\" on your bank character) works well. Loot Distribution goes by the roles too: with the role's member away, Loot Distribution's \"Role members have no room\" decides (\"Next team member with room\" hands it out as usual).",
         "Changes made here go to the online team together, 5 seconds after your last one (the one at the mailbox needs the list), so adding many items is one message; a role a member doesn't have yet is made for them. Who has which role isn't sent. \"Send all role items\" gets everyone level once.",
+        "MMT Team Inventory's team bags count as bags too: the panel sits beside them (beside the bags opened last when both are open), and an item dragged out of them onto the panel goes on the role.",
         "With the bags only a small \"Role items\" button shows, on top of them: it opens the panel (or /mmtqol roles with the bags open); \"-\" folds it again. It stays the way you left it: open or folded the next time the bags open.",
     },
     tags = { QML = OnSync },

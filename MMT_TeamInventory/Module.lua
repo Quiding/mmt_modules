@@ -21,7 +21,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.0.0"
+mod.VERSION = "1.0.3"
 mod.PLACES = { "b", "k", "m", "e" }
 -- what is synced: the places + "s" = how many of each item in the bags are soulbound
 -- (not a place: never counted in totals; older clients ignore the letter)
@@ -33,7 +33,7 @@ local M = MMT.NewModule({
     title = "Team Inventory",
     description = "The item tooltip shows how many your team has, across all your accounts and characters.",
     sync = true,
-    syncExclude = { "minimapAngle", "bagsPoint", "bagsScale", "lastWho", "bagFilter", "bagFilters" },   -- belong to each screen
+    syncExclude = { "minimapAngle", "bagsPoint", "bagsScale", "lastWho", "bagFilter", "bagFilters", "bagLeftOut" },   -- belong to each screen
     defaults = {
         tooltip = true,        -- lines in the item tooltip
         equipped = true,       -- count equipped items too
@@ -187,6 +187,21 @@ function mod.Shown(key)
     return mode == "RULESET" and mod.SameRuleset(key)
 end
 
+-- characters left out of the whole team's bags, "by character" and the total gold (the
+-- team bags' Filter: M.db.bagLeftOut[key] = true); picking one of them still shows their bags
+function mod.LeftOut()
+    if type(M.db.bagLeftOut) ~= "table" then M.db.bagLeftOut = {} end
+    return M.db.bagLeftOut
+end
+function mod.IsLeftOut(key) return mod.LeftOut()[key] == true end
+function mod.SetLeftOut(key, out)
+    mod.LeftOut()[key] = out and true or nil
+    if mod.bags then mod.bags.offset = 0 end
+    if mod.RefreshBags then mod.RefreshBags() end
+end
+-- counted in the whole team: shown (Characters setting) and not left out
+function mod.Counted(key) return mod.Shown(key) and not mod.IsLeftOut(key) end
+
 
 -- known gold of a character in copper, or nil; the total of every shown character
 function mod.Gold(key)
@@ -196,7 +211,7 @@ end
 function mod.TotalGold()
     local sum, any = 0, false
     for key, rec in pairs(mod.Chars()) do
-        if tonumber(rec.gold) and mod.Shown(key) then sum, any = sum + rec.gold, true end
+        if tonumber(rec.gold) and mod.Counted(key) then sum, any = sum + rec.gold, true end
     end
     return any and sum or nil
 end

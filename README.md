@@ -18,9 +18,9 @@ MODULES, with its own settings page.
 | [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
 | [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.2.0 |
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.3 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.3 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.4 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
@@ -294,6 +294,8 @@ accounts and characters - bags, bank, mail and equipped, also for members who ar
   character - with Bags / Bank / Mail / Equipped tabs, a search box and **filters** that work
   together: BoE gear, soulbound items, crafting reagents, quest items and consumables, each Show /
   Hide / Include (with any on Include, only the included kinds are shown - the panel says which).
+  Under them the **characters**: click one to leave it out of the whole team's bags, "by character", the side panel's list and the
+  total gold (or count it again); picking that character on its own still shows its bags.
 - Grouped in **Baganator's categories** when it's on (your order, custom and hidden categories,
   priorities and dragged items, read live), else in built-in ones like Baganator's defaults.
 - **Side panel** beside the window, in every view: the team (click a name for their bags, drop an
@@ -398,6 +400,9 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   **Send all role items to the team** (`/mmtqol roles send`) gets everyone level once. "-" folds the panel into a
   small "Role items" button on top of the bags; it stays open or folded the way you left it (folded the first time). A search box above the list shows only the items
   whose name has what you type.
+  Team Inventory's team bags count as bags too: the panel sits beside them (beside whichever bags you opened last
+  when both are open, on the side away from their member list), and an item dragged out of the team bags onto the
+  panel goes on the role - also soulbound ones and ones in the bank.
 - **Profile with other names** (`/mmtqol names` or `/mmtqol export`, the Export / Import tab): a window that renames the team in a copy of your MMT
   profile - the team list and every module setting kept per character. **Export without names** makes every member
   Class + number (Paladin1, Paladin2, ...); **Export with these names** uses the names you type (empty = kept);
