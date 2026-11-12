@@ -9,7 +9,7 @@
 --   QFPH:<batch>:<parts>:<count>:<bytes>:<scan time>:<realm-faction>   first, small
 --   QFP:<batch>:<i>:<n>:<part>          the packed payload in parts (MMT.SendLong)
 --   payload = <itemID>=<price>,<count>[,+];...   ("+" = at least that many: some weren't read)
--- A member whose own FojjiCore scan is newer, or on another realm or faction, keeps its own.
+-- A member whose own FojjiCore scan is newer, or on another ruleset or faction, keeps its own.
 
 local _, mod = ...
 local MMT = MMT
@@ -203,7 +203,13 @@ end
 local function Refuse(t)
     if not M.db.fjTake then return "taking the team's prices is off" end
     if not Store() then return "FojjiCore Professions isn't loaded" end
-    if t.realm and t.realm ~= RealmKey() then return "another realm or faction" end
+    -- the same auction house: the same ruleset (realms of one ruleset share it) and faction
+    if t.realm and t.realm ~= RealmKey() then
+        local theirRealm, theirFaction = t.realm:match("^(.*)%-([^-]*)$")
+        local myRealm, myFaction = RealmKey():match("^(.*)%-([^-]*)$")
+        if theirFaction ~= myFaction then return "another faction's auction house" end
+        if mod.Ruleset(theirRealm) ~= mod.Ruleset(myRealm) then return "another ruleset's auction house" end
+    end
     if t.time and LastScan() > t.time then return "your own scan is newer" end
 end
 
@@ -298,7 +304,7 @@ F = mod.Feature({
     notes = {
         "FojjiCore Professions' \"Scan\" button at the auction house keeps the lowest price and how many are up of every item, in FojjiCore's own data (its tooltips and Professions pages). When your scan is done, those prices go to the online team.",
         "A team member's FojjiCore takes them for every item where its own price is older; with Auctionator loaded it gets them too, as that day's price (the Auctionator page's \"Take the team's prices\" decides that).",
-        "About the same size as an Auctionator scan: some 25-35 KB for 5,000 items. A team member whose own scan is newer, or on another realm or faction, keeps its own prices.",
+        "About the same size as an Auctionator scan: some 25-35 KB for 5,000 items. A team member whose own scan is newer, or on another ruleset (PvE, PvP, ...) or faction, keeps its own prices.",
     },
     tags = { QFPH = OnHead, QFP = OnPart },
     commands = {

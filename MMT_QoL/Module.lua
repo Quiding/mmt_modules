@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.7.0"
+mod.VERSION = "1.7.3"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -87,6 +87,7 @@ local M = MMT.NewModule({
         -- SmartBuff alerts
         smartbuff = true,
         sbSend = true,             -- send what SmartBuff reports here
+        ppSend = true,             -- a paladin: send the blessings PallyPower says are missing
         sbExpire = true,           -- "runs out" / low charges too (else only missing buffs)
         sbRepeat = 60,             -- the same alert again after (s)
         sbAfterCombat = true,      -- and again after each fight
@@ -127,6 +128,15 @@ function mod.FeatureIcon(f)
         if ok and type(v) == "string" and v ~= "" then return v end
     end
     return f.iconPath or f.icon
+end
+
+-- the ruleset of a realm: on Forever many realms share one ruleset and its auction house
+-- ("CAMWOW EU4 Realm 1 PvE" and "CAMWOW EU5 Realm 3 PvE" are both "PvE"); a name
+-- not built like that is its own
+function mod.Ruleset(realm)
+    realm = tostring(realm or "")
+    local r = realm:match("[Rr]ealm%s*%d+%s+(.-)%s*$")
+    return (r and r ~= "") and r:lower() or realm:lower()
 end
 
 -- Is the addon loaded? false + why not (no addon: a local feature, always "loaded")

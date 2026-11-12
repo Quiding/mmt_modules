@@ -203,7 +203,7 @@ end''')
 for msg in sent: B.eval('DELIVER')('Anna-R', msg)
 run(B, bmod, r'''function(m)
   FRAMES()
-  assert(PRINTS[1]:find("another realm or faction"), tostring(PRINTS[1]))
+  assert(PRINTS[1]:find("another faction"), tostring(PRINTS[1]))
   FACTION = "Horde"; m.M.db.fjTake = false; PRINTS = {}
   return "other faction kept"
 end''')

@@ -398,7 +398,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 14, "report lines " .. n)   -- one per feature (names, loot by price too) + the module line + role items sync + Auctionator status
+  assert(n == 15, "report lines " .. n)   -- one per feature (names, loot by price too) + the module line + role items sync + Auctionator status + PallyPower
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -975,6 +975,67 @@ run(A, amod, r"""function(m)
   return "Anna without SmartBuff: still receives and shows alerts"
 end""")
 
+# PallyPower: a paladin sends who is missing the blessing it is assigned to give
+run(B, bmod, r"""function(m)
+  local CLASS, oldUC = "PALADIN", UnitClass
+  UnitClass = function() return "Paladin", CLASS end
+  PALLYPOWER_MAXCLASSES, PALLYPOWER_MAXPERCLASS = 3, 15
+  local units = {
+    [1] = { { name = "Anna", hasbuff = nil }, { name = "Dan", hasbuff = nil }, { name = "Eve", hasbuff = nil },
+            { name = "Tank", hasbuff = nil, tank = true }, { name = "Ghost", hasbuff = nil, dead = true } },
+    [2] = { { name = "Cara", hasbuff = 40 }, { name = "Finn", hasbuff = 900 }, { name = "Far", hasbuff = nil, visible = false } },
+    [3] = {},
+  }
+  local scanned = 0
+  PallyPower = {
+    ClassID = { "WARRIOR", "ROGUE", "PRIEST" },
+    Spells = { [0] = "", "Blessing of Wisdom", "Blessing of Might", "Blessing of Kings", "Blessing of Salvation" },
+    GetUnit = function(_, c, i) return units[c][i] end,
+    ScanClass = function() scanned = scanned + 1 end,
+    GetSpellID = function(_, c, name)
+      if c == 1 then return name == "Tank" and 4 or 2, 2 end
+      return 3, 3
+    end,
+  }
+  LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", ROGUE = "Rogue" }
+  m.M.db.ppSend, m.M.db.sbExpire, m.M.db.sbAfterCombat = true, true, false
+  COMBAT = false
+  OUT = {}; NOW = NOW + 1000
+  m.PallyPowerCheck()
+  local got = {}
+  for _, o in ipairs(OUT) do got[o.msg] = true end
+  assert(scanned == 3, "PallyPower's own scan: " .. scanned)
+  -- three warriors without Might: one alert for the class; the tank (Salvation) and the dead left out
+  assert(got["QSB:N:0:Warrior x3:Blessing of Might"], "class alert")
+  assert(got["QSB:E:40:Cara:Blessing of Kings"] and #OUT == 2, "Cara's runs out, Finn fine, Far out of sight: " .. #OUT)
+  -- again within the minute: held; the class count changing is the same alert
+  units[1][3].hasbuff = 1800
+  OUT = {}; NOW = NOW + 5; m.PallyPowerCheck()
+  assert(#OUT == 0, "repeated within the minute: " .. #OUT)
+  -- one left: his own name (a new alert)
+  units[1][2].hasbuff = 1800
+  OUT = {}; NOW = NOW + 5; m.PallyPowerCheck()
+  assert(#OUT == 1 and OUT[1].msg == "QSB:N:0:Anna:Blessing of Might", "one left: " .. tostring(OUT[1] and OUT[1].msg))
+  -- not in a fight, not on another class, not with the option off
+  local oldICL = InCombatLockdown; InCombatLockdown = function() return COMBAT end
+  COMBAT = true; OUT = {}; NOW = NOW + 120; m.PallyPowerCheck(); assert(#OUT == 0, "in combat")
+  InCombatLockdown = oldICL
+  COMBAT = false
+  CLASS = "MAGE"; m.PallyPowerCheck(); assert(#OUT == 0, "not a paladin")
+  CLASS = "PALADIN"; m.M.db.ppSend = false; m.PallyPowerCheck(); assert(#OUT == 0, "option off")
+  m.M.db.ppSend = true
+  -- without PallyPower: nothing, no error
+  local pp = PallyPower; PallyPower = nil
+  m.PallyPowerCheck(); assert(#OUT == 0, "no PallyPower")
+  PallyPower = pp
+  -- the leader shows it like SmartBuff's
+  m.PallyPowerCheck()
+  assert(#OUT >= 1, "sent again after the minute")
+  PallyPower, UnitClass = nil, oldUC
+  m.M.db.sbAfterCombat = true
+  return "Bob (paladin): PallyPower's missing blessings sent as alerts, a class at once"
+end""")
+
 # --- RestedXP party steps ----------------------------------------------------
 # a stand-in RestedXP: its update loop (TICK) moves on when UpdateStepCompletion set loadNextStep
 RX = r"""
@@ -1014,6 +1075,8 @@ INCOMPLETE = 0
 function RXP.SetElementIncomplete(ref) INCOMPLETE = INCOMPLETE + 1 end
 STEPTEXT = 0
 function RXP.UpdateStepText() STEPTEXT = STEPTEXT + 1 end
+-- every line's function goes through RXP.Call (like RestedXP's addon.Call)
+function RXP.Call(label, func, ...) return func(...) end
 """
 A.execute(RX); B.execute(RX)
 # Anna's guide has a step for her class only (stepId 999)
@@ -1193,6 +1256,56 @@ run(A, amod, r"""function(m)
   assert(el.text:find("14/20", 1, true), "items: total: " .. el.text)
   RXP.GetQuestObjectives = nil
   return "Anna: kill objectives show who needs the most, items the team total"
+end""")
+
+# item lines (.collect, the Blasted Lands list): the others' bag counts from Team Inventory
+run(A, amod, r"""function(m)
+  m.M.db.rxCount = "TOTAL"
+  MMT.modules.TeamInventory = { enabled = true, store = { chars = {
+    ["Bob-Stone"] = { b = { [8391] = 2, [8392] = 1 }, k = { [8391] = 5 } },
+    ["Cara-Moon"] = { b = { [8391] = 3 } },   -- not in the group
+  } } }
+  GetItemInfo = function(id) return ({ [8391] = "Snickerfang Jowl", [8392] = "Blasted Boar Lung", [8396] = "Vulture Gizzard" })[id] end
+  -- RestedXP's .collect: writes "Name: have/need" from its own bags each time
+  local el = { id = 8391, ids = "8391", count = 0, numRequired = 3, step = { active = true } }
+  local function collect(ref) ref.element.text = "Snickerfang Jowl: " .. ref.element.count .. "/3"; ref.element.tooltipText = "tip" end
+  local ref = { element = el, callback = collect }
+  RXP.Call("collect", collect, ref)
+  assert(el.text == "Snickerfang Jowl: |cff88ccff2/6|r", "collect total: " .. el.text)
+  assert(el.tooltipText:find("Bob: |cffffffff2/3", 1, true) and not el.tooltipText:find("Cara", 1, true), "tip: " .. el.tooltipText)
+  -- the bank only when RestedXP counts it; capped at what each one needs
+  el.includeBank = true
+  RXP.Call("collect", collect, ref)
+  assert(el.text == "Snickerfang Jowl: |cff88ccff3/6|r", "bank: " .. el.text)
+  el.includeBank = nil
+  -- the guide's own words before the item line stay
+  local function collect2(r) r.element.text = "Kill hyenas 1/2\nSnickerfang Jowl: 1/3" end
+  el.count = 1
+  RXP.Call("collect", collect2, { element = el, callback = collect2 })
+  assert(el.text == "Kill hyenas 1/2\nSnickerfang Jowl: |cff88ccff3/6|r", "rawtext: " .. el.text)
+  -- Bob loots: the ticker runs the line again, and it is redrawn
+  MMT.modules.TeamInventory.store.chars["Bob-Stone"].b[8391] = 3
+  el.count = 0
+  local before = STEPTEXT
+  RXP.Call("collect", collect, ref)
+  assert(el.text:find("3/6", 1, true) and STEPTEXT > before, "Bob's loot: " .. el.text)
+  before = STEPTEXT
+  RXP.Call("collect", collect, ref)
+  assert(STEPTEXT == before, "redrawn without a change")
+  -- the Blasted Lands list: each item line
+  local bl = { step = { active = true } }
+  local function blasted(r) r.element.text = "Collect the following items:\n- Vulture Gizzard: 0/14\n- Blasted Boar Lung: 3/6\n- Snickerfang Jowl: 0/5" end
+  RXP.Call("blastedLands", blasted, { element = bl, callback = blasted })
+  assert(bl.text == "Collect the following items:\n- Vulture Gizzard: |cff88ccff0/28|r\n- Blasted Boar Lung: |cff88ccff4/12|r\n- Snickerfang Jowl: |cff88ccff3/10|r", "blasted: " .. bl.text)
+  -- other lines are left alone; nobody else's bags (Team Inventory off): as RestedXP wrote it
+  local other = { step = { active = true } }
+  RXP.Call("goto", function(r) r.element.text = "Snickerfang Jowl: 0/3" end, { element = other })
+  assert(other.text == "Snickerfang Jowl: 0/3", "goto changed")
+  MMT.modules.TeamInventory.enabled = false
+  RXP.Call("collect", collect, ref)
+  assert(el.text == "Snickerfang Jowl: 0/3", "Team Inventory off: " .. el.text)
+  MMT.modules.TeamInventory = nil
+  return "Anna: item lines (collect, Blasted Lands) count the group's bags from Team Inventory"
 end""")
 
 

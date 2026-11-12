@@ -29,6 +29,12 @@
 -- objectives are in the game's order, like RestedXP's element.obj. We post-hook
 -- addon.UpdateQuestCompletionData(ref) (it rebuilds element.text from the
 -- quest log each time) and run it again when the Quest Tracker gets new data.
+--
+-- Item lines (".collect": "Snickerfang Jowl: 0/3", and the Blasted Lands list) count
+-- bags, not quest objectives: the members' counts come from MMT's Team Inventory, which
+-- shares the bags (M.store.chars[key].b[itemID], .k the bank). We post-hook addon.Call
+-- (RestedXP runs every line's function through it) and change those lines' text after
+-- RestedXP wrote it; a ticker runs the lines again so the others' looting shows.
 
 local _, mod = ...
 local MMT = MMT
@@ -190,6 +196,7 @@ end
 ---------------------------------------------------------------------------
 local refs = setmetatable({}, { __mode = "k" })   -- [element] = the ref RestedXP updates it with
 local HoldObjective
+local MemberLines
 
 -- the Quest Tracker's synced quest logs, or nil (module missing or off)
 local function QuestData()
@@ -271,6 +278,16 @@ local function PassObjectives()
     return n
 end
 
+-- each member's count, a line each (the line's tooltip)
+function MemberLines(rows)
+    local lines = {}
+    for _, r in ipairs(rows) do
+        local c = r.have >= r.need and "|cff55ff55" or "|cffffffff"
+        lines[#lines + 1] = ("   %s: %s%d/%d|r"):format(Names({ r.key }), c, r.have, r.need)
+    end
+    return table.concat(lines, "\n")
+end
+
 local function AfterObjective(ref)
     local el = type(ref) == "table" and ref.element
     if type(el) ~= "table" or el.tag ~= "complete" or not el.obj or type(el.questId) ~= "number" then return end
@@ -283,12 +300,7 @@ local function AfterObjective(ref)
     local style = M.db.rxCount
     if style == "OFF" or type(el.text) ~= "string" or not el.text:find("%S") then return end
     el.text = mod.RestedXPCountText(el.text, rows, style, IsKill(el))
-    local lines = {}
-    for _, r in ipairs(rows) do
-        local c = r.have >= r.need and "|cff55ff55" or "|cffffffff"
-        lines[#lines + 1] = ("   %s: %s%d/%d|r"):format(Names({ r.key }), c, r.have, r.need)
-    end
-    el.tooltipText = (type(el.tooltipText) == "string" and (el.tooltipText .. "\n") or "") .. table.concat(lines, "\n")
+    el.tooltipText = (type(el.tooltipText) == "string" and (el.tooltipText .. "\n") or "") .. MemberLines(rows)
     local a = RXP()
     if a and a.UpdateStepText then a.UpdateStepText(ref) end
 end
@@ -360,6 +372,115 @@ local function RefreshObjectives()
     end)
 end
 
+---------------------------------------------------------------------------
+-- Item lines: the team's bag counts (Team Inventory)
+---------------------------------------------------------------------------
+-- Team Inventory's shared bags, or nil (module missing or off)
+local function TeamBags()
+    local mods = rawget(MMT, "modules")
+    local ti = type(mods) == "table" and mods.TeamInventory
+    local store = type(ti) == "table" and ti.enabled and ti.store
+    return type(store) == "table" and type(store.chars) == "table" and store.chars or nil
+end
+
+-- a member's count of the items ("8391" or "8391,8392": RestedXP's element.ids)
+local function BagCount(rec, ids, bank)
+    local n = 0
+    for s in tostring(ids):gmatch("%d+") do
+        local id = tonumber(s)
+        n = n + (type(rec.b) == "table" and tonumber(rec.b[id]) or 0)
+        if bank then n = n + (type(rec.k) == "table" and tonumber(rec.k[id]) or 0) end
+    end
+    return n
+end
+
+-- me (mine: RestedXP's own count) and the group's team members whose bags are shared:
+-- rows like TeamCounts, me first; nil unless someone besides me is there
+local function TeamItemCounts(ids, mine, need, bank)
+    local chars = TeamBags()
+    if not chars or not need or need <= 0 then return nil end
+    local rows = { { key = (MMT.PlayerFull and MMT.PlayerFull()) or "", have = math.min(mine or 0, need), need = need, self = true } }
+    for key, rec in pairs(chars) do
+        if type(rec) == "table" and not MMT.IsSelf(key) and Grouped(key) then
+            rows[#rows + 1] = { key = key, have = math.min(BagCount(rec, ids, bank), need), need = need }
+        end
+    end
+    if #rows < 2 then return nil end
+    table.sort(rows, function(x, y)
+        if x.self ~= y.self then return x.self end
+        return x.key < y.key
+    end)
+    return rows
+end
+mod.RestedXPItemCounts = TeamItemCounts
+
+local BLASTED = { 8396, 8394, 8392, 8393, 8391 }   -- RestedXP's Blasted Lands list (functions.lua)
+local itemText = setmetatable({}, { __mode = "k" })    -- [element] = the text we last gave it
+local itemRefs = setmetatable({}, { __mode = "k" })    -- [ref] = its tag, to run it again
+
+-- the text of an item line with the team's counts, or nil when it stays as it is
+function mod.RestedXPItemText(tag, el, style)
+    local text = el.text
+    if tag == "blastedLands" then
+        local byName = {}
+        local a = RXP()
+        for _, id in ipairs(BLASTED) do
+            local n = GetItemInfo and GetItemInfo(id)
+            if n then byName[n] = id end
+            n = a and type(a.GetItemName) == "function" and a.GetItemName(id)
+            if n then byName[n] = id end
+        end
+        local out, any = {}, false
+        for line in (text .. "\n"):gmatch("(.-)\n") do
+            local name, have, need = line:match("^%- (.-): (%d+)/(%d+)%s*$")
+            local rows = name and byName[name] and TeamItemCounts(byName[name], tonumber(have), tonumber(need), false)
+            if rows then any = true end
+            out[#out + 1] = rows and mod.RestedXPCountText(line, rows, style, false) or line
+        end
+        return any and table.concat(out, "\n") or nil
+    end
+    local need = tonumber(el.numRequired) or 0
+    if el.hideText or el.textOnly or need >= 1000000 then return nil end   -- not shown / "collect them all"
+    local rows = TeamItemCounts(el.ids or el.id, tonumber(el.count) or 0, need, el.includeBank)
+    if not rows then return nil end
+    -- the item line is the last one (the guide's own words may come first)
+    local head, line = text:match("^(.*\n)(.-)$")
+    if not line then head, line = "", text end
+    return head .. mod.RestedXPCountText(line, rows, style, false), rows
+end
+
+local function AfterItems(tag, ref)
+    local el = type(ref) == "table" and ref.element
+    if type(el) ~= "table" or not mod.Active(F) or not (el.step and el.step.active) then return end
+    itemRefs[ref] = tag
+    local style = M.db.rxCount
+    if style == "OFF" or type(el.text) ~= "string" or not el.text:find("%S") then return end
+    local text, rows = mod.RestedXPItemText(tag, el, style)
+    if not text then return end
+    el.text = text
+    if rows then el.tooltipText = (type(el.tooltipText) == "string" and (el.tooltipText .. "\n") or "") .. MemberLines(rows) end
+    -- RestedXP redraws a line only when its own count changed: ours may change alone
+    if itemText[el] ~= text then
+        itemText[el] = text
+        local a = RXP()
+        if a and a.UpdateStepText then a.UpdateStepText(ref) end
+    end
+end
+
+-- the others' bags changed (Team Inventory gets them): run the shown item lines again
+local function RefreshItems()
+    local a = RXP()
+    if not a or not mod.Active(F) or M.db.rxCount == "OFF" or not TeamBags() then return end
+    for ref, tag in pairs(itemRefs) do
+        local el = ref.element
+        if type(el) == "table" and el.step and el.step.active and type(ref.callback) == "function" then
+            a.Call(tag, ref.callback, ref, "WindowUpdate")
+        else
+            itemRefs[ref] = nil
+        end
+    end
+end
+
 local function Hook()
     if hooked then return true end
     local a = RXP()
@@ -368,6 +489,13 @@ local function Hook()
         hooksecurefunc(a, "UpdateQuestCompletionData", function(ref)
             local ok, err = pcall(AfterObjective, ref)
             if not ok then M:Debug("RestedXP team count: %s", tostring(err)) end
+        end)
+    end
+    if type(a.Call) == "function" then
+        hooksecurefunc(a, "Call", function(tag, _, ref)
+            if tag ~= "collect" and tag ~= "blastedLands" then return end
+            local ok, err = pcall(AfterItems, tag, ref)
+            if not ok then M:Debug("RestedXP team item count: %s", tostring(err)) end
         end)
     end
     hooksecurefunc(a, "UpdateStepCompletion", function()
@@ -391,11 +519,19 @@ F = mod.Feature({
         "Waiting: a quest objective you've done stays open (and its step with it) while a team member in your group who has the quest still needs it - also on steps RestedXP shows beside the current one. Other steps: each character tells the team its guide and step, and a finished step waits until everyone on the same guide has done it or is past it.",
         "Only team members in your group who have this module on and RestedXP on the same guide count. Steps only for one class or race don't make anyone wait. Clicking a step or RestedXP's arrows still moves at once; /mmtqol rxp go lets the step you're waiting on go now.",
         "Team counts: objective lines count the whole group - by default the team's total in place of yours (\"Linen Cloth: 23/30\"); kills are shared by the group, so they show who needs the most (\"Kobold Vermin slain: 5/10 (Bob)\"). Or the lowest, or each member's; the line's tooltip shows each one's. They come from MMT's Quest Tracker, which has to be on (it shares the quest logs).",
+        "Item lines (\"Snickerfang Jowl: 0/3\", the Blasted Lands list) count what is in the bags: the others' counts come from MMT's Team Inventory, which has to be on.",
     },
     tags = { QRX = OnStep, QRQ = OnAsk },
     OnEnable = function()
         Hook()
-        if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(1, Check) end
+        if not ticker and C_Timer and C_Timer.NewTicker then
+            local n = 0
+            ticker = C_Timer.NewTicker(1, function()
+                Check()
+                n = n + 1
+                if n % 3 == 0 then pcall(RefreshItems) end
+            end)
+        end
         Ask()
         C_Timer.After(1, function() if mod.Active(F) then pcall(Send, false) end end)
     end,

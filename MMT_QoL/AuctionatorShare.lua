@@ -13,7 +13,7 @@
 --   QAPH:<batch>:<parts>:<count>:<bytes>:<scan time>:<realm>   first, small
 --   QAP:<batch>:<i>:<n>:<part>          the packed payload in parts (MMT.SendLong)
 --   payload = <key>=<price>,<available>;...   (keys %XX escaped)
--- A member whose own scan is newer, or on another realm, keeps its own prices.
+-- A member whose own scan is newer, or on another ruleset (PvE, PvP, ...), keeps its own prices.
 
 local _, mod = ...
 local MMT = MMT
@@ -175,7 +175,8 @@ end
 local function Refuse(t)
     if not M.db.ahTake then return "taking the team's prices is off" end
     if not A() then return "Auctionator isn't loaded" end
-    if t.realm and t.realm ~= Realm() then return "another realm's auction house" end
+    -- realms of one ruleset share the auction house
+    if t.realm and t.realm ~= Realm() and mod.Ruleset(t.realm) ~= mod.Ruleset(Realm()) then return "another ruleset's auction house" end
     if t.time and M.store.ahScan and M.store.ahScan > t.time then return "your own scan is newer" end
 end
 
@@ -299,7 +300,7 @@ F = mod.Feature({
     notes = {
         "When your Auctionator finishes a full scan, today's prices (lowest price and how many were listed, per item) go to the online team. Their Auctionator takes them like its own scan: tooltips, price history and posting know them.",
         "Only today's prices, not Auctionator's whole history: about 25-35 KB for 5,000 items, ~100 KB for a busy auction house of 20,000 - one or two minutes in the background. In a guild it goes out once for everybody; without one, once per team member.",
-        "A team member whose own scan is newer, or who is on another realm, keeps its own prices. Every character needs this module and Auctionator to take them.",
+        "A team member whose own scan is newer, or who is on another ruleset (PvE, PvP, ...), keeps its own prices. Every character needs this module and Auctionator to take them.",
     },
     tags = { QAPH = OnHead, QAP = OnPart },
     commands = {

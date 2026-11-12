@@ -17,6 +17,14 @@
 --     sound - only on the FTL leader (sbShow LEADER, the group leader when no
 --     FTL leader is known), on everyone (ALL) or nowhere (OFF). The same
 --     alert from several characters shows once per 10 s.
+--
+-- PallyPower (ppSend): a paladin's PallyPower knows who is missing the blessing
+-- this paladin is assigned to give them (its class and player buttons). Every
+-- few seconds, out of combat and not mounted, we let it scan (PallyPower:ScanClass,
+-- its own method) and read each player (PallyPower:GetUnit: hasbuff = seconds
+-- left or nil, dead, visible) - nothing of PallyPower changes. Missing blessings
+-- go out as the same QSB alerts; two or more of one class missing the same
+-- blessing go as one ("Warrior x3 needs Blessing of Might").
 
 local _, mod = ...
 local MMT = MMT
@@ -59,6 +67,26 @@ local function BuffName(buff)
     return tostring(buff)
 end
 
+-- one alert out, unless the same one went out lately (key: what counts as the same)
+local function Send(target, name, kind, value, key)
+    local now = GetTime()
+    Clean(lastSent, now)
+    key = key or (target .. "\t" .. name)
+    local last = lastSent[key]
+    -- after a fight: also what was sent DURING it (SmartBuff can report then) is new again
+    local fresh = M.db.sbAfterCombat and last and last.time < combatEnd
+    if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then
+        sbs.held = sbs.held + 1
+        return
+    end
+    M:Debug("Buff alert sent: %s / %s (%s)", target, name, kind)
+    lastSent[key] = { kind = kind, time = now }
+    local msg = ("QSB:%s:%d:%s:%s"):format(kind, value, Esc(target), Esc(name))
+    if #msg > 240 then msg = msg:sub(1, 240):gsub("%%%x?$", "") end
+    MMT.SendAlert(msg)
+    sbs.sent = sbs.sent + 1
+end
+
 local function OnSmartBuffAlert(target, buff, _, canCharge, charges, timeLeft, expiring)
     if not mod.Active(F) or not M.db.sbSend then return end
     if type(target) ~= "string" or buff == nil or MMT.IsSecret(target) or MMT.IsSecret(buff) then return end
@@ -69,24 +97,82 @@ local function OnSmartBuffAlert(target, buff, _, canCharge, charges, timeLeft, e
         else kind, value = "E", math.floor(tonumber(timeLeft) or 0) end
     end
     sbs.seen = sbs.seen + 1
-    local name = BuffName(buff)
-    local now = GetTime()
-    Clean(lastSent, now)
-    local key = target .. "\t" .. name
-    local last = lastSent[key]
-    -- after a fight: also what was sent DURING it (SmartBuff can report then) is new again
-    local fresh = M.db.sbAfterCombat and last and last.time < combatEnd
-    if last and last.kind == kind and not fresh and now - last.time < (tonumber(M.db.sbRepeat) or 60) then
-        sbs.held = sbs.held + 1
-        return
-    end
-    M:Debug("SmartBuff alert sent: %s / %s (%s)", target, name, kind)
-    lastSent[key] = { kind = kind, time = now }
-    local msg = ("QSB:%s:%d:%s:%s"):format(kind, value, Esc(target), Esc(name))
-    if #msg > 240 then msg = msg:sub(1, 240):gsub("%%%x?$", "") end
-    MMT.SendAlert(msg)
-    sbs.sent = sbs.sent + 1
+    Send(target, BuffName(buff), kind, value)
 end
+
+---------------------------------------------------------------------------
+-- PallyPower: the blessings this paladin is assigned to give
+---------------------------------------------------------------------------
+local PP_SOON = 60           -- "runs out" under a minute left (with sbExpire)
+local pps = { scans = 0, missing = 0 }
+mod.pps = pps
+
+local function PallyPowerAddon()
+    local pp = rawget(_G, "PallyPower")
+    if type(pp) ~= "table" or type(pp.GetUnit) ~= "function" or type(pp.GetSpellID) ~= "function" then return nil end
+    if type(pp.IsEnabled) == "function" then
+        local ok, on = pcall(pp.IsEnabled, pp)
+        if ok and on == false then return nil end
+    end
+    return pp
+end
+
+local function IsPaladin() return UnitClass ~= nil and select(2, UnitClass("player")) == "PALADIN" end
+
+-- what PallyPower says is missing now: { { target, buff, kind, value, key }, ... }
+function mod.PallyPowerMissing()
+    local pp = PallyPowerAddon()
+    if not pp or not IsPaladin() then return {} end
+    local classes = tonumber(rawget(_G, "PALLYPOWER_MAXCLASSES")) or 9
+    local perClass = tonumber(rawget(_G, "PALLYPOWER_MAXPERCLASS")) or 15
+    local spells = type(pp.Spells) == "table" and pp.Spells or {}
+    local out = {}
+    for classID = 1, classes do
+        if type(pp.ScanClass) == "function" then pcall(pp.ScanClass, pp, classID) end
+        local byBuff = {}      -- [buff] = { units }: the class's players missing it
+        for playerID = 1, perClass do
+            local ok, unit = pcall(pp.GetUnit, pp, classID, playerID)
+            if not ok or type(unit) ~= "table" then break end
+            local spellID = type(unit.name) == "string" and pp:GetSpellID(classID, unit.name) or 0
+            local buff = spellID and spellID > 0 and spells[spellID]
+            -- like PallyPower's own buttons: the dead, the unreachable and tanks with Salvation don't count
+            local skip = not buff or buff == "" or unit.dead or unit.visible == false or (unit.tank and spellID == 4 and not pp.isWrath)
+            if not skip then
+                local left = tonumber(unit.hasbuff)
+                if not unit.hasbuff then
+                    byBuff[buff] = byBuff[buff] or {}
+                    table.insert(byBuff[buff], unit.name)
+                elseif left and left < PP_SOON and M.db.sbExpire then
+                    out[#out + 1] = { unit.name, buff, "E", math.floor(left) }
+                end
+            end
+        end
+        local token = type(pp.ClassID) == "table" and pp.ClassID[classID]
+        local className = token and (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[token] or token:sub(1, 1) .. token:sub(2):lower()) or "?"
+        for buff, names in pairs(byBuff) do
+            if #names == 1 then
+                out[#out + 1] = { names[1], buff, "N", 0 }
+            else
+                -- the class at once; the same alert while the count changes
+                out[#out + 1] = { ("%s x%d"):format(className, #names), buff, "N", 0, "class:" .. classID .. "\t" .. buff }
+            end
+        end
+    end
+    return out
+end
+
+local function PallyPowerCheck()
+    if not mod.Active(F) or not M.db.ppSend or not PallyPowerAddon() or not IsPaladin() then return end
+    -- like SmartBuff: not in a fight, not mounted, not on a taxi
+    if InCombatLockdown() or (IsMounted and IsMounted()) or (UnitOnTaxi and UnitOnTaxi("player")) then return end
+    pps.scans = pps.scans + 1
+    local list = mod.PallyPowerMissing()
+    pps.missing = #list
+    for _, a in ipairs(list) do
+        if type(a[1]) == "string" and not MMT.IsSecret(a[1]) then Send(a[1], a[2], a[3], a[4], a[5]) end
+    end
+end
+mod.PallyPowerCheck = PallyPowerCheck
 
 -- hooked once SmartBuff's function exists (it loads before us: OptionalDeps)
 function mod.SmartBuffHook()
@@ -161,11 +247,12 @@ F = mod.Feature({
     key = "smartbuff", icon = "Spell_Holy_WordFortitude", slash = "smartbuff", addon = "SmartBuff", title = "SmartBuff alerts", tabText = "SmartBuff",
     sendOnly = true,   -- SmartBuff is only needed to send: the leader shows alerts without it
     checkText = "Call out SmartBuff's alerts to the team",
-    tip = "When SmartBuff on a character says a buff is missing (or runs out), the FTL leader - or everyone, see below - gets it as a chat line, raid warning text and sound.",
+    tip = "When SmartBuff on a character says a buff is missing (or runs out) - or a paladin's PallyPower, a blessing - the FTL leader (or everyone, see below) gets it as a chat line, raid warning text and sound.",
     notes = {
         "Each character with SmartBuff sends what its SmartBuff reports - the same alerts as its splash text, also with SmartBuff's splash or sound switched off - once a minute per target and buff, and right away when it changes.",
         "They go out as MMT alerts: the FTL leader first, then the team. Where they show is set on each character (\"Show the team's alerts\"). The same alert from several characters shows once.",
         "SmartBuff reports only out of combat, and not while mounted, eating / drinking or with a group buff's target out of range; it reports one missing buff at a time (the one it would cast next). A character whose SmartBuff doesn't track a buff sends nothing for it.",
+        "PallyPower: a paladin with PallyPower also sends who is missing the blessing it is assigned to give them (and, with \"Buffs running out too\", under a minute left) - out of combat and not mounted, every 5 seconds, with the same repeat time. The dead, players out of sight and tanks with Salvation are left out, like on PallyPower's buttons. Two or more of one class missing it go as one alert (\"Warrior x3 needs Blessing of Might\"). SmartBuff isn't needed for this.",
     },
     tags = { QSB = OnAlert },
     OnEnable = function()
@@ -177,6 +264,7 @@ F = mod.Feature({
     end,
     Page = function(ui)
         ui.Check("Send my SmartBuff alerts", "sbSend", "What SmartBuff reports on this character goes to the team.")
+        ui.Check("Send my PallyPower blessings", "ppSend", "On a paladin with PallyPower: who is missing the blessing this paladin is assigned to give them.")
         ui.Check("Buffs running out too", "sbExpire", "Also SmartBuff's \"rebuff, 30 s left\" / low charges alerts. Off: only missing buffs.")
         ui.Cycle("Send the same alert again after", { { value = 30, text = "30 seconds" }, { value = 60, text = "1 minute" },
             { value = 120, text = "2 minutes" }, { value = 300, text = "5 minutes" } }, "sbRepeat")
@@ -187,6 +275,8 @@ F = mod.Feature({
         ui.Check("Sound", "sbSound", "The raid warning sound with each alert shown.")
     end,
     Report = function(add)
+        add(("PallyPower: addon=%s paladin=%s send=%s scans=%d missing=%d"):format(tostring(PallyPowerAddon() ~= nil), tostring(IsPaladin()),
+            tostring(M.db.ppSend), pps.scans, pps.missing))
         add(("SmartBuff: hooked=%s seen=%d sent=%d held=%d shown=%d showsHere=%s show=%s fights=regen %d/attack %d/poll %d lastFight=%s"):format(tostring(sbs.hooked),
             sbs.seen, sbs.sent, sbs.held, sbs.shown, tostring(ShowsHere()), tostring(M.db.sbShow), fights.regen, fights.attack, fights.tick,
             combatEnd < 0 and "-" or ("ended %d s ago"):format(GetTime() - combatEnd)))
@@ -204,7 +294,13 @@ local function Fighting(unit)
 end
 
 local fighting = false
+local ppTick = 0
 function mod.SmartBuffCombatTick()
+    ppTick = ppTick + 1
+    if ppTick % 5 == 0 then
+        local ok, err = pcall(PallyPowerCheck)
+        if not ok then M:Debug("PallyPower alert: %s", tostring(err)) end
+    end
     local now = Fighting("player")
     if not now and IsInGroup and IsInGroup() then
         local raid = IsInRaid and IsInRaid()

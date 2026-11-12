@@ -142,7 +142,11 @@ run(B, bmod, r'''function(m) m.M.store.ahScan = nil; REALM = "Other"; SETS = 0; 
 deliver(sent, B, 'Anna-R')
 run(B, bmod, r'''function(m)
   FRAMES()
-  assert(SETS == 0 and PRINTS[1]:find("another realm"), tostring(PRINTS[1]))
+  assert(SETS == 0 and PRINTS[1]:find("another ruleset"), tostring(PRINTS[1]))
+  -- realms of one ruleset share the auction house
+  assert(m.Ruleset("CAMWOW EU4 Realm 1 PvE") == m.Ruleset("CAMWOW EU5 Realm 3 PvE"), "same ruleset")
+  assert(m.Ruleset("CAMWOW EU4 Realm 1 PvE") ~= m.Ruleset("CAMWOW EU4 Realm 2 PvP"), "other ruleset")
+  assert(m.Ruleset("Trinity") == "trinity", "plain name")
   REALM = "Realm"; m.M.db.ahTake = false; PRINTS = {}
   return "other realm kept"
 end''')

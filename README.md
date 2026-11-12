@@ -20,7 +20,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.0 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.0 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.3 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
@@ -438,6 +438,12 @@ Small team conveniences, each on its own tab with its own checkbox and options (
   right away when it changes, and again after each fight (also a fight only the group was in); the same alert from several characters shows once. Names follow
   MMT's privacy setting (Team > Privacy). Options: send my alerts, buffs running
   out too, how often, show the team's alerts on the leader / every character / not here, raid warning text, sound.
+  - *PallyPower* (on by default, "Send my PallyPower blessings"): a paladin with
+    [PallyPower](https://www.curseforge.com/wow/addons/pallypower) also sends who is missing the blessing that paladin is
+    assigned to give them, and with "buffs running out too" who has under a minute left. Checked every 5 seconds, out
+    of combat and not mounted, with the same repeat time. The dead, players out of sight and tanks with Salvation
+    are left out, like on PallyPower's buttons. Two or more of one class missing it go as one alert ("Bob: Warrior x3
+    needs Blessing of Might"). SmartBuff isn't needed for this.
 - **RestedXP with the party** (off by default), for [RestedXP Guides](https://www.curseforge.com/wow/addons/rxp-guides):
   - *Wait for the party*: a quest objective you've done stays open - and its step with it, also the steps RestedXP
     shows beside the current one - while a team member in your group who has the quest still needs it (from the Quest
@@ -450,7 +456,8 @@ Small team conveniences, each on its own tab with its own checkbox and options (
     ("Linen Cloth: 23/30" for three of you); kills are shared by the group, so a kill objective shows the count of
     whoever needs the most, and who ("Kobold Vermin slain: 5/10 (Bob)"; just the count when you're all even). Or your count plus the lowest ("7/10 (team 6/10)"), plus each
     member's ("7/10 (Bob 10, Cara 6)"), or only yours. The tooltip shows each member's count. The counts come from
-    MMT's Quest Tracker (it has to be on).
+    MMT's Quest Tracker (it has to be on). Item lines ("Snickerfang Jowl: 0/3", the Blasted Lands list) count what is
+    in the bags instead: the others' counts there come from MMT's Team Inventory (it has to be on).
 - Options for Dejunk and Baganator: additions and / or removals, ask before taking changes (a dialog with Apply / Ignore) or
   take them right away, a chat line per change, and a button that sends your whole list once (the others
   add what they don't have). Many changes at once (an import, "Remove all", a reset) are not sent.
