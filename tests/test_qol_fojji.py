@@ -3,7 +3,9 @@ and Bob, each with FojjiCore's auction store (FOJJI_REAL = path to FojjiCore_Pro
 Auctions.lua runs FojjiCore's own code; otherwise a stand-in with the same data shape and
 OnChange / Scanning / Store). Anna's scan finishing sends that scan's items (not older ones);
 Bob's FojjiCore takes them where his are older, and his Auctionator too. Refused: Bob's own
-scan newer, another realm/faction, taking off. A taken scan isn't sent on again."""
+scan newer, another realm/faction, taking off. A taken scan isn't sent on again, and counts as
+FojjiCore's last scan there (full: items it didn't see are none up). Auctionator's shared prices
+go into FojjiCore too (lowest per item ID, a scan with gaps)."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -87,6 +89,7 @@ AH.Store = store
 local listeners, busy = {}, false
 function AH.OnChange(fn) listeners[#listeners + 1] = fn end
 local function changed() for _, fn in ipairs(listeners) do pcall(fn) end end
+CHANGED = changed
 function AH.Scanning() return busy end
 -- SCAN(rows): rows = { {itemID, unit price, count}, ... }; done over a few frames like the real one
 function SCAN(rows)
@@ -130,7 +133,7 @@ def client(me):
     else:
         lua.execute(STANDIN)
     mod = lua.eval('{}')
-    for f in ('Module.lua', 'Bulk.lua', 'FojjiShare.lua'):
+    for f in ('Module.lua', 'Bulk.lua', 'AuctionatorShare.lua', 'FojjiShare.lua'):
         src = open('MMT_QoL/' + f, encoding='utf-8').read()
         lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(src, 'MMT_QoL/' + f, mod)
     lua.eval('function(m) m.M.OnEnable(m.M) end')(mod)
@@ -169,6 +172,7 @@ B.execute('CLOCK = CLOCK + 60')
 run(B, bmod, r'''function(m)
   local s = FojjiCoreNS.Auctions.Store()
   s.items[42] = { min = 1, n = 9, t = CLOCK }
+  s.items[55555] = { min = 3, n = 4, t = CLOCK - 5000 }
   return ""
 end''')
 for msg in sent: B.eval('DELIVER')('Anna-R', msg)
@@ -180,8 +184,13 @@ run(B, bmod, r'''function(m)
   assert(s.items[99999] == nil, "Anna's older item not sent")
   assert(ASETS["1234"][1] == 12341 and ASETS["1234"][2] == 3 and ASETS["42"] == nil, "into Auctionator too")
   assert(PRINTS[#PRINTS]:find("took 1,499 FojjiCore prices from Anna"), PRINTS[#PRINTS])
+  assert(s.scanned == CLOCK - 60, "Anna's scan is his FojjiCore's last full scan: " .. tostring(s.scanned))
+  assert(s.items[55555].n == 0 and s.items[55555].min == 3, "not in her full scan: none up")
+  assert(s.items[42].n == 9, "his newer one keeps its count")
+  if CHANGED then CHANGED() end
+  FRAMES()
   assert(#SENT == 0 and m.fj.seen == 0, "taking isn't a scan of his: not sent on")
-  return "bob took 1499, kept his newer one"
+  return "bob took 1499, kept his newer one, last scan = hers"
 end''')
 
 # refused: Bob's own scan newer / other faction / taking off
@@ -226,5 +235,28 @@ run(A, amod, r'''function(m)
   local st = m.FojjiStatus()
   assert(st:find("hooked=true") and st:find("items=1 ") and st:find("seen=2"), st)
   return "auto off; send by hand; " .. st:sub(1, 60)
+end''')
+# Auctionator's shared prices into FojjiCore: lowest per item ID, pets left out, a scan with gaps
+run(B, bmod, r'''function(m)
+  m.M.db.fjTake = true
+  local s = FojjiCoreNS.Auctions.Store()
+  for id in pairs(s.items) do s.items[id] = nil end
+  s.scanned, s.partial = 100, nil
+  s.items[999] = { min = 1, n = 1, t = CLOCK + 9999 }
+  ASETS = {}
+  assert(m.AuctionatorToFojji({ { "777", 500, 2 }, { "g:888:20", 900, 1 }, { "g:888:25", 700, 3 }, { "p:1", 5, 1 }, { "999", 4, 1 } }, CLOCK + 500))
+  FRAMES()
+  assert(s.items[777].min == 500 and s.items[777].n == 2, "item key")
+  assert(s.items[888].min == 700 and s.items[888].n == 3, "gear: the lowest of its keys")
+  assert(s.items[1] == nil, "pets aren't items")
+  assert(s.items[999].min == 1, "FojjiCore's newer price kept")
+  assert(s.partial == CLOCK + 500 and s.scanned == 100, "a scan with gaps: " .. tostring(s.partial))
+  assert(next(ASETS) == nil and m.ah.fojji == 2, "not back into Auctionator; counted " .. tostring(m.ah.fojji))
+  if CHANGED then CHANGED() end
+  FRAMES()
+  assert(#SENT == 0, "not sent on as a FojjiCore scan")
+  m.M.db.ahFojji = false
+  assert(m.AuctionatorToFojji({ { "5", 1, 1 } }, CLOCK + 600) == false and s.items[5] == nil, "option off")
+  return "auctionator prices into FojjiCore"
 end''')
 print('fojji share ok')

@@ -14,6 +14,8 @@
 --   QAP:<batch>:<i>:<n>:<part>          the packed payload in parts (MMT.SendLong)
 --   payload = <key>=<price>,<available>;...   (keys %XX escaped)
 -- A member whose own scan is newer, or on another ruleset (PvE, PvP, ...), keeps its own prices.
+-- With FojjiCore Professions loaded they go into its price list too (ahFojji, FojjiShare's
+-- mod.FojjiTake): per item ID the lowest of its keys, where FojjiCore's own price is older.
 
 local _, mod = ...
 local MMT = MMT
@@ -159,6 +161,20 @@ local function Apply(t, entries)
     end
 end
 
+-- the same prices into FojjiCore's list: item keys ("2589") and gear ("g:<id>:<ilvl>"),
+-- the lowest per item ID; pets ("p:") aren't items there
+function mod.AuctionatorToFojji(entries, when)
+    if not (M.db.ahFojji and mod.FojjiTake and when) then return false end
+    local best = {}
+    for _, e in ipairs(entries) do
+        local id = tonumber(e[1]) or tonumber(tostring(e[1]):match("^g:(%d+)"))
+        if id and e[2] and e[2] > 0 and (not best[id] or e[2] < best[id][2]) then best[id] = { id, e[2], e[3] or 0 } end
+    end
+    local list = {}
+    for _, e in pairs(best) do list[#list + 1] = e end
+    return mod.FojjiTake(list, when, false, nil, function(took) ah.fojji = (ah.fojji or 0) + took end)
+end
+
 local function Finish(t)
     local text = MMT.Unpack and MMT.Unpack(t.packed) or t.packed
     if not text then
@@ -171,6 +187,7 @@ local function Finish(t)
         if key then entries[#entries + 1] = { Unesc(key), tonumber(price), tonumber(avail) } end
     end
     Apply(t, entries)
+    mod.AuctionatorToFojji(entries, t.time)
 end
 
 -- may this transfer go into our Auctionator? nil = yes, else why not
@@ -325,17 +342,18 @@ F = mod.Feature({
     Page = function(ui)
         ui.Check("Send after a full scan", "ahAuto", "When your full scan at the auction house is done, today's prices go to the online team by themselves.")
         ui.Check("Take the team's prices", "ahTake", "Prices a team member sends come into your Auctionator (unless your own scan is newer).")
+        ui.Check("Into FojjiCore too", "ahFojji", "The prices you take also go into FojjiCore Professions' price list (when it's loaded), for every item where its own price is older; FojjiCore then shows that scan as its last one.")
         ui.Check("Chat lines", "ahChat", "Says what was sent and taken.")
         ui.Button("Send today's prices now", function() F.commands.send() end, "Today's prices from your Auctionator to the online team (also /mmtqol ah send).")
     end,
     Report = function(add)
         local _, count = mod.AuctionatorPayload()
         add(mod.AuctionatorStatus())
-        add(("Auctionator: hooked=%s events=%s dbHook=%s lastTrigger=%s realm=%s today=%d auto=%s take=%s lastScan=%s sent=%d (%d items) got=%d taken=%d skipped=%d lastFrom=%s incoming=%d"):format(
+        add(("Auctionator: hooked=%s events=%s dbHook=%s lastTrigger=%s realm=%s today=%d auto=%s take=%s lastScan=%s sent=%d (%d items) got=%d taken=%d skipped=%d fojji=%s/%d lastFrom=%s incoming=%d"):format(
             tostring(ah.hooked), tostring(ah.events), tostring(ah.wrapped ~= nil and ah.wrapped == (A() and A().Database)), tostring(ah.lastWhy),
             tostring(A() and Realm() or "-"), count or 0, tostring(M.db.ahAuto), tostring(M.db.ahTake),
             M.store.ahScan and date("%H:%M", M.store.ahScan) or "-", ah.sent, ah.sentItems, ah.got, ah.taken, ah.skipped,
-            tostring(ah.lastFrom), (function() local c = 0 for _ in pairs(incoming) do c = c + 1 end return c end)()))
+            tostring(M.db.ahFojji), ah.fojji or 0, tostring(ah.lastFrom), (function() local c = 0 for _ in pairs(incoming) do c = c + 1 end return c end)()))
     end,
 })
 

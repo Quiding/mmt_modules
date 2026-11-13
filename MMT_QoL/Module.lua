@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.7.5"
+mod.VERSION = "1.7.6"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -67,6 +67,7 @@ local M = MMT.NewModule({
         ahAuto = true,             -- send today's prices after a full scan
         ahTake = true,             -- take the team's prices (unless our own scan is newer)
         ahChat = true,             -- chat lines for what is sent / taken
+        ahFojji = true,            -- and put what is taken into FojjiCore's price list too
         -- FojjiCore's auction scan (FojjiShare.lua)
         fjshare = true,
         fjAuto = true,             -- send the scan's prices when it is done

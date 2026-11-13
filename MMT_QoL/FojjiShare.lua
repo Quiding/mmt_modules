@@ -10,6 +10,10 @@
 --   QFP:<batch>:<i>:<n>:<part>          the packed payload in parts (MMT.SendLong)
 --   payload = <itemID>=<price>,<count>[,+];...   ("+" = at least that many: some weren't read)
 -- A member whose own FojjiCore scan is newer, or on another ruleset or faction, keeps its own.
+-- A taken scan counts as FojjiCore's last scan there (its "Last full scan"): a scan
+-- with every item read as a full one (items it didn't see: none up), else as one
+-- with gaps. Prices the team shares through Auctionator come in too (AuctionatorShare,
+-- mod.FojjiTake), as a scan with gaps. Neither is sent on.
 
 local _, mod = ...
 local MMT = MMT
@@ -150,16 +154,21 @@ local function Put(s, e, when, day)
     return true
 end
 
-local function Apply(t, entries)
+local known                 -- the last-scan time already seen (nil: not hooked yet)
+
+-- prices from a team member into FojjiCore's data, STEP a frame:
+-- entries = { {itemID, price, count, atLeast}, ... }, when = their scan time,
+-- full = every item of the auction house read (the others: none up), adb = Auctionator too.
+-- done(took) at the end. false when FojjiCore isn't loaded.
+function mod.FojjiTake(entries, when, full, adb, done)
     local s = Store()
-    if not s then return end
-    local day = math.floor(t.time / 86400)
-    local adb = Auctionator()
+    if not s then return false end
+    local day = math.floor(when / 86400)
     local i, n, took = 1, #entries, 0
     local function Run()
         for j = i, math.min(i + STEP - 1, n) do
             local e = entries[j]
-            if Put(s, e, t.time, day) then
+            if Put(s, e, when, day) then
                 took = took + 1
                 if adb then pcall(adb.SetPrice, adb, tostring(e[1]), math.floor(e[2] + 0.5), e[3]) end
             end
@@ -168,12 +177,21 @@ local function Apply(t, entries)
         return i > n
     end
     local function Done()
-        s.shared = math.max(tonumber(s.shared) or 0, t.time)
-        fj.taken, fj.lastFrom = fj.taken + took, t.from
-        if M.db.fjChat then
-            MMT.Print("Quality of life: took %s FojjiCore prices from %s's scan (%s)%s.", Number(took), MMT.FullDisplay(t.from),
-                date("%H:%M", t.time), adb and ", into Auctionator too" or "")
+        s.shared = math.max(tonumber(s.shared) or 0, when)
+        -- FojjiCore's "Last full scan": a full one, or one with gaps ("some missing")
+        if full then
+            local seen = {}
+            for _, e in ipairs(entries) do seen[e[1]] = true end
+            for id, e in pairs(s.items) do
+                if not seen[id] and type(e) == "table" and (tonumber(e.t) or 0) < when then e.n, e.atLeast, e.before = 0, nil, nil end
+            end
+            s.scanned = math.max(tonumber(s.scanned) or 0, when)
+        else
+            s.partial = math.max(tonumber(s.partial) or 0, when)
         end
+        -- not our own scan: not sent on
+        if known ~= nil then known = math.max(known, LastScan(s)) end
+        if done then done(took) end
     end
     if C_Timer and C_Timer.NewTicker then
         local ticker
@@ -184,6 +202,20 @@ local function Apply(t, entries)
         while not Run() do end
         Done()
     end
+    return true
+end
+
+local function Apply(t, entries)
+    local adb = Auctionator()
+    local full = true
+    for _, e in ipairs(entries) do if e[4] then full = false; break end end
+    mod.FojjiTake(entries, t.time, full, adb, function(took)
+        fj.taken, fj.lastFrom = fj.taken + took, t.from
+        if M.db.fjChat then
+            MMT.Print("Quality of life: took %s FojjiCore prices from %s's scan (%s)%s.", Number(took), MMT.FullDisplay(t.from),
+                date("%H:%M", t.time), adb and ", into Auctionator too" or "")
+        end
+    end)
 end
 
 local function Finish(t)
@@ -246,7 +278,6 @@ end
 ---------------------------------------------------------------------------
 -- FojjiCore's scan finished: its last-scan time moved on
 ---------------------------------------------------------------------------
-local known                 -- the last-scan time already seen (nil: not hooked yet)
 
 local function Check()
     local a = AH()
