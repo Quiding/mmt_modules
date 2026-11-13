@@ -1,8 +1,8 @@
 -- MMT module: Disenchant Loot.
 --
 -- What a green (optionally also a blue) weapon or armour piece is worth:
---   disenchant  = Auctionator's disenchant value (expected materials x their
---                 last scanned auction prices; Auctionator.API.v1)
+--   disenchant  = the materials it gives on average x their last scanned
+--                 auction prices (Value.lua, prices from Auctionator)
 --   vendor      = the item's sell price
 -- It is "worth disenchanting" when disenchant >= vendor x M.db.pct % and
 -- disenchant >= M.db.minSilver silver. Without a disenchant value (no
@@ -23,7 +23,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.0"
+mod.VERSION = "0.1.1"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
@@ -43,18 +43,7 @@ local M = MMT.NewModule({
 })
 mod.M = M
 
-local CALLER = "MMT Disenchant Loot"
 local WEAPON, ARMOR = 2, 4
-
-local function Auctionator1()
-    local A = rawget(_G, "Auctionator")
-    return A and A.API and A.API.v1
-end
-
-function mod.HasPrices()
-    local api = Auctionator1()
-    return api and type(api.GetDisenchantPriceByItemLink) == "function" or false
-end
 
 local function Info(link)
     local getInfo = MMT.ItemInfo or GetItemInfo
@@ -68,17 +57,16 @@ local function QualityCounts(quality)
 end
 
 -- "DE" (worth disenchanting) | "JUNK" (not) | nil (doesn't count / no value),
--- the disenchant value, the vendor price (copper)
+-- the disenchant value, the vendor price (copper); with nil: why, materials without a price
 function mod.Verdict(link)
     if not link then return nil end
-    local _, _, quality, _, _, _, _, _, _, _, sell, classID = Info(link)
+    local _, _, quality, level, _, _, _, _, _, _, sell, classID = Info(link)
     if not quality then return nil, nil, nil, "item not loaded" end
     if not QualityCounts(quality) then return nil, nil, nil, "quality" end
     if classID ~= WEAPON and classID ~= ARMOR then return nil, nil, nil, "not weapon or armour" end
-    local api = Auctionator1()
-    if not (api and api.GetDisenchantPriceByItemLink) then return nil, nil, sell, "no Auctionator" end
-    local ok, de = pcall(api.GetDisenchantPriceByItemLink, CALLER, link)
-    if not ok or type(de) ~= "number" or de <= 0 then return nil, nil, sell, "no disenchant price" end
+    if not mod.HasPrices() then return nil, nil, sell, "Auctionator isn't loaded" end
+    local de, why, missing = mod.DisenchantValue(link, classID, quality, level)
+    if not de then return nil, nil, sell, why, missing end
     sell = sell or 0
     local worth = de >= sell * (M.db.pct or 100) / 100 and de >= (M.db.minSilver or 0) * 100
     return worth and "DE" or "JUNK", de, sell
@@ -169,8 +157,14 @@ SlashCmdList.MMTDISENCHANT = function(msg)
         MMT.ToggleConfig("DisenchantLoot")
         return
     end
-    local verdict, de, sell, why = mod.Verdict(link)
-    if not verdict then MMT.Print("Disenchant Loot: %s - %s.", link, tostring(why)) return end
+    local verdict, de, sell, why, missing = mod.Verdict(link)
+    if not verdict then
+        local names = {}
+        for _, id in ipairs(missing or {}) do names[#names + 1] = (Info(id)) or ("item " .. id) end
+        MMT.Print("Disenchant Loot: %s - %s%s.", link, tostring(why),
+            #names > 0 and (": " .. table.concat(names, ", ") .. " (scan the auction house)") or "")
+        return
+    end
     MMT.Print("Disenchant Loot: %s - disenchant %s, vendor %s: %s.", link, mod.Money(de), mod.Money(sell),
         verdict == "DE" and ("to " .. mod.EnchanterText()) or "junk")
 end

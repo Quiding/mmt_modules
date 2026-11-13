@@ -6,20 +6,24 @@ os.chdir(sys.argv[1])
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
--- items: id = { quality, sell, classID, disenchant value }
+-- items: id = { quality, sell, classID, item level }
 ITEMS = {
-  [1] = { 2, 100, 4, 300 },     -- green armour, mats 3x vendor
-  [2] = { 2, 500, 2, 200 },     -- green weapon, vendor beats mats
-  [3] = { 3, 100, 4, 900 },     -- blue
-  [4] = { 2, 50, 7, 500 },      -- green trade good: not weapon/armour
-  [5] = { 2, 100, 4, nil },     -- no disenchant price
-  [6] = { 1, 10, 4, 50 },       -- white
+  [1] = { 2, 100, 4, 10 },      -- green armour 10: 1.2 x dust + 0.3 x lesser magic = 150
+  [2] = { 2, 500, 2, 10 },      -- green weapon 10: 0.3 x dust + 1.2 x lesser magic = 150 < vendor
+  [3] = { 3, 100, 4, 20 },      -- blue 20: a small glimmering shard = 900
+  [4] = { 2, 50, 7, 10 },       -- green trade good: not weapon/armour
+  [5] = { 2, 100, 4, 30 },      -- green armour 30: soul dust never scanned
+  [6] = { 1, 10, 4, 10 },       -- white
 }
 local function Item(link) return ITEMS[tonumber(tostring(link):match("item:(%d+)"))] end
-function GetItemInfo(link) local i = Item(link); if i then return "x", link, i[1], 10, 1, "", "", 1, "", 1, i[2], i[3] end end
-Auctionator = { API = { v1 = { GetDisenchantPriceByItemLink = function(caller, link)
+function GetItemInfo(link)
+  if type(link) == "number" then return "Mat" .. link end
+  local i = Item(link); if i then return "x", link, i[1], i[4], 1, "", "", 1, "", 1, i[2], i[3] end
+end
+PRICES = { [10940] = 100, [10938] = 100, [10978] = 900, [11082] = 300, [11084] = 1000 }
+Auctionator = { API = { v1 = { GetAuctionPriceByItemID = function(caller, id)
   assert(type(caller) == "string")
-  local i = Item(link); return i and i[4]
+  return PRICES[id]
 end } } }
 MMT = { IsSelf = function() return false end }
 ROLES = { ["Cal-A"] = { "Main" }, ["Der-B"] = { "Enchanter", "Bank" }, ["Sla-C"] = {} }
@@ -62,7 +66,7 @@ mod = lua.eval(r'''function()
   MMT.NewModule = function(def) for k, v in pairs(def.defaults) do M.db[k] = v end; M.defaults = def.defaults; return M end
   return m
 end''')()
-for f in ["Module.lua", "Junk.lua"]:
+for f in ["Module.lua", "Value.lua", "Junk.lua"]:
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(
         open('MMT_DisenchantLoot/' + f, encoding='utf-8').read(), f, mod)
 
@@ -80,7 +84,13 @@ print(lua.eval(r'''function(m)
   check("blue left out", (m.Verdict(L(3))), nil)
   db.quality = "GREEN_BLUE"; check("blue with GREEN_BLUE", (m.Verdict(L(3))), "DE"); db.quality = "GREEN"
   check("trade good", (m.Verdict(L(4))), nil)
-  check("no price", (m.Verdict(L(5))), nil)
+  local v, de, sell, why, missing = m.Verdict(L(5))
+  check("no price", v, nil)
+  check("no price: soul dust named", missing and missing[1], 11083)
+  check("armour value", select(2, m.Verdict(L(1))), 150)
+  PRICES[10939] = 150   -- greater magic essence: a third (50) is cheaper than a lesser one (100)
+  check("lesser essence from the greater", select(2, m.Verdict(L(1))), 135)
+  PRICES[10939] = nil
   check("white", (m.Verdict(L(6))), nil)
   db.pct = 400; check("pct 400: 3x is not enough", (m.Verdict(L(1))), "JUNK"); db.pct = 100
   db.minSilver = 5; check("min 5 silver", (m.Verdict(L(1))), "JUNK"); db.minSilver = 0

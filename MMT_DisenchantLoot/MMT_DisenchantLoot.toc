@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: MMT - Disenchant Loot
 ## Notes: MMT module: as master looter, gives green items worth more as disenchant materials than at a vendor to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Prices from Auctionator.
-## Version: 0.1.0
+## Version: 0.1.1
 ## Author: Quiding
 ## X-Repository: https://github.com/Quiding/mmt_modules
 ## X-License: GPL-3.0
@@ -14,5 +14,6 @@
 ## IconTexture: Interface\Icons\Spell_Holy_GreaterHeal
 
 Module.lua
+Value.lua
 Junk.lua
 Settings.lua

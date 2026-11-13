@@ -22,7 +22,7 @@ MODULES, with its own settings page.
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.4 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
-| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.0 |
+| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.1 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -518,7 +518,7 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
 ## Disenchant Loot
 
 What a green weapon or armour piece is worth when disenchanted, from [Auctionator](https://www.curseforge.com/wow/addons/auctionator)'s
-disenchant value: the materials it gives on average, at their last scanned auction prices. Scan the auction house now and then.
+the materials it gives on average (classic disenchant odds), at their last scanned Auctionator prices. Scan the auction house now and then; `/mmtde <item>` names any material without a price.
 
 - **Worth disenchanting**: the disenchant value is at least *x* % of the vendor price (100 % by default), and at
   least a minimum in silver. Greens only, or greens and blues.
