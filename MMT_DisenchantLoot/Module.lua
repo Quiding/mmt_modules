@@ -23,7 +23,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.2"
+mod.VERSION = "0.1.3"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
@@ -38,8 +38,11 @@ local M = MMT.NewModule({
         minSilver = 0,                 -- ... and >= this many silver
         junkOn    = true,              -- the others are junk (Baganator plugin)
         sellOn    = true,              -- ... and sold at a vendor
-        tipOn     = true,              -- tooltip line with both values
-        tipMats   = true,              -- ... and what it disenchants into (chance, count, price)
+        tipShow   = "ALWAYS",          -- tooltip value line: ALWAYS | SHIFT | CTRL | ALT | NEVER
+        matsShow  = "SHIFT",           -- tooltip materials (chance, count, price): same choices
+        money     = "SHORT",           -- SHORT (1g 13s 22c) | COINS (coin icons) | MMT (MMT's money format)
+        staleOn   = true,              -- remind when Auctionator's prices are old (chat + tooltip)
+        staleHours = 8,
     },
 })
 mod.M = M
@@ -74,8 +77,16 @@ function mod.Verdict(link)
 end
 
 function mod.Money(copper)
-    if MMT.FormatMoney then return MMT.FormatMoney(copper or 0) end
-    return GetCoinTextureString and GetCoinTextureString(copper or 0) or tostring(copper)
+    copper = math.floor(copper or 0)
+    local how = M.db.money
+    if how == "COINS" and GetCoinTextureString then return GetCoinTextureString(copper) end
+    if how == "MMT" and MMT.FormatMoney then return MMT.FormatMoney(copper) end
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = ("%d|cffffd700g|r"):format(g) end
+    if s > 0 or (g > 0 and c > 0) then parts[#parts + 1] = ("%d|cffc7c7cfs|r"):format(s) end
+    if c > 0 or #parts == 0 then parts[#parts + 1] = ("%d|cffeda55fc|r"):format(c) end
+    return table.concat(parts, " ")
 end
 
 ---------------------------------------------------------------------------

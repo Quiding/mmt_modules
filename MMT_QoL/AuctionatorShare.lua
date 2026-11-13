@@ -141,6 +141,8 @@ local function Apply(t, entries)
     end
     local function Done()
         ah.taken, ah.lastFrom = ah.taken + n, t.from
+        -- how fresh our prices are (Disenchant Loot's reminder reads it)
+        if t.time and t.time > (M.store.ahTaken or 0) then M.store.ahTaken = t.time end
         if M.db.ahChat then
             MMT.Print("Quality of life: took %s Auctionator prices from %s's scan (%s).", Number(n), MMT.FullDisplay(t.from),
                 date("%H:%M", t.time or time()))

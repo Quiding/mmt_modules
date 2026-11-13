@@ -60,8 +60,16 @@ local function StatusText()
     local plugin = mod.PluginActive()
     local bag = plugin == nil and "" or plugin and " Baganator shows the junk." or
         " Baganator: pick \"Dejunk + Disenchant Loot\" as junk plugin to see it there."
-    return "Enchanter: " .. mod.EnchanterText() .. "." .. bag
+    return "Enchanter: " .. mod.EnchanterText() .. "." .. bag .. " " .. mod.AgeText() .. "."
 end
+
+local SHOW = {
+    { value = "ALWAYS", text = "Always" },
+    { value = "SHIFT", text = "While Shift is held" },
+    { value = "CTRL", text = "While Ctrl is held" },
+    { value = "ALT", text = "While Alt is held" },
+    { value = "NEVER", text = "Never" },
+}
 
 M.Page = function(_, page)
     local status = H.StatusLine(page)
@@ -98,21 +106,40 @@ M.Page = function(_, page)
     local y2 = TOP - h - 8
     local jt, J = Tile(page, 0, y2, H.PAGE_W, 120, "The Others Are Junk", "Interface\\Icons\\INV_Misc_Bag_10")
     Check(J, "Mark them as junk (Baganator)", "junkOn",
-        "On every character: unbound items of the kinds above that are NOT worth disenchanting are junk - unless Pawn sees an upgrade. Baganator shows them as junk with the junk plugin \"Dejunk + Disenchant Loot\" (Dejunk's junk plus these): choose it in Baganator's settings.")
+        "On every character: unbound items of the kinds above that are NOT worth disenchanting are junk - unless they are an upgrade for anyone on the team (Pawn Compare: every member's Pawn scale and gear; without Pawn Compare only this character's Pawn). Baganator shows them as junk with the junk plugin \"Dejunk + Disenchant Loot\" (Dejunk's junk plus these): choose it in Baganator's settings.")
     Check(J, "Sell them at a vendor", "sellOn", "When a merchant window opens, these junk items are sold (Dejunk sells its own junk as before).")
-    Check(J, "Tooltip line", "tipOn", "Item tooltips show the disenchant value, the vendor price and where the item goes.")
-    Check(J, "Tooltip: what it disenchants into", "tipMats", "One line per material: the chance, how many and the auction price of one (classic disenchant odds). Shown for every green or blue weapon and armour piece.")
-    FitRow({ { jt, J } })
+    local h2 = FitRow({ { jt, J } })
+
+    -- Tooltip / old prices ---------------------------------------------------------------------------------
+    local y3 = y2 - h2 - 8
+    local tt, T = Tile(page, 0, y3, TILE_W, 200, "Tooltip", "Interface\Icons\INV_Misc_Note_01")
+    local gs, ss = Opt("tipShow")
+    T:Cycle("Value and where it goes", SHOW, gs, ss)
+    local gms, sms = Opt("matsShow")
+    T:Cycle("What it disenchants into", SHOW, gms, sms)
+    UI.Tooltip(T:Cycle("Money", {
+        { value = "SHORT", text = "Short (1g 13s 22c)" },
+        { value = "COINS", text = "Coin icons" },
+        { value = "MMT", text = "Like MMT's money" },
+    }, Opt("money")), "Money", "How gold amounts look in the tooltip lines and chat messages of this module.")
+    local at, A = Tile(page, X2, y3, TILE_W, 200, "Old Prices", "Interface\Icons\INV_Misc_PocketWatch_01")
+    Check(A, "Remind me when prices are old", "staleOn",
+        "When Auctionator's newest prices (your scans, or prices taken from the team by Quality of life) are older than below: a chat line on login and at most once an hour (on the group leader only, or solo), and a red line on the item tooltips.")
+    local gh, sh = Opt("staleHours", function() status.Show_(StatusText()) end)
+    A:Slider("Older than (hours)", 1, 48, 1, gh, sh)
+    FitRow({ { tt, T }, { at, A } })
 
     page.OnRefresh = function() status.Show_(StatusText()) end
 end
 
 M.Report = function(_, add)
     local d = M.db
-    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s auctionator=%s plugin=%s"):format(
+    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s/%s money=%s stale=%s/%sh auctionator=%s plugin=%s"):format(
         mod.VERSION, tostring(d.lootOn), tostring(mod.LootActive()), tostring(d.to), tostring(d.quality), tostring(d.pct),
-        tostring(d.minSilver), tostring(d.junkOn), tostring(d.sellOn), tostring(d.tipOn), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
+        tostring(d.minSilver), tostring(d.junkOn), tostring(d.sellOn), tostring(d.tipShow), tostring(d.matsShow), tostring(d.money),
+        tostring(d.staleOn), tostring(d.staleHours), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
     add("enchanter: " .. mod.EnchanterText())
+    add(mod.AgeText() .. (" (price time %s)"):format(mod.PriceTime() and date("%Y-%m-%d %H:%M", mod.PriceTime()) or "-"))
     local s = mod.lastSale
     if s then add(("last sale %s ago: %d items, %s"):format(MMT.Ago and MMT.Ago(s.time) or "?", s.count, mod.Money(s.value))) end
 end

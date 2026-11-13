@@ -46,7 +46,18 @@ C_Container = {
   UseContainerItem = function(bag, slot) BAGS[bag][slot].sold = true end,
 }
 C_Timer = { After = function(_, f) f() end }
-function GetTime() return 1 end
+NOW, CLOCK = 1, 100000
+function GetTime() return NOW end
+function time() return CLOCK end
+SHIFT = false
+function IsShiftKeyDown() return SHIFT end
+function IsControlKeyDown() return false end
+function IsAltKeyDown() return false end
+INGROUP, LEADER = false, false
+function IsInGroup() return INGROUP end
+function UnitIsGroupLeader() return LEADER end
+TEAMUP = {}
+MMT_MODULES = { PawnCompare = { enabled = true, TeamUpgrades = function(link) return TEAMUP[tonumber(link:match("item:(%d+)"))] or {} end } }
 SlashCmdList = {}
 UPGRADES = {}
 function PawnGetItemData(link) return { link = link } end
@@ -64,14 +75,17 @@ mod = lua.eval(r'''function()
   local M = { enabled = true, db = {}, Debug = function() end }
   function M:On(e, fn) EVENTS[e] = fn end
   MMT.NewModule = function(def) for k, v in pairs(def.defaults) do M.db[k] = v end; M.defaults = def.defaults; return M end
+  M.store = { priceTime = CLOCK }   -- fresh prices
+  MMT.modules = MMT_MODULES
   return m
 end''')()
-for f in ["Module.lua", "Value.lua", "Junk.lua"]:
+for f in ["Module.lua", "Value.lua", "Age.lua", "Junk.lua"]:
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(
         open('MMT_DisenchantLoot/' + f, encoding='utf-8').read(), f, mod)
 
 print(lua.eval(r'''function(m)
   local db, out = m.M.db, {}
+  db.money = "MMT"
   local function check(name, got, want)
     if got ~= want then error(("%s: got %s, want %s"):format(name, tostring(got), tostring(want))) end
     out[#out + 1] = name
@@ -113,7 +127,15 @@ print(lua.eval(r'''function(m)
   check("bound: never", m.IsJunk(0, 2), false)
   check("worth it: not junk", m.IsJunk(0, 3), false)
   check("no price: not junk", m.IsJunk(0, 4), false)
-  UPGRADES[2] = true; check("Pawn upgrade: not junk", m.IsJunk(0, 1), false); UPGRADES[2] = nil
+  TEAMUP[2] = { "Sla-C" }; check("an upgrade for a teammate: not junk", m.IsJunk(0, 1), false); TEAMUP[2] = nil
+  local pcUp = MMT_MODULES.PawnCompare.TeamUpgrades
+  MMT_MODULES.PawnCompare.TeamUpgrades = function() return nil end
+  check("Pawn Compare can't tell: not junk", m.IsJunk(0, 1), false)
+  MMT_MODULES.PawnCompare.TeamUpgrades = pcUp
+  UPGRADES[2] = true; check("own Pawn upgrade with Pawn Compare on: not junk", m.IsJunk(0, 1), false)
+  MMT_MODULES.PawnCompare.enabled = false
+  check("Pawn Compare off: own Pawn upgrade not junk", m.IsJunk(0, 1), false)
+  MMT_MODULES.PawnCompare.enabled = true; UPGRADES[2] = nil
   db.junkOn = false; check("junk off", m.IsJunk(0, 1), false); db.junkOn = true
 
   -- Baganator plugin = Dejunk's junk plus ours
@@ -133,13 +155,38 @@ print(lua.eval(r'''function(m)
   LINES = {}
   local tt = { GetItem = function() return "x", L(5) end,
     AddLine = function(_, t) LINES[#LINES + 1] = t end, AddDoubleLine = function(_, l, r) LINES[#LINES + 1] = l .. " | " .. r end }
+  SHIFT = true
   m.TipLine(tt)
   check("tooltip: header without a value", LINES[1], "Disenchants into:")
   check("tooltip: soul dust, no price", LINES[2], "  75%  1-2 Soul Dust | |cff888888no price|r")
   LINES = {}; tt.GetItem = function() return "x", L(1) end; m.TipLine(tt)
   check("tooltip: value line first", LINES[1]:match("^Disenchant 150c / vendor 100c") ~= nil, true)
   check("tooltip: materials", LINES[2], "  80%  1-2 Strange Dust | 100c")
-  m.M.db.tipMats = false; LINES = {}; m.TipLine(tt); check("materials off", #LINES, 1); m.M.db.tipMats = true
+  SHIFT = false; LINES = {}; m.TipLine(tt)
+  check("Shift up: value and a hint", #LINES, 2)
+  check("hint", LINES[2], "  Hold Shift: what it disenchants into")
+  db.matsShow = "ALWAYS"; LINES = {}; m.TipLine(tt); check("materials always", #LINES, 3)
+  db.tipShow = "CTRL"; LINES = {}; m.TipLine(tt); check("value only with Ctrl", LINES[1], "Disenchants into:")
+  db.tipShow, db.matsShow = "NEVER", "NEVER"; LINES = {}; m.TipLine(tt); check("never", #LINES, 0)
+  db.tipShow, db.matsShow = "ALWAYS", "SHIFT"
+
+  -- old prices
+  check("fresh: not stale", m.Stale(), false)
+  m.M.store.priceTime = CLOCK - 9 * 3600
+  check("9 h: stale", m.Stale(), true)
+  check("age text", m.AgeText(), "Auctionator prices are 9 h old - scan the auction house")
+  LINES = {}; m.TipLine(tt); check("tooltip warning", LINES[#LINES], "  Auctionator prices are 9 h old - scan the auction house")
+  INGROUP = true; check("not the leader: no reminder", m.Remind(), false)
+  LEADER = true; check("leader: reminder", m.Remind(), true)
+  check("reminder text", PRINTED, "Disenchant Loot: Auctionator prices are 9 h old - scan the auction house for fresh disenchant values.")
+  check("once an hour", m.Remind(), false)
+  NOW = NOW + 3601; check("an hour later", m.Remind(), true)
+  db.staleHours = 12; check("12 h setting: fine", m.Stale(), false); db.staleHours = 8
+  db.staleOn = false; check("reminder off", m.Stale(), false); db.staleOn = true
+  m.M.store.priceTime = nil; check("no scan time: stale", m.Stale(), true)
+  MMT_MODULES.QoL = { store = { ahTaken = CLOCK - 3600 } }
+  check("QoL's taken prices count", m.Stale(), false)
+  m.M.store.priceTime = CLOCK; MMT_MODULES.QoL = nil; INGROUP, LEADER = false, false
 
   -- sold at a vendor, only ours
   EVENTS.MERCHANT_SHOW()

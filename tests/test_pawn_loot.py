@@ -135,6 +135,14 @@ print(lua.eval(r'''function(m)
   check("ranking: warrior first", list[1].key, "Warr-B")
   check("ranking: mage left out", skipped["Mage-A"], "class can't use it")
 
+  -- M.TeamUpgrades for other modules (Disenchant Loot's junk check)
+  reset()
+  local up = m.M.TeamUpgrades("item:100")
+  check("team upgrades: mage and priest", table.concat(up, ","), "Mage-A,Priest-C")
+  check("team upgrades: nobody", #m.M.TeamUpgrades("item:130"), 0)
+  check("team upgrades: not gear", #m.M.TeamUpgrades("item:200"), 0)
+  m.M.enabled = false; check("team upgrades: module off", m.M.TeamUpgrades("item:100"), nil); m.M.enabled = true
+
   -- the hook in Loot Distribution
   check("registered once", #CHOOSERS, 1)
   local c = CHOOSERS[1]

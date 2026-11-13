@@ -2,11 +2,14 @@
 --
 -- Junk = in the bags, not bound (soulbound quest rewards etc. never), counts by
 -- quality and kind, has a disenchant value below the line (Module.lua
--- mod.Verdict) and is not an upgrade by Pawn (PawnIsItemAnUpgrade).
+-- mod.Verdict) and is an upgrade for nobody on the team: Pawn Compare's team
+-- ranking (its M.TeamUpgrades: every member's Pawn scale and gear), else - Pawn
+-- Compare off - this character's own Pawn (PawnIsItemAnUpgrade).
 --   Baganator: junk plugin "Dejunk + Disenchant Loot" = Dejunk's junk plus these
 --     (Baganator shows one junk plugin: pick it in Baganator's settings).
 --   Vendor: sold when a merchant opens (sellOn), 10 at a time.
---   Tooltip: one line with both values and where the item goes (tipOn).
+--   Tooltip: the value line and the materials, each always or with a modifier key
+--     (tipShow / matsShow), plus a warning when the prices are old (Age.lua).
 
 local _, mod = ...
 local MMT = MMT
@@ -22,13 +25,25 @@ local function IsUpgrade(link)
 end
 mod.IsUpgrade = IsUpgrade
 
+-- an upgrade for anyone on the team? Unknown (Pawn Compare on but can't tell
+-- yet) counts as yes: never junk what might be someone's upgrade
+function mod.TeamUpgrade(link)
+    local pc = MMT.modules and MMT.modules.PawnCompare
+    if pc and pc.enabled and type(pc.TeamUpgrades) == "function" then
+        local ok, keys = pcall(pc.TeamUpgrades, link)
+        if not ok or keys == nil then return true, "Pawn Compare can't tell yet" end
+        if #keys > 0 then return true, keys end
+    end
+    return IsUpgrade(link), "own Pawn"
+end
+
 -- is the bag item junk by our rule?
 function mod.IsJunk(bag, slot)
     if not (M.enabled and M.db.junkOn) then return false end
     local info = C_Container.GetContainerItemInfo(bag, slot)
     if not info or info.isBound or info.hasNoValue or not info.hyperlink then return false end
     if mod.Verdict(info.hyperlink) ~= "JUNK" then return false end
-    return not IsUpgrade(info.hyperlink)
+    return not mod.TeamUpgrade(info.hyperlink)
 end
 
 ---------------------------------------------------------------------------
@@ -132,17 +147,14 @@ M:On("MERCHANT_CLOSED", function() merchantOpen = false end)
 ---------------------------------------------------------------------------
 -- Tooltip
 ---------------------------------------------------------------------------
-local function TipLine(tt)
-    if not (M.enabled and (M.db.tipOn or M.db.tipMats)) or not tt or not tt.GetItem then return end
-    local ok, _, link = pcall(tt.GetItem, tt)
-    if not ok or type(link) ~= "string" then return end
-    local verdict, de, sell = mod.Verdict(link)
-    local shown = verdict and M.db.tipOn
-    if shown then
-        local where = verdict == "DE" and ("|cff66ccffto " .. mod.EnchanterText() .. "|r") or "|cff999999junk|r"
-        tt:AddLine(("Disenchant %s / vendor %s: %s"):format(mod.Money(de), mod.Money(sell), where), 1, 0.82, 0.5)
-    end
-    if M.db.tipMats then mod.TipMaterials(tt, link, not shown) end
+local KEYS = { SHIFT = "IsShiftKeyDown", CTRL = "IsControlKeyDown", ALT = "IsAltKeyDown" }
+local KEY_TEXT = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
+
+-- shown now? (ALWAYS, NEVER, or while the modifier is held)
+function mod.Showing(how)
+    if how == "ALWAYS" then return true end
+    local f = KEYS[how] and rawget(_G, KEYS[how])
+    return f and f() and true or false
 end
 
 local function Pct(n)
@@ -150,16 +162,32 @@ local function Pct(n)
     return s .. "%"
 end
 
--- one line per material: "  80%  1-2 Strange Dust        12s"
-function mod.TipMaterials(tt, link, withHeader)
+local function TipLine(tt)
+    if not M.enabled or not tt or not tt.GetItem then return end
+    local tipShow, matsShow = M.db.tipShow, M.db.matsShow
+    if tipShow == "NEVER" and matsShow == "NEVER" then return end
+    local ok, _, link = pcall(tt.GetItem, tt)
+    if not ok or type(link) ~= "string" then return end
+    local verdict, de, sell = mod.Verdict(link)
     local list = mod.Breakdown(link)
-    if not list or #list == 0 then return end
-    if withHeader then tt:AddLine("Disenchants into:", 1, 0.82, 0.5) end
-    for _, e in ipairs(list) do
-        local count = e.min == e.max and tostring(e.min) or (e.min .. "-" .. e.max)
-        tt:AddDoubleLine(("  %s  %s %s"):format(Pct(e.chance), count, mod.MatName(e.id)),
-            e.price and mod.Money(e.price) or "|cff888888no price|r", 0.85, 0.85, 0.85, 0.85, 0.85, 0.85)
+    if not verdict and not (list and #list > 0) then return end
+    local value = verdict and mod.Showing(tipShow)
+    local mats = list and #list > 0 and mod.Showing(matsShow)
+    if value then
+        local where = verdict == "DE" and ("|cff66ccffto " .. mod.EnchanterText() .. "|r") or "|cff999999junk|r"
+        tt:AddLine(("Disenchant %s / vendor %s: %s"):format(mod.Money(de), mod.Money(sell), where), 1, 0.82, 0.5)
     end
+    if mats then
+        if not value then tt:AddLine("Disenchants into:", 1, 0.82, 0.5) end
+        for _, e in ipairs(list) do
+            local count = e.min == e.max and tostring(e.min) or (e.min .. "-" .. e.max)
+            tt:AddDoubleLine(("  %s  %s %s"):format(Pct(e.chance), count, mod.MatName(e.id)),
+                e.price and mod.Money(e.price) or "|cff888888no price|r", 0.85, 0.85, 0.85, 0.85, 0.85, 0.85)
+        end
+    elseif value and list and #list > 0 and KEY_TEXT[matsShow] then
+        tt:AddLine(("  Hold %s: what it disenchants into"):format(KEY_TEXT[matsShow]), 0.53, 0.53, 0.53)
+    end
+    if (value or mats) and mod.Stale() then tt:AddLine("  " .. mod.AgeText(), 1, 0.4, 0.4) end
 end
 mod.TipLine = TipLine
 
@@ -173,3 +201,13 @@ elseif GameTooltip and GameTooltip.HookScript then
     local ref = rawget(_G, "ItemRefTooltip")
     if ref then pcall(ref.HookScript, ref, "OnTooltipSetItem", TipLine) end
 end
+
+-- pressing or letting go of the modifier key redraws the item tooltip
+M:On("MODIFIER_STATE_CHANGED", function()
+    if not (KEYS[M.db.tipShow] or KEYS[M.db.matsShow]) then return end
+    local tt = GameTooltip
+    if tt and tt:IsShown() and tt.RefreshData and tt.GetItem then
+        local ok, _, link = pcall(tt.GetItem, tt)
+        if ok and link then pcall(tt.RefreshData, tt) end
+    end
+end)
