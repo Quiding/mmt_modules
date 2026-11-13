@@ -16,6 +16,11 @@ local function ShowNext()
         showing = nil
         if C_Timer and C_Timer.After then C_Timer.After(0, ShowNext) else ShowNext() end
     end
+    -- a question of its own (mod.AskText): its text and buttons
+    if q.text then
+        MMT.UI.Confirm(q.text, q.yes, function() pcall(q.onYes); done() end, q.no, function() pcall(q.onNo); done() end)
+        return
+    end
     -- a feature may word the dialog itself: askText(who, n), askAccept
     local f = q.feature
     local head = f.askText and f.askText(MMT.FullDisplay(q.from), #q.lines)
@@ -46,6 +51,12 @@ function mod.Ask(from, feature, lines, apply, ignored)
     local q = { from = from, feature = feature, lines = {}, applies = { apply }, ignores = { ignored } }
     for _, l in ipairs(lines) do q.lines[#q.lines + 1] = l end
     queue[#queue + 1] = q
+    ShowNext()
+end
+
+-- any other question, in the same queue (one dialog at a time)
+function mod.AskText(text, yes, onYes, no, onNo)
+    queue[#queue + 1] = { text = text, yes = yes, no = no, onYes = onYes or function() end, onNo = onNo or function() end }
     ShowNext()
 end
 

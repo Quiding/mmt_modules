@@ -114,7 +114,7 @@ Baganator = { API = {
 ''')
 
 mod = lua.eval('{}')
-for f in ('Module.lua', 'Bulk.lua', 'Baganator.lua', 'MailList.lua', 'LootPrice.lua', 'RoleLoot.lua'):
+for f in ('Module.lua', 'Ask.lua', 'Bulk.lua', 'Baganator.lua', 'MailList.lua', 'LootPrice.lua', 'RoleLoot.lua', 'Offer.lua'):
     src = open('MMT_QoL/' + f, encoding='utf-8').read()
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(src, 'MMT_QoL/' + f, mod)
 
@@ -206,4 +206,47 @@ print(lua.eval(r'''function(m)
   check("report", lines[1]:find("^Valuable loot: on=true role=Main") ~= nil, true)
   return table.concat(out, ", ")
 end''')(mod))
+# offering the features whose addon is loaded
+print(lua.eval(r"""function(m)
+  local db, out = m.M.db, {}
+  local function check(name, got, want)
+    if got ~= want then error(("%s: got %s, want %s"):format(name, tostring(got), tostring(want))) end
+    out[#out + 1] = name
+  end
+  DIALOGS = {}
+  MMT.UI.Confirm = function(text, yes, onYes, no, onNo) DIALOGS[#DIALOGS + 1] = { text = text, yes = onYes, no = onNo } end
+  function IsInGroup() return INGROUP end
+  function UnitIsGroupLeader() return LEADER end
+  function InCombatLockdown() return COMBAT end
+  local started = 0
+  m.Feature({ key = "zed", addon = "Zed", title = "Zed things", tabText = "Zed", tip = "Shares Zed's lists.", OnEnable = function() started = started + 1 end })
+  m.Feature({ key = "yak", addon = "Yak", title = "Yak things", tip = "Yak." })
+  db.zed, db.yak, db.baganator = false, false, false
+  LOADED = { Zed = true, Baganator = true }
+  ON.PLAYER_ENTERING_WORLD(); ON.PLAYER_ENTERING_WORLD(); RUN_TIMERS()
+  check("one dialog at a time", #DIALOGS, 1)
+  check("Baganator's first (tab order)", DIALOGS[1].text:find("Baganator categories") ~= nil, true)
+  check("says what it does", DIALOGS[1].text:find("Baganator is loaded on this character") ~= nil, true)
+  DIALOGS[1].no(); RUN_TIMERS()
+  check("then the next", #DIALOGS, 2)
+  check("Zed's text", DIALOGS[2].text:find("Shares Zed's lists.", 1, true) ~= nil and DIALOGS[2].text:find("Quality of life > Zed", 1, true) ~= nil, true)
+  DIALOGS[2].yes(); RUN_TIMERS()
+  check("switched on", db.zed, true); check("started", started, 1)
+  check("not loaded: not offered", #DIALOGS, 2)
+  check("no remembered", m.M.store.offered.baganator, "no")
+  check("yes remembered", m.M.store.offered.zed, "yes")
+  check("not asked again", #m.Offers(), 0)
+  INGROUP, LEADER = true, false
+  m.M.store.offered = nil; db.zed = false
+  check("not the leader: nothing", m.OfferAll(), 0)
+  LEADER = true; DIALOGS = {}
+  check("the leader: both again", m.OfferAll(), 2)
+  check("still one at a time", #DIALOGS, 1)
+  DIALOGS[1].no(); RUN_TIMERS(); DIALOGS[2].no(); RUN_TIMERS()
+  DIALOGS = {}
+  SlashCmdList.MMTQOL("offers"); RUN_TIMERS()
+  check("/mmtqol offers asks again", #DIALOGS, 1)
+  m.M.enabled = false; check("module off: nothing", m.OfferAll(true), 0); m.M.enabled = true
+  return table.concat(out, ", ")
+end""")(mod))
 print("PASS")
