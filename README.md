@@ -22,6 +22,7 @@ MODULES, with its own settings page.
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.4 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
+| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.0 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -513,6 +514,23 @@ dropdown; it switches right away, no `/reload`, and **None** gives MMT's own loo
 `/mmtstyle` · `/mmtstyle none | elvui | ellesmere | modern | classic` · `/mmtstyle frame` (what the style did to the window under the mouse)
 
 ---
+
+## Disenchant Loot
+
+What a green weapon or armour piece is worth when disenchanted, from [Auctionator](https://www.curseforge.com/wow/addons/auctionator)'s
+disenchant value: the materials it gives on average, at their last scanned auction prices. Scan the auction house now and then.
+
+- **Worth disenchanting**: the disenchant value is at least *x* % of the vendor price (100 % by default), and at
+  least a minimum in silver. Greens only, or greens and blues.
+- **Master loot** (Loot Distribution): such an item goes to your enchanter, a character or the first member of a
+  role (the *Enchanter* role by default) who can take it. Pawn Compare's upgrade pick comes first. Anything else,
+  or an item the enchanter can't take, goes by the usual rules (roles, round robin).
+- **The others are junk**, on every character: unbound items of those kinds that are not worth disenchanting (never
+  an upgrade Pawn sees). Baganator shows them as junk with the junk plugin **Dejunk + Disenchant Loot** (Dejunk's
+  junk plus these): pick it in Baganator's settings. They are sold when a merchant window opens.
+- A tooltip line shows both values and where the item goes.
+
+`/mmtde <item>` · off by default: switch it on in `/mmt` > MODULES.
 
 ## Development
 
