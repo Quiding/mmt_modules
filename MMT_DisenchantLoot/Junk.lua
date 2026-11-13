@@ -168,14 +168,14 @@ local function TipLine(tt)
     if tipShow == "NEVER" and matsShow == "NEVER" then return end
     local ok, _, link = pcall(tt.GetItem, tt)
     if not ok or type(link) ~= "string" then return end
-    local verdict, de, sell = mod.Verdict(link)
+    local verdict, de, sell, _, _, ah = mod.Verdict(link)
     local list = mod.Breakdown(link)
     if not verdict and not (list and #list > 0) then return end
     local value = verdict and mod.Showing(tipShow)
     local mats = list and #list > 0 and mod.Showing(matsShow)
     if value then
-        local where = verdict == "DE" and ("|cff66ccffto " .. mod.EnchanterText() .. "|r") or "|cff999999junk|r"
-        tt:AddLine(("Disenchant %s / vendor %s: %s"):format(mod.Money(de), mod.Money(sell), where), 1, 0.82, 0.5)
+        tt:AddLine(("Disenchant %s / vendor %s%s: %s"):format(mod.Money(de), mod.Money(sell),
+            ah and (" / auction " .. mod.Money(ah)) or "", mod.WhereText(verdict)), 1, 0.82, 0.5)
     end
     if mats then
         if not value then tt:AddLine("Disenchants into:", 1, 0.82, 0.5) end

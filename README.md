@@ -20,9 +20,9 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.3 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.6 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off *(new, not tested in game yet)* | 1.8.0 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
-| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.4 |
+| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold, unless the auction house pays more. Values from Auctionator *(new, not tested in game yet)* | 0.1.5 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -362,6 +362,15 @@ not copied): whispers your alts get show up on the character you play.
 ## Quality of life
 
 Small team conveniences, each on its own tab with its own checkbox and options (greyed out when its addon isn't loaded).
+Every one starts switched off: tick the ones you want (a profile made before 1.8.0 keeps what it had).
+
+- **Valuable loot to a role**: a green (or green and blue) item this character loots whose auction price is at
+  least *x* % of its vendor price (300 % by default; prices as "Loot by price" finds them) goes on a role you pick,
+  e.g. *Bank* on your bank character, so "Mail to team" mails it there. Left alone: Bind on Pickup, items a role
+  already wants, upgrades for someone on the team (Pawn Compare), and weapons / armour Disenchant Loot doesn't call
+  worth the auction house. With **Baganator category** on, a category *MMT Role Items* shows that role's items and
+  works both ways: put an item into it and it goes on the role, take it out and it comes off (and the same from the
+  role's side).
 
 - **Dejunk lists**: an item you put on (or take off) one of [Dejunk](https://www.curseforge.com/wow/addons/dejunk)'s
   junk / not junk lists goes on (or off) the same list on every team member - global lists, and optionally
@@ -522,6 +531,9 @@ the materials it gives on average (classic disenchant odds), at their last scann
 
 - **Worth disenchanting**: the disenchant value is at least *x* % of the vendor price (100 % by default), and at
   least a minimum in silver. Greens only, or greens and blues.
+- **Auction house**: the item's own auction price counts too. When it is at least 110 % (you choose) of the better of
+  disenchanting and the vendor, the item is worth more on the auction house: not to the enchanter, not junk.
+  Quality of life's "Valuable loot to a role" can put it on your bank character's role.
 - **Master loot** (Loot Distribution): such an item goes to your enchanter, a character or the first member of a
   role (the *Enchanter* role by default) who can take it. Pawn Compare's upgrade pick comes first. Anything else,
   or an item the enchanter can't take, goes by the usual rules (roles, round robin).
@@ -529,7 +541,7 @@ the materials it gives on average (classic disenchant odds), at their last scann
   an upgrade for nobody on the team (Pawn Compare: every member's Pawn scale and gear; also never what this
   character's own Pawn calls an upgrade). Baganator shows them as junk with the junk plugin **Dejunk + Disenchant Loot** (Dejunk's
   junk plus these): pick it in Baganator's settings. They are sold when a merchant window opens.
-- Tooltip: both values and where the item goes, and what it disenchants into: each material with its chance, count and
+- Tooltip: the disenchant, vendor and auction values and where the item goes, and what it disenchants into: each material with its chance, count and
   auction price. Each part always, never, or only while Shift, Ctrl or Alt is held (materials: Shift by default).
 - **Old prices**: when Auctionator's newest prices (your scans, or prices taken from the team by Quality of life) are
   older than 8 hours (you choose), a chat reminder on login and at most once an hour (group leader or solo only),

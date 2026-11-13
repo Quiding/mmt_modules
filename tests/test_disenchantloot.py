@@ -1,5 +1,6 @@
 """MMT_DisenchantLoot: worth disenchanting (Auctionator value vs vendor price), master loot to the
-enchanter (Loot Distribution's chooser hook), the others junk (Baganator plugin with Dejunk) and sold."""
+enchanter (Loot Distribution's chooser hook), the others junk (Baganator plugin with Dejunk) and sold.
+The item's own auction price: when it beats both, "AH" (neither enchanter nor junk)."""
 import os, sys
 from lupa.lua51 import LuaRuntime
 os.chdir(sys.argv[1])
@@ -203,6 +204,43 @@ print(lua.eval(r'''function(m)
   check("sold the junk", BAGS[0][1].sold, true)
   check("kept the rest", BAGS[0][3].sold, nil)
   check("sale line", PRINTED, "Disenchant Loot: sold 1 item for 500c.")
+  return table.concat(out, ", ")
+end''')(mod))
+
+# the auction house as the third choice
+print(lua.eval(r'''function(m)
+  local db, out = m.M.db, {}
+  local function check(name, got, want)
+    if got ~= want then error(("%s: got %s, want %s"):format(name, tostring(got), tostring(want))) end
+    out[#out + 1] = name
+  end
+  local function L(id) return "|cff1eff00|Hitem:" .. id .. "::|h[x]|h|r" end
+  ITEMAH = {}
+  Auctionator.API.v1.GetAuctionPriceByItemLink = function(caller, link) return ITEMAH[tonumber(link:match("item:(%d+)"))] end
+  check("no auction price: as before", (m.Verdict(L(1))), "DE")
+  ITEMAH[1] = 160; check("160 < 110% of 150: still disenchant", (m.Verdict(L(1))), "DE")
+  ITEMAH[1] = 170
+  local v, de, sell, _, _, ah = m.Verdict(L(1))
+  check("170 >= 165: auction house", v, "AH"); check("auction price returned", ah, 170)
+  check("not to the enchanter", m.Choose(L(1), { "Der-B" }, {}), nil)
+  ITEMAH[2] = 600; check("vendor 500 x 110% = 550 < 600: auction house", (m.Verdict(L(2))), "AH")
+  BAGS = { [0] = { { 2, false } } }
+  check("not junk", m.IsJunk(0, 1), false)
+  ITEMAH[2] = 540; check("540 < 550: junk again", (m.Verdict(L(2))), "JUNK")
+  db.ahPct = 100; check("pct 100: 540 >= 500", (m.Verdict(L(2))), "AH"); db.ahPct = 110
+  db.ahOn = false; check("off", (m.Verdict(L(1))), "DE"); db.ahOn = true
+  MMT_MODULES.QoL = { enabled = true, AuctionPrice = function() return 10 end }
+  check("Quality of life's price wins", (m.Verdict(L(1))), "DE")
+  MMT_MODULES.QoL.AuctionPrice = function() return 9999 end
+  check("... and counts", (m.Verdict(L(1))), "AH")
+  check("other modules see it", (m.M.Verdict(L(1))), "AH")
+  MMT_MODULES.QoL = nil
+  LINES = {}
+  local tt = { GetItem = function() return "x", L(1) end,
+    AddLine = function(_, t) LINES[#LINES + 1] = t end, AddDoubleLine = function(_, l, r) LINES[#LINES + 1] = l .. " | " .. r end }
+  db.tipShow = "ALWAYS"
+  m.TipLine(tt)
+  check("tooltip: all three", LINES[1], "Disenchant 150c / vendor 100c / auction 170c: |cff66ff66auction house|r")
   return table.concat(out, ", ")
 end''')(mod))
 print("PASS")

@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.7.6"
+mod.VERSION = "1.8.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -27,8 +27,10 @@ local M = MMT.NewModule({
     description = "Small team conveniences: Dejunk's junk lists and Baganator's category items stay the same on every character; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff's alerts called out to the team; RestedXP Guides waits for the party before its next step and shows the team's objective counts.",
     sync = true,
     defaults = {
+        -- every feature (the keys named like the feature: dejunk, baganator, ...) starts off;
+        -- its own options below keep their defaults for when it's switched on
         -- Dejunk
-        dejunk = true,             -- sync the lists
+        dejunk = false,             -- sync the lists
         djAdd = true,              -- send / take items added to a list
         djRemove = true,           -- send / take items removed from a list
         djProfile = true,          -- the profile lists too (else only the global ones)
@@ -36,7 +38,7 @@ local M = MMT.NewModule({
         djAsk = false,             -- ask before applying what the team sends
         djChat = true,             -- a chat line for each change taken
         -- Baganator
-        baganator = true,
+        baganator = false,
         bgAdd = true,
         bgRemove = true,
         bgScope = "ALL",           -- ALL categories | JUNK (only Baganator's Junk category)
@@ -57,36 +59,42 @@ local M = MMT.NewModule({
         lpRoles = true,            -- items a role of the team wants are always looted
         lpStack = false,           -- stackable items: a full stack's worth against the amount
         -- Role items beside the bags (MailList.lua; keys still say "ml": it began as the mail list)
-        mlist = true,
+        mlist = false,
         mlDock = true,             -- show it with the bags
         mlOpen = false,            -- the panel open (else only its button); kept for the next time the bags open
         mlSync = true,             -- send what is added / taken off to the team, take theirs
         mlChat = true,             -- a chat line for the team's changes
         -- Auctionator prices (AuctionatorShare.lua)
-        ahshare = true,
+        ahshare = false,
         ahAuto = true,             -- send today's prices after a full scan
         ahTake = true,             -- take the team's prices (unless our own scan is newer)
         ahChat = true,             -- chat lines for what is sent / taken
         ahFojji = true,            -- and put what is taken into FojjiCore's price list too
+        rvOn = false,              -- valuable loot onto a role (RoleLoot.lua)
+        rvRole = "",               -- ... that role (e.g. "Bank"; "" = none chosen yet)
+        rvQuality = "GREEN",       -- GREEN | GREEN_BLUE
+        rvPct = 300,               -- auction price at least this % of the vendor price
+        rvBag = true,              -- Baganator category "MMT Role Items" <-> the role's items
+        rvChat = true,
         -- FojjiCore's auction scan (FojjiShare.lua)
-        fjshare = true,
+        fjshare = false,
         fjAuto = true,             -- send the scan's prices when it is done
         fjTake = true,             -- take the team's (where ours are older)
         fjAuctionator = true,      -- and put what is taken into Auctionator too
         fjChat = true,
         mlRole = nil,              -- the role shown (nil / gone: the first)
         -- ForeverAuras
-        auras = true,              -- send / take auras
+        auras = false,              -- send / take auras
         waAsk = true,              -- a dialog before ForeverAuras' import window
         waFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
         waDock = true,             -- "Send to team" button above ForeverAuras' options
         -- EllesmereUI
-        eui = true,                -- send / take profiles
+        eui = false,                -- send / take profiles
         euAsk = true,              -- a dialog before EllesmereUI's import page (a full account: always)
         euFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
         euDock = true,             -- "Send to team" button above EllesmereUI's options
         -- SmartBuff alerts
-        smartbuff = true,
+        smartbuff = false,
         sbSend = true,             -- send what SmartBuff reports here
         ppSend = true,             -- a paladin: send the blessings PallyPower says are missing
         sbExpire = true,           -- "runs out" / low charges too (else only missing buffs)
@@ -102,7 +110,7 @@ local M = MMT.NewModule({
         rxChat = true,             -- chat line: who we wait for, and when everyone is done
         rxTimeout = 0,             -- go on anyway after (minutes, 0 = never)
         -- profile with other names (NameSwap.lua)
-        nx = true,                 -- the window (/mmtqol names)
+        nx = false,                 -- the window (/mmtqol names)
         nxSwitch = true,           -- "Make a profile" switches this character to it
         nxSkip = {},               -- parts left out: core | roleitems | m:<module name> = true
         nxKeepMine = true,         -- "Make a profile": left-out parts from the current profile

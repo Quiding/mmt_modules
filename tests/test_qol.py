@@ -34,6 +34,7 @@ function MMT.NewModule(def)
   local M = def
   M.enabled = true
   M.db = copy(def.defaults)
+  for _, k in ipairs({ "dejunk", "baganator", "mlist", "ahshare", "fjshare", "auras", "eui", "smartbuff", "nx" }) do M.db[k] = true end  -- the features under test: switched on (they start off)
   M.store = {}
   function M:On(ev, fn) local old = EVENTS[ev]; EVENTS[ev] = old and function(...) old(...); fn(...) end or fn end
   function M:Listen(ev, fn) LISTEN[ev] = fn end
@@ -398,7 +399,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 15, "report lines " .. n)   -- one per feature (names, loot by price too) + the module line + role items sync + Auctionator status + PallyPower
+  assert(n == 16, "report lines " .. n)   -- one per feature (names, loot by price, valuable loot too) + the module line + role items sync + Auctionator status + PallyPower
   return "Anna: whole setup asked, imported, report ok"
 end''')
 

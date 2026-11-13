@@ -61,6 +61,9 @@ local function FeatureColumn(page, f, x, status)
                 return Gate(b)
             end
             function ui.Note(text) return col:Note(text) end
+            function ui.Slider(text, min, max, step, key, fmt)
+                return Gate(col:Slider(text, min, max, step, function() return M.db[key] end, Set(key), fmt))
+            end
             f.Page(ui)
         end },
     })

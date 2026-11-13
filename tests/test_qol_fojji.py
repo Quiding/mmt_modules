@@ -61,6 +61,7 @@ function MMT.NewModule(def)
   local M = def
   M.enabled = true
   M.db = {} for k, v in pairs(def.defaults) do M.db[k] = v end
+  for _, k in ipairs({ "dejunk", "baganator", "mlist", "ahshare", "fjshare", "auras", "eui", "smartbuff", "nx" }) do M.db[k] = true end  -- the features under test: switched on (they start off)
   M.store = {}
   function M:On() end
   function M:Listen(ev, fn) LISTEN[ev] = LISTEN[ev] or {}; table.insert(LISTEN[ev], fn) end

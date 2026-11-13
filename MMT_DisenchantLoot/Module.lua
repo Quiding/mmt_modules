@@ -7,6 +7,11 @@
 -- It is "worth disenchanting" when disenchant >= vendor x M.db.pct % and
 -- disenchant >= M.db.minSilver silver. Without a disenchant value (no
 -- Auctionator, materials never scanned) the item is left alone everywhere.
+--   auction     = the item's own auction price (Quality of life's "Loot by price"
+--                 sources and max age when that module is on, else Auctionator's).
+-- When that is at least M.db.ahPct % of the better of the two (ahOn), the item
+-- is worth more on the auction house: "AH" - not to the enchanter, not junk
+-- (Quality of life's "Valuable loot to a role" can put it on the bank's role).
 --
 --   Module.lua   the value check and the master loot part: Loot Distribution's
 --                MMT.RegisterLootChooser hook gives items worth disenchanting
@@ -23,7 +28,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.4"
+mod.VERSION = "0.1.5"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
@@ -43,6 +48,8 @@ local M = MMT.NewModule({
         money     = "SHORT",           -- SHORT (1g 13s 22c) | COINS (coin icons) | MMT (MMT's money format)
         staleOn   = true,              -- remind when Auctionator's prices are old (chat + tooltip)
         staleHours = 8,
+        ahOn      = true,              -- the item's own auction price counts too: sell it there when that's best
+        ahPct     = 110,               -- ... when it is at least this % of disenchant / vendor (the auction house takes 5%)
     },
 })
 mod.M = M
@@ -60,8 +67,24 @@ local function QualityCounts(quality)
     return quality == 3 and M.db.quality == "GREEN_BLUE"
 end
 
--- "DE" (worth disenchanting) | "JUNK" (not) | nil (doesn't count / no value),
--- the disenchant value, the vendor price (copper); with nil: why, materials without a price
+-- the item's own auction price (copper) or nil: Quality of life's (its sources, order and
+-- max age) when that module is on, else Auctionator's
+function mod.AuctionValue(link)
+    local q = MMT.modules and MMT.modules.QoL
+    if q and q.enabled and type(q.AuctionPrice) == "function" then
+        local ok, p = pcall(q.AuctionPrice, link)
+        if ok then return type(p) == "number" and p > 0 and p or nil end
+    end
+    local A = rawget(_G, "Auctionator")
+    local api = A and A.API and A.API.v1
+    if not (api and api.GetAuctionPriceByItemLink) then return nil end
+    local ok, p = pcall(api.GetAuctionPriceByItemLink, "MMT Disenchant Loot", link)
+    if ok and type(p) == "number" and p > 0 then return p end
+end
+
+-- "DE" (worth disenchanting) | "JUNK" (not) | "AH" (worth more on the auction house) |
+-- nil (doesn't count / no value), the disenchant value, the vendor price (copper);
+-- with nil: why, materials without a price; last the auction price (or nil)
 function mod.Verdict(link)
     if not link then return nil end
     local _, _, quality, level, _, _, _, _, _, _, sell, classID = Info(link)
@@ -72,9 +95,13 @@ function mod.Verdict(link)
     local de, why, missing = mod.DisenchantValue(link, classID, quality, level)
     if not de then return nil, nil, sell, why, missing end
     sell = sell or 0
+    local ah = M.db.ahOn and mod.AuctionValue(link) or nil
+    if ah and ah * 100 >= math.max(de, sell) * (M.db.ahPct or 110) then return "AH", de, sell, nil, nil, ah end
     local worth = de >= sell * (M.db.pct or 100) / 100 and de >= (M.db.minSilver or 0) * 100
-    return worth and "DE" or "JUNK", de, sell
+    return worth and "DE" or "JUNK", de, sell, nil, nil, ah
 end
+-- for other modules (Quality of life's "Valuable loot to a role")
+M.Verdict = function(link) return mod.Verdict(link) end
 
 function mod.Money(copper)
     copper = math.floor(copper or 0)
@@ -87,6 +114,15 @@ function mod.Money(copper)
     if s > 0 or (g > 0 and c > 0) then parts[#parts + 1] = ("%d|cffc7c7cfs|r"):format(s) end
     if c > 0 or #parts == 0 then parts[#parts + 1] = ("%d|cffeda55fc|r"):format(c) end
     return table.concat(parts, " ")
+end
+
+-- where the item goes, for texts: "to Enchanter role (...)" / "junk" / "auction house"
+function mod.WhereText(verdict, plain)
+    local t, c
+    if verdict == "DE" then t, c = "to " .. mod.EnchanterText(), "66ccff"
+    elseif verdict == "AH" then t, c = "auction house", "66ff66"
+    else t, c = "junk", "999999" end
+    return plain and t or ("|cff%s%s|r"):format(c, t)
 end
 
 ---------------------------------------------------------------------------
@@ -169,7 +205,7 @@ SlashCmdList.MMTDISENCHANT = function(msg)
         MMT.ToggleConfig("DisenchantLoot")
         return
     end
-    local verdict, de, sell, why, missing = mod.Verdict(link)
+    local verdict, de, sell, why, missing, ah = mod.Verdict(link)
     if not verdict then
         local names = {}
         for _, id in ipairs(missing or {}) do names[#names + 1] = (Info(id)) or ("item " .. id) end
@@ -177,8 +213,8 @@ SlashCmdList.MMTDISENCHANT = function(msg)
             #names > 0 and (": " .. table.concat(names, ", ") .. " (scan the auction house)") or "")
         return
     end
-    MMT.Print("Disenchant Loot: %s - disenchant %s, vendor %s: %s.", link, mod.Money(de), mod.Money(sell),
-        verdict == "DE" and ("to " .. mod.EnchanterText()) or "junk")
+    MMT.Print("Disenchant Loot: %s - disenchant %s, vendor %s%s: %s.", link, mod.Money(de), mod.Money(sell),
+        ah and (", auction " .. mod.Money(ah)) or "", mod.WhereText(verdict, true))
     for _, e in ipairs(mod.Breakdown(link) or {}) do
         MMT.Print("  %.1f%%  %s %s  (%s each)", e.chance, e.min == e.max and e.min or (e.min .. "-" .. e.max),
             mod.MatName(e.id), e.price and mod.Money(e.price) or "no price")

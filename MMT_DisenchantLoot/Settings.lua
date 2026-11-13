@@ -91,7 +91,11 @@ M.Page = function(_, page)
     L:Slider("Disenchant value at least (% of vendor)", 0, 500, 10, gp, sp)
     local gm, sm = Opt("minSilver")
     L:Slider("... and at least (silver)", 0, 500, 5, gm, sm)
-    L:Note("Weapons and armour only. Disenchant value = the materials it gives on average at their last auction prices (Auctionator). An item without a value (materials never scanned) is left alone.")
+    Check(L, "Sell it on the auction house when that pays more", "ahOn",
+        "The item's own auction price (Quality of life's \"Loot by price\" sources when that module is on, else Auctionator's) counts too: when it beats both disenchanting and the vendor by the % below, the item is neither given to the enchanter nor junk. Quality of life's \"Valuable loot to a role\" can then put it on your bank character's role.")
+    local ga, sa = Opt("ahPct")
+    L:Slider("... auction price at least (% of the better one)", 100, 300, 5, ga, sa)
+    L:Note("Weapons and armour only. Disenchant value = its average materials at Auctionator prices; no value: left alone.")
 
     -- Master loot ----------------------------------------------------------------------------------------
     local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Master Loot", "Interface\\Icons\\INV_Misc_Coin_02")
@@ -134,10 +138,10 @@ end
 
 M.Report = function(_, add)
     local d = M.db
-    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s/%s money=%s stale=%s/%sh auctionator=%s plugin=%s"):format(
+    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s/%s money=%s stale=%s/%sh ah=%s/%s%% auctionator=%s plugin=%s"):format(
         mod.VERSION, tostring(d.lootOn), tostring(mod.LootActive()), tostring(d.to), tostring(d.quality), tostring(d.pct),
         tostring(d.minSilver), tostring(d.junkOn), tostring(d.sellOn), tostring(d.tipShow), tostring(d.matsShow), tostring(d.money),
-        tostring(d.staleOn), tostring(d.staleHours), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
+        tostring(d.staleOn), tostring(d.staleHours), tostring(d.ahOn), tostring(d.ahPct), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
     add("enchanter: " .. mod.EnchanterText())
     add(mod.AgeText() .. (" (price time %s)"):format(mod.PriceTime() and date("%Y-%m-%d %H:%M", mod.PriceTime()) or "-"))
     local s = mod.lastSale

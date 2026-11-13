@@ -98,6 +98,9 @@ function mod.AuctionPrice(link)
 end
 SOURCES.NEWEST = SOURCES.AUCTIONATOR
 
+-- for other modules (Disenchant Loot): the same price
+M.AuctionPrice = function(link) return mod.AuctionPrice(link) end
+
 local function VendorPrice(link)
     local GetInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
     local ok, _, _, _, _, _, _, _, _, _, _, price = pcall(GetInfo, link)
