@@ -17,7 +17,7 @@ ITEMS = {
 }
 local function Item(link) return ITEMS[tonumber(tostring(link):match("item:(%d+)"))] end
 function GetItemInfo(link)
-  if type(link) == "number" then return "Mat" .. link end
+  if type(link) == "number" then return nil end
   local i = Item(link); if i then return "x", link, i[1], i[4], 1, "", "", 1, "", 1, i[2], i[3] end
 end
 PRICES = { [10940] = 100, [10938] = 100, [10978] = 900, [11082] = 300, [11084] = 1000 }
@@ -122,6 +122,24 @@ print(lua.eval(r'''function(m)
   check("plugin: ours", p(0, 1), true)
   check("plugin: neither", p(0, 3), false)
   DJ["0:3"] = true; check("plugin: Dejunk's", p(0, 3), true); DJ["0:3"] = nil
+
+  -- what it disenchants into
+  local list = m.Breakdown(L(1))
+  check("breakdown entries", #list, 2)
+  check("dust chance", list[1].chance, 80)
+  check("dust counts", list[1].min .. "-" .. list[1].max, "1-2")
+  check("dust price", list[1].price, 100)
+  check("essence chance", list[2].chance, 20)
+  LINES = {}
+  local tt = { GetItem = function() return "x", L(5) end,
+    AddLine = function(_, t) LINES[#LINES + 1] = t end, AddDoubleLine = function(_, l, r) LINES[#LINES + 1] = l .. " | " .. r end }
+  m.TipLine(tt)
+  check("tooltip: header without a value", LINES[1], "Disenchants into:")
+  check("tooltip: soul dust, no price", LINES[2], "  75%  1-2 Soul Dust | |cff888888no price|r")
+  LINES = {}; tt.GetItem = function() return "x", L(1) end; m.TipLine(tt)
+  check("tooltip: value line first", LINES[1]:match("^Disenchant 150c / vendor 100c") ~= nil, true)
+  check("tooltip: materials", LINES[2], "  80%  1-2 Strange Dust | 100c")
+  m.M.db.tipMats = false; LINES = {}; m.TipLine(tt); check("materials off", #LINES, 1); m.M.db.tipMats = true
 
   -- sold at a vendor, only ours
   EVENTS.MERCHANT_SHOW()

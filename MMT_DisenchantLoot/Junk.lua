@@ -133,13 +133,33 @@ M:On("MERCHANT_CLOSED", function() merchantOpen = false end)
 -- Tooltip
 ---------------------------------------------------------------------------
 local function TipLine(tt)
-    if not (M.enabled and M.db.tipOn) or not tt or not tt.GetItem then return end
+    if not (M.enabled and (M.db.tipOn or M.db.tipMats)) or not tt or not tt.GetItem then return end
     local ok, _, link = pcall(tt.GetItem, tt)
     if not ok or type(link) ~= "string" then return end
     local verdict, de, sell = mod.Verdict(link)
-    if not verdict then return end
-    local where = verdict == "DE" and ("|cff66ccffto " .. mod.EnchanterText() .. "|r") or "|cff999999junk|r"
-    tt:AddLine(("Disenchant %s / vendor %s: %s"):format(mod.Money(de), mod.Money(sell), where), 1, 0.82, 0.5)
+    local shown = verdict and M.db.tipOn
+    if shown then
+        local where = verdict == "DE" and ("|cff66ccffto " .. mod.EnchanterText() .. "|r") or "|cff999999junk|r"
+        tt:AddLine(("Disenchant %s / vendor %s: %s"):format(mod.Money(de), mod.Money(sell), where), 1, 0.82, 0.5)
+    end
+    if M.db.tipMats then mod.TipMaterials(tt, link, not shown) end
+end
+
+local function Pct(n)
+    local s = ("%.1f"):format(n):gsub("%.0$", "")
+    return s .. "%"
+end
+
+-- one line per material: "  80%  1-2 Strange Dust        12s"
+function mod.TipMaterials(tt, link, withHeader)
+    local list = mod.Breakdown(link)
+    if not list or #list == 0 then return end
+    if withHeader then tt:AddLine("Disenchants into:", 1, 0.82, 0.5) end
+    for _, e in ipairs(list) do
+        local count = e.min == e.max and tostring(e.min) or (e.min .. "-" .. e.max)
+        tt:AddDoubleLine(("  %s  %s %s"):format(Pct(e.chance), count, mod.MatName(e.id)),
+            e.price and mod.Money(e.price) or "|cff888888no price|r", 0.85, 0.85, 0.85, 0.85, 0.85, 0.85)
+    end
 end
 mod.TipLine = TipLine
 

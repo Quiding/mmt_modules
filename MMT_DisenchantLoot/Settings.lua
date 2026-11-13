@@ -101,6 +101,7 @@ M.Page = function(_, page)
         "On every character: unbound items of the kinds above that are NOT worth disenchanting are junk - unless Pawn sees an upgrade. Baganator shows them as junk with the junk plugin \"Dejunk + Disenchant Loot\" (Dejunk's junk plus these): choose it in Baganator's settings.")
     Check(J, "Sell them at a vendor", "sellOn", "When a merchant window opens, these junk items are sold (Dejunk sells its own junk as before).")
     Check(J, "Tooltip line", "tipOn", "Item tooltips show the disenchant value, the vendor price and where the item goes.")
+    Check(J, "Tooltip: what it disenchants into", "tipMats", "One line per material: the chance, how many and the auction price of one (classic disenchant odds). Shown for every green or blue weapon and armour piece.")
     FitRow({ { jt, J } })
 
     page.OnRefresh = function() status.Show_(StatusText()) end

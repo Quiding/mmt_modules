@@ -23,7 +23,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.1"
+mod.VERSION = "0.1.2"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
@@ -39,6 +39,7 @@ local M = MMT.NewModule({
         junkOn    = true,              -- the others are junk (Baganator plugin)
         sellOn    = true,              -- ... and sold at a vendor
         tipOn     = true,              -- tooltip line with both values
+        tipMats   = true,              -- ... and what it disenchants into (chance, count, price)
     },
 })
 mod.M = M
@@ -167,4 +168,8 @@ SlashCmdList.MMTDISENCHANT = function(msg)
     end
     MMT.Print("Disenchant Loot: %s - disenchant %s, vendor %s: %s.", link, mod.Money(de), mod.Money(sell),
         verdict == "DE" and ("to " .. mod.EnchanterText()) or "junk")
+    for _, e in ipairs(mod.Breakdown(link) or {}) do
+        MMT.Print("  %.1f%%  %s %s  (%s each)", e.chance, e.min == e.max and e.min or (e.min .. "-" .. e.max),
+            mod.MatName(e.id), e.price and mod.Money(e.price) or "no price")
+    end
 end

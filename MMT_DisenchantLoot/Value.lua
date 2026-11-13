@@ -100,17 +100,22 @@ local function ItemLevel(link, fallback)
     return fallback
 end
 
--- value in copper, or nil, why, { itemIDs without a price }
-function mod.DisenchantValue(link, classID, quality, baseLevel)
+-- the table row for the item: row, item level | nil, why
+local function Row(link, classID, quality, baseLevel)
     local rows = Rows(classID, quality)
     if not rows then return nil, "can't be disenchanted" end
     local lvl = ItemLevel(link, baseLevel)
     if not lvl then return nil, "item level unknown" end
-    local row
     for _, r in ipairs(rows) do
-        if lvl >= r[1] and lvl <= r[2] then row = r break end
+        if lvl >= r[1] and lvl <= r[2] then return r, lvl end
     end
-    if not row then return nil, ("no disenchant data for item level %d"):format(lvl) end
+    return nil, ("no disenchant data for item level %d"):format(lvl)
+end
+
+-- value in copper, or nil, why, { itemIDs without a price }
+function mod.DisenchantValue(link, classID, quality, baseLevel)
+    local row, lvl = Row(link, classID, quality, baseLevel)
+    if not row then return nil, lvl end
     local value, missing, seen = 0, {}, {}
     for x = 3, #row, 3 do
         local chance, count, id = row[x], row[x + 1], row[x + 2]
@@ -126,4 +131,46 @@ function mod.DisenchantValue(link, classID, quality, baseLevel)
     end
     if #missing > 0 then return nil, "no auction price for its materials", missing end
     return math.floor(value), nil, nil, lvl
+end
+
+-- what the item disenchants into, one entry per material (table order):
+-- { id, chance (%), min, max (count), price (copper per piece, nil = no price) }; nil, why
+function mod.Breakdown(link)
+    local getInfo = (MMT and MMT.ItemInfo) or GetItemInfo
+    local _, _, quality, level, _, _, _, _, _, _, _, classID = getInfo(link)
+    if not quality then return nil, "item not loaded" end
+    local row, why = Row(link, classID, quality, level)
+    if not row then return nil, why end
+    local list, byID = {}, {}
+    for x = 3, #row, 3 do
+        local chance, count, id = row[x], row[x + 1], row[x + 2]
+        if chance > 0 then
+            local e = byID[id]
+            if not e then
+                e = { id = id, chance = 0, min = count, max = count, price = MatPrice(id) }
+                byID[id] = e
+                list[#list + 1] = e
+            end
+            e.chance = e.chance + chance
+            e.min, e.max = math.min(e.min, count), math.max(e.max, count)
+        end
+    end
+    return list
+end
+
+-- material names for items the client hasn't loaded yet
+local NAMES = {
+    [10940] = "Strange Dust", [11083] = "Soul Dust", [11137] = "Vision Dust", [11176] = "Dream Dust", [16204] = "Illusion Dust",
+    [10938] = "Lesser Magic Essence", [10939] = "Greater Magic Essence", [10998] = "Lesser Astral Essence",
+    [11082] = "Greater Astral Essence", [11134] = "Lesser Mystic Essence", [11135] = "Greater Mystic Essence",
+    [11174] = "Lesser Nether Essence", [11175] = "Greater Nether Essence", [16202] = "Lesser Eternal Essence",
+    [16203] = "Greater Eternal Essence", [10978] = "Small Glimmering Shard", [11084] = "Large Glimmering Shard",
+    [11138] = "Small Glowing Shard", [11139] = "Large Glowing Shard", [11177] = "Small Radiant Shard",
+    [11178] = "Large Radiant Shard", [14343] = "Small Brilliant Shard", [14344] = "Large Brilliant Shard",
+    [20725] = "Nexus Crystal",
+}
+function mod.MatName(id)
+    local getInfo = (MMT and MMT.ItemInfo) or GetItemInfo
+    local name = getInfo(id)
+    return name or NAMES[id] or ("item " .. id)
 end

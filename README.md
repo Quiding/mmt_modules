@@ -22,7 +22,7 @@ MODULES, with its own settings page.
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
 | [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names *(new, not tested in game yet)* | 1.7.4 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
-| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.1 |
+| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold. Values from Auctionator *(new, not tested in game yet)* | 0.1.2 |
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your
@@ -528,7 +528,7 @@ the materials it gives on average (classic disenchant odds), at their last scann
 - **The others are junk**, on every character: unbound items of those kinds that are not worth disenchanting (never
   an upgrade Pawn sees). Baganator shows them as junk with the junk plugin **Dejunk + Disenchant Loot** (Dejunk's
   junk plus these): pick it in Baganator's settings. They are sold when a merchant window opens.
-- A tooltip line shows both values and where the item goes.
+- Tooltip: both values and where the item goes, and what it disenchants into: each material with its chance, count and auction price.
 
 `/mmtde <item>` · off by default: switch it on in `/mmt` > MODULES.
 
