@@ -169,6 +169,16 @@ print(lua.eval(r'''function(m)
   db.tipShow = "CTRL"; LINES = {}; m.TipLine(tt); check("value only with Ctrl", LINES[1], "Disenchants into:")
   db.tipShow, db.matsShow = "NEVER", "NEVER"; LINES = {}; m.TipLine(tt); check("never", #LINES, 0)
   db.tipShow, db.matsShow = "ALWAYS", "SHIFT"
+  -- Shift redraws the hover tooltip and a clicked chat link's tooltip
+  local set, refreshed
+  ItemRefTooltip = { IsShown = function() return true end, GetItem = function() return "x", L(1) end,
+    SetHyperlink = function(_, l) set = l end }
+  GameTooltip = { IsShown = function() return true end, GetItem = function() return "x", L(2) end,
+    RefreshData = function() refreshed = true end }
+  EVENTS.MODIFIER_STATE_CHANGED()
+  check("chat link tooltip set again", set, L(1))
+  check("hover tooltip refreshed", refreshed, true)
+  ItemRefTooltip, GameTooltip = nil, nil
 
   -- old prices
   check("fresh: not stale", m.Stale(), false)

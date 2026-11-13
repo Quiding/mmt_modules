@@ -203,11 +203,25 @@ elseif GameTooltip and GameTooltip.HookScript then
 end
 
 -- pressing or letting go of the modifier key redraws the item tooltip
+-- (the hover tooltip and the one a clicked chat link opens: that one is set
+-- again from its link, the hover one refreshes its own data)
+local function Redraw(tt, fromLink)
+    if not (tt and tt:IsShown() and tt.GetItem) then return false end
+    local ok, _, link = pcall(tt.GetItem, tt)
+    if not (ok and type(link) == "string") then return false end
+    if fromLink and tt.SetHyperlink then
+        pcall(tt.SetHyperlink, tt, link)
+    elseif tt.RefreshData then
+        pcall(tt.RefreshData, tt)
+    else
+        return false
+    end
+    return true
+end
+mod.Redraw = Redraw
+
 M:On("MODIFIER_STATE_CHANGED", function()
     if not (KEYS[M.db.tipShow] or KEYS[M.db.matsShow]) then return end
-    local tt = GameTooltip
-    if tt and tt:IsShown() and tt.RefreshData and tt.GetItem then
-        local ok, _, link = pcall(tt.GetItem, tt)
-        if ok and link then pcall(tt.RefreshData, tt) end
-    end
+    Redraw(GameTooltip)
+    Redraw(rawget(_G, "ItemRefTooltip"), true)
 end)
