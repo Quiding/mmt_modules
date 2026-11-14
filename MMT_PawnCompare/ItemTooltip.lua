@@ -61,7 +61,7 @@ local function AddTeam(tip, link)
                 if i > 1 and not cfg.allScales then break end
                 local left = ClassName(key)
                 if cfg.allScales and #rec.scales > 1 then left = left .. " |cff888888" .. scale.name .. "|r" end
-                local gain, old = Gain(key, loc, newStats, scale)
+                local gain, old, empty, hands = Gain(key, loc, newStats, scale)
                 local right, r, g, b
                 if gain == "unusable" then
                     right, r, g, b = "can't use", 0.5, 0.5, 0.5
@@ -69,7 +69,11 @@ local function AddTeam(tip, link)
                     right, r, g, b = "...", 0.5, 0.5, 0.5
                 else
                     right = ("%s%.1f"):format(gain >= 0 and "+" or "", gain)
-                    if old == 0 then right = right .. " (empty slot)"
+                    if hands then
+                        -- a weapon in each hand: the gain over the main hand and over the off hand
+                        right = ("MH %+.1f / OH %+.1f"):format(hands.mh, hands.oh)
+                    elseif empty then right = right .. " (empty slot)"
+                    elseif old == 0 then right = right .. " (no value now)"
                     elseif cfg.showPercent then right = right .. (" (%+d%%)"):format(math.floor(gain / old * 100 + 0.5)) end
                     if gain > 0.05 then r, g, b = 0.3, 1, 0.3
                     elseif gain < -0.05 then r, g, b = 1, 0.35, 0.35

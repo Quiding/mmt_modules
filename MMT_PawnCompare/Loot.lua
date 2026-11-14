@@ -54,11 +54,11 @@ function mod.LootUpgrade(key, link, loc, stats, minLevel)
     local scale = mod.LootScale(key)
     if not scale then return nil, "no Pawn scale" end
     if not mod.HasEquipment(key) then return nil, "equipment unknown" end
-    local gain, old = mod.Gain(key, loc, stats, scale)
+    local gain, old, empty = mod.Gain(key, loc, stats, scale)
     if gain == "unusable" then return nil, "scale can't use it" end
     if gain == "loading" then return nil, "equipped item not loaded" end
     local pct = old > 0 and gain / old * 100 or nil
-    return { key = key, scale = scale, gain = gain, old = old, pct = pct }
+    return { key = key, scale = scale, gain = gain, old = old, pct = pct, empty = empty }
 end
 
 -- an upgrade that counts: above the minimum percentage, or an empty slot the item fills
@@ -105,7 +105,10 @@ function mod.LootRanking(link, keys)
 end
 
 function mod.UpgradeText(u)
-    if not u.pct then return ("empty slot, %s %.1f"):format(u.scale.name, u.gain) end
+    if not u.pct then
+        if u.empty then return ("empty slot, %s %.1f"):format(u.scale.name, u.gain) end
+        return ("%s %+.1f over an item of no value"):format(u.scale.name, u.gain)
+    end
     return ("%+.0f%% %s"):format(u.pct, u.scale.name)
 end
 

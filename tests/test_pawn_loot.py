@@ -18,6 +18,10 @@ ITEMS = {
   [121] = { "INVTYPE_FINGER", 4, 0, 1, { Intellect = 3 } },
   [122] = { "INVTYPE_FINGER", 4, 0, 1, { Intellect = 4 } },
   [130] = { "INVTYPE_CHEST", 4, 1, 1, { Spirit = 10 } },         -- nobody values Spirit
+  [140] = { "INVTYPE_WEAPON", 2, 7, 1, { Strength = 10 } },     -- one-hand swords
+  [141] = { "INVTYPE_WEAPON", 2, 7, 1, { Strength = 4 } },
+  [142] = { "INVTYPE_WEAPONMAINHAND", 2, 0, 1, { Strength = 6 } },
+  [143] = { "INVTYPE_WEAPON", 2, 7, 1, { Dps = 30 } },         -- only damage
   [200] = { nil, 7, 0, 1, { } },                                  -- trade good
 }
 local function Item(link) return ITEMS[tonumber(tostring(link):match("item:(%d+)"))] end
@@ -166,5 +170,25 @@ print(lua.eval(r'''function(m)
   check("no Pawn: not active", c.active(), false)
   m.RegisterLoot()
   check("RegisterLoot again does nothing", #CHOOSERS, 1)
+  -- a one-hander for a member with a weapon in each hand: the gain over each hand
+  reset()
+  wear("Warr-B", { [16] = 142, [17] = 141 })   -- main hand Str 6, off hand Str 4
+  local arms = SCALES["Warr-B"].scales[1]
+  local gain, old, empty, hands = m.Gain("Warr-B", "INVTYPE_WEAPON", ITEMS[140][5], arms)
+  check("one-hander: weaker hand", gain, 6)
+  check("one-hander: not empty", empty, false)
+  check("main hand gain", hands and hands.mh, 4)
+  check("off hand gain", hands and hands.oh, 6)
+  wear("Warr-B", { [16] = 142 })               -- nothing in the off hand
+  gain, old, empty, hands = m.Gain("Warr-B", "INVTYPE_WEAPON", ITEMS[140][5], arms)
+  check("one weapon: no hands split", hands, nil)
+  -- weapons the scale gives nothing for are not an empty slot
+  wear("Mage-A", { [16] = 143, [17] = 143 })
+  gain, old, empty = m.Gain("Mage-A", "INVTYPE_WEAPON", ITEMS[143][5], SCALES["Mage-A"].scales[1])
+  check("worthless weapon: old 0", old, 0)
+  check("worthless weapon: not empty", empty, false)
+  wear("Mage-A", {})
+  gain, old, empty = m.Gain("Mage-A", "INVTYPE_WEAPON", ITEMS[140][5], SCALES["Mage-A"].scales[1])
+  check("no weapon: empty", empty, true)
   return ("pawn loot: %d checks ok"):format(#out)
 end''')(mod))

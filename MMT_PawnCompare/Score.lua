@@ -134,28 +134,38 @@ local function SlotValue(key, slot, scale)
     return (mod.Value(stats, scale)), link
 end
 
--- returns gain, old value ("loading" while items are missing, "unusable").
+-- returns gain, old value, empty, hands ("loading" while items are missing, "unusable").
 -- Rings and trinkets compare against the weaker of the two, one-hand weapons
 -- against the main hand (or the off hand if a weapon is there), two-handers
--- against main + off hand together.
+-- against main + off hand together. empty: nothing is worn there (an old value of 0
+-- can also be an item the scale gives nothing for). hands: a one-hander for a member
+-- with a weapon in both hands - { mh = gain, oh = gain }, the gain over each hand.
 function mod.Gain(key, loc, newStats, scale)
     local new, unusable = mod.Value(newStats, scale)
     if unusable then return "unusable" end
     local slots = SLOTS[loc]
     if not slots then return "unusable" end
-    local old
+    local old, oldLink, hands
     if loc == "INVTYPE_2HWEAPON" then
-        local mh, oh = SlotValue(key, 16, scale), SlotValue(key, 17, scale)
+        local mh, mhLink = SlotValue(key, 16, scale)
+        local oh, ohLink = SlotValue(key, 17, scale)
         if not mh or not oh then return "loading" end
-        old = mh + oh
+        old, oldLink = mh + oh, mhLink or ohLink
     else
+        local per = {}
         for _, slot in ipairs(slots) do
             local v, link = SlotValue(key, slot, scale)
             if v == nil then return "loading" end
             -- a one-hander only goes into the off hand if a weapon is there already
             local usable = not (loc == "INVTYPE_WEAPON" and slot == 17 and not OFFHAND_WEAPON[EquipLoc(link) or ""])
-            if usable and (not old or v < old) then old = v end
+            if usable then
+                per[slot] = v
+                if not old or v < old then old, oldLink = v, link end
+            end
+        end
+        if loc == "INVTYPE_WEAPON" and per[16] and per[17] and mod.EquippedLink(key, 16) then
+            hands = { mh = new - per[16], oh = new - per[17] }
         end
     end
-    return new - (old or 0), old or 0
+    return new - (old or 0), old or 0, oldLink == nil, hands
 end
