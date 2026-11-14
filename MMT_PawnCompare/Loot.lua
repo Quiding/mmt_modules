@@ -119,13 +119,18 @@ function mod.BestLootRecipient(link, candidates)
 end
 
 -- for other modules (Disenchant Loot: never junk what someone could wear):
--- M.TeamUpgrades(link) -> the team members the item is an upgrade for (above the
--- minimum gain or an empty slot), best first; {} = nobody (or not gear);
+-- M.TeamUpgrades(link) -> the team members the item is an upgrade for (above the minimum
+-- gain or an empty slot), best first - only those online (and this character) with
+-- upgradesOnline; {} = nobody (or not gear);
 -- nil, why = can't tell now (Pawn Compare off, Pawn not ready, item not loaded).
 M.TeamUpgrades = function(link)
     if not M.enabled then return nil, "Pawn Compare is off" end
     if not mod.PawnReady() then return nil, "Pawn isn't ready" end
-    local list, why = mod.LootRanking(link, MMT.SortedMembers())
+    local online = {}
+    for _, key in ipairs(MMT.SortedMembers()) do
+        if not M.db.upgradesOnline or MMT.IsSelf(key) or (MMT.IsOnline and MMT.IsOnline(key)) then online[#online + 1] = key end
+    end
+    local list, why = mod.LootRanking(link, online)
     if not list then
         if why == "not equippable" then return {} end
         return nil, why

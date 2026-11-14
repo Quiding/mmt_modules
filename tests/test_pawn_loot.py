@@ -30,7 +30,7 @@ function UnitLevel() return 60 end
 
 EQUIP = {}
 MMTDB = { moduleData = { ItemCompare = { equipment = EQUIP } } }
-MMT = { IsSecret = function() return false end, IsSelf = function() return false end,
+MMT = { IsSecret = function() return false end, IsSelf = function() return false end, IsOnline = function() return true end,
   status = {}, db = { team = {} } }
 MEMBERS = { "Mage-A", "Warr-B", "Priest-C" }
 function MMT.SortedMembers() return MEMBERS end
@@ -142,6 +142,15 @@ print(lua.eval(r'''function(m)
   check("team upgrades: nobody", #m.M.TeamUpgrades("item:130"), 0)
   check("team upgrades: not gear", #m.M.TeamUpgrades("item:200"), 0)
   m.M.enabled = false; check("team upgrades: module off", m.M.TeamUpgrades("item:100"), nil); m.M.enabled = true
+  -- online members only: an offline one doesn't count
+  m.M.db.upgradesOnline = true
+  local isOnline = MMT.IsOnline
+  MMT.IsOnline = function(k) return k ~= "Priest-C" end
+  check("team upgrades: offline left out", table.concat(m.M.TeamUpgrades("item:100"), ","), "Mage-A")
+  m.M.db.upgradesOnline = false
+  check("option off: offline counts", table.concat(m.M.TeamUpgrades("item:100"), ","), "Mage-A,Priest-C")
+  m.M.db.upgradesOnline = true
+  MMT.IsOnline = isOnline
 
   -- the hook in Loot Distribution
   check("registered once", #CHOOSERS, 1)

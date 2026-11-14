@@ -36,6 +36,7 @@ local M = MMT.NewModule({
         askDelete = true,     -- ask before deleting the Pawn scales a team member deleted
         lootByUpgrade = false, -- master loot: gear to the member it is the biggest upgrade for
         lootMinGain = 1,      -- ... at least this many percent (an empty slot always counts)
+        upgradesOnline = true, -- M.TeamUpgrades (Disenchant Loot's junk, Quality of life's valuable loot): online members only
         lootScale = {},       -- [teamKey] = Pawn scale name that member's loot is judged by
     },
     sync = true,              -- the core's "Sync to team" (nothing here is per client)
