@@ -146,6 +146,15 @@ print(lua.eval(r'''function(m)
   TEAMUP[104] = { "Anna-R" }; Loot(104); check("a team upgrade: left", OnBank(104), false)
   TEAMUP[104] = nil; m.MMT_ = nil
   Loot(105); check("a role already wants it: left", OnBank(105), false)
+  local _, why105 = m.RoleLootCheck(LINK(105)); check("says which", why105, "already on the role Main")
+  -- a broad rule (an "All" role taking every green) doesn't count
+  MMT.db.roles.All = { rules = { { type = "quality", quality = 2 } } }
+  MEMBER_ROLES["Anna-R"] = { "Main", "All" }
+  ITEMS[117] = { 2, 100, 2 }; AH[117] = 900
+  local oldMFI = MMT.MembersForItem
+  MMT.MembersForItem = function() return { "Anna-R" } end
+  Loot(117); check("broad rules don't count", OnBank(117), true)
+  MMT.MembersForItem = oldMFI; MMT.db.roles.All = nil; MEMBER_ROLES["Anna-R"] = { "Main" }
   DE[106] = { "DE", 1000 }; Loot(106); check("disenchanting worth more: left", OnBank(106), false)
   local _, why = m.RoleLootCheck(LINK(106)); check("why", why, "disenchanting is worth more (10s, Disenchant Loot)")
   DE[106] = { "JUNK", 10 }; Loot(106); check("Disenchant Loot says junk: left", OnBank(106), false)
@@ -185,6 +194,18 @@ print(lua.eval(r'''function(m)
   TRADE = { [1] = LINK(114) }; ON.TRADE_SHOW(); ON.TRADE_ACCEPT_UPDATE(1, 0); ON.UI_INFO_MESSAGE(0, "Trade cancelled."); RUN_TIMERS()
   check("cancelled: left", OnBank(114), false)
   ON.UI_INFO_MESSAGE(0, ERR_TRADE_COMPLETE); RUN_TIMERS()
+  -- the bags now
+  ITEMS[118] = { 2, 100, 2 }; AH[118] = 900
+  BAGS = { [0] = { { 118, false, 2 }, { 101, false, 2 }, { 119, true, 2 }, { 120, false, 1 } } }
+  C_Container = { GetContainerNumSlots = function(b) return BAGS[b] and #BAGS[b] or 0 end,
+    GetContainerItemInfo = function(b, s) local e = BAGS[b] and BAGS[b][s]; if not e then return nil end
+      return { hyperlink = LINK(e[1]), isBound = e[2], quality = e[3] } end }
+  PRINTS = {}
+  m.RoleLootFeature.commands.bags()
+  check("bags: 118 on the role", OnBank(118), true)
+  local all = table.concat(PRINTS, " / ")
+  check("bags: says why 101 stays", all:find("Item 101.-below 300%% of vendor") ~= nil, true)
+  check("bags: summary", PRINTS[#PRINTS], "Quality of life: 2 green/blue unbound item(s) in the bags, 1 put on the role.")
   db.rvOn = false; AH[101] = 900; Loot(101); check("switched off", OnBank(101), false); db.rvOn = true
   local qml = false
   for _, s in ipairs(SENT) do if s:find("^QML:") then qml = true end end

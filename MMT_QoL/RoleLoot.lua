@@ -43,19 +43,24 @@ function mod.RoleLootRole()
     return nil
 end
 
+-- the role that has this very item on its list (by item ID, or an exact item name), or nil.
+-- Broad rules (all green items, all Bind on Equip, an "All" role, ...) don't count: those
+-- would take every green
 local function OnAnyRole(link)
-    if not MMT.MembersForItem then return false end
-    local ok, keys = pcall(MMT.MembersForItem, link)
-    if ok and type(keys) == "table" and #keys > 0 then return true end
-    -- on a role nobody has yet (just made): the role's own list
     local roles = MMT.db and MMT.db.roles
     local id = ItemID(link)
-    for _, r in pairs(type(roles) == "table" and roles or {}) do
+    local GetInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
+    local name = GetInfo(link)
+    name = type(name) == "string" and name:lower() or nil
+    for role, r in pairs(type(roles) == "table" and roles or {}) do
         for _, rule in ipairs(type(r) == "table" and type(r.rules) == "table" and r.rules or {}) do
-            if rule.type == "item" and rule.itemID == id then return true end
+            if rule.type == "item" and ((rule.itemID and rule.itemID == id)
+                or (not rule.itemID and name and type(rule.name) == "string" and rule.name:lower() == name)) then
+                return role
+            end
         end
     end
-    return false
+    return nil
 end
 
 local function TeamUpgrade(link)
@@ -99,7 +104,8 @@ function mod.RoleLootCheck(link)
     if verdict ~= "AH" and price * 100 < sell * pct then
         return false, ("auction %s is below %d%% of vendor %s"):format(mod.Money(price), pct, mod.Money(sell))
     end
-    if OnAnyRole(link) then return false, "a role already wants it" end
+    local onRole = OnAnyRole(link)
+    if onRole then return false, "already on the role " .. onRole end
     if TeamUpgrade(link) then return false, "an upgrade for someone on the team" end
     local text = ("auction %s = %d%% of vendor %s"):format(mod.Money(price), math.floor(price * 100 / sell), mod.Money(sell))
     if verdict == "AH" then text = text .. ", " .. why end
@@ -336,6 +342,32 @@ F = mod.Feature({
         "Baganator category: \"MMT Role Items\" shows the role's items in your bags, and works both ways - put an item into the category in Baganator and it goes on the role; take it out and it comes off the role (and the other way round). Made once, at the top of your categories; move it where you like.",
     },
     commands = {
+        -- the bags now: what goes on the role, and why the others don't
+        bags = function()
+            if not mod.Active(F) then MMT.Print("Quality of life: Valuable loot is off.") return end
+            local added, left, n = 0, {}, 0
+            for bag = 0, (MMT.BAGS or 4) do
+                for slot = 1, (C_Container.GetContainerNumSlots(bag) or 0) do
+                    local info = C_Container.GetContainerItemInfo(bag, slot)
+                    local link = info and info.hyperlink
+                    local q = info and info.quality
+                    if link and not info.isBound and (q == 2 or q == 3) then
+                        n = n + 1
+                        local ok, why, role = mod.RoleLootCheck(link)
+                        if ok and mod.MailAdd(role, link) then
+                            added = added + 1
+                            MMT.Print("  + %s on %s (%s)", link, role, why)
+                        elseif not ok then
+                            left[#left + 1] = ("  - %s: %s"):format(link, tostring(why))
+                        end
+                    end
+                end
+            end
+            for i = 1, math.min(#left, 15) do MMT.Print(left[i]) end
+            if #left > 15 then MMT.Print("  ... and %d more", #left - 15) end
+            MMT.Print("Quality of life: %d green/blue unbound item(s) in the bags, %d put on the role.", n, added)
+            if added > 0 then mod.RoleBagSync() end
+        end,
         sync = function() MMT.Print("Quality of life: Baganator category %s.", mod.RoleBagSync() and "updated" or "already in sync (or off)") end,
     },
     OnEnable = function()
@@ -350,7 +382,7 @@ F = mod.Feature({
         ui.Slider("Auction price at least (% of vendor)", 100, 1000, 25, "rvPct")
         ui.Check("Baganator category \"MMT Role Items\"", "rvBag", "The role's items in a Baganator category of their own, both ways: putting an item into it puts it on the role, taking it out takes it off (and the same from the role's side). Needs Baganator.")
         ui.Check("Chat line for each item", "rvChat", "Says which looted item went on the role, and why.")
-        ui.Note("Prices: the \"Loot by price\" tab's sources and max age. The last looted item and why: the debug report.")
+        ui.Note("Prices: the \"Loot by price\" tab's sources and max age. /mmtqol valuable bags checks your bags now and says why each item stays.")
     end,
     Report = function(add)
         add(("Valuable loot: on=%s role=%s quality=%s pct=%s bag=%s checked=%d traded=%d added=%d last=%s (%s) bag: made=%d toBag=%d fromBag=%d offBag=%d offRole=%d skip=%s error=%s"):format(
