@@ -163,6 +163,23 @@ print(lua.eval(r'''function(m)
   HIDDEN = nil; RUN_TIMERS(); check("then on the role", OnBank(110), true)
   ON.CHAT_MSG_LOOT("Anna receives loot: " .. LINK(101) .. ".")
   check("someone else's loot: not ours", #TIMERS, 0)
+  -- traded to us: read while the window is open, checked on "Trade complete"
+  ERR_TRADE_COMPLETE = "Trade complete."
+  ITEMS[111], ITEMS[112] = { 2, 100, 2 }, { 2, 100, 2 }
+  AH[111], AH[112] = 900, 150
+  TRADE = { [1] = LINK(111), [3] = LINK(112), [7] = LINK(113) }
+  function GetTradeTargetItemLink(i) return TRADE[i] end
+  ON.TRADE_SHOW(); ON.TRADE_TARGET_ITEM_CHANGED(1); ON.TRADE_ACCEPT_UPDATE(1, 1)
+  TRADE = {}   -- the slots are empty by the time the trade is done
+  check("not before it's done", OnBank(111), false)
+  ON.UI_INFO_MESSAGE(0, ERR_TRADE_COMPLETE); RUN_TIMERS()
+  check("traded, worth it: on the role", OnBank(111), true)
+  check("traded, too cheap: left", OnBank(112), false)
+  check("slot 7 (not traded): left", OnBank(113), false)
+  ITEMS[114] = { 2, 100, 2 }; AH[114] = 900
+  TRADE = { [1] = LINK(114) }; ON.TRADE_SHOW(); ON.TRADE_ACCEPT_UPDATE(1, 0); ON.UI_INFO_MESSAGE(0, "Trade cancelled."); RUN_TIMERS()
+  check("cancelled: left", OnBank(114), false)
+  ON.UI_INFO_MESSAGE(0, ERR_TRADE_COMPLETE); RUN_TIMERS()
   db.rvOn = false; AH[101] = 900; Loot(101); check("switched off", OnBank(101), false); db.rvOn = true
   local qml = false
   for _, s in ipairs(SENT) do if s:find("^QML:") then qml = true end end

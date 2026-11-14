@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.8.2"
+mod.VERSION = "1.8.3"
 
 local M = MMT.NewModule({
     name = "QoL",

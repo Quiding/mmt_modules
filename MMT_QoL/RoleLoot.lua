@@ -1,6 +1,6 @@
 -- MMT Quality of life: valuable loot onto a role, and a Baganator category for it.
 --
--- 1) An item this character loots (green, or green and blue) whose auction price is at
+-- 1) An item this character loots or is traded (green, or green and blue) whose auction price is at
 --    least the chosen % of its vendor price goes on a role's items - e.g. "Bank" on the
 --    bank alt - through the Role items panel's own path (mod.MailAdd: shared with the
 --    team), so MMT's "Mail to team" mails it there at the next mailbox, and Loot
@@ -146,6 +146,30 @@ M:On("CHAT_MSG_LOOT", function(text)
     if not mod.Active(F) then return end
     local link = mod.RoleLootChat(text)
     if link then Consider(link) end
+end)
+
+-- items a trade gives us: no loot message for those. What the other side puts in is read
+-- while the window is open (its slots are empty again by "Trade complete"); slot 7 is
+-- "will not be traded"
+local tradeIn = {}
+local function ReadTrade()
+    if not mod.Active(F) or type(GetTradeTargetItemLink) ~= "function" then return end
+    tradeIn = {}
+    for i = 1, 6 do
+        local ok, link = pcall(GetTradeTargetItemLink, i)
+        if ok and type(link) == "string" then tradeIn[#tradeIn + 1] = link end
+    end
+end
+M:On("TRADE_SHOW", function() tradeIn = {} end)
+M:On("TRADE_TARGET_ITEM_CHANGED", ReadTrade)
+M:On("TRADE_ACCEPT_UPDATE", ReadTrade)
+M:On("UI_INFO_MESSAGE", function(_, msg)
+    if not (msg and ERR_TRADE_COMPLETE and msg == ERR_TRADE_COMPLETE) then return end
+    local got = tradeIn
+    tradeIn = {}
+    if not mod.Active(F) then return end
+    rv.traded = (rv.traded or 0) + #got
+    for _, link in ipairs(got) do Consider(link) end
 end)
 
 ---------------------------------------------------------------------------
@@ -301,7 +325,7 @@ F = mod.Feature({
     checkText = "Put valuable loot on a role",
     tip = "Greens (or greens and blues) you loot that sell well at the auction house go on a role's items - e.g. your bank character's - so \"Mail to team\" sends them there.",
     notes = {
-        "When this character loots a green (or blue) item whose auction price is at least the % below of its vendor price, it goes on the role you pick - the same as dropping it on the Role items panel, so the team gets the change too. At the next mailbox MMT's \"Mail to team\" mails it to whoever has the role, and Loot Distribution hands that item to the role from then on.",
+        "When this character loots or is traded a green (or blue) item whose auction price is at least the % below of its vendor price, it goes on the role you pick - the same as dropping it on the Role items panel, so the team gets the change too. At the next mailbox MMT's \"Mail to team\" mails it to whoever has the role, and Loot Distribution hands that item to the role from then on.",
         "The auction price is the one \"Loot by price\" uses (Auctionator and/or FojjiCore, in its order, with its max age). Left alone: Bind on Pickup items, items a role already wants, upgrades for someone on the team (Pawn Compare), and - with Disenchant Loot on - weapons and armour it doesn't call worth the auction house (it compares disenchanting, the vendor and the auction price, and shows all three on the tooltip).",
         "Baganator category: \"MMT Role Items\" shows the role's items in your bags, and works both ways - put an item into the category in Baganator and it goes on the role; take it out and it comes off the role (and the other way round). Made once, at the top of your categories; move it where you like.",
     },
@@ -323,9 +347,9 @@ F = mod.Feature({
         ui.Note("Prices: the \"Loot by price\" tab's sources and max age. The last looted item and why: the debug report.")
     end,
     Report = function(add)
-        add(("Valuable loot: on=%s role=%s quality=%s pct=%s bag=%s checked=%d added=%d last=%s (%s) bag: made=%d toBag=%d fromBag=%d offBag=%d offRole=%d skip=%s error=%s"):format(
+        add(("Valuable loot: on=%s role=%s quality=%s pct=%s bag=%s checked=%d traded=%d added=%d last=%s (%s) bag: made=%d toBag=%d fromBag=%d offBag=%d offRole=%d skip=%s error=%s"):format(
             tostring(M.db.rvOn), tostring(mod.RoleLootRole()), tostring(M.db.rvQuality), tostring(M.db.rvPct), tostring(M.db.rvBag),
-            rv.checked, rv.added, tostring(rv.lastLink), tostring(rv.lastWhy), rv.made or 0, rv.toBag, rv.fromBag, rv.offBag, rv.offRole,
+            rv.checked, rv.traded or 0, rv.added, tostring(rv.lastLink), tostring(rv.lastWhy), rv.made or 0, rv.toBag, rv.fromBag, rv.offBag, rv.offRole,
             tostring(rv.lastSkip), tostring(rv.lastError)))
     end,
 })
