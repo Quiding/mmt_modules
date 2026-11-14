@@ -92,6 +92,9 @@ print(lua.eval(r'''function(m)
     out[#out + 1] = name
   end
   local function L(id) return "|cff1eff00|Hitem:" .. id .. "::|h[x]|h|r" end
+  -- the tooltip keeps its values 5 s: these checks change prices and settings in between
+  local tipLine = m.TipLine
+  m.TipLine = function(tt) m.ForgetTips(); return tipLine(tt) end
 
   -- the value check
   check("green armour worth it", (m.Verdict(L(1))), "DE")
@@ -176,10 +179,40 @@ print(lua.eval(r'''function(m)
     SetHyperlink = function(_, l) set = l end }
   GameTooltip = { IsShown = function() return true end, GetItem = function() return "x", L(2) end,
     RefreshData = function() refreshed = true end }
-  EVENTS.MODIFIER_STATE_CHANGED()
+  COMBAT = false
+  function InCombatLockdown() return COMBAT end
+  EVENTS.MODIFIER_STATE_CHANGED("LCTRL", 1)
+  check("Ctrl isn't used: nothing", refreshed, nil)
+  EVENTS.MODIFIER_STATE_CHANGED("LSHIFT", 1)
   check("chat link tooltip set again", set, L(1))
   check("hover tooltip refreshed", refreshed, true)
+  set, refreshed = nil, nil
+  EVENTS.MODIFIER_STATE_CHANGED("RSHIFT", 0)
+  check("again within 0.2 s: not redrawn", refreshed, nil)
+  NOW = NOW + 1
+  COMBAT = true; EVENTS.MODIFIER_STATE_CHANGED("LSHIFT", 1)
+  check("in combat: not redrawn", refreshed, nil)
+  COMBAT = false
+  ItemRefTooltip = nil
+  GameTooltip.GetItem = function() return "x", L(6) end
+  EVENTS.MODIFIER_STATE_CHANGED("LSHIFT", 1)
+  check("an item without our lines: not redrawn", refreshed, nil)
+  GameTooltip.GetItem = function() return "x", L(2) end
+  EVENTS.MODIFIER_STATE_CHANGED("LSHIFT", 0)
+  check("then again", refreshed, true)
   ItemRefTooltip, GameTooltip = nil, nil
+  -- the values are kept 5 s, then looked up again
+  m.ForgetTips()
+  local calls = 0
+  local verdict = m.Verdict
+  m.Verdict = function(...) calls = calls + 1; return verdict(...) end
+  local plain = { GetItem = function() return "x", L(1) end, AddLine = function() end, AddDoubleLine = function() end }
+  for i = 1, 20 do tipLine(plain) end
+  check("20 redraws: one lookup", calls, 1)
+  NOW = NOW + 6; tipLine(plain)
+  check("after 5 s: looked up again", calls, 2)
+  m.Verdict = verdict
+  m.ForgetTips()
 
   -- old prices
   check("fresh: not stale", m.Stale(), false)

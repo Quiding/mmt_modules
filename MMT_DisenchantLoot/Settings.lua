@@ -9,6 +9,7 @@ local H = MMT.ConfigHelpers
 local function Opt(key, after)
     return function() return M.db[key] end, function(v)
         M.db[key] = v
+        if mod.ForgetTips then mod.ForgetTips() end
         mod.RefreshBags()
         if after then after() end
     end

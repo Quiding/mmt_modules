@@ -162,14 +162,32 @@ local function Pct(n)
     return s .. "%"
 end
 
+-- what the tooltip shows of an item, kept a few seconds: the game sets a hovered item's
+-- tooltip again on every bag / cooldown update (each cast), and the values take auction
+-- lookups (Auctionator, FojjiCore) and Pawn checks
+local CACHE_FOR = 5
+local cache, cacheN = {}, 0
+function mod.TipValues(link)
+    local now = GetTime()
+    local c = cache[link]
+    if c and now - c.at < CACHE_FOR then return c end
+    if cacheN > 200 then cache, cacheN = {}, 0 end
+    local verdict, de, sell, _, _, ah = mod.Verdict(link)
+    c = { at = now, verdict = verdict, de = de, sell = sell, ah = ah, list = mod.Breakdown(link), stale = mod.Stale() }
+    if not cache[link] then cacheN = cacheN + 1 end
+    cache[link] = c
+    return c
+end
+function mod.ForgetTips() cache, cacheN = {}, 0 end
+
 local function TipLine(tt)
     if not M.enabled or not tt or not tt.GetItem then return end
     local tipShow, matsShow = M.db.tipShow, M.db.matsShow
     if tipShow == "NEVER" and matsShow == "NEVER" then return end
     local ok, _, link = pcall(tt.GetItem, tt)
     if not ok or type(link) ~= "string" then return end
-    local verdict, de, sell, _, _, ah = mod.Verdict(link)
-    local list = mod.Breakdown(link)
+    local c = mod.TipValues(link)
+    local verdict, de, sell, ah, list = c.verdict, c.de, c.sell, c.ah, c.list
     if not verdict and not (list and #list > 0) then return end
     local value = verdict and mod.Showing(tipShow)
     local mats = list and #list > 0 and mod.Showing(matsShow)
@@ -186,7 +204,7 @@ local function TipLine(tt)
     elseif value and list and #list > 0 and KEY_TEXT[matsShow] then
         tt:AddLine(("  Hold %s: what it disenchants into"):format(KEY_TEXT[matsShow]), 0.53, 0.53, 0.53)
     end
-    if (value or mats) and mod.Stale() then tt:AddLine("  " .. mod.AgeText(), 1, 0.4, 0.4) end
+    if (value or mats) and c.stale then tt:AddLine("  " .. mod.AgeText(), 1, 0.4, 0.4) end
 end
 mod.TipLine = TipLine
 
@@ -219,8 +237,30 @@ local function Redraw(tt, fromLink)
 end
 mod.Redraw = Redraw
 
-M:On("MODIFIER_STATE_CHANGED", function()
-    if not (KEYS[M.db.tipShow] or KEYS[M.db.matsShow]) then return end
-    Redraw(GameTooltip)
-    Redraw(rawget(_G, "ItemRefTooltip"), true)
-end)
+-- Only for the key a setting uses ("LSHIFT" / "RSHIFT" for SHIFT, ...), only when our lines
+-- would change (the item shows any), never in combat (a rotation's modifier keys would
+-- redraw every addon's tooltip lines on each press), and at most every 0.2 s.
+local SIDES = { LSHIFT = "SHIFT", RSHIFT = "SHIFT", LCTRL = "CTRL", RCTRL = "CTRL", LALT = "ALT", RALT = "ALT" }
+local lastRedraw = -1
+function mod.OnModifier(key)
+    local which = SIDES[key]
+    if not which or (which ~= M.db.tipShow and which ~= M.db.matsShow) then return false end
+    if InCombatLockdown and InCombatLockdown() then return false end
+    local now = GetTime()
+    if now - lastRedraw < 0.2 then return false end
+    local done = false
+    for _, t in ipairs({ { GameTooltip, false }, { rawget(_G, "ItemRefTooltip"), true } }) do
+        local tt = t[1]
+        if tt and tt.IsShown and tt:IsShown() and tt.GetItem then
+            local ok, _, link = pcall(tt.GetItem, tt)
+            if ok and type(link) == "string" then
+                local c = mod.TipValues(link)
+                if c.verdict or (c.list and #c.list > 0) then done = Redraw(tt, t[2]) or done end
+            end
+        end
+    end
+    if done then lastRedraw = now end
+    return done
+end
+
+M:On("MODIFIER_STATE_CHANGED", function(key) mod.OnModifier(key) end)
