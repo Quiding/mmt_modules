@@ -20,7 +20,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.4 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.6 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.7 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 | [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold, unless the auction house pays more; greens the vendor pays most for are junk too. Values from Auctionator *(new, not tested in game yet)* | 0.1.8 |
 
@@ -390,6 +390,9 @@ does (on the group leader or solo, never in combat); `/mmtqol offers` asks again
   **Link Junk with Dejunk** (on by default): an item you drag into Baganator's Junk also goes on Dejunk's junk
   list (so Dejunk sells it), and one you take off Dejunk's junk list (or out of Junk) leaves both - then both syncs
   pass it to the team.
+  **Send and take the layout** (on by default): moving a category or a section in Baganator > Categories goes to
+  the team 3 seconds after your last change - the order and the sections, custom categories and sections matched by
+  name; a category the other side doesn't have stays, at the end.
   **Send my whole category setup** gives the team your categories, order and sections through Baganator's
   own import (each character is asked first).
 - **Never loot junk** (needs MMT's Loot Distribution with its "Never Loot" tab): two more options show up on that

@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.8.6"
+mod.VERSION = "1.8.7"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -42,6 +42,7 @@ local M = MMT.NewModule({
         bgAdd = true,
         bgRemove = true,
         bgScope = "ALL",           -- ALL categories | JUNK (only Baganator's Junk category)
+        bgLayout = true,           -- the order of the categories and their sections, both ways
         bgAsk = false,
         bgChat = true,
         junkLink = true,           -- Baganator's Junk <-> Dejunk's global junk list (on this character)

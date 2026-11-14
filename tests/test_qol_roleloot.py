@@ -304,4 +304,60 @@ print(lua.eval(r"""function(m)
   m.M.enabled = false; check("module off: nothing", m.OfferAll(true), 0); m.M.enabled = true
   return table.concat(out, ", ")
 end""")(mod))
+# Baganator's layout (order and sections) to and from the team
+print(lua.eval(r"""function(m)
+  local db, out = m.M.db, {}
+  local function check(name, got, want)
+    if got ~= want then error(("%s: got %s, want %s"):format(name, tostring(got), tostring(want))) end
+    out[#out + 1] = name
+  end
+  local p = BAGANATOR_CONFIG.Profiles.Default
+  p.custom_categories = { ["1"] = { name = "Gear" }, ["7"] = { name = "MMT Role Items" }, ["9"] = { name = "Only Here" } }
+  p.category_sections = { ["1"] = { name = "Equipment" } }
+  p.category_display_order = { "default_hearthstone", "_1", "1", "__end", "7", "----", "9", "default_other" }
+  EVENTS_FIRED = {}
+  Baganator.CallbackRegistry = { TriggerEvent = function(_, e, a) EVENTS_FIRED[#EVENTS_FIRED + 1] = e .. ":" .. tostring(type(a) == "table" and "map" or a) end }
+  Baganator.Constants = { RefreshReason = { Searches = 16, Layout = 32 } }
+  check("as text", m.BaganatorLayoutText(p), "default_hearthstone;s:Equipment;c:Gear;__end;c:MMT Role Items;----;c:Only Here;default_other")
+  db.bgLayout = true
+  SENT = {}
+  m.BaganatorLayoutTick(p, "Default")
+  check("first look: nothing sent", #SENT, 0)
+  -- moved: MMT Role Items to the top
+  p.category_display_order = { "7", "default_hearthstone", "_1", "1", "__end", "----", "9", "default_other" }
+  NOW = NOW + 1; m.BaganatorLayoutTick(p, "Default")
+  check("not while still changing", #SENT, 0)
+  NOW = NOW + 1; m.BaganatorLayoutTick(p, "Default")
+  check("not before 3 s", #SENT, 0)
+  NOW = NOW + 3; m.BaganatorLayoutTick(p, "Default")
+  check("sent", SENT[1], "QBGO:c:MMT Role Items;default_hearthstone;s:Equipment;c:Gear;__end;----;c:Only Here;default_other")
+  NOW = NOW + 5; m.BaganatorLayoutTick(p, "Default")
+  check("once", #SENT, 1)
+
+  -- taken from the team: by name, a new section made, ours they don't show kept at the end
+  SENT = {}; PRINTS = {}
+  local body = "default_other;s:Stuff,ff0000;c:Gear;c:Not Here;__end;c:MMT Role Items;default_hearthstone"
+  check("applied", m.BaganatorApplyLayout("Bob-R", body), true)
+  local o = table.concat(p.category_display_order, ",")
+  check("their order", o, "default_other,_2,1,__end,7,default_hearthstone,9")
+  check("new section by name", p.category_sections["2"].name, "Stuff")
+  check("its colour", p.category_sections["2"].color, "ff0000")
+  check("unused section gone", p.category_sections["1"], nil)
+  check("Baganator told", table.concat(EVENTS_FIRED, " "), "SettingChanged:category_sections SettingChanged:category_display_order RefreshStateChange:map")
+  check("chat says what's missing", PRINTS[#PRINTS], "Baganator from Bob: category order and sections taken (not here: Not Here).")
+  NOW = NOW + 10; m.BaganatorLayoutTick(p, "Default"); NOW = NOW + 10; m.BaganatorLayoutTick(p, "Default")
+  check("taken isn't sent back", #SENT, 0)
+  check("the same again: nothing", m.BaganatorApplyLayout("Bob-R", m.BaganatorLayoutText(p)), false)
+  -- an existing section is matched by name
+  p.category_sections["2"].color = "00ff00"
+  m.BaganatorApplyLayout("Bob-R", "s:Stuff;c:Gear;__end;default_other")
+  check("same key", p.category_display_order[1], "_2")
+  check("colour kept when they send none", p.category_sections["2"].color, "00ff00")
+  -- switched off: nothing sent
+  db.bgLayout = false
+  p.category_display_order = { "default_other" }
+  NOW = NOW + 10; m.BaganatorLayoutTick(p, "Default"); NOW = NOW + 10; m.BaganatorLayoutTick(p, "Default")
+  check("off: not sent", #SENT, 0)
+  return table.concat(out, ", ")
+end""")(mod))
 print("PASS")

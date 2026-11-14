@@ -14,6 +14,12 @@
 -- custom ones ("c:<name>", %XX escaped): their keys differ per character.
 -- Whole setup: Baganator's own import (Baganator.API.ImportString) with an
 -- export built like its "Export categories" (QBGF).
+-- Layout (bgLayout): the order of the categories and the sections they sit in
+-- (category_display_order + category_sections), 3 s after the last change:
+--   QBGO:<entry>;...   entry = default_x | c:<name> | s:<section name>[,<colour>] | __end | ----
+-- Taken: custom categories and sections matched by name (sections made when missing),
+-- ours the sender doesn't show kept at the end; then Baganator is told the way its
+-- own settings page does (its CallbackRegistry: SettingChanged + RefreshStateChange).
 
 local _, mod = ...
 local MMT = MMT
@@ -121,6 +127,7 @@ local function Tick()
     if not mod.Active(F) then snap = nil return end
     local p, name = Profile()
     if not p then snap = nil return end
+    if mod.BaganatorLayoutTick then pcall(mod.BaganatorLayoutTick, p, name) end
     ticks = ticks + 1
     local mods = p.category_modifications
     if snap and name == snapProfile and rawequal(mods, snapMods) and ticks % 5 ~= 0 and not changedHere then return end
@@ -281,6 +288,122 @@ local function OnAll(from, _, body)
     Take(from, ops, { ("+ %d item(s) into categories%s"):format(#ops, missing > 0 and (" (%d in categories you don't have)"):format(missing) or "") })
 end
 
+---------------------------------------------------------------------------
+-- The layout: order and sections
+---------------------------------------------------------------------------
+local SECTION_END, DIVIDER = "__end", "----"
+local layout = { sent = nil, profile = nil, pending = nil, pendingAt = 0 }
+local LAYOUT_QUIET = 3
+
+local function LayoutText(p)
+    local parts = {}
+    local secs = type(p.category_sections) == "table" and p.category_sections or {}
+    for _, src in ipairs(type(p.category_display_order) == "table" and p.category_display_order or {}) do
+        if type(src) ~= "string" then
+            -- nothing
+        elseif src == SECTION_END or src == DIVIDER or src:match("^default_") then
+            parts[#parts + 1] = src
+        elseif src:match("^_") then
+            local s = secs[src:sub(2)]
+            local name = type(s) == "table" and type(s.name) == "string" and s.name or src:sub(2)
+            local colour = type(s) == "table" and type(s.color) == "string" and s.color or nil
+            parts[#parts + 1] = "s:" .. Esc(name) .. (colour and ("," .. colour) or "")
+        else
+            local id = CatId(p, src)
+            if id then parts[#parts + 1] = id end
+        end
+    end
+    return table.concat(parts, ";")
+end
+mod.BaganatorLayoutText = LayoutText
+
+-- tell Baganator the way its own settings page does
+local function LayoutChanged()
+    local reg = Baganator and Baganator.CallbackRegistry
+    if reg and reg.TriggerEvent then
+        pcall(reg.TriggerEvent, reg, "SettingChanged", "category_sections")
+        pcall(reg.TriggerEvent, reg, "SettingChanged", "category_display_order")
+        local R = Baganator.Constants and Baganator.Constants.RefreshReason or {}
+        pcall(reg.TriggerEvent, reg, "RefreshStateChange", { [R.Searches or 16] = true, [R.Layout or 32] = true })
+    end
+    Refresh()
+end
+
+-- every tick: our layout changed? sent once it has been still for a few seconds
+local function LayoutTick(p, name)
+    if not M.db.bgLayout then layout.sent = nil return end
+    local text = LayoutText(p)
+    if layout.sent == nil or layout.profile ~= name then
+        layout.sent, layout.profile, layout.pending = text, name, nil
+        return
+    end
+    if text == layout.sent then layout.pending = nil return end
+    local now = GetTime()
+    if layout.pending ~= text then layout.pending, layout.pendingAt = text, now return end
+    if now - layout.pendingAt < LAYOUT_QUIET then return end
+    layout.sent, layout.pending = text, nil
+    MMT.SendLong("QBGO:" .. text)
+    bg.layoutSent = (bg.layoutSent or 0) + 1
+end
+mod.BaganatorLayoutTick = LayoutTick
+
+local function ApplyLayout(from, body)
+    local p, name = Profile()
+    if not p then return false end
+    if body == LayoutText(p) then return false end
+    local secs = type(p.category_sections) == "table" and p.category_sections or {}
+    local byName, top = {}, 0
+    for k, s in pairs(secs) do
+        if type(s) == "table" and s.name then byName[s.name] = k end
+        top = math.max(top, tonumber(k) or 0)
+    end
+    local order, seen, newSecs, missing = {}, {}, {}, {}
+    for e in body:gmatch("[^;]+") do
+        if e == SECTION_END or e == DIVIDER then
+            order[#order + 1] = e
+        elseif e:match("^default_") then
+            if not seen[e] then order[#order + 1] = e; seen[e] = true end
+        elseif e:match("^s:") then
+            local sname, colour = e:sub(3):match("^([^,]*),?(.*)$")
+            sname = Unesc(sname)
+            local key = byName[sname]
+            if not key then top = top + 1; key = tostring(top); byName[sname] = key end
+            newSecs[key] = { name = sname, color = colour ~= "" and colour or (type(secs[key]) == "table" and secs[key].color or nil) }
+            order[#order + 1] = "_" .. key
+        elseif e:match("^c:") then
+            local src = FindSrc(p, e)
+            if src and not seen[src] then order[#order + 1] = src; seen[src] = true
+            elseif not src then missing[#missing + 1] = CatName(e) end
+        end
+    end
+    -- ours the sender doesn't show: kept, at the end
+    for _, src in ipairs(type(p.category_display_order) == "table" and p.category_display_order or {}) do
+        if type(src) == "string" and not seen[src] and src ~= SECTION_END and src ~= DIVIDER and not src:match("^_") then
+            order[#order + 1] = src; seen[src] = true
+        end
+    end
+    p.category_display_order = order
+    p.category_sections = newSecs
+    layout.sent, layout.profile, layout.pending = LayoutText(p), name, nil   -- not sent back
+    LayoutChanged()
+    bg.layoutTaken = (bg.layoutTaken or 0) + 1
+    if M.db.bgChat then
+        MMT.Print("Baganator from %s: category order and sections taken%s.", MMT.FullDisplay(from),
+            #missing > 0 and (" (not here: " .. table.concat(missing, ", ") .. ")") or "")
+    end
+    return true
+end
+mod.BaganatorApplyLayout = ApplyLayout
+
+local function OnLayout(from, _, body)
+    if not (mod.Active(F) and M.db.bgLayout) then return end
+    if M.db.bgAsk then
+        mod.Ask(from, F, { "their category order and sections" }, function() ApplyLayout(from, body) end)
+    else
+        ApplyLayout(from, body)
+    end
+end
+
 local function SendAll()
     if not mod.Active(F) then return false, "switched off, or Baganator isn't loaded." end
     local p = Profile()
@@ -360,7 +483,7 @@ F = mod.Feature({
     key = "baganator", icon = "INV_Misc_Bag_08", slash = "baganator", addon = "Baganator", title = "Baganator categories", tabText = "Baganator",
     checkText = "Sync Baganator's categories",
     tip = "Items you put into a Baganator category by hand (or take out of it) go into the same category on the team's characters, right away. Custom categories are matched by name.",
-    tags = { QBG = OnChange, QBGL = OnAll, QBGF = OnSetup },
+    tags = { QBG = OnChange, QBGL = OnAll, QBGF = OnSetup, QBGO = OnLayout },
     commands = { send = SendAll },
     OnEnable = function()
         snap = nil
@@ -375,6 +498,7 @@ F = mod.Feature({
         ui.Check("Send and take additions", "bgAdd", "Items put into a category.")
         ui.Check("Send and take removals", "bgRemove", "Items taken out of a category (back to where Baganator sorts them).")
         ui.Cycle("Categories", { { value = "ALL", text = "Every category" }, { value = "JUNK", text = "Junk only" } }, "bgScope")
+        ui.Check("Send and take the layout", "bgLayout", "The order of the categories and the sections they sit in (Baganator > Categories, dragging them around): sent 3 seconds after your last change, and taken from the team. Custom categories and sections go by name; a category the other side doesn't have stays, at the end.")
         ui.Check("Link Junk with Dejunk's junk list", "junkLink", "Items you put into Baganator's Junk go on Dejunk's global junk list (so Dejunk sells them), and items you take off Dejunk's junk list (or out of Junk) leave both. Both syncs then send it to the team. Needs Dejunk; the Dejunk sync on to reach the team's Dejunk.")
         ui.Check("Ask before taking changes", "bgAsk", "A dialog shows what a team member changed, Apply or Ignore. Off: taken right away.")
         ui.Check("Chat line for each change taken", "bgChat")
@@ -393,8 +517,8 @@ F = mod.Feature({
         for _ in pairs(p and Snapshot(p) or {}) do n = n + 1 end
         local missing = {}
         for id in pairs(bg.missing) do missing[#missing + 1] = CatName(id) end
-        add(("Baganator: profile=%s items in categories=%d watching=%s scope=%s sent=%d taken=%d missing=%s"):format(
+        add(("Baganator: profile=%s items in categories=%d watching=%s scope=%s sent=%d taken=%d layout=%s sent/taken %d/%d missing=%s"):format(
             tostring(name), n, tostring(snap ~= nil), tostring(M.db.bgScope), bg.sent, bg.taken,
-            #missing > 0 and table.concat(missing, ", ") or "-"))
+            tostring(M.db.bgLayout), bg.layoutSent or 0, bg.layoutTaken or 0, #missing > 0 and table.concat(missing, ", ") or "-"))
     end,
 })
