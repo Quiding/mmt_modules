@@ -20,7 +20,7 @@ MODULES, with its own settings page.
 | [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.1 |
 | [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.4 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.3 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.4 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
 | [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold, unless the auction house pays more; greens the vendor pays most for are junk too. Values from Auctionator *(new, not tested in game yet)* | 0.1.8 |
 
@@ -370,7 +370,8 @@ does (on the group leader or solo, never in combat); `/mmtqol offers` asks again
 
 - **Valuable loot to a role**: a green (or green and blue) item this character loots (or is traded) whose auction price is at
   least *x* % of its vendor price (300 % by default; prices as "Loot by price" finds them) goes on a role you pick,
-  e.g. *Bank* on your bank character, so "Mail to team" mails it there. Left alone: Bind on Pickup, items a role
+  e.g. *Bank* on your bank character, so "Mail to team" mails it there. Weapons and armour, with Disenchant Loot on,
+  go by whichever pays most instead (disenchanting, the vendor or the auction house, Disenchant Loot's own %). Left alone: Bind on Pickup, items a role
   already wants, upgrades for someone on the team (Pawn Compare), and weapons / armour Disenchant Loot doesn't call
   worth the auction house. With **Baganator category** on, a category *MMT Role Items* shows that role's items and
   works both ways: put an item into it and it goes on the role, take it out and it comes off (and the same from the

@@ -6,6 +6,8 @@
 --    team), so MMT's "Mail to team" mails it there at the next mailbox, and Loot
 --    Distribution hands that item to the role from then on. The auction price is the
 --    one "Loot by price" uses (Auctionator / FojjiCore, its order and max age).
+--    Weapons and armour with Disenchant Loot on: its verdict decides instead of the % - the
+--    best of disenchanting, the vendor and the auction house (its own % for that) wins.
 --    Left alone: soulbound (Bind on Pickup) items, items a role of the team already
 --    wants, upgrades for someone on the team (Pawn Compare; unknown counts as an
 --    upgrade), and items Disenchant Loot doesn't call worth the auction house
@@ -64,16 +66,18 @@ local function TeamUpgrade(link)
     return #keys > 0
 end
 
--- Disenchant Loot's verdict (it weighs disenchanting, the vendor and the auction house):
--- "DE" / "JUNK" = not the auction house; "AH" or nil (no disenchant value: not weapon or
--- armour, materials never scanned) = it's up to us. why when not ours
+-- Disenchant Loot's verdict: it weighs disenchanting, the vendor and the auction house
+-- (with its own % for the auction house) and the best one decides. "AH" = ours, no % of
+-- our own on top; "DE" / "JUNK" = not ours (the enchanter, or junk); nil (no disenchant
+-- value: not weapon or armour, materials never scanned; or Disenchant Loot off) = our %
 local function DisenchantSays(link)
     local de = MMT.modules and MMT.modules.DisenchantLoot
     if not (de and de.enabled and type(de.Verdict) == "function") then return nil end
     local ok, verdict, value = pcall(de.Verdict, link)
     if not ok then return nil end
-    if verdict == "DE" then return ("disenchanting is worth more (%s, Disenchant Loot)"):format(mod.Money(value or 0)) end
-    if verdict == "JUNK" then return "not worth the auction house by Disenchant Loot" end
+    if verdict == "DE" then return "DE", ("disenchanting is worth more (%s, Disenchant Loot)"):format(mod.Money(value or 0)) end
+    if verdict == "JUNK" then return "JUNK", "the vendor pays more (Disenchant Loot)" end
+    if verdict == "AH" then return "AH", ("the auction house pays most (disenchant %s, Disenchant Loot)"):format(mod.Money(value or 0)) end
 end
 
 -- does this item go on the role? true, why | false, why
@@ -89,15 +93,17 @@ function mod.RoleLootCheck(link)
     if sell <= 0 then return false, "no vendor price" end
     local price = mod.AuctionPrice and mod.AuctionPrice(link)
     if not price then return false, "no auction price" end
+    local verdict, why = DisenchantSays(link)
+    if verdict == "DE" or verdict == "JUNK" then return false, why end
     local pct = tonumber(M.db.rvPct) or 300
-    if price * 100 < sell * pct then
+    if verdict ~= "AH" and price * 100 < sell * pct then
         return false, ("auction %s is below %d%% of vendor %s"):format(mod.Money(price), pct, mod.Money(sell))
     end
     if OnAnyRole(link) then return false, "a role already wants it" end
     if TeamUpgrade(link) then return false, "an upgrade for someone on the team" end
-    local de = DisenchantSays(link)
-    if de then return false, de end
-    return true, ("auction %s = %d%% of vendor %s"):format(mod.Money(price), math.floor(price * 100 / sell), mod.Money(sell)), role
+    local text = ("auction %s = %d%% of vendor %s"):format(mod.Money(price), math.floor(price * 100 / sell), mod.Money(sell))
+    if verdict == "AH" then text = text .. ", " .. why end
+    return true, text, role
 end
 
 local function Consider(link, tries)
@@ -326,7 +332,7 @@ F = mod.Feature({
     tip = "Greens (or greens and blues) you loot that sell well at the auction house go on a role's items - e.g. your bank character's - so \"Mail to team\" sends them there.",
     notes = {
         "When this character loots or is traded a green (or blue) item whose auction price is at least the % below of its vendor price, it goes on the role you pick - the same as dropping it on the Role items panel, so the team gets the change too. At the next mailbox MMT's \"Mail to team\" mails it to whoever has the role, and Loot Distribution hands that item to the role from then on.",
-        "The auction price is the one \"Loot by price\" uses (Auctionator and/or FojjiCore, in its order, with its max age). Left alone: Bind on Pickup items, items a role already wants, upgrades for someone on the team (Pawn Compare), and - with Disenchant Loot on - weapons and armour it doesn't call worth the auction house (it compares disenchanting, the vendor and the auction price, and shows all three on the tooltip).",
+        "The auction price is the one \"Loot by price\" uses (Auctionator and/or FojjiCore, in its order, with its max age). Weapons and armour with Disenchant Loot on: whichever pays most decides instead of the % - disenchanting (the enchanter), the vendor (junk) or the auction house (this role), by Disenchant Loot's own %. Left alone: Bind on Pickup items, items a role already wants, upgrades for someone on the team (Pawn Compare), and - with Disenchant Loot on - weapons and armour it doesn't call worth the auction house (it compares disenchanting, the vendor and the auction price, and shows all three on the tooltip).",
         "Baganator category: \"MMT Role Items\" shows the role's items in your bags, and works both ways - put an item into the category in Baganator and it goes on the role; take it out and it comes off the role (and the other way round). Made once, at the top of your categories; move it where you like.",
     },
     commands = {

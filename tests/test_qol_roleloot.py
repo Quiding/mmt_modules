@@ -150,6 +150,11 @@ print(lua.eval(r'''function(m)
   local _, why = m.RoleLootCheck(LINK(106)); check("why", why, "disenchanting is worth more (10s, Disenchant Loot)")
   DE[106] = { "JUNK", 10 }; Loot(106); check("Disenchant Loot says junk: left", OnBank(106), false)
   DE[106] = { "AH", 10 }; Loot(106); check("Disenchant Loot says auction house: on the role", OnBank(106), true)
+  -- the auction house pays most by Disenchant Loot: no % of ours on top (161% < 300%)
+  ITEMS[115] = { 2, 9614, 2 }; AH[115] = 15500; DE[115] = { "AH", 11588 }
+  Loot(115); check("auction house pays most: on the role below our %", OnBank(115), true)
+  ITEMS[116] = { 2, 9614, 2 }; AH[116] = 15500
+  Loot(116); check("no Disenchant Loot verdict: our % (161% < 300%)", OnBank(116), false)
   Loot(107); check("white: left", OnBank(107), false)
   Loot(108); check("no vendor price: left", OnBank(108), false)
   ON.CHAT_MSG_LOOT(LOOT_ITEM_SELF_MULTIPLE:format(LINK(109), 2)); RUN_TIMERS()
