@@ -79,7 +79,7 @@ M.Page = function(_, page)
     ResetButton(page)
 
     local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
-    local TOP = H.Intro(page, "Greens worth more as disenchant materials than at a vendor go to your enchanter; the others become junk and are sold. Values from Auctionator (scan the auction house now and then).")
+    local TOP = H.Intro(page, "Greens go to your enchanter when disenchanting pays most, stay for the auction house when that does, else they're junk and sold. Prices from Auctionator.")
 
     -- Worth disenchanting ----------------------------------------------------------------------------
     local lt, L = Tile(page, 0, TOP, TILE_W, 300, "Worth Disenchanting", "Interface\\Icons\\INV_Enchant_DustStrange")
@@ -96,7 +96,7 @@ M.Page = function(_, page)
         "The item's own auction price (Quality of life's \"Loot by price\" sources when that module is on, else Auctionator's) counts too: when it beats both disenchanting and the vendor by the % below, the item is neither given to the enchanter nor junk. Quality of life's \"Valuable loot to a role\" can then put it on your bank character's role.")
     local ga, sa = Opt("ahPct")
     L:Slider("... auction price at least (% of the better one)", 100, 300, 5, ga, sa)
-    L:Note("Weapons and armour only. Disenchant value = its average materials at Auctionator prices; no value: left alone.")
+    L:Note("Weapons and armour: their average materials at Auctionator prices.")
 
     -- Master loot ----------------------------------------------------------------------------------------
     local rt, R = Tile(page, X2, TOP, TILE_W, 300, "Master Loot", "Interface\\Icons\\INV_Misc_Coin_02")
@@ -108,15 +108,17 @@ M.Page = function(_, page)
     local h = FitRow({ { lt, L }, { rt, R } })
 
     -- Junk -------------------------------------------------------------------------------------------------
-    local y2 = TOP - h - 8
+    local y2 = TOP - h - 4
     local jt, J = Tile(page, 0, y2, H.PAGE_W, 120, "The Others Are Junk", "Interface\\Icons\\INV_Misc_Bag_10")
     Check(J, "Mark them as junk (Baganator)", "junkOn",
         "On every character: unbound items of the kinds above that are NOT worth disenchanting are junk - unless they are an upgrade for anyone on the team (Pawn Compare: every member's Pawn scale and gear; without Pawn Compare only this character's Pawn). Baganator shows them as junk with the junk plugin \"Dejunk + Disenchant Loot\" (Dejunk's junk plus these): choose it in Baganator's settings.")
+    Check(J, "Also junk when the vendor pays more than the auction house", "vendorJunk",
+        "Items of the chosen quality without a disenchant value - not weapons or armour (recipes, trade goods, ...), or their materials never scanned - are junk too when their auction price is below the vendor price. Without an auction price they are left alone.")
     Check(J, "Sell them at a vendor", "sellOn", "When a merchant window opens, these junk items are sold (Dejunk sells its own junk as before).")
     local h2 = FitRow({ { jt, J } })
 
     -- Tooltip / old prices ---------------------------------------------------------------------------------
-    local y3 = y2 - h2 - 8
+    local y3 = y2 - h2 - 4
     local tt, T = Tile(page, 0, y3, TILE_W, 200, "Tooltip", "Interface\Icons\INV_Misc_Note_01")
     local gs, ss = Opt("tipShow")
     T:Cycle("Value and where it goes", SHOW, gs, ss)
@@ -139,10 +141,10 @@ end
 
 M.Report = function(_, add)
     local d = M.db
-    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s/%s money=%s stale=%s/%sh ah=%s/%s%% auctionator=%s plugin=%s"):format(
+    add(("-- Disenchant Loot %s: loot=%s active=%s to=%s quality=%s pct=%s minSilver=%s junk=%s sell=%s tip=%s/%s money=%s stale=%s/%sh ah=%s/%s%% vendorJunk=%s auctionator=%s plugin=%s"):format(
         mod.VERSION, tostring(d.lootOn), tostring(mod.LootActive()), tostring(d.to), tostring(d.quality), tostring(d.pct),
         tostring(d.minSilver), tostring(d.junkOn), tostring(d.sellOn), tostring(d.tipShow), tostring(d.matsShow), tostring(d.money),
-        tostring(d.staleOn), tostring(d.staleHours), tostring(d.ahOn), tostring(d.ahPct), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
+        tostring(d.staleOn), tostring(d.staleHours), tostring(d.ahOn), tostring(d.ahPct), tostring(d.vendorJunk), tostring(mod.HasPrices()), tostring(mod.PluginActive())))
     add("enchanter: " .. mod.EnchanterText())
     add(mod.AgeText() .. (" (price time %s)"):format(mod.PriceTime() and date("%Y-%m-%d %H:%M", mod.PriceTime()) or "-"))
     local s = mod.lastSale

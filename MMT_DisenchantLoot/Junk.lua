@@ -174,8 +174,7 @@ local function TipLine(tt)
     local value = verdict and mod.Showing(tipShow)
     local mats = list and #list > 0 and mod.Showing(matsShow)
     if value then
-        tt:AddLine(("Disenchant %s / vendor %s%s: %s"):format(mod.Money(de), mod.Money(sell),
-            ah and (" / auction " .. mod.Money(ah)) or "", mod.WhereText(verdict)), 1, 0.82, 0.5)
+        tt:AddLine(("%s: %s"):format(mod.ValuesText(de, sell, ah), mod.WhereText(verdict)), 1, 0.82, 0.5)
     end
     if mats then
         if not value then tt:AddLine("Disenchants into:", 1, 0.82, 0.5) end

@@ -12,6 +12,9 @@
 -- When that is at least M.db.ahPct % of the better of the two (ahOn), the item
 -- is worth more on the auction house: "AH" - not to the enchanter, not junk
 -- (Quality of life's "Valuable loot to a role" can put it on the bank's role).
+-- Items without a disenchant value - not weapon or armour (recipes, trade goods), or
+-- materials never scanned - are junk when their auction price is below the vendor
+-- price (vendorJunk): the vendor pays the most.
 --
 --   Module.lua   the value check and the master loot part: Loot Distribution's
 --                MMT.RegisterLootChooser hook gives items worth disenchanting
@@ -28,7 +31,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.6"
+mod.VERSION = "0.1.7"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
@@ -50,6 +53,7 @@ local M = MMT.NewModule({
         staleHours = 8,
         ahOn      = true,              -- the item's own auction price counts too: sell it there when that's best
         ahPct     = 110,               -- ... when it is at least this % of disenchant / vendor (the auction house takes 5%)
+        vendorJunk = true,             -- no disenchant value (not gear, ...): junk when the auction price is below the vendor price
     },
 })
 mod.M = M
@@ -90,11 +94,18 @@ function mod.Verdict(link)
     local _, _, quality, level, _, _, _, _, _, _, sell, classID = Info(link)
     if not quality then return nil, nil, nil, "item not loaded" end
     if not QualityCounts(quality) then return nil, nil, nil, "quality" end
-    if classID ~= WEAPON and classID ~= ARMOR then return nil, nil, nil, "not weapon or armour" end
-    if not mod.HasPrices() then return nil, nil, sell, "Auctionator isn't loaded" end
-    local de, why, missing = mod.DisenchantValue(link, classID, quality, level)
-    if not de then return nil, nil, sell, why, missing end
     sell = sell or 0
+    local gear = classID == WEAPON or classID == ARMOR
+    local de, why, missing
+    if not gear then why = "not weapon or armour"
+    elseif not mod.HasPrices() then why = "Auctionator isn't loaded"
+    else de, why, missing = mod.DisenchantValue(link, classID, quality, level) end
+    if not de then
+        -- no disenchant value: the vendor against the auction house
+        local ah = M.db.vendorJunk and sell > 0 and mod.AuctionValue(link) or nil
+        if ah and ah < sell then return "JUNK", nil, sell, nil, nil, ah end
+        return nil, nil, sell, why, missing, ah
+    end
     local ah = M.db.ahOn and mod.AuctionValue(link) or nil
     if ah and ah * 100 >= math.max(de, sell) * (M.db.ahPct or 110) then return "AH", de, sell, nil, nil, ah end
     local worth = de >= sell * (M.db.pct or 100) / 100 and de >= (M.db.minSilver or 0) * 100
@@ -114,6 +125,16 @@ function mod.Money(copper)
     if s > 0 or (g > 0 and c > 0) then parts[#parts + 1] = ("%d|cffc7c7cfs|r"):format(s) end
     if c > 0 or #parts == 0 then parts[#parts + 1] = ("%d|cffeda55fc|r"):format(c) end
     return table.concat(parts, " ")
+end
+
+-- "Disenchant 1g / vendor 50s / auction 1g 20s" (the ones known; lower = "disenchant ...")
+function mod.ValuesText(de, sell, ah, lower)
+    local t = {}
+    if de then t[#t + 1] = "disenchant " .. mod.Money(de) end
+    if sell then t[#t + 1] = "vendor " .. mod.Money(sell) end
+    if ah then t[#t + 1] = "auction " .. mod.Money(ah) end
+    local s = table.concat(t, lower and ", " or " / ")
+    return lower and s or (s:gsub("^%l", string.upper))
 end
 
 -- where the item goes, for texts: "to Enchanter role (...)" / "junk" / "auction house"
@@ -213,8 +234,7 @@ SlashCmdList.MMTDISENCHANT = function(msg)
             #names > 0 and (": " .. table.concat(names, ", ") .. " (scan the auction house)") or "")
         return
     end
-    MMT.Print("Disenchant Loot: %s - disenchant %s, vendor %s%s: %s.", link, mod.Money(de), mod.Money(sell),
-        ah and (", auction " .. mod.Money(ah)) or "", mod.WhereText(verdict, true))
+    MMT.Print("Disenchant Loot: %s - %s: %s.", link, mod.ValuesText(de, sell, ah, true), mod.WhereText(verdict, true))
     for _, e in ipairs(mod.Breakdown(link) or {}) do
         MMT.Print("  %.1f%%  %s %s  (%s each)", e.chance, e.min == e.max and e.min or (e.min .. "-" .. e.max),
             mod.MatName(e.id), e.price and mod.Money(e.price) or "no price")

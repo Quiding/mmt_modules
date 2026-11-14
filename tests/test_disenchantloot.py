@@ -241,6 +241,19 @@ print(lua.eval(r'''function(m)
   db.tipShow = "ALWAYS"
   m.TipLine(tt)
   check("tooltip: all three", LINES[1], "Disenchant 150c / vendor 100c / auction 170c: |cff66ff66auction house|r")
+  -- the vendor pays most: items without a disenchant value
+  check("trade good, no auction price: left", (m.Verdict(L(4))), nil)
+  ITEMAH[4] = 30
+  local v4, de4, sell4, _, _, ah4 = m.Verdict(L(4))
+  check("trade good, auction 30 < vendor 50: junk", v4, "JUNK"); check("no disenchant value", de4, nil); check("auction", ah4, 30)
+  BAGS = { [0] = { { 4, false } } }
+  check("in the bags: junk", m.IsJunk(0, 1), true)
+  check("no enchanter for it", m.Choose(L(4), { "Der-B" }, {}), nil)
+  ITEMAH[4] = 80; check("auction 80 > vendor 50: left", (m.Verdict(L(4))), nil)
+  ITEMAH[4] = 30; db.vendorJunk = false; check("option off: left", (m.Verdict(L(4))), nil); db.vendorJunk = true
+  ITEMAH[5] = 50; check("materials never scanned, auction below vendor: junk", (m.Verdict(L(5))), "JUNK")
+  LINES = {}; tt.GetItem = function() return "x", L(4) end; m.TipLine(tt)
+  check("tooltip without a disenchant value", LINES[1], "Vendor 50c / auction 30c: |cff999999junk|r")
   return table.concat(out, ", ")
 end''')(mod))
 print("PASS")
