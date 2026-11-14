@@ -13,16 +13,18 @@ MODULES, with its own settings page.
 
 | Module | What it does | Version |
 | --- | --- | --- |
-| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.5 |
-| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.5 |
-| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.0 |
-| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.2.1 |
-| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.0 |
-| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.3 |
+| [Cooldown Timers](#cooldown-timers) | Bars with every member's important cooldowns | 1.0.6 |
+| [Buff Timers](#buff-timers) | Who has, and who misses, the buffs you track | 1.0.6 |
+| [Totems](#totems) | Totem bars for the team's shamans *(not heavily tested yet)* | 1.0.1 |
+| [Pawn Compare](#pawn-compare) | Pawn scores for the whole team in the item tooltips, master loot to the biggest upgrade, delete or hide Pawn scales team-wide | 1.2.2 |
+| [Team Gear](#team-gear) | Any member's equipped gear and talents, like inspecting them | 1.0.1 |
+| [Team Inventory](#team-inventory) | Item counts and bags across all accounts *(not heavily tested yet)* | 1.0.4 |
 | [Whispers](#whispers) | Your alts' whispers on the character you play | 1.0.0 |
-| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.1 |
+| [Quality of life](#quality-of-life) | Dejunk lists and Baganator categories, the same on the whole team; send ForeverAuras auras and EllesmereUI profiles to the team; SmartBuff alerts and PallyPower's missing blessings called out to the leader; RestedXP Guides waits for the party and shows the team's counts; Dejunk / Baganator junk left on the corpse as master looter; a role's items beside the bags; valuable loot onto a role (e.g. the bank's) with a Baganator category for it; Auctionator and FojjiCore auction scans shared; the MMT profile exported or copied with other names. Every part starts off, offered once when its addon is there *(new, not tested in game yet)* | 1.8.2 |
 | [Styles](#styles) | Another look for MMT's settings and windows: ElvUI-like, EllesmereUI-like, Modern Blizzard or Classic (the game's own window art) *(new, not tested in game yet)* | 1.2.1 |
-| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold, unless the auction house pays more. Values from Auctionator *(new, not tested in game yet)* | 0.1.5 |
+| [Disenchant Loot](#disenchant-loot) | As master looter, greens worth more as disenchant materials than at a vendor go to your enchanter; the other greens become junk (Baganator / Dejunk) and are sold, unless the auction house pays more. Values from Auctionator *(new, not tested in game yet)* | 0.1.6 |
+
+In every module's settings a slider's value can be clicked and typed (250 or 250%, then Enter), besides dragging.
 
 > **Renamed:** Cooldowns is now **Cooldown Timers** (`MMT_CooldownTimers`, `/mmtct`) and Buffs is now **Buff Timers**
 > (`MMT_BuffTimers`, `/mmtbt`). Delete the old `MMT_Cooldowns` / `MMT_Buffs` folders when you update - your

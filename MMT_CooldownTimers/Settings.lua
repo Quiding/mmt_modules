@@ -38,6 +38,7 @@ mod.TAB_KEYS = {
 }
 
 M.Page = function(_, page)
+    if mod.TypedSliders then mod.TypedSliders(page) end   -- click a slider's value to type it
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 0)
     status:SetWidth(H.PAGE_W)

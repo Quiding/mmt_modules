@@ -30,6 +30,7 @@ local function FitRow(row)
 end
 
 M.Page = function(_, page)
+    if mod.TypedSliders then mod.TypedSliders(page) end   -- click a slider's value to type it
     ResetButton(page, function() mod.SetupButton(); mod.SetupMinimap() end)
     local Tile, TILE_W, X2 = H.Tile, H.TILE_W, H.TILE_W + H.TILE_GAP
     local TOP = H.Intro(page, "Any team member's equipped gear and talents, like inspecting them, or the whole team at once - also while they are offline.")

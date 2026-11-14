@@ -51,6 +51,7 @@ local FILTER_CHOICES = { { value = "SHOW", text = "Show" }, { value = "HIDE", te
 -- Tabs (SettingsKit.lua, shared with Cooldowns / Buffs / Totems):
 -- General (tooltip, sharing) / Team bags (window, gifts, filters) / Look
 M.Page = function(_, page)
+    if mod.TypedSliders then mod.TypedSliders(page) end   -- click a slider's value to type it
     ResetButton(page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)

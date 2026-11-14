@@ -15,7 +15,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.0.0"
+mod.VERSION = "1.0.1"
 
 local M = MMT.NewModule({
     name = "TeamGear",

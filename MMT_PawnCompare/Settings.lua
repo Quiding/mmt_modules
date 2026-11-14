@@ -95,6 +95,7 @@ function mod.LootPage(panel, status)
 end
 
 M.Page = function(_, page)
+    if mod.TypedSliders then mod.TypedSliders(page) end   -- click a slider's value to type it
     ResetButton(page)
     local status = H.StatusLine(page)
     status:SetPoint("BOTTOMLEFT", 0, 32)

@@ -28,7 +28,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "0.1.5"
+mod.VERSION = "0.1.6"
 
 local M = MMT.NewModule({
     name = "DisenchantLoot",
