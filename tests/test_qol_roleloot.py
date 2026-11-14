@@ -143,7 +143,19 @@ print(lua.eval(r'''function(m)
   Loot(102); check("Bind on Pickup: left", OnBank(102), false)
   Loot(103); check("blue with greens only: left", OnBank(103), false)
   db.rvQuality = "GREEN_BLUE"; Loot(103); check("blue with green and blue", OnBank(103), true); db.rvQuality = "GREEN"
+  MMT.FirstName = function(k) return (k:match("^[^-]+")) end
   TEAMUP[104] = { "Anna-R" }; Loot(104); check("a team upgrade: left", OnBank(104), false)
+  local _, why104 = m.RoleLootCheck(LINK(104)); check("names who", why104, "an upgrade for Anna (Pawn Compare)")
+  -- Pawn Compare can't tell yet: not now, asked again
+  local tu = MMT.modules.PawnCompare.TeamUpgrades
+  local tries = 0
+  MMT.modules.PawnCompare.TeamUpgrades = function(link) tries = tries + 1; if tries < 3 then return nil, "item not loaded" end return {} end
+  ITEMS[121] = { 2, 100, 2 }; AH[121] = 900
+  local okc, whyc = m.RoleLootCheck(LINK(121)); check("can't tell: not yet", okc, nil)
+  check("says why", whyc, "Pawn Compare can't tell yet (item not loaded)")
+  tries = 0
+  Loot(121); check("asked again until it can tell: on the role", OnBank(121), true)
+  MMT.modules.PawnCompare.TeamUpgrades = tu
   TEAMUP[104] = nil; m.MMT_ = nil
   Loot(105); check("a role already wants it: left", OnBank(105), false)
   local _, why105 = m.RoleLootCheck(LINK(105)); check("says which", why105, "already on the role Main")

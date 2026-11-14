@@ -63,12 +63,18 @@ local function OnAnyRole(link)
     return nil
 end
 
+-- an upgrade for someone on the team (Pawn Compare)? false | true, "an upgrade for A, B" |
+-- nil, why = can't tell yet (maybe someone's upgrade: not now, asked again a moment later)
 local function TeamUpgrade(link)
     local pc = MMT.modules and MMT.modules.PawnCompare
     if not (pc and pc.enabled and type(pc.TeamUpgrades) == "function") then return false end
-    local ok, keys = pcall(pc.TeamUpgrades, link)
-    if not ok or keys == nil then return true end   -- can't tell: maybe someone's upgrade
-    return #keys > 0
+    local ok, keys, why = pcall(pc.TeamUpgrades, link)
+    if not ok then return nil, "Pawn Compare: " .. tostring(keys) end
+    if keys == nil then return nil, "Pawn Compare can't tell yet (" .. tostring(why or "?") .. ")" end
+    if #keys == 0 then return false end
+    local names = {}
+    for _, k in ipairs(keys) do names[#names + 1] = MMT.FirstName and MMT.FirstName(k) or k end
+    return true, "an upgrade for " .. table.concat(names, ", ") .. " (Pawn Compare)"
 end
 
 -- Disenchant Loot's verdict: it weighs disenchanting, the vendor and the auction house
@@ -106,7 +112,9 @@ function mod.RoleLootCheck(link)
     end
     local onRole = OnAnyRole(link)
     if onRole then return false, "already on the role " .. onRole end
-    if TeamUpgrade(link) then return false, "an upgrade for someone on the team" end
+    local up, upWhy = TeamUpgrade(link)
+    if up == nil then return nil, upWhy end
+    if up then return false, upWhy end
     local text = ("auction %s = %d%% of vendor %s"):format(mod.Money(price), math.floor(price * 100 / sell), mod.Money(sell))
     if verdict == "AH" then text = text .. ", " .. why end
     return true, text, role
@@ -117,8 +125,9 @@ local function Consider(link, tries)
     rv.checked = rv.checked + 1
     local ok, why, role = mod.RoleLootCheck(link)
     if ok == nil then
-        -- item data not here yet: again in a moment
-        if (tries or 0) < 5 then C_Timer.After(1, function() Consider(link, (tries or 0) + 1) end) end
+        -- item data (or Pawn's view of it) not here yet: again in a moment
+        rv.lastLink, rv.lastWhy = link, why
+        if (tries or 0) < 5 then C_Timer.After(2, function() Consider(link, (tries or 0) + 1) end) end
         return
     end
     rv.lastLink, rv.lastWhy = link, why
@@ -358,7 +367,7 @@ F = mod.Feature({
                             added = added + 1
                             MMT.Print("  + %s on %s (%s)", link, role, why)
                         elseif not ok then
-                            left[#left + 1] = ("  - %s: %s"):format(link, tostring(why))
+                            left[#left + 1] = ("  - %s: %s%s"):format(link, tostring(why), ok == nil and " - try again in a moment" or "")
                         end
                     end
                 end
