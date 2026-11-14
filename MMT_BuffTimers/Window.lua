@@ -253,6 +253,30 @@ local function AllRow()
     return { label = "All", color = { 1, 0.82, 0 }, icons = icons }
 end
 
+-- "Hide when no team member is online" (hideAlone): the window waits until another
+-- member of the team is online; the preview and arranging still show it
+function mod.TeamAlone()
+    for _, key in ipairs(MMT.SortedMembers()) do
+        if not MMT.IsSelf(key) and MMT.IsOnline(key) then return false end
+    end
+    return true
+end
+
+local function HiddenAlone()
+    return M.db and M.db.hideAlone and not mod.preview and not mod.Arranging("MMTBuffs") and mod.TeamAlone() or false
+end
+
+-- members come online / time out: show or hide the window when that changes
+local lastAlone
+C_Timer.NewTicker(2, function()
+    if not (M.enabled and M.db and mod.window) then lastAlone = nil return end
+    local now = HiddenAlone()
+    if now ~= lastAlone then
+        lastAlone = now
+        mod.window:Refresh()
+    end
+end)
+
 mod.window = MMTIconBars.NewWindow({
     name = "MMTBuffs",
     frameOrder = 2,   -- beside a party frame: after Cooldown Timers' row
@@ -274,7 +298,7 @@ mod.window = MMTIconBars.NewWindow({
         return rows
     end,
     config = function() MMT.ToggleConfig(M.name) end,
-    active = function() return M.enabled end,
+    active = function() return M.enabled and not HiddenAlone() end,
     guests = function() return not mod.Attached() end,   -- attached: no member rows to take Cooldowns' icons
 })
 

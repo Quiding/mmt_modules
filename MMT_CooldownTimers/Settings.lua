@@ -24,7 +24,7 @@ end
 
 -- the settings of each tab, for "Reset..." in the share bar (SettingsKit; tests check every default is in one)
 mod.TAB_KEYS = {
-    bars = { "shown", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "showNames", "fullNames",
+    bars = { "shown", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "hideAlone", "showNames", "fullNames",
         "showTimers", "glowActive", "showBuffs", "hideReady", "hideUnknown", "hideUnseenItems", "point", "hidden", "autoSend", "autoTake" },
     ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
         "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
@@ -82,6 +82,7 @@ M.Page = function(_, page)
             end)
             Check(L, "Include your own character", "includeSelf")
             Check(L, "Only online or grouped members", "onlyOnline")
+            Check(L, "Hide when no team member is online", "hideAlone", "Solo, or the rest of the team logged off: the window (and its icons on the party frames) is hidden. It comes back as soon as another member is online. The preview and arranging still show it.")
             L:Cycle("Preview", {
                 { value = "OFF", text = "Off" },
                 { value = "REAL", text = "The team as it is" },

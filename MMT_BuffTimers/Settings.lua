@@ -122,7 +122,7 @@ end
 -- the settings of each tab, for "Reset..." in the share bar (SettingsKit; tests check every default is in one)
 mod.TAB_KEYS = {
     bars = { "shown", "attach", "locked", "clickThrough", "growth", "vertical", "includeSelf", "onlyOnline", "hideUnlearned",
-        "blessingLimit", "hideNoCaster", "showNames", "fullNames", "showTimers", "point", "hidden", "allBar", "allExclude",
+        "blessingLimit", "hideNoCaster", "hideAlone", "showNames", "fullNames", "showTimers", "point", "hidden", "allBar", "allExclude",
         "glowAlerts", "autoSend", "autoTake" },
     ["look.window"] = { "scale", "rowGap", "font", "nameSize", "bgTexture", "bgColor", "bgTint", "bgAlpha",
         "borderTexture", "borderColor", "borderSize", "rowColor", "rowAlpha" },
@@ -205,6 +205,7 @@ M.Page = function(_, page)
             end)
             Check(L, "Include your own character", "includeSelf")
             Check(L, "Only online or grouped members", "onlyOnline")
+            Check(L, "Hide when no team member is online", "hideAlone", "Solo, or the rest of the team logged off: the window (and its icons on the party frames) is hidden. It comes back as soon as another member is online. The preview and arranging still show it.")
             Check(L, "Hide buffs not learned yet", "hideUnlearned", "A class buff a character hasn't learned yet (Inner Fire, a seal, an armor) leaves their row; a buff cast on others (Fortitude, Blessings, ...) only shows while someone here has learned it. Each client tells the team what it hasn't learned; flasks and world buffs always show.")
             Check(L, "One blessing per paladin", "blessingLimit", "A member can have one blessing from each paladin: once they have as many blessings as there are paladins in the group, the other blessings tracked for them don't count as missing. Blessings from paladins outside the group don't use up a slot.")
             Check(L, "Hide buffs nobody here can cast", "hideNoCaster", "A class buff (Fortitude, Mark of the Wild, Blessings, Arcane Intellect, ...) only shows when someone of that class is in your group or online in your team. World buffs, flasks and food always show.")

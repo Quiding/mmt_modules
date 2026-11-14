@@ -104,6 +104,30 @@ function mod.ListsChanged()
     if MMT.RefreshConfig then MMT.RefreshConfig() end   -- the list editor, if it's open
 end
 
+-- "Hide when no team member is online" (hideAlone): the window waits until another
+-- member of the team is online; the preview and arranging still show it
+function mod.TeamAlone()
+    for _, key in ipairs(MMT.SortedMembers()) do
+        if not MMT.IsSelf(key) and MMT.IsOnline(key) then return false end
+    end
+    return true
+end
+
+local function HiddenAlone()
+    return M.db and M.db.hideAlone and not mod.preview and not mod.Arranging("MMTCooldowns") and mod.TeamAlone() or false
+end
+
+-- members come online / time out: show or hide the window when that changes
+local lastAlone
+C_Timer.NewTicker(2, function()
+    if not (M.enabled and M.db and mod.window) then lastAlone = nil return end
+    local now = HiddenAlone()
+    if now ~= lastAlone then
+        lastAlone = now
+        mod.window:Refresh()
+    end
+end)
+
 -- with "hide ready" an icon must go away when its cooldown ends
 C_Timer.NewTicker(1, function()
     if M.enabled and M.db and M.db.hideReady and M.db.shown and not mod.Arranging("MMTCooldowns") and not MMTIconBars.IsDragging() then mod.Refresh() end
@@ -115,7 +139,7 @@ mod.window = MMTIconBars.NewWindow({
     cfg = function() return M.db end,
     rows = Rows,
     config = function() MMT.ToggleConfig(M.name) end,
-    active = function() return M.enabled end,
+    active = function() return M.enabled and not HiddenAlone() end,
 })
 
 -- move tab above the window's corner while unlocked (SettingsKit), always while arranging

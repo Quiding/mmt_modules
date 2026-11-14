@@ -1038,3 +1038,22 @@ print(lua.eval(r"""function(m)
   m.ScanGroup()
   return "redraw only on tracked changes ok"
 end""")(mod))
+
+# hideAlone: the window waits until another team member is online (preview still shows it)
+print(lua.eval(r"""function(m)
+  local active = MMTIconBars.windows.MMTBuffs.def.active
+  local old = MMT.IsOnline
+  m.M.db.hideAlone = false
+  assert(active(), "off: shown")
+  m.M.db.hideAlone = true
+  MMT.IsOnline = function() return true end
+  assert(active(), "a member online: shown")
+  MMT.IsOnline = function(k) return MMT.IsSelf(k) end
+  assert(m.TeamAlone() and not active(), "alone: still shown")
+  m.preview = "REAL"
+  assert(active(), "preview while alone: hidden")
+  m.preview = nil
+  m.M.db.hideAlone = false
+  MMT.IsOnline = old
+  return "hide when alone ok"
+end""")(mod))

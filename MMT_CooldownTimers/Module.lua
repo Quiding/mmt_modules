@@ -36,6 +36,7 @@ local M = MMT.NewModule({
         soonSecs = 0, soonTextColor = { r = 1, g = 0.82, b = 0 }, soonSwipeColor = { r = 0.4, g = 0.3, b = 0 },     -- 0 = off
         urgentSecs = 0, urgentTextColor = { r = 1, g = 0.2, b = 0.2 }, urgentSwipeColor = { r = 0.5, g = 0, b = 0 },
         hideReady = false,          -- only show icons while they are on cooldown
+        hideAlone = false,          -- hide the window while no other team member is online (Window.lua)
         showBuffs = true,           -- while the spell's buff is up: glow with the buff's time left
         hideUnknown = true,         -- spells a character hasn't learned (shared, Known.lua) / items you don't carry
         hideUnseenItems = false,    -- other members' items only after you saw them used

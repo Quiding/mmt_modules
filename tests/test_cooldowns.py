@@ -811,3 +811,21 @@ print("S:", B.eval(r"""function(m, msg)
   m.M.db.autoTake = true
   return "taken: lists and looks, position kept, not sent back"
 end""")(bmod, msg))
+
+# hideAlone: the window waits until another team member is online (preview still shows it)
+print("A:", A.eval(r"""function(m)
+  local active = MMTIconBars.windows.MMTCooldowns.def.active
+  local old = MMT.IsOnline
+  assert(active(), "off: shown")
+  m.M.db.hideAlone = true
+  assert(active(), "a member online: shown")
+  MMT.IsOnline = function(k) return MMT.IsSelf(k) end
+  assert(m.TeamAlone() and not active(), "alone: still shown")
+  m.preview = "REAL"
+  assert(active(), "preview while alone: hidden")
+  m.preview = nil
+  m.M.db.hideAlone = false
+  assert(active(), "option off: hidden")
+  MMT.IsOnline = old
+  return "hide when alone ok"
+end""")(amod))
