@@ -29,6 +29,15 @@ function MMT.FullDisplay(k) return (k:gsub("-", " ")) end
 function MMT.SendToTeam(msg) assert(#msg < 250, "message too long: " .. #msg); SENT[#SENT + 1] = msg end
 function MMT.SendLong(msg) SENT[#SENT + 1] = msg end
 function MMT.RegisterLootSkip(sk) LOOTSKIP = sk end
+-- frames: every method does nothing, Create* gives another such object (Transfers.lua's bars)
+local function Obj()
+  return setmetatable({}, { __index = function(_, k)
+    if type(k) == "string" and k:find("^Create") then return function() return Obj() end end
+    if k == "GetPoint" then return function() return nil end end
+    return function() end
+  end })
+end
+CreateFrame = CreateFrame or function() return Obj() end
 function MMT.UI.Confirm(text, accept, onAccept, cancel, onCancel) DIALOG = { text = text, ok = onAccept, no = onCancel } end
 function MMT.NewModule(def)
   local M = def
@@ -750,12 +759,22 @@ run(A, amod, r"""function(m)
   assert(ok and why:find("\"Healer; mine\"", 1, true), tostring(why))
   assert(OUT[1].msg:find("^QEUH:%d+:1:%d+:Healer%%3B mine$") and OUT[1].to == "Bob Stone", "head: " .. OUT[1].msg)
   assert(#OUT == 3 and OUT[2].msg:find("^QEU:%d+:1:2:P%%7CHealer%%3B mine=!EUI_P") and OUT[3].msg:find("^QEU:%d+:2:2:"), "parts")
-  return "Anna: EllesmereUI profiles listed, one sent to Bob in 2 parts"
+  local rows, order = m.XferRows()
+  local id = order[#order]
+  assert(id and id:find("^out:%d+:Bob%-Stone$") and rows[id].out and rows[id].est and rows[id].label:find("To Bob Stone", 1, true), "send bar: " .. tostring(id))
+  BAR = id
+  return "Anna: EllesmereUI profiles listed, one sent to Bob in 2 parts, a progress bar"
 end""")
 msgs = out(A)
 deliver_to(msgs, B, "Anna-Smith", order=[0, 2, 1])
 run(B, bmod, r"""function(m)
   DIALOG = DIALOG   -- the aura ask is done with
+  local rows, order = m.XferRows()
+  local id = order[#order]
+  assert(id and id:find("^in:Anna%-Smith:%d+$") and rows[id].finished == true and rows[id].done == rows[id].bytes, "receive bar: " .. tostring(id))
+  local p = 0
+  for _, o in ipairs(OUT) do if o.msg:find("^QEUR:%d+:P%d+$") and o.to == "Anna-Smith" then p = p + 1 end end
+  assert(p >= 1, "no progress told to the sender")
   assert(DIALOG and DIALOG.text:find("sends you 1 EllesmereUI export", 1, true), "no dialog: " .. tostring(DIALOG and DIALOG.text))
   assert(DIALOG.text:find("profile \"Healer; mine\" - you have one by this name", 1, true), DIALOG.text)
   assert(#EUI_IMPORTS == 0, "opened before asking")
@@ -770,6 +789,28 @@ run(B, bmod, r"""function(m)
   return "Bob: asked, waited for his own import, EllesmereUI's import page opened, replied"
 end""")
 deliver_to(out(B), A, "Bob-Stone")
+run(A, amod, r"""function(m)
+  local r = m.XferRows()[BAR]
+  assert(r and r.finished == true and r.done == r.bytes and r.text == "imported", "send bar not finished by Bob's reply")
+  NOW = NOW + 10; m.XferTick()
+  assert(m.XferRows()[BAR] == nil, "finished bar not gone")
+  -- a receiver telling how far it is
+  m.Xfer("out:123456:Bob-Stone", "To Bob Stone: x", 200, true); m.XferEstimate("out:123456:Bob-Stone", 5)
+  local reply = m.EuiBulk.tags.QEUR
+  reply("Bob-Stone", "Bob Stone", "123456:P120")
+  r = m.XferRows()["out:123456:Bob-Stone"]
+  assert(r.done == 120 and r.heard and not r.est and r.finished == nil, "progress")
+  reply("Bob-Stone", "Bob Stone", "123456:P200")
+  assert(r.finished == true and r.text == "sent", "all arrived")
+  -- an older receiver says nothing: by the estimate, then "sent"
+  m.Xfer("out:654321:Bob-Stone", "To Bob Stone: y", 400, true); m.XferEstimate("out:654321:Bob-Stone", 10)
+  NOW = NOW + 5; m.XferTick()
+  r = m.XferRows()["out:654321:Bob-Stone"]
+  assert(r.done > 150 and r.done < 250 and r.finished == nil, "estimate " .. r.done)
+  NOW = NOW + 100; m.XferTick()
+  assert(r.finished == true, "estimate never ended")
+  return "Anna: the send bar followed Bob's progress, gone after a few seconds"
+end""")
 run(A, amod, r"""function(m)
   assert(LAST():find("Bob Stone imported 1 of 1 EllesmereUI profile(s)", 1, true), LAST())
   local ok = m.SendEui(m.EUI_FULL, "Bob-Stone"); assert(ok, "full not sent")

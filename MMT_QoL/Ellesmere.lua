@@ -148,7 +148,7 @@ local function OpenFull(item, done)
 end
 
 bulk = mod.Bulk({
-    tag = "QEU", noun = "EllesmereUI profile(s)", plural = "EllesmereUI profiles", where = "EllesmereUI's import page",
+    tag = "QEU", bars = "euBars", noun = "EllesmereUI profile(s)", plural = "EllesmereUI profiles", where = "EllesmereUI's import page",
     fromKey = "euFrom", settings = "Quality of life > EllesmereUI",
     process = Process,
     ready = function() return EUI() ~= nil and mod.Active(F) end,
@@ -192,6 +192,7 @@ F = mod.Feature({
         ui.Button("Open the send window", function() mod.OpenEui() end,
             "Pick a profile or the full account, and who gets it. Also /mmtqol eui, or the \"Send to team\" button above EllesmereUI's options.")
         ui.Check("\"Send to team\" on EllesmereUI's options", "euDock", "A button above EllesmereUI's options window opens the send window beside it.")
+        ui.Check("Progress bars while sending / receiving", "euBars", "A small window with a bar per profile and member: how far a profile you send has arrived (each receiver tells, from this version on) and how far one sent to you is. Drag it anywhere; it goes away when they're done.")
         ui.Check("Ask before importing", "euAsk", "A dialog says what a team member sent, Import or Ignore. Off: profiles go straight to EllesmereUI's import page, which always asks too. A full account is always asked.")
         ui.Cycle("Who may send me profiles", { { value = "TEAM", text = "Anyone in the team" }, { value = "LEADER", text = "Only the FTL leader" } }, "euFrom")
     end,

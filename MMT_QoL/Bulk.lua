@@ -11,7 +11,9 @@
 --            entries = { { name = , str = }, ... }
 -- b.tags   the three handlers, for mod.Feature's tags
 -- b:Send(entries, to)  -> true, chat text | false, why not  (to = team key, nil = online team)
--- b:Reply(t, text)     back to the sender: "A" importing, "N:<why>", "D:<imported>:<total>"
+-- b:Reply(t, text)     back to the sender: "A" importing, "N:<why>", "D:<imported>:<total>",
+--                      "P<bytes>" received so far (with spec.bars: the sender's progress bar)
+-- spec.bars            M.db key: show progress bars (Transfers.lua) for these transfers
 --
 -- Wire:
 --   <tag>H:<batch>:<count>:<bytes>:<names>   first, small: "Anna is sending you ..."
@@ -29,6 +31,7 @@ local M = mod.M
 local CHUNK = 6000          -- payload bytes per SendLong (~28 core parts: well inside its 2 minutes)
 local FORGET = 600          -- an unfinished transfer is dropped after 10 minutes without a part
 local RATE = 800            -- the core's data rate (bytes / s), for the time estimate
+local ACK_EVERY = 1.5       -- "P" progress replies: at most one per this many seconds (and the last)
 
 local function Esc(s) return (tostring(s):gsub("[%%;=|%c]", function(c) return ("%%%02X"):format(c:byte()) end)) end
 local function Unesc(s) return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)) end
@@ -90,6 +93,14 @@ function mod.Bulk(spec)
             MMT.SendLong(("%s:%s:%d:%d:%s"):format(spec.tag, batch, i, n, payload:sub((i - 1) * CHUNK + 1, i * CHUNK)), target)
         end
         local what = #entries == 1 and ("\"" .. names[1] .. "\"") or (#entries .. " " .. spec.plural)
+        if b:Bars() then
+            local secs = bytes * 1.2 * receivers / RATE
+            for _, key in ipairs(to and { to } or mod.OnlineOthers()) do
+                local id = "out:" .. batch .. ":" .. key
+                mod.Xfer(id, ("To %s: %s"):format(MMT.FullDisplay(key), what), bytes, true)
+                mod.XferEstimate(id, secs)
+            end
+        end
         return true, ("Sending %s (%s) to %s: about %s."):format(what, mod.KB(bytes),
             to and MMT.FullDisplay(to) or ("the online team (" .. receivers .. ")"), Duration(bytes * 1.2 * receivers / RATE))
     end
@@ -97,6 +108,8 @@ function mod.Bulk(spec)
     function b:Reply(t, text)
         if t.sender then MMT.SendAddon(("%sR:%s:%s"):format(spec.tag, t.batch, text), "WHISPER", t.sender) end
     end
+
+    function b:Bars() return spec.bars and M.db[spec.bars] and mod.Xfer and true or false end
 
     function b:Count()
         local n = 0
@@ -147,6 +160,10 @@ function mod.Bulk(spec)
         t.count, t.bytes = tonumber(count), tonumber(bytes)
         t.start = t.start or GetTime()
         MMT.Print("Quality of life: %s is sending you %s %s (%s): %s", MMT.FullDisplay(key), count, spec.noun, mod.KB(t.bytes), Unesc(names))
+        if b:Bars() then
+            mod.Xfer("in:" .. key .. ":" .. batch, ("From %s: %s"):format(MMT.FullDisplay(key), Unesc(names)), t.bytes, false)
+            mod.XferProgress("in:" .. key .. ":" .. batch, t.recv or 0)
+        end
     end
 
     local function OnPart(key, sender, body)
@@ -162,7 +179,15 @@ function mod.Bulk(spec)
             t.got = t.got + 1
             t.recv = (t.recv or 0) + #part
         end
+        local bar = "in:" .. k
+        if b:Bars() then mod.Xfer(bar, ("From %s: %s"):format(MMT.FullDisplay(key), spec.plural), t.bytes, false); mod.XferProgress(bar, t.recv) end
+        -- how far it is, back to the sender (its progress bar); the last one always
+        if spec.bars and (t.got == n or GetTime() - (t.acked or 0) >= ACK_EVERY) then
+            t.acked = GetTime()
+            b:Reply(t, "P" .. t.recv)
+        end
         if t.got < n then return Progress(t) end
+        if b:Bars() then mod.XferDone(bar, "received", true) end
         incoming[k] = nil
         local entries = {}
         for entry in table.concat(t.parts):gmatch("[^;]+") do
@@ -176,6 +201,22 @@ function mod.Bulk(spec)
         local batch, state, rest = body:match("^(%d+):(%a)(.*)$")
         if not batch then return end
         local who = MMT.FullDisplay(key)
+        local bar = "out:" .. batch .. ":" .. key
+        if state == "P" then
+            local got = tonumber(rest)
+            if got and mod.XferProgress then
+                mod.XferProgress(bar, got)
+                local rows = mod.XferRows()
+                local r = rows[bar]
+                if r and r.bytes and got >= r.bytes then mod.XferDone(bar, "sent", true) end
+            end
+            return
+        end
+        if mod.XferDone then
+            if state == "A" then mod.XferDone(bar, "importing", true)
+            elseif state == "N" then mod.XferDone(bar, "not taken", false)
+            elseif state == "D" then mod.XferDone(bar, "imported", true) end
+        end
         if state == "A" then
             MMT.Print("Quality of life: %s is importing (%s).", who, spec.where)
         elseif state == "N" then
