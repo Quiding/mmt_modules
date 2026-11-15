@@ -447,9 +447,22 @@ run(B, bmod, r'''function(m)
   m.M.db.junkLink = true; SENT = {}
   DELIVER("Anna-Smith", "QBG:+i:3103=default_junk"); m.BaganatorTick()
   DELIVER("Anna-Smith", "QDJ:-GI2589"); DJ_FIRE(); m.BaganatorTick()
-  assert(BG_IN("default_junk", "i:3103") and not DJ_HAS("GI", 3103), "a taken change was linked")
   assert(#SENT == 0, "sent: " .. table.concat(SENT, " | "))
-  return "Bob: taken changes not linked again"
+  -- ... but an item in Junk must be on Dejunk's junk list here too (the sender's Dejunk sync
+  -- may not reach us): the catch-up puts it on, quietly, once
+  for _ = 1, 6 do m.BaganatorTick() end
+  assert(BG_IN("default_junk", "i:3103") and DJ_HAS("GI", 3103), "Junk from the team not on Dejunk's junk list")
+  assert(#SENT == 0, "catch-up sent: " .. table.concat(SENT, " | "))
+  -- one Dejunk won't keep (no sell price) isn't tried at every login
+  DJ_DEL("GI", 3103); DJ_FIRE(); SENT = {}
+  for _ = 1, 6 do m.BaganatorTick() end
+  assert(m.M.store.djCaught["3103"], "not remembered")
+  -- one marked "not junk" in Dejunk stays off
+  DJ_ADD("GE", 3105); DJ_FIRE()
+  DELIVER("Anna-Smith", "QBG:+i:3105=default_junk")
+  for _ = 1, 6 do m.BaganatorTick() end
+  assert(not DJ_HAS("GI", 3105), "not junk was put on the junk list")
+  return "Bob: taken changes not sent back; Junk caught up on Dejunk's junk list"
 end''')
 
 # --- Dejunk 3.5.1: one "add or remove" toggle per list ----------------------

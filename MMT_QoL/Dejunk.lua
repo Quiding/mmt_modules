@@ -400,6 +400,36 @@ local function LiveStep()
     After(0.05, LiveStep)
 end
 
+-- junk link catch-up: items in Baganator's Junk that aren't on Dejunk's junk list
+-- (they came from the team's Baganator sync, or were in Junk before the link was on)
+-- go on it here. Not sent: every client catches up from its own Junk. An item on
+-- Dejunk's "not junk" list stays off (that was chosen). nil while Dejunk isn't ready,
+-- else how many were put on. Each item is tried once (M.store.djCaught): one Dejunk
+-- won't take (no sell price) isn't tried again at every login.
+function mod.DejunkCatchUp(items)
+    if not ready or not (mod.AddonState("Dejunk")) then return nil end
+    local lists = State()
+    if not lists or not lists.GI then return nil end
+    local ops, now = {}, 0
+    M.store.djCaught = M.store.djCaught or {}
+    local tried = M.store.djCaught
+    for _, item in ipairs(items) do
+        item = tostring(item)
+        if not tried[item] and not Held("GI", item) and not Held("GE", item) and pending.GI[item] ~= "+" then
+            ops[#ops + 1] = { "+", "GI", item }
+            tried[item] = true
+        end
+    end
+    if #ops == 0 then return 0 end
+    for _, op in ipairs(ops) do
+        if Button("+", "GI") then live[#live + 1] = op; now = now + 1 else ApplyState({ op }) end
+    end
+    if now > 0 and not liveBusy then liveBusy = true; LiveStep() end
+    dj.caught = (dj.caught or 0) + #ops
+    MMT.Print("Quality of life: %d item(s) in Baganator's Junk put on Dejunk's junk list%s.", #ops, now < #ops and LATER or "")
+    return #ops
+end
+
 -- junk link: Baganator's Junk changed here -> Dejunk's global junk list, sent
 -- on to the team like a change made in Dejunk. false when nothing to do.
 function mod.DejunkFromHere(sign, item)

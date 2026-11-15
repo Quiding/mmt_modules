@@ -33,6 +33,7 @@ local F
 local snap, snapMods, snapProfile   -- snap["<item>\t<category key>"] = true
 local ticker, ticks = nil, 0
 local changedHere          -- we changed the table in place (junk link): compare it on the next tick
+local catchUp = true       -- junk link: Junk items not on Dejunk's junk list yet, put on (after login, after the team's)
 local bg = { sent = 0, taken = 0, missing = {} }
 mod.bg = bg
 
@@ -132,7 +133,18 @@ local function Tick()
     local mods = p.category_modifications
     if snap and name == snapProfile and rawequal(mods, snapMods) and ticks % 5 ~= 0 and not changedHere then return end
     changedHere = false
-    if not snap or name ~= snapProfile then Resnap() return end   -- first look / another Baganator profile
+    if not snap or name ~= snapProfile then Resnap(); catchUp = true return end   -- first look / another Baganator profile
+    -- junk link: what's in Junk (also from the team, or from before the link) on Dejunk's junk list
+    if catchUp and M.db.junkLink and mod.DejunkCatchUp then
+        local m = type(mods) == "table" and mods[JUNK]
+        local items = {}
+        for item in pairs(type(m) == "table" and type(m.addedItems) == "table" and m.addedItems or {}) do
+            -- (one put in just now, not in snap yet, goes through the link below: that one is sent)
+            local id = tostring(item):match("^i:(%d+)$")
+            if id and snap[item .. "	" .. JUNK] then items[#items + 1] = id end
+        end
+        if mod.DejunkCatchUp(items) ~= nil then catchUp = false end
+    end
 
     local now = Snapshot(p)
     local ops = {}
@@ -210,6 +222,7 @@ local function Apply(from, ops)
             if not mods[src].addedItems[item] then
                 mods[src].addedItems[item] = true
                 n = n + 1
+                if src == JUNK then catchUp = true end
             end
             if snap then snap[item .. "\t" .. src] = true end
         end
