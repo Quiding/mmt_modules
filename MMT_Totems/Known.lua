@@ -5,8 +5,11 @@
 -- client sends both once at login and when something changes (stored
 -- account-wide in M.store.known / M.store.items, so it stays while they
 -- are offline):
---   MTTK:<spellID>,<spellID>,...;<elements with their item, e.g. EFWA>
--- (older clients send no ";..." part: their items count as unknown).
+--   MTTK:<spellID>,<spellID>,...;<elements with their item, e.g. EFWA><C or c>
+-- (older clients send no ";..." part: their items count as unknown). C / c: the
+-- shaman knows Call of the Elements or not - their own bar uses the Calls only
+-- then, so the other clients set Calls or chosen totems for them to match
+-- (older clients send neither: guessed from their Calls, Calls.lua).
 -- A shaman whose list hasn't arrived yet shows every totem.
 
 local _, mod = ...
@@ -95,7 +98,8 @@ end
 
 local lastSent
 local function Message()
-    return "MTTK:" .. table.concat(OwnKnown(), ",") .. ";" .. OwnItems()
+    local calls = mod.KnowsCall and mod.KnowsCall(1) and "C" or "c"
+    return "MTTK:" .. table.concat(OwnKnown(), ",") .. ";" .. OwnItems() .. calls
 end
 
 local function Send(target)
@@ -142,6 +146,10 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
     else
         M.store.items[key] = nil   -- older client: unknown
     end
+    M.store.knowsCall = M.store.knowsCall or {}
+    if items:find("C", 1, true) then M.store.knowsCall[key] = true
+    elseif items:find("c", 1, true) then M.store.knowsCall[key] = false
+    else M.store.knowsCall[key] = nil end
     -- they just logged in (or something changed): make sure they have ours
     if not answered[key] then answered[key] = true; Send(sender) end
     mod.Refresh()

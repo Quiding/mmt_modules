@@ -120,11 +120,15 @@ end
 ---------------------------------------------------------------------------
 local view = {}   -- [key] = the Call the bar shows (this session)
 
--- this character: a Call learned; another shaman: their Calls are known (their client
--- takes them over from its Blizzard bar at login and tells the team)
+-- this character: a Call learned; another shaman: what their client says (MTTK, Known.lua),
+-- else (older client) their Calls are known (their client takes them over from its
+-- Blizzard bar at login and tells the team). Both sides must agree: a shaman without
+-- the Call casts the chosen totems, so a totem set into a Call for them did nothing.
 function mod.UsesCalls(key)
     if not key or (mod.IsPractice and mod.IsPractice(key)) then return false end
     if MMT.IsSelf(key) then return mod.KnowsCall(1) end
+    local says = M.store.knowsCall and M.store.knowsCall[key]
+    if says ~= nil then return says end
     local c = M.db.calls and M.db.calls[key]
     if not c then return false end
     for _, t in pairs(c) do if next(t) then return true end end

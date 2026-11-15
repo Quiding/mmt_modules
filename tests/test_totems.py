@@ -759,6 +759,17 @@ print("A:", A.eval(r"""function(m)
   m.OpenTotemMenu(m.bars["Bob-Stone"].slots.Water, "Bob-Stone", "Water")
   pick(5675)
   assert(m.Selected("Bob-Stone", "Water") == 5675 and m.CallTotem("Bob-Stone", 1, "Water") == nil, "Bob's pick")
+  -- Bob has Calls stored but his client says he doesn't know the Call (level 10): the pick
+  -- goes into his chosen totems, what his own bar casts
+  m.SetCallTotem("Bob-Stone", 1, "Earth", 8075, true)
+  assert(m.UsesCalls("Bob-Stone"), "older client: guessed from the stored Calls")
+  DELIVER("Bob-Stone", "MTTK:8075,2484;Ec")
+  assert(not m.UsesCalls("Bob-Stone"), "Bob says no Call but uses Calls")
+  m.OpenTotemMenu(m.bars["Bob-Stone"].slots.Earth, "Bob-Stone", "Earth")
+  pick(2484)
+  assert(m.M.db.selected["Bob-Stone"].Earth == 2484, "pick not in Bob's chosen totems")
+  DELIVER("Bob-Stone", "MTTK:8075,2484;EC")
+  assert(m.UsesCalls("Bob-Stone"), "Bob says he knows the Call")
   MMT.UI.OpenList = open
   return "bar follows the Calls ok"
 end""")(amod))
