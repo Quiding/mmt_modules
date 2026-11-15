@@ -121,6 +121,12 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         link = link or (id and ("item:" .. id))
         if not link then MMT.Print("Pawn Compare: /mmtpc loot <item link or ID> = who would get it as master loot.") return end
         mod.PrintLootRanking(link)
+    elseif msg:match("^why") then
+        local link = msg:match("(item:[%d:%-]+)")
+        local id = not link and tonumber(msg:match("^why%s+(%d+)"))
+        link = link or (id and ("item:" .. id))
+        if not link then MMT.Print("Pawn Compare: /mmtpc why <item link or ID> = the values behind the team upgrade lines.") return end
+        mod.PrintWhy(link)
     elseif msg == "request" then
         mod.RequestAll()
         MMT.Print("Pawn Compare: asked the online team for their scales.")
@@ -128,6 +134,37 @@ SlashCmdList.MMTPAWNCOMPARE = function(msg)
         MMT.Print("Pawn Compare %s - Pawn %s, Item Compare %s. Stored scales for %d characters.",
             mod.VERSION, mod.PawnInstalled() and "found" or "NOT installed",
             mod.ItemCompareActive() and "on" or "OFF", mod.StoredCount())
-        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs, /mmtpc scales = list / delete Pawn scales, /mmtpc loot <item> = who would get it by upgrade.")
+        MMT.Print("/mmtpc send = send your scales, /mmtpc request = ask the team for theirs, /mmtpc scales = list / delete Pawn scales, /mmtpc loot <item> = who would get it by upgrade, /mmtpc why <item> = the values behind the upgrade lines.")
+    end
+end
+
+-- /mmtpc why: the item's weapon stats, and per member and scale its value and that of what they wear there
+local WHY_STATS = { "Dps", "MeleeDps", "OneHandDps", "MainHandDps", "OffHandDps", "TwoHandDps", "Speed", "Strength", "Agility", "HitRating", "CritRating", "Ap" }
+function mod.PrintWhy(link)
+    local loc = mod.EquipLoc(link)
+    local stats, exact = mod.ItemStats(link)
+    if not (loc and mod.SLOTS[loc] and stats) then MMT.Print("Pawn Compare: %s isn't equippable or not loaded yet.", link) return end
+    local function StatText(st)
+        if not st then return "not loaded" end
+        local t = {}
+        for _, k in ipairs(WHY_STATS) do if st[k] then t[#t + 1] = ("%s=%.1f"):format(k, st[k]) end end
+        return #t > 0 and table.concat(t, " ") or "(none of the usual stats)"
+    end
+    MMT.Print("Pawn Compare: %s %s (%s): %s", link, loc, exact and "Pawn" or "game, approx.", StatText(stats))
+    for _, key in ipairs(MMT.SortedMembers()) do
+        local rec = mod.ScalesOf(key)
+        if rec and rec.scales and #rec.scales > 0 and mod.HasEquipment(key) then
+            for _, scale in ipairs(rec.scales) do
+                local v, unusable = mod.Value(stats, scale)
+                local parts = {}
+                for _, slot in ipairs(loc == "INVTYPE_2HWEAPON" and { 16, 17 } or mod.SLOTS[loc]) do
+                    local l = mod.EquippedLink(key, slot)
+                    local st = l and mod.ItemStats(l)
+                    local name = l and (C_Item.GetItemInfo(l)) or l or "empty"
+                    parts[#parts + 1] = ("[%d] %s = %s (%s)"):format(slot, tostring(name), st and ("%.1f"):format((mod.Value(st, scale))) or "?", l and StatText(st) or "-")
+                end
+                MMT.Print("  %s %s: new %s; %s", MMT.FirstName(key), scale.name, unusable and "unusable" or ("%.1f"):format(v), table.concat(parts, "; "))
+            end
+        end
     end
 end
