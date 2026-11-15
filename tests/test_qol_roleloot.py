@@ -143,6 +143,14 @@ print(lua.eval(r'''function(m)
   Loot(102); check("Bind on Pickup: left", OnBank(102), false)
   Loot(103); check("blue with greens only: left", OnBank(103), false)
   db.rvQuality = "GREEN_BLUE"; Loot(103); check("blue with green and blue", OnBank(103), true); db.rvQuality = "GREEN"
+  -- a minimum amount on top of the %: 4s is 400% of vendor but below 10s
+  db.rvMin = 1000
+  local okm, whym = m.RoleLootCheck(LINK(100))
+  check("below the minimum: left", okm, false)
+  check("says the minimum", whym, "auction 4s is below the minimum 10s")
+  db.rvMin = 300
+  check("above the minimum: on to the next rule", select(2, m.RoleLootCheck(LINK(100))), "already on the role Bank")
+  db.rvMin = 0
   MMT.FirstName = function(k) return (k:match("^[^-]+")) end
   TEAMUP[104] = { "Anna-R" }; Loot(104); check("a team upgrade: left", OnBank(104), false)
   local _, why104 = m.RoleLootCheck(LINK(104)); check("names who", why104, "an upgrade for Anna (Pawn Compare)")

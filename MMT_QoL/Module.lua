@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.8.9"
+mod.VERSION = "1.9.0"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -75,6 +75,7 @@ local M = MMT.NewModule({
         rvRole = "",               -- ... that role (e.g. "Bank"; "" = none chosen yet)
         rvQuality = "GREEN",       -- GREEN | GREEN_BLUE
         rvPct = 300,               -- auction price at least this % of the vendor price
+        rvMin = 0,                 -- ... and at least this much (copper; 0 = no minimum)
         rvBag = true,              -- Baganator category "MMT Role Items" <-> the role's items
         rvChat = true,
         -- FojjiCore's auction scan (FojjiShare.lua)

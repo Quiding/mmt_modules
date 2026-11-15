@@ -1,7 +1,7 @@
 -- MMT Quality of life: valuable loot onto a role, and a Baganator category for it.
 --
 -- 1) An item this character loots or is traded (green, or green and blue) whose auction price is at
---    least the chosen % of its vendor price goes on a role's items - e.g. "Bank" on the
+--    least the chosen % of its vendor price, and at least the minimum amount (rvMin), goes on a role's items - e.g. "Bank" on the
 --    bank alt - through the Role items panel's own path (mod.MailAdd: shared with the
 --    team), so MMT's "Mail to team" mails it there at the next mailbox, and Loot
 --    Distribution hands that item to the role from then on. The auction price is the
@@ -104,6 +104,10 @@ function mod.RoleLootCheck(link)
     if sell <= 0 then return false, "no vendor price" end
     local price = mod.AuctionPrice and mod.AuctionPrice(link)
     if not price then return false, "no auction price" end
+    local min = tonumber(M.db.rvMin) or 0
+    if min > 0 and price < min then
+        return false, ("auction %s is below the minimum %s"):format(mod.Money(price), mod.Money(min))
+    end
     local verdict, why = DisenchantSays(link)
     if verdict == "DE" or verdict == "JUNK" then return false, why end
     local pct = tonumber(M.db.rvPct) or 300
@@ -341,12 +345,13 @@ local function RoleChoices()
     return t
 end
 
+local minBox
 F = mod.Feature({
     key = "rvOn", icon = "INV_Misc_Coin_17", slash = "valuable", title = "Valuable loot to a role", tabText = "Valuable loot",
     checkText = "Put valuable loot on a role",
     tip = "Greens (or greens and blues) you loot that sell well at the auction house go on a role's items - e.g. your bank character's - so \"Mail to team\" sends them there.",
     notes = {
-        "When this character loots or is traded a green (or blue) item whose auction price is at least the % below of its vendor price, it goes on the role you pick - the same as dropping it on the Role items panel, so the team gets the change too. At the next mailbox MMT's \"Mail to team\" mails it to whoever has the role, and Loot Distribution hands that item to the role from then on.",
+        "When this character loots or is traded a green (or blue) item whose auction price is at least the % below of its vendor price (and at least the minimum amount, when one is set), it goes on the role you pick - the same as dropping it on the Role items panel, so the team gets the change too. At the next mailbox MMT's \"Mail to team\" mails it to whoever has the role, and Loot Distribution hands that item to the role from then on.",
         "The auction price is the one \"Loot by price\" uses (Auctionator and/or FojjiCore, in its order, with its max age). Weapons and armour with Disenchant Loot on: whichever pays most decides instead of the % - disenchanting (the enchanter), the vendor (junk) or the auction house (this role), by Disenchant Loot's own %. Left alone: Bind on Pickup items, items a role already wants, upgrades for someone on the team (Pawn Compare), and - with Disenchant Loot on - weapons and armour it doesn't call worth the auction house (it compares disenchanting, the vendor and the auction price, and shows all three on the tooltip).",
         "Baganator category: \"MMT Role Items\" shows the role's items in your bags, and works both ways - put an item into the category in Baganator and it goes on the role; take it out and it comes off the role (and the other way round). Made once, at the top of your categories; move it where you like.",
     },
@@ -379,6 +384,9 @@ F = mod.Feature({
         end,
         sync = function() MMT.Print("Quality of life: Baganator category %s.", mod.RoleBagSync() and "updated" or "already in sync (or off)") end,
     },
+    Refresh = function()
+        if minBox and not minBox:HasFocus() then minBox:SetText(mod.Money(M.db.rvMin or 0)) end
+    end,
     OnEnable = function()
         if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(2, Tick) end
     end,
@@ -389,13 +397,33 @@ F = mod.Feature({
         ui.Cycle("Role", RoleChoices, "rvRole")
         ui.Cycle("Items", { { value = "GREEN", text = "Green (uncommon)" }, { value = "GREEN_BLUE", text = "Green and blue" } }, "rvQuality")
         ui.Slider("Auction price at least (% of vendor)", 100, 1000, 25, "rvPct")
+        -- and a plain amount: any gold / silver / copper, 0 = none
+        local col = ui.col
+        col:Add(MMT.UI.Label(col.parent, "And auction price at least"), 16)
+        local function Take(box)
+            local c = mod.ParseMoney(box:GetText())
+            if c then
+                M.db.rvMin = c
+                if ui.status then ui.status.Show_(c > 0 and ("Valuable loot: only items worth at least %s."):format(mod.Money(c))
+                    or "Valuable loot: no minimum amount, only the %.") end
+            elseif ui.status then
+                ui.status.Show_("Valuable loot: write the amount like 1g 20s, 50s, 75c or 2.5g (0 = no minimum).", true)
+            end
+            box:SetText(mod.Money(M.db.rvMin or 0))
+        end
+        minBox = MMT.UI.EditBox(col.parent, col.width, "e.g. 5g (0 = none)", function(_, box) Take(box); box:ClearFocus() end)
+        minBox:HookScript("OnEditFocusLost", function(box) Take(box) end)
+        minBox:SetText(mod.Money(M.db.rvMin or 0))
+        MMT.UI.Tooltip(minBox, "And auction price at least",
+            "An item must also sell for at least this much at the auction house to go on the role, whatever the % says. Gold, silver and copper: 5g, 1g 20s, 50s, or a plain number of gold (2.5 = 2g 50s). 0: no minimum. Enter or click away to keep it.")
+        col:Add(minBox, MMT.UI.ROW + 4)
         ui.Check("Baganator category \"MMT Role Items\"", "rvBag", "The role's items in a Baganator category of their own, both ways: putting an item into it puts it on the role, taking it out takes it off (and the same from the role's side). Needs Baganator.")
         ui.Check("Chat line for each item", "rvChat", "Says which looted item went on the role, and why.")
         ui.Note("Prices: the \"Loot by price\" tab's sources and max age. /mmtqol valuable bags checks your bags now and says why each item stays.")
     end,
     Report = function(add)
-        add(("Valuable loot: on=%s role=%s quality=%s pct=%s bag=%s checked=%d traded=%d added=%d last=%s (%s) bag: made=%d toBag=%d fromBag=%d offBag=%d offRole=%d skip=%s error=%s"):format(
-            tostring(M.db.rvOn), tostring(mod.RoleLootRole()), tostring(M.db.rvQuality), tostring(M.db.rvPct), tostring(M.db.rvBag),
+        add(("Valuable loot: on=%s role=%s quality=%s pct=%s min=%s bag=%s checked=%d traded=%d added=%d last=%s (%s) bag: made=%d toBag=%d fromBag=%d offBag=%d offRole=%d skip=%s error=%s"):format(
+            tostring(M.db.rvOn), tostring(mod.RoleLootRole()), tostring(M.db.rvQuality), tostring(M.db.rvPct), mod.Money(M.db.rvMin or 0), tostring(M.db.rvBag),
             rv.checked, rv.traded or 0, rv.added, tostring(rv.lastLink), tostring(rv.lastWhy), rv.made or 0, rv.toBag, rv.fromBag, rv.offBag, rv.offRole,
             tostring(rv.lastSkip), tostring(rv.lastError)))
     end,
