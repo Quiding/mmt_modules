@@ -277,6 +277,33 @@ for _, fn in ipairs({ "OnEnable", "OnDisable", "OnProfileChanged" }) do
     end
 end
 
+-- sync: the stance settings live in both modules' settings, the bar reads the host's (Cooldown Timers'
+-- when loaded). Sending: the host's copy goes along with either module, so a stale copy never travels.
+-- Receiving (the core's Sync to team, all settings, AutoSync): into every copy here, then redrawn - the
+-- other client may have only one of the two modules, or this client's host may be switched off.
+do
+    local baseSync = M.SyncData
+    M.SyncData = function(self, ...)
+        local data
+        if baseSync then data = baseSync(self, ...)
+        else   -- (as the core's Module:SyncData)
+            data = MMT.CopyTable(self.db)
+            for _, k in ipairs(self.syncExclude or {}) do data[k] = nil end
+        end
+        local c = MMTStanceLib.Cfg()
+        if type(data) == "table" and c then
+            local raw = {}
+            for k, v in pairs(c) do raw[k] = MMT.CopyTable(v) end
+            data.stance = raw
+        end
+        return data
+    end
+end
+-- (called from the module's OnSyncReceived, Export.lua)
+function mod.StanceSynced()
+    if type(M.db) == "table" and type(M.db.stance) == "table" then MMTStanceLib.SetAll(M.db.stance) end
+end
+
 -- a reset of the Stance tab (or everything) on either page resets the shared settings (SettingsKit ResetKeys)
 function mod.AfterReset(keys)
     if not keys then MMTStanceLib.SetAll(nil) return end

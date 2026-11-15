@@ -401,3 +401,26 @@ print(lua.eval(r'''function(cd, bf)
   Check(bf.IsStance(BM.db.lists.PALADIN[1]) and #BM.db.lists.DRUID == 1, "round 2: paladin added / druid left alone")
   return "icon moves between bars ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))
+
+# stance settings and sync: the host's copy is sent with either module; one received goes into both copies
+print(lua.eval(r'''function(cd, bf)
+  local CM, BM = cd.M, bf.M
+  local S = MMTStanceLib
+  S.Set("where", "WINDOW")
+  Check(CM.db.stance.where == "WINDOW" and BM.db.stance.where == "WINDOW", "set: both copies")
+  BM.db.stance.where = "OFF"   -- a stale copy (an older version, a module that wasn't loaded)
+  Check(BM:SyncData().stance.where == "WINDOW", "sent: Buff Timers sends the host's (Cooldown Timers') copy")
+  Check(S.Cfg().where == "WINDOW", "host read")
+  -- the team's sync replaced only Buff Timers' settings, the bar is off there
+  local data = BM:SyncData(); data.stance = { where = "OFF" }
+  for k in pairs(BM.db) do BM.db[k] = nil end
+  for k, v in pairs(data) do BM.db[k] = v end
+  BM.OnSyncReceived(BM)
+  Check(CM.db.stance.where == "OFF" and S.Cfg().where == "OFF", "received: into Cooldown Timers' copy too, now " .. tostring(S.Cfg().where))
+  -- and the other way
+  CM.db.stance = { where = "WINDOW", shown = false }
+  CM.OnSyncReceived(CM)
+  Check(BM.db.stance.where == "WINDOW" and BM.db.stance.shown == false, "received by Cooldown Timers: into Buff Timers' copy")
+  S.SetAll(nil)
+  return "stance settings sync ok"
+end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))

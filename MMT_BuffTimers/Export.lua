@@ -79,6 +79,7 @@ function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
 
 -- the core's "Sync to team" (sync = true) replaced M.db and ran OnProfileChanged
 M.OnSyncReceived = function()
+    mod.StanceSynced()   -- into Cooldown Timers' copy too (Stance.lua)
     mod.ScanGroup()
     mod.Apply()
     mod.KnownCheck()

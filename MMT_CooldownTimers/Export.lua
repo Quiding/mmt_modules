@@ -60,6 +60,7 @@ function mod.OpenTransfer() MMTTransfer.Open(mod.TransferDef()) end
 
 -- the core's "Sync to team" (sync = true) replaced M.db and ran OnProfileChanged
 M.OnSyncReceived = function()
+    mod.StanceSynced()   -- into Buff Timers' copy too (Stance.lua)
     mod.ShareCheck()       -- our running cooldowns that just became tracked
     mod.RequestRunning()   -- and the team's
     mod.KnownCheck()       -- which tracked spells we haven't learned
