@@ -43,7 +43,7 @@ function MMT.NewModule(def)
   local M = def
   M.enabled = true
   M.db = copy(def.defaults)
-  for _, k in ipairs({ "dejunk", "baganator", "mlist", "ahshare", "fjshare", "auras", "eui", "smartbuff", "nx" }) do M.db[k] = true end  -- the features under test: switched on (they start off)
+  for _, k in ipairs({ "dejunk", "baganator", "mlist", "ahshare", "fjshare", "auras", "eui", "smartbuff", "nx", "msync" }) do M.db[k] = true end  -- the features under test: switched on (they start off)
   M.store = {}
   function M:On(ev, fn) local old = EVENTS[ev]; EVENTS[ev] = old and function(...) old(...); fn(...) end or fn end
   function M:Listen(ev, fn) LISTEN[ev] = fn end
@@ -408,7 +408,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 16, "report lines " .. n)   -- one per feature (names, loot by price, valuable loot too) + the module line + role items sync + Auctionator status + PallyPower
+  assert(n == 17, "report lines " .. n)   -- one per feature (names, loot by price, valuable loot, module settings too) + the module line + role items sync + Auctionator status + PallyPower
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
@@ -1522,4 +1522,50 @@ run(A, amod, r"""function(m)
   assert(skip(L(20)) == nil and db.lsPrice == false, "tab checkbox")
   Auctionator, FojjiCoreNS = nil, nil
   return "Anna: never loot by auction price - sources, order, age, fallbacks, quality, roles"
+end""")
+
+# --- every module's settings in one transfer (ModuleSync.lua) ---------------
+for lua in (A, B):
+    lua.execute(r"""
+-- (a tiny serializer for the test; the core's own is MMT.Serialize / MMT.Deserialize)
+local function ser(v)
+  if type(v) == "table" then
+    local t = {}
+    for k, x in pairs(v) do t[#t + 1] = "[" .. ser(k) .. "]=" .. ser(x) end
+    return "{" .. table.concat(t, ",") .. "}"
+  end
+  return type(v) == "string" and ("%q"):format(v) or tostring(v)
+end
+function MMT.Serialize(v) return ser(v) end
+function MMT.Deserialize(s) local f = loadstring("return " .. s); return f and f() end
+BUFFS = { name = "BuffTimers", title = "Buffs", db = { iconSize = 30, stance = { where = "OFF" }, note = "a;b=c|d" } }
+function BUFFS.SyncData(self) return MMT.CopyTable(self.db) end
+MMT.modules = { BuffTimers = BUFFS }
+function MMT.SyncableModules() return { BUFFS } end
+IMPORTED, STORED = {}, {}
+function MMT.ImportModuleSettings(name, data, from) IMPORTED[name] = { data = data, from = from }; return true end
+function MMT.StoreModuleSettings(name, data) STORED[name] = data; return true end
+""")
+run(A, amod, r"""function(m)
+  OUT = {}
+  BUFFS.db.iconSize = 44
+  MMT.modules.QuestTracker = nil
+  local ok, text = m.SendAllModules("Bob-Stone")
+  assert(ok and text:find("Bob Stone", 1, true), tostring(text))
+  assert(OUT[1].msg:find("^QMSH:%d+:1:%d+:Buffs$"), "head: " .. OUT[1].msg)
+  return "Anna: every module's settings sent to Bob in one transfer"
+end""")
+deliver_to(out(A), B, "Anna-Smith")
+run(B, bmod, r"""function(m)
+  MMT.modules = { BuffTimers = BUFFS }   -- Bob has Buffs; Cooldowns isn't loaded here
+  assert(DIALOG and DIALOG.text:find("settings of 1 modules", 1, true) and DIALOG.text:find("Buffs", 1, true), "no dialog: " .. tostring(DIALOG and DIALOG.text))
+  assert(next(IMPORTED) == nil, "applied before asking")
+  OUT = {}
+  DIALOG.ok(); DIALOG = nil
+  local got = IMPORTED.BuffTimers
+  assert(got and got.data.iconSize == 44 and got.data.stance.where == "OFF" and got.data.note == "a;b=c|d" and got.from == "Anna Smith", "not applied as sent")
+  local d = false
+  for _, o in ipairs(OUT) do if o.msg:find("^QMSR:%d+:D:1:1$") then d = true end end
+  assert(d, "no done reply")
+  return "Bob: asked once, the settings applied as sent, Anna told"
 end""")

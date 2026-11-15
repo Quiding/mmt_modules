@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.8.8"
+mod.VERSION = "1.8.9"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -95,6 +95,11 @@ local M = MMT.NewModule({
         euFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
         euDock = true,             -- "Send to team" button above EllesmereUI's options
         euBars = true,             -- progress bars while sending / receiving (Transfers.lua)
+        -- every module's settings to the team (ModuleSync.lua)
+        msync = false,
+        msAsk = true,              -- a dialog before applying
+        msFrom = "TEAM",           -- who may send: TEAM | LEADER (the FTL leader)
+        msBars = true,             -- progress bars while sending / receiving
         -- SmartBuff alerts
         smartbuff = false,
         sbSend = true,             -- send what SmartBuff reports here
