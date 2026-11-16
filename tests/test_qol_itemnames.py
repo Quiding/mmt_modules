@@ -1,4 +1,4 @@
-"""(harness from test_qol_roleloot) MMT_QoL RoleLoot.lua: valuable loot onto a role, and the Baganator category "MMT Role Items".
+"""MMT_QoL ItemNames.lua: items by name onto a role (harness from test_qol_roleloot). MMT_QoL RoleLoot.lua: valuable loot onto a role, and the Baganator category "MMT Role Items".
 A looted green (or blue) whose auction price is at least rvPct % of its vendor price goes on the
 chosen role (through the Role items path, mod.MailAdd); left alone: Bind on Pickup, too cheap,
 quality, a role already wants it, a team upgrade (Pawn Compare), Disenchant Loot's verdict DE / JUNK.
@@ -114,7 +114,7 @@ Baganator = { API = {
 ''')
 
 mod = lua.eval('{}')
-for f in ('Module.lua', 'Ask.lua', 'Bulk.lua', 'Baganator.lua', 'MailList.lua', 'LootPrice.lua', 'RoleLoot.lua', 'MageScrolls.lua', 'Offer.lua'):
+for f in ('Module.lua', 'Ask.lua', 'Bulk.lua', 'Baganator.lua', 'MailList.lua', 'LootPrice.lua', 'RoleLoot.lua', 'ItemNames.lua', 'Offer.lua'):
     src = open('MMT_QoL/' + f, encoding='utf-8').read()
     lua.eval('function(src, name, m) assert(loadstring(src, name))("x", m) end')(src, 'MMT_QoL/' + f, mod)
 
@@ -137,44 +137,52 @@ print(lua.eval(r"""function(m)
   function GetLootSlotLink(i) return LOOT[i] and LOOT[i][1] end
   function GetLootSlotInfo(i) return "icon", LOOT[i] and LOOT[i][2] end
 
-  check("off by default", db.mscroll, false)
-  check("role by default", db.scRole, "Mage scrolls")
-  check("recognised by the link", m.IsMageScroll(SLINK(1, "Scroll: CWAL")), true)
-  check("not a stat scroll", m.IsMageScroll(SLINK(2, "Scroll of Intellect")), false)
-  check("off: nothing", m.ScrollBags(), 0)
-  db.mscroll = true
+  check("off by default", db.nrules, false)
+  check("rule 1 by default: the mage scrolls", db.nr1Text .. ">" .. db.nr1Role, "Scroll:>Mage scrolls")
+  check("off: nothing", m.NameBags(), 0)
+  db.nrules = true
   m.M.OnEnable(m.M)
-  check("no such role yet: nothing", m.ScrollSeed(), 0)
+  check("its role doesn't exist yet: no rule", #m.NameRules(), 0)
+  check("so nothing", m.NameSeed(), 0)
   MMT.db.roles["Mage scrolls"] = { rules = {} }
-  local n = m.ScrollSeed()
-  check("the known scrolls go on", n, 12)
+  check("now one rule", #m.NameRules(), 1)
+  check("starts with, no case", m.NameRole(SLINK(1, "scroll: cwal")), "Mage scrolls")
+  check("a stat scroll isn't", m.NameRole(SLINK(2, "Scroll of Intellect")), nil)
+  check("the known scrolls go on", m.NameSeed(), 12)
   check("one of them", On("Mage scrolls", 211787), true)
   check("sent to the team (Role items path)", #SENT > 0 or #TIMERS > 0, true)
-  check("again: nothing new", m.ScrollSeed(), 0)
+  check("again: nothing new", m.NameSeed(), 0)
   -- on Dejunk's junk list: taken off, also when it's on the role already
   local OFF = {}
   local real = m.DejunkFromHere
   m.DejunkFromHere = function(sign, item) if sign == "-" and (item == "211780" or item == "211785") then OFF[#OFF + 1] = item; return true end return false end
-  m.ScrollSeed()
+  m.NameSeed()
   check("both junk-listed scrolls taken off", #OFF, 2)
   check("as item ID strings", OFF[1] .. "," .. OFF[2], "211780,211785")
-  db.scDejunk = false; OFF = {}; m.ScrollSeed()
+  db.nrDejunk = false; OFF = {}; m.NameSeed()
   check("option off: left on", #OFF, 0)
-  db.scDejunk = true; m.DejunkFromHere = real
-  -- a new one in the loot window, before Loot Distribution hands it out
-  LOOT = { { SLINK(299001, "Scroll: NEW WORDS"), "Scroll: NEW WORDS" }, { LINK(100), "Item 100" } }
+  db.nrDejunk = true; m.DejunkFromHere = real
+  -- a second rule: "*Essence" anywhere in the name, to another role
+  MMT.db.roles.Enchanter = { rules = {} }
+  db.nr2Text, db.nr2Role = "*essence", "Enchanter"
+  check("anywhere in the name", m.NameRole("Greater Eternal Essence"), "Enchanter")
+  db.nr3Text, db.nr3Role = "Essence of", "Bank"
+  check("first rule that fits wins", m.NameRole("Essence of Fire"), "Enchanter")
+  db.nr3Text, db.nr3Role = "", ""
+  -- the loot window, before Loot Distribution hands it out
+  LOOT = { { SLINK(299001, "Scroll: NEW WORDS"), "Scroll: NEW WORDS" }, { SLINK(299010, "Lesser Magic Essence"), "Lesser Magic Essence" }, { LINK(100), "Item 100" } }
   ON.LOOT_READY()
   check("new scroll from the loot window", On("Mage scrolls", 299001), true)
-  check("other loot left alone", On("Mage scrolls", 100), false)
-  -- and one in the bags
+  check("essence to the enchanter", On("Enchanter", 299010), true)
+  check("other loot left alone", On("Mage scrolls", 100) or On("Enchanter", 100), false)
+  -- and the bags
   BAGS = { SLINK(299002, "Scroll: BAG ONE"), SLINK(2, "Scroll of Intellect") }
   ON.BAG_UPDATE_DELAYED(); RUN_TIMERS()
   check("new scroll from the bags", On("Mage scrolls", 299002), true)
   check("stat scroll not", On("Mage scrolls", 2), false)
-  check("chat line", table.concat(PRINTS, " / "):find("mage scroll") ~= nil, true)
-  db.scRole = "Bank"
-  LOOT = { { SLINK(299003, "Scroll: OTHER"), "Scroll: OTHER" } }
-  ON.LOOT_READY()
-  check("another role picked: goes there", On("Bank", 299003), true)
+  check("chat line", table.concat(PRINTS, " / "):find("by its name") ~= nil, true)
+  -- a rule whose role is gone does nothing
+  MMT.db.roles.Enchanter = nil
+  check("role gone: rule not used", m.NameRole("Greater Eternal Essence"), nil)
   return #out .. " checks ok"
 end""")(mod))

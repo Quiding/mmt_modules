@@ -21,7 +21,7 @@ LootSkip.lua
 LootPrice.lua
 MailList.lua
 RoleLoot.lua
-MageScrolls.lua
+ItemNames.lua
 AuctionatorShare.lua
 FojjiShare.lua
 Bulk.lua

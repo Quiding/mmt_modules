@@ -78,10 +78,13 @@ local M = MMT.NewModule({
         rvMin = 0,                 -- ... and at least this much (copper; 0 = no minimum)
         rvBag = true,              -- Baganator category "MMT Role Items" <-> the role's items
         rvChat = true,
-        mscroll = false,           -- mage scrolls ("Scroll: ...") onto a role (MageScrolls.lua)
-        scRole = "Mage scrolls",   -- ... that role
-        scDejunk = true,           -- ... and off Dejunk's junk list
-        scChat = true,
+        nrules = false,            -- items by name onto a role (ItemNames.lua)
+        nr1Text = "Scroll:", nr1Role = "Mage scrolls",   -- rule 1: the mage scrolls ("Scroll: CWAL", ...)
+        nr2Text = "", nr2Role = "", nr3Text = "", nr3Role = "",
+        nr4Text = "", nr4Role = "", nr5Text = "", nr5Role = "",
+        nr6Text = "", nr6Role = "",
+        nrDejunk = true,           -- ... and off Dejunk's junk list
+        nrChat = true,
         -- FojjiCore's auction scan (FojjiShare.lua)
         fjshare = false,
         fjAuto = true,             -- send the scan's prices when it is done
