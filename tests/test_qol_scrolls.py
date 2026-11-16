@@ -151,6 +151,16 @@ print(lua.eval(r"""function(m)
   check("one of them", On("Mage scrolls", 211787), true)
   check("sent to the team (Role items path)", #SENT > 0 or #TIMERS > 0, true)
   check("again: nothing new", m.ScrollSeed(), 0)
+  -- on Dejunk's junk list: taken off, also when it's on the role already
+  local OFF = {}
+  local real = m.DejunkFromHere
+  m.DejunkFromHere = function(sign, item) if sign == "-" and (item == "211780" or item == "211785") then OFF[#OFF + 1] = item; return true end return false end
+  m.ScrollSeed()
+  check("both junk-listed scrolls taken off", #OFF, 2)
+  check("as item ID strings", OFF[1] .. "," .. OFF[2], "211780,211785")
+  db.scDejunk = false; OFF = {}; m.ScrollSeed()
+  check("option off: left on", #OFF, 0)
+  db.scDejunk = true; m.DejunkFromHere = real
   -- a new one in the loot window, before Loot Distribution hands it out
   LOOT = { { SLINK(299001, "Scroll: NEW WORDS"), "Scroll: NEW WORDS" }, { LINK(100), "Item 100" } }
   ON.LOOT_READY()

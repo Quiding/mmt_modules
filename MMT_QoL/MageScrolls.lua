@@ -10,7 +10,9 @@
 --     works on LOOT_OPENED), so even the first of a new scroll goes to the role;
 --   - this character's bags (also what was looted or traded), a moment after they change.
 -- An item counts when its name starts with "Scroll: " (read from the link or the loot slot,
--- so no item data is needed).
+-- so no item data is needed). With scDejunk a scroll is also taken off Dejunk's (global)
+-- junk list, so Dejunk doesn't sell it (mod.DejunkFromHere: the team's lists follow when
+-- the Dejunk sync is on).
 
 local _, mod = ...
 local MMT = MMT
@@ -49,11 +51,20 @@ local function OnRole(role, id)
     return false
 end
 
+-- off Dejunk's junk list (nothing when it isn't on it, or Dejunk isn't here)
+local function Unjunk(id)
+    if not M.db.scDejunk or not mod.DejunkFromHere then return end
+    local ok, done = pcall(mod.DejunkFromHere, "-", tostring(id))
+    if ok and done then sc.unjunked = (sc.unjunked or 0) + 1 end
+end
+
 -- one item (ID or link) onto the role, unless it's there already: true when added
 local function Put(item, link)
     local role = mod.ScrollRole()
     local id = tonumber(item) or ItemID(item)
-    if not role or not id or OnRole(role, id) then return false end
+    if not role or not id then return false end
+    Unjunk(id)
+    if OnRole(role, id) then return false end
     if not mod.MailAdd(role, id) then return false end
     sc.added = sc.added + 1
     if M.db.scChat then MMT.Print("Quality of life: %s goes on the role %s (mage scroll).", link or mod.ItemText(id), role) end
@@ -137,10 +148,12 @@ F = mod.Feature({
         ui.Cycle("Role", RoleChoices, "scRole")
         ui.Button("Put them on the role now", function() F.commands[""]() end,
             "The known mage scrolls and the ones in your bags, now. Also /mmtqol scrolls. (It happens by itself too.)")
+        ui.Check("Take them off Dejunk's junk list", "scDejunk", "A mage scroll on Dejunk's (global) junk list is taken off it, so Dejunk doesn't sell it. With the Dejunk sync on, the team's lists follow.")
         ui.Check("Chat line for each scroll", "scChat", "Says which scroll went on the role.")
     end,
     Report = function(add)
-        add(("Mage scrolls: on=%s role=%s seen=%d added=%d"):format(tostring(M.db.mscroll), tostring(mod.ScrollRole()), sc.seen, sc.added))
+        add(("Mage scrolls: on=%s role=%s dejunk=%s seen=%d added=%d unjunked=%d"):format(tostring(M.db.mscroll), tostring(mod.ScrollRole()),
+            tostring(M.db.scDejunk), sc.seen, sc.added, sc.unjunked or 0))
     end,
 })
 mod.ScrollFeature = F

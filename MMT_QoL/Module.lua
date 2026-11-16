@@ -80,6 +80,7 @@ local M = MMT.NewModule({
         rvChat = true,
         mscroll = false,           -- mage scrolls ("Scroll: ...") onto a role (MageScrolls.lua)
         scRole = "Mage scrolls",   -- ... that role
+        scDejunk = true,           -- ... and off Dejunk's junk list
         scChat = true,
         -- FojjiCore's auction scan (FojjiShare.lua)
         fjshare = false,
