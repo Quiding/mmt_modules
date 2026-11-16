@@ -368,6 +368,7 @@ Every one starts switched off: tick the ones you want (a profile made before 1.8
 logging in, each one whose addon is loaded but which is still off is offered once in a small dialog that says what it
 does (on the group leader or solo, never in combat); `/mmtqol offers` asks again.
 
+- **Mage scrolls to a role**: every mage scroll ("Scroll: ...", Classes: Mage, needs Comprehension) goes on the role you pick (*Mage scrolls* by default), the same as dropping it on the Role items panel, so Loot Distribution gives it to that role and Mail to team sends it there. Each scroll is an item of its own: the ones seen on the team go on right away, any other as soon as it is in the loot window (before Loot Distribution hands the loot out) or in the bags. `/mmtqol scrolls`.
 - **Valuable loot to a role**: a green (or green and blue) item this character loots (or is traded) whose auction price is at
   least *x* % of its vendor price (300 % by default; prices as "Loot by price" finds them) goes on a role you pick,
   e.g. *Bank* on your bank character, so "Mail to team" mails it there. Weapons and armour, with Disenchant Loot on,

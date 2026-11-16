@@ -19,7 +19,7 @@
 local _, mod = ...
 local MMT = MMT
 
-mod.VERSION = "1.9.1"
+mod.VERSION = "1.9.2"
 
 local M = MMT.NewModule({
     name = "QoL",
@@ -78,6 +78,9 @@ local M = MMT.NewModule({
         rvMin = 0,                 -- ... and at least this much (copper; 0 = no minimum)
         rvBag = true,              -- Baganator category "MMT Role Items" <-> the role's items
         rvChat = true,
+        mscroll = false,           -- mage scrolls ("Scroll: ...") onto a role (MageScrolls.lua)
+        scRole = "Mage scrolls",   -- ... that role
+        scChat = true,
         -- FojjiCore's auction scan (FojjiShare.lua)
         fjshare = false,
         fjAuto = true,             -- send the scan's prices when it is done

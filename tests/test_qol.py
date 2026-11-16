@@ -408,7 +408,7 @@ run(A, amod, r'''function(m)
   assert(IMPORTED == "BGR!1!QUJD" and SLASHED == "removeunusedcategories", "import " .. tostring(IMPORTED) .. " / " .. tostring(SLASHED))
   local n = 0
   m.M.Report(m.M, function() n = n + 1 end)
-  assert(n == 17, "report lines " .. n)   -- one per feature (names, loot by price, valuable loot, module settings too) + the module line + role items sync + Auctionator status + PallyPower
+  assert(n == 18, "report lines " .. n)   -- one per feature (names, loot by price, valuable loot, module settings, mage scrolls too) + the module line + role items sync + Auctionator status + PallyPower
   return "Anna: whole setup asked, imported, report ok"
 end''')
 
