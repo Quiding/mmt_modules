@@ -33,6 +33,14 @@ local function Want(rec, S, part)
     return S
 end
 
+-- Statistics' live tracker in the damage meter's look (liveLook "METER", MMT_Statistics
+-- LiveTracker.lua) paints itself like EllesmereUI's meter: hands off its background and edges
+local function OwnLook(rec)
+    if rec.id ~= "livetracker" then return false end
+    local st = MMT and MMT.modules and MMT.modules.Statistics
+    return (st and st.db and st.db.liveLook == "METER") and true or false
+end
+
 local function DarkNeutral(c)
     local hi = math.max(c.r, c.g, c.b)
     return hi < 0.2 and (hi - math.min(c.r, c.g, c.b)) < 0.05
@@ -54,6 +62,7 @@ local function PaintBg(rec, S)
         if mod.Plain then mod.Plain(t) end
         rec.art = nil
     end
+    if OwnLook(rec) then rec.styled, rec.visible = false, false return end
     rec.visible = o.a > 0 and DarkNeutral(o)   -- a background of the user's own colour stays theirs
     S = rec.visible and Want(rec, S, "bg") or nil
     rec.styled = S and true or false
@@ -110,7 +119,7 @@ local function ArtBorder(rec)
 end
 
 local function PaintEdges(rec, S)
-    S = rec.visible and Want(rec, S, "edges") or nil
+    S = rec.visible and not OwnLook(rec) and Want(rec, S, "edges") or nil
     if rec.border then rec.border:Hide() end
     if S and S.art then
         for _, t in ipairs(rec.edges) do t:Hide() end
