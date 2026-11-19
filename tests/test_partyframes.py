@@ -280,5 +280,14 @@ print(lua.eval(r'''function(cd, bf)
     "raid group headers not used first")
   local _, topNow = MMTIconBars.UnitFrames()
   Check(topNow == r1, "top frame of the raid: highest, then leftmost")
+  rawset(_G, "ERFGroupHeader1", nil); rawset(_G, "ERFGroupHeader2", nil)
+
+  -- HUF's party frames: a secure group header; HUF wins over Blizzard's
+  local h1 = UnitButton(nil, "player", 700, 300)
+  local h2 = UnitButton(nil, "party1", 700, 260)
+  Header("HUF_Party", { h1, h2 })
+  MMTIconBars.CheckFrames()
+  Check(FRow(w, "Anna-Stone").unitFrame == h1 and FRow(w, "Bob-Stone").unitFrame == h2, "HUF party frames not used first")
+  Check(cd.FramesFound() == "HUF (2)", "found: " .. cd.FramesFound())
   return "party frames ok"
 end''')(mods['MMT_CooldownTimers'], mods['MMT_BuffTimers']))

@@ -690,6 +690,12 @@ local function Named(out, name) local f = G(name); if type(f) == "table" then ou
 
 -- unit frame addons, in this order: a unit's first shown frame wins
 local PROVIDERS = {
+    { name = "HUF", frames = function(out)
+        -- HUF (Hivemind Unitframes): the party header's buttons (SecureGroupHeaderTemplate,
+        -- "HUF_Party"), and its player frame for when the party frames leave you out
+        Children(G("HUF_Party"), out)
+        Named(out, "HUF_player")
+    end },
     { name = "EllesmereUI", frames = function(out)
         -- EllesmereUIRaidFrames: party header (+ the static self button of "Show Self First"),
         -- raid: one header per group or one flat header (Merge Groups); EUI_NameSort only re-sorts them

@@ -63,7 +63,7 @@ function mod.FramesTab(panel, Opt, status, where)
     mod.TileStack(panel, 0, 0, W, left)
     mod.TileStack(panel, X2, 0, W, {
         { "How It Works", "INV_Misc_Book_09", function(R)
-            R:Note("Each member's icons sit beside their party or raid frame and follow it when the frames are re-sorted or moved. Frames: EllesmereUI's party / raid frames, Blizzard's party and raid frames. Members outside your group have no frame.")
+            R:Note("Each member's icons sit beside their party or raid frame and follow it when the frames are re-sorted or moved. Frames: HUF's party frames, EllesmereUI's party / raid frames, Blizzard's party and raid frames. Members outside your group have no frame.")
             R:Button("Which frames are found?", function()
                 status.Show_("Unit frames found: " .. mod.FramesFound() .. ".")
             end)
