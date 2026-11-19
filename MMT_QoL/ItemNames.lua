@@ -155,6 +155,18 @@ end
 M:On("BAG_UPDATE_DELAYED", BagsLater)
 M:On("PLAYER_ENTERING_WORLD", BagsLater)
 
+-- the known mage scrolls' item data, asked for once after login: a scroll the client has
+-- never seen would otherwise drop with no data, and Loot Distribution can't hand out an
+-- item it can't rule out as Bind on Pickup until the data arrives
+local preloaded = false
+M:On("PLAYER_ENTERING_WORLD", function()
+    if preloaded or not (C_Item and C_Item.RequestLoadItemDataByID) then return end
+    preloaded = true
+    C_Timer.After(5, function()
+        for _, k in ipairs(KNOWN) do pcall(C_Item.RequestLoadItemDataByID, k[1]) end
+    end)
+end)
+
 local function RoleChoices(key)
     return function()
         local t = { { value = "", text = "(no role)" } }
