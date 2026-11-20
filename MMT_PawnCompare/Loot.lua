@@ -175,6 +175,69 @@ end
 
 mod.RegisterLoot()
 
+---------------------------------------------------------------------------
+-- Loot Distribution's "MMT: [item] is BOP. Master Looter > please assign" (it leaves
+-- Bind on Pickup items to the master looter): right after that line, in the same chat,
+-- who in the group it is the biggest upgrade for and by how much (bopChat):
+--   "Pawn: Arolan +12% (Warrior: Arms), Bertouz +4% (Shaman: Resto)"
+-- The master looter's client says the BOP line, so only our own line is answered.
+---------------------------------------------------------------------------
+local BOP_PATTERN = "^MMT: (.-) is BOP%."
+
+local function InGroup(key)
+    if MMT.IsSelf(key) then return true end
+    local ok, yes = pcall(function()
+        local name = MMT.RealName and MMT.RealName(key)
+        return name and (UnitInParty(name) or UnitInRaid(name)) and true or false
+    end)
+    return ok and yes or false
+end
+
+-- the line for an item (nil: not gear, or Pawn can't tell now)
+function mod.BopLine(link)
+    local keys = {}
+    for _, key in ipairs(MMT.SortedMembers()) do if InGroup(key) then keys[#keys + 1] = key end end
+    local list = mod.LootRanking(link, keys)
+    if not list then return nil end
+    local parts = {}
+    for _, u in ipairs(list) do
+        if u.counts and #parts < 3 then
+            local amount = u.pct and ("%+.0f%%"):format(u.pct)
+                or (u.empty and "empty slot") or ("%+.1f"):format(u.gain)
+            parts[#parts + 1] = ("%s %s (%s)"):format(MMT.FirstName(u.key), amount, u.scale.name)
+        end
+    end
+    if #parts == 0 then return "Pawn: an upgrade for nobody in the group" end
+    return "Pawn: " .. table.concat(parts, ", ")
+end
+
+local function OwnLine(sender)
+    if type(sender) ~= "string" then return false end
+    local key = MMT.Resolve and MMT.Resolve(sender)
+    if key and MMT.IsSelf(key) then return true end
+    local me = UnitName("player")
+    return me ~= nil and (sender == me or sender:match("^[^%-]+") == me)
+end
+
+local function OnChat(text, sender)
+    if not (M.enabled and M.db.bopChat and mod.PawnReady()) then return end
+    if type(text) ~= "string" or (MMT.IsSecret and (MMT.IsSecret(text) or MMT.IsSecret(sender))) then return end
+    local link = text:match(BOP_PATTERN)
+    if not link or not OwnLine(sender) then return end
+    local line = mod.BopLine(link)
+    M:Debug("BOP %s: %s", link, tostring(line))
+    if not line then return end
+    local channel = IsInRaid() and "RAID" or "PARTY"
+    C_Timer.After(0.2, function()
+        local ok = pcall(SendChatMessage, line, channel)
+        if not ok then MMT.Print(line) end
+    end)
+end
+for _, e in ipairs({ "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER" }) do
+    M:On(e, OnChat)
+end
+mod.OnBopChat = OnChat   -- (tests)
+
 -- "/mmtpc loot <item>": who would get it, and why the others wouldn't
 function mod.PrintLootRanking(link)
     local list, skipped = mod.LootRanking(link, MMT.SortedMembers())

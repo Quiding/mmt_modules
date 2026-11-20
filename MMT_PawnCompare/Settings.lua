@@ -51,6 +51,9 @@ function mod.LootPage(panel, status)
     local gl, sl = Opt("lootByUpgrade")
     L:Check("Give gear to the biggest upgrade", gl, sl,
         "As master looter, Loot Distribution hands each gear item to the team member it is the biggest upgrade for, judged by the Pawn scale chosen for them on the right. Needs Pawn and Loot Distribution 1.4.0 or newer.")
+    local gb, sb = Opt("bopChat")
+    L:Check("Bind on Pickup: say who it's an upgrade for", gb, sb,
+        "When Loot Distribution leaves a Bind on Pickup item to you (\"MMT: [item] is BOP. Master Looter > please assign\"), a second line in the same chat names who in the group it is the biggest upgrade for and by how much (up to three: \"Pawn: Arolan +12% (Warrior: Arms), Bertouz +4% (Shaman: Resto)\"), or that it is an upgrade for nobody. Works without \"Give gear to the biggest upgrade\" too. Needs Pawn.")
     local gm, sm = Opt("lootMinGain")
     L:Slider("Minimum upgrade (%)", 0, 25, 1, gm, sm)
     local gon, son = Opt("upgradesOnline")

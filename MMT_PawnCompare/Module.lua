@@ -37,6 +37,7 @@ local M = MMT.NewModule({
         lootByUpgrade = false, -- master loot: gear to the member it is the biggest upgrade for
         lootMinGain = 1,      -- ... at least this many percent (an empty slot always counts)
         upgradesOnline = true, -- M.TeamUpgrades (Disenchant Loot's junk, Quality of life's valuable loot): online members only
+        bopChat = true,        -- after Loot Distribution's "... is BOP" line: who it is the biggest upgrade for (Loot.lua)
         lootScale = {},       -- [teamKey] = Pawn scale name that member's loot is judged by
     },
     sync = true,              -- the core's "Sync to team" (nothing here is per client)

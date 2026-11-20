@@ -47,7 +47,9 @@ function MMT.RegisterLootChooser(c) CHOOSERS[#CHOOSERS + 1] = c end
 
 mod = lua.eval(r'''function()
   local m = {}
-  m.M = { enabled = true, db = { lootByUpgrade = true, lootMinGain = 1, lootScale = {} }, store = {}, Debug = function() end }
+  ON = {}
+  m.M = { enabled = true, db = { lootByUpgrade = true, lootMinGain = 1, lootScale = {}, bopChat = true }, store = {}, Debug = function() end,
+    On = function(_, e, fn) ON[e] = fn end }
   m.PawnReady = function() return true end
   SCALES = {}
   m.ScalesOf = function(key) return SCALES[key] end
@@ -155,6 +157,43 @@ print(lua.eval(r'''function(m)
   check("option off: offline counts", table.concat(m.M.TeamUpgrades("item:100"), ","), "Mage-A,Priest-C")
   m.M.db.upgradesOnline = true
   MMT.IsOnline = isOnline
+
+  -- after Loot Distribution's BOP line: who in the group it is the biggest upgrade for
+  reset()
+  SENT, TIMERS = {}, {}
+  C_Timer = { After = function(_, fn) TIMERS[#TIMERS + 1] = fn end }
+  function SendChatMessage(msg, channel) SENT[#SENT + 1] = channel .. ":" .. msg end
+  function IsInRaid() return false end
+  function UnitName() return "Me" end
+  function UnitInParty() return true end
+  function UnitInRaid() return false end
+  MMT.RealName = function(k) return k end
+  MMT.Resolve = function(s) return s == "Me" and "Me-R" or nil end
+  local isSelf = MMT.IsSelf
+  MMT.IsSelf = function(k) return k == "Me-R" end
+  check("listens to party chat", type(ON.CHAT_MSG_PARTY), "function")
+  ON.CHAT_MSG_PARTY("MMT: item:100 is BOP. Master Looter > please assign", "Me")
+  for _, fn in ipairs(TIMERS) do fn() end
+  check("one line", #SENT, 1)
+  check("best first, by how much and the scale", SENT[1], "PARTY:Pawn: " .. m.BopLine("item:100"):sub(7))
+  check("names the mage and the priest", SENT[1]:find("Mage") ~= nil and SENT[1]:find("Priest") ~= nil, true)
+  check("percent shown", SENT[1]:find("%%") ~= nil, true)
+  SENT, TIMERS = {}, {}
+  ON.CHAT_MSG_PARTY("MMT: item:100 is BOP. Master Looter > please assign", "Someone")
+  check("someone else's line: nothing", #TIMERS, 0)
+  ON.CHAT_MSG_PARTY("hello item:100", "Me")
+  check("other chat: nothing", #TIMERS, 0)
+  ON.CHAT_MSG_PARTY("MMT: item:130 is BOP. Master Looter > please assign", "Me")
+  for _, fn in ipairs(TIMERS) do fn() end
+  check("upgrade for nobody", SENT[1], "PARTY:Pawn: an upgrade for nobody in the group")
+  SENT, TIMERS = {}, {}
+  ON.CHAT_MSG_PARTY("MMT: item:200 is BOP. Master Looter > please assign", "Me")
+  check("not gear: nothing said", #TIMERS, 0)
+  db.bopChat = false
+  ON.CHAT_MSG_PARTY("MMT: item:100 is BOP. Master Looter > please assign", "Me")
+  check("option off: nothing", #TIMERS, 0)
+  db.bopChat = true
+  MMT.IsSelf = isSelf
 
   -- the hook in Loot Distribution
   check("registered once", #CHOOSERS, 1)
