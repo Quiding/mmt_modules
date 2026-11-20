@@ -300,6 +300,16 @@ function mod.Check()
     end
     P(" sent (newest first): %s", #sendLog > 0 and table.concat(sendLog, " | ") or "nothing")
     P(" received: %s", #recvLog > 0 and table.concat(recvLog, " | ") or "nothing")
+    -- why a team shaman has a bar or not (a bar needs: online by their heartbeats, or in the group)
+    for _, key in ipairs(MMT.SortedMembers()) do
+        if not MMT.IsSelf(key) and mod.IsShaman(key) then
+            local st = MMT.status and MMT.status[key]
+            local first = MMT.FirstName(key)
+            P(" team shaman %s: online=%s (last heard %s s ago), in group=%s, onlyOnline=%s", first,
+                tostring(MMT.IsOnline(key)), st and st.last and ("%.0f"):format(GetTime() - st.last) or "never",
+                tostring((UnitInParty(first) or UnitInRaid(first)) and true or false), tostring(M.db.onlyOnline))
+        end
+    end
     for _, key in ipairs(mod.Shamans()) do
         local parts = {}
         for _, el in ipairs(mod.ELEMENTS) do
