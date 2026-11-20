@@ -231,3 +231,33 @@ print(lua.eval(r'''function(m)
   check("no weapon: empty", empty, true)
   return ("pawn loot: %d checks ok"):format(#out)
 end''')(mod))
+
+# gear the spec or level wouldn't wear (specFit)
+print(lua.eval(r'''function(m)
+  local db = m.M.db
+  ITEMS[150] = { "INVTYPE_SHIELD", 4, 6, 1, { Strength = 10 } }
+  ITEMS[151] = { "INVTYPE_2HWEAPON", 2, 1, 1, { Strength = 20 } }
+  ITEMS[152] = { "INVTYPE_CHEST", 4, 3, 1, { Strength = 10 } }
+  MMT.status = { ["Sham-D"] = { class = "SHAMAN", level = 30 }, ["Warr-B"] = { class = "WARRIOR", level = 60 } }
+  local enh, fury, resto = { name = "Shaman: Enhancement" }, { name = "Warrior: Fury" }, { name = "Shaman: Restoration" }
+  local function w(key, id, scale) return m.WouldntWear(key, "item:" .. id, scale) end
+  db.specFit = true
+  assert(w("Sham-D", 152) == "mail from level 40", "mail below 40: " .. tostring(w("Sham-D", 152)))
+  MMT.status["Sham-D"].level = 40
+  assert(w("Sham-D", 152) == nil, "mail at 40")
+  assert(w("Sham-D", 150, enh) == "no shield for this spec", "shield for Enhancement")
+  assert(w("Sham-D", 150, resto) == nil, "shield for Restoration")
+  assert(w("Warr-B", 151, fury) == "no two-hander for this spec", "2H for Fury")
+  assert(w("Warr-B", 151, { name = "Warrior: Arms" }) == nil, "2H for Arms")
+  assert(w("Warr-B", 150, fury) == "no shield for this spec", "shield for Fury")
+  assert(w("Warr-B", 150, { name = "Warrior: Protection" }) == nil, "shield for Protection")
+  assert(m.SpecSkips({ name = "Ferret hunter" }, "item:150") == nil, "ret inside a word")
+  -- the loot ranking leaves them out with the reason
+  SCALES["Warr-B"] = { scales = { { name = "Warrior: Fury", values = { Strength = 1 } } } }
+  EQUIP["Warr-B"] = { items = { [16] = "141" } }
+  local list, skipped = m.LootRanking("item:151", { "Warr-B" })
+  assert(#list == 0 and skipped["Warr-B"] == "no two-hander for this spec", "ranking: " .. tostring(skipped["Warr-B"]))
+  db.specFit = false
+  assert(w("Warr-B", 151, fury) == nil, "setting off")
+  return "spec / level fit ok"
+end''')(mod))

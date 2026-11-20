@@ -53,6 +53,8 @@ function mod.LootUpgrade(key, link, loc, stats, minLevel)
     if minLevel and lvl and lvl < minLevel then return nil, ("needs level %d"):format(minLevel) end
     local scale = mod.LootScale(key)
     if not scale then return nil, "no Pawn scale" end
+    local wont = mod.WouldntWear(key, link, scale)
+    if wont then return nil, wont end
     if not mod.HasEquipment(key) then return nil, "equipment unknown" end
     local gain, old, empty = mod.Gain(key, loc, stats, scale)
     if gain == "unusable" then return nil, "scale can't use it" end

@@ -30,6 +30,7 @@ local M = MMT.NewModule({
         showInCompare = true,
         allScales = true,     -- every visible scale of the member, or only the first
         showPercent = true,
+        specFit = true,       -- no values for gear the member wouldn't wear: mail / plate before 40, a shield for Enhancement / Fury, a two-hander for Fury (Proficiency.lua)
         hideUnusable = true,  -- no values for members whose class can never use the item
         hideOffline = false,  -- leave out team members who are offline (item tooltip and Item Compare's)
         teamTooltip = "REPLACE",  -- team list in the item tooltip: REPLACE Pawn's lines | ADD below them | OFF

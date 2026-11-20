@@ -69,3 +69,80 @@ function mod.CanUse(key, link)
     if classID == ARMOR then return ARMOR_SET[class][subID] or false end
     return true
 end
+
+---------------------------------------------------------------------------
+-- Gear a member wouldn't wear (setting specFit): their class can, but
+--   - not yet: mail for hunters / shamans and plate for warriors / paladins before 40;
+--   - not with the spec of the scale (by its name): no shield for Enhancement, Fury,
+--     Arms or Retribution, no two-hander for Fury or Protection.
+---------------------------------------------------------------------------
+local MAIL, PLATE, SHIELD = 3, 4, 6
+local LATE_ARMOR = { HUNTER = MAIL, SHAMAN = MAIL, WARRIOR = PLATE, PALADIN = PLATE }
+local LATE_LEVEL = 40
+
+local function Info(link)
+    local fn = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not fn or type(link) ~= "string" then return nil end
+    local ok, _, _, _, loc, _, classID, subID = pcall(fn, link)
+    if not ok or MMT.IsSecret(classID) then return nil end
+    return classID, subID, loc
+end
+
+local function LevelOf(key)
+    if MMT.IsSelf(key) then return UnitLevel("player") end
+    local s = MMT.status and MMT.status[key]
+    return s and tonumber(s.level)
+end
+
+-- false (and why) when the member can't wear it at their level yet; true otherwise / unknown
+function mod.CanWearNow(key, link)
+    local late = LATE_ARMOR[mod.ClassOf(key) or ""]
+    if not late then return true end
+    local classID, subID = Info(link)
+    if classID ~= ARMOR or subID ~= late then return true end
+    local lvl = LevelOf(key)
+    if lvl and lvl < LATE_LEVEL then
+        return false, ("%s from level %d"):format(late == MAIL and "mail" or "plate", LATE_LEVEL)
+    end
+    return true
+end
+
+-- what each spec leaves out, by words in the scale's name ("Warrior: Fury", "Shaman: Enhancement")
+local SPECS = {
+    { words = { "enhance", "enh" }, shield = true },
+    { words = { "fury" }, shield = true, twoHand = true },
+    { words = { "arms" }, shield = true },
+    { words = { "retribution", "ret" }, shield = true },
+    { words = { "protection", "prot", "tank" }, twoHand = true },
+}
+
+local function SpecOf(scale)
+    local name = type(scale) == "table" and scale.name or scale
+    if type(name) ~= "string" then return nil end
+    name = name:lower()
+    for _, spec in ipairs(SPECS) do
+        for _, w in ipairs(spec.words) do
+            -- a whole word (or the start of one): "ret" not inside "Ferret"
+            if name:find("%f[%a]" .. w) then return spec end
+        end
+    end
+end
+
+-- why the scale's spec wouldn't use the item (nil: it would)
+function mod.SpecSkips(scale, link)
+    local spec = SpecOf(scale)
+    if not spec then return nil end
+    local classID, subID, loc = Info(link)
+    if spec.shield and classID == ARMOR and subID == SHIELD then return "no shield for this spec" end
+    if spec.twoHand and loc == "INVTYPE_2HWEAPON" then return "no two-hander for this spec" end
+    return nil
+end
+
+-- both together, for one member and one scale: nil, or why it is left out
+function mod.WouldntWear(key, link, scale)
+    local M = mod.M
+    if not (M and M.db and M.db.specFit) then return nil end
+    local ok, why = mod.CanWearNow(key, link)
+    if not ok then return why end
+    return scale and mod.SpecSkips(scale, link) or nil
+end

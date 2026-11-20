@@ -56,9 +56,13 @@ local function AddTeam(tip, link)
     for _, key in ipairs(MMT.SortedMembers()) do
         local rec = mod.ScalesOf(key)
         if rec and #rec.scales > 0 and mod.HasEquipment(key) and not (cfg.hideUnusable and not mod.CanUse(key, link))
-            and not (cfg.hideOffline and not MMT.IsSelf(key) and not MMT.IsOnline(key)) then
+            and not (cfg.hideOffline and not MMT.IsSelf(key) and not MMT.IsOnline(key))
+            and not mod.WouldntWear(key, link) then
             for i, scale in ipairs(rec.scales) do
                 if i > 1 and not cfg.allScales then break end
+                if mod.WouldntWear(key, link, scale) then
+                    -- this spec wouldn't use it (a shield for Enhancement): no row
+                else
                 local left = ClassName(key)
                 if cfg.allScales and #rec.scales > 1 then left = left .. " |cff888888" .. scale.name .. "|r" end
                 local gain, old, empty, hands = Gain(key, loc, newStats, scale)
@@ -80,6 +84,7 @@ local function AddTeam(tip, link)
                     else r, g, b = 0.8, 0.8, 0.8 end
                 end
                 rows[#rows + 1] = { left, right, r, g, b }
+                end
             end
         end
     end

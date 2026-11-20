@@ -60,6 +60,12 @@ local function AddLines(tip, key, hovered, equipped, offHand)
         tip:AddLine("Pawn: " .. MMT.FirstName(key) .. "'s class can't use this item", 0.5, 0.5, 0.5)
         return
     end
+    local notYet = mod.WouldntWear and mod.WouldntWear(key, hovered)
+    if notYet then
+        tip:AddLine(" ")
+        tip:AddLine("Pawn: " .. MMT.FirstName(key) .. " - " .. notYet, 0.5, 0.5, 0.5)
+        return
+    end
     local rec = mod.ScalesOf(key)
     local name = MMT.FirstName(key)
     if not rec or #rec.scales == 0 then
@@ -89,7 +95,10 @@ local function AddLines(tip, key, hovered, equipped, offHand)
         if i > 1 and not cfg.allScales then break end
         local new, unusable = mod.Value(newStats, scale)
         local label = "  " .. scale.name .. ": "
-        if unusable then
+        local wont = mod.WouldntWear and mod.WouldntWear(key, hovered, scale)
+        if wont then
+            tip:AddLine(label .. wont, 0.5, 0.5, 0.5)
+        elseif unusable then
             tip:AddLine(label .. "can't use the hovered item", 1, 0.35, 0.35)
         elseif not hasOld then
             tip:AddLine(label .. Fmt(new) .. "  upgrade", 0.3, 1, 0.3)
