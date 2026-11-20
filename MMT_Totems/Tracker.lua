@@ -11,6 +11,9 @@
 --                                                     reload; answered with an MTT per totem (whisper)
 -- Group members' totem casts (UNIT_SPELLCAST_SUCCEEDED) are used too, so a
 -- shaman without this module still shows up while in your group.
+-- In combat this client hides the shaman's own GetTotemInfo (secret values), so
+-- the totem message also goes out from the shaman's own cast (OwnCast), and once
+-- the values can be read again the slots are reported with their exact times.
 
 local _, mod = ...
 local MMT = MMT
@@ -66,11 +69,15 @@ end
 ---------------------------------------------------------------------------
 -- Own totems -> one message per change
 ---------------------------------------------------------------------------
-local sent = {}   -- [slot] = start time we told the team about (false = empty)
+local sent = {}   -- [slot] = start time we told the team about (false = empty, "cast" = from the cast)
+local hidden = false   -- a slot couldn't be read (secret): read them all again later
 
 local function ReportSlot(slot)
     local have, name, start, dur = GetTotemInfo(slot)
-    if MMT.IsSecret(have) or MMT.IsSecret(start) or MMT.IsSecret(dur) or MMT.IsSecret(name) then return end
+    if MMT.IsSecret(have) or MMT.IsSecret(start) or MMT.IsSecret(dur) or MMT.IsSecret(name) then
+        hidden = true
+        return
+    end
     local up = have and name and name ~= "" and dur and dur > 0 and start + dur > GetTime()
     if up then
         if sent[slot] ~= start then
@@ -89,6 +96,64 @@ M:On("PLAYER_TOTEM_UPDATE", function(slot)
     mod.UpdateIcons()
     mod.UpdateSecure()
 end)
+
+-- the slots couldn't be read (in combat): again once they can, so a totem gone early
+-- (killed, out of range) or the exact time reaches the team too
+local function ReportHidden()
+    if not hidden or select(2, UnitClass("player")) ~= "SHAMAN" then return end
+    hidden = false
+    for s = 1, 4 do ReportSlot(s) end
+    mod.UpdateIcons()
+end
+M:On("PLAYER_REGEN_ENABLED", ReportHidden)
+C_Timer.NewTicker(5, function() if hidden and M.enabled then ReportHidden() end end)
+
+-- one totem spell of this shaman (a cast, or one totem of a Call): told to the team
+-- right away, with its full duration - GetTotemInfo may be hidden now (combat)
+local function OwnTotem(name)
+    local _, element = mod.TotemByName(name)
+    local slot = element and mod.TOTEM_SLOT[element]
+    if not slot then return end
+    -- readable now (out of combat): PLAYER_TOTEM_UPDATE reports it exactly, no second message
+    local have, _, start, tdur = GetTotemInfo(slot)
+    if not (MMT.IsSecret(have) or MMT.IsSecret(start) or MMT.IsSecret(tdur)) then return end
+    local dur = mod.TotemDuration(name)
+    local key = mod.OwnKey()
+    if key then SetActive(key, element, name, dur, dur) end
+    sent[slot] = "cast"
+    hidden = true   -- the real start time follows once it can be read
+    MMT.SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, dur, dur, name), true)
+    M:Debug("own totem cast: %s (slot %d)", name, slot)
+end
+
+local function OwnCast(spellID)
+    if select(2, UnitClass("player")) ~= "SHAMAN" or not spellID or MMT.IsSecret(spellID) then return end
+    local name = mod.SpellInfo(spellID)
+    if not name or MMT.IsSecret(name) then return end
+    if mod.RECALL[name] then
+        local key = mod.OwnKey()
+        if key then mod.active[key] = {} end
+        for slot = 1, 4 do
+            if sent[slot] then sent[slot] = false; MMT.SendToTeam(("MTT:%d:0"):format(slot), true) end
+        end
+    elseif mod.TotemByName(name) then
+        OwnTotem(name)
+    else
+        -- a Call: its totems (what this client put on its Blizzard totem bar)
+        local key = mod.OwnKey()
+        for call, c in ipairs(mod.CALLS or {}) do
+            if c.name == name and key then
+                for _, el in ipairs(mod.ELEMENTS) do
+                    local id = mod.CallTotem(key, call, el)
+                    local tname = id and mod.TotemName(id)
+                    if tname then OwnTotem(tname) end
+                end
+            end
+        end
+    end
+    mod.UpdateIcons()
+end
+mod.OwnCast = OwnCast   -- (tests)
 
 M:Listen("TEAM_MESSAGE", function(key, sender, text)
     local slot, data = text:match("^MTT:(%d):(.+)$")
@@ -186,6 +251,7 @@ local function GroupUnit(unit)
 end
 
 M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
+    if unit == "player" then OwnCast(spellID) return end
     if not GroupUnit(unit) or not spellID or MMT.IsSecret(spellID) then return end
     local name = mod.SpellInfo(spellID)
     if not name or MMT.IsSecret(name) then return end

@@ -795,3 +795,54 @@ print("A:", A.eval(r"""function(m)
   m.M.enabled = true; m.M.db.hideBlizzardBar = false; m.Refresh()
   return "Blizzard totem bar hidden ok"
 end""")(amod))
+
+# in combat GetTotemInfo is hidden (secret): the own cast tells the team, the exact time follows
+print("A:", A.eval(r"""function(m)
+  SENT = {}
+  SECRET = true
+  local isSecret = MMT.IsSecret
+  -- hidden: the totem slot's values (have/start/duration); the spell ID of the cast is not
+  TOTEMS_UP[1] = { name = "Searing Totem", start = NOW, dur = 55 }
+  MMT.IsSecret = function(v) return SECRET and type(v) == "boolean" end
+  FIRE("PLAYER_TOTEM_UPDATE", 1)
+  assert(#SENT == 0, "sent while hidden: " .. tostring(SENT[1]))
+  -- the spell ID itself is readable: the cast goes out
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 3599)
+  assert(#SENT == 1 and SENT[1]:find("^MTT:1:%d+%.0/%d+%.0:Searing Totem$"), "cast message: " .. tostring(SENT[1]))
+  -- out of combat: readable again, the exact time once
+  SECRET = false
+  FIRE("PLAYER_REGEN_ENABLED")
+  assert(#SENT == 2 and SENT[2] == "MTT:1:55.0/55.0:Searing Totem", "exact after combat: " .. tostring(SENT[2]))
+  -- a readable cast doesn't send twice
+  SENT = {}
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 3599)
+  assert(#SENT == 0, "cast sent twice out of combat")
+  MMT.IsSecret = isSecret
+  return "own casts in combat ok"
+end""")(amod))
+
+# which Calls another shaman has learned (C + K / S)
+print("A:", A.eval(r"""function(m)
+  DELIVER("Bob-Stone", "MTTK:8075;EC")
+  assert(m.MemberKnowsCall("Bob-Stone", 1) and not m.MemberKnowsCall("Bob-Stone", 2) and not m.MemberKnowsCall("Bob-Stone", 3), "only the first")
+  m.SetViewCall("Bob-Stone", 3)
+  assert(m.ViewCall("Bob-Stone") == 1, "shows a Call Bob hasn't learned")
+  local listed
+  local open = MMT.UI.OpenList
+  MMT.UI.OpenList = function(_, items) listed = #items end
+  m.OpenCallList(m.bars["Bob-Stone"], "Bob-Stone")
+  assert(listed == 1, "Call list: " .. tostring(listed))
+  DELIVER("Bob-Stone", "MTTK:8075;ECK")
+  m.OpenCallList(m.bars["Bob-Stone"], "Bob-Stone")
+  assert(listed == 2 and m.MemberKnowsCall("Bob-Stone", 2), "Ancestors learned: " .. tostring(listed))
+  DELIVER("Bob-Stone", "MTTK:8075;Ec")
+  assert(not m.MemberKnowsCall("Bob-Stone", 1), "none")
+  MMT.UI.OpenList = open
+  -- own message: K / S after C
+  SPELLS[66842] = "Call of the Elements"; SPELLS[66843] = "Call of the Ancestors"
+  SENT = {}; FIRE("PLAYER_ENTERING_WORLD")
+  local k
+  for _, msg in ipairs(SENT) do if msg:find("^MTTK:") then k = msg end end
+  assert(k and k:find(";%a*CK$"), "own MTTK: " .. tostring(k))
+  return "learned Calls ok"
+end""")(amod))

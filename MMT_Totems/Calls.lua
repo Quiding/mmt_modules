@@ -135,7 +135,23 @@ function mod.UsesCalls(key)
     return false
 end
 
-function mod.ViewCall(key) return view[key] or 1 end
+-- does a member know this Call? this character: the game; another shaman: what their
+-- client says (MTTK); nothing said (older client): the first by UsesCalls, the others yes
+function mod.MemberKnowsCall(key, call)
+    if MMT.IsSelf(key) then return mod.KnowsCall(call) end
+    local t = M.store.callsKnown and M.store.callsKnown[key]
+    if t then return t[call] == true end
+    if call == 1 then return mod.UsesCalls(key) end
+    return true
+end
+
+-- the Call a member's bar shows: the chosen one, unless another shaman hasn't learned it
+-- (your own bar may show one not learned yet, grey and not cast, to set it up)
+function mod.ViewCall(key)
+    local call = view[key] or 1
+    if call ~= 1 and key and not MMT.IsSelf(key) and not mod.MemberKnowsCall(key, call) then return 1 end
+    return call
+end
 
 function mod.SetViewCall(key, call)
     if not mod.CALLS[call] then return end

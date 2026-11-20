@@ -9,7 +9,9 @@
 -- (older clients send no ";..." part: their items count as unknown). C / c: the
 -- shaman knows Call of the Elements or not - their own bar uses the Calls only
 -- then, so the other clients set Calls or chosen totems for them to match
--- (older clients send neither: guessed from their Calls, Calls.lua).
+-- (older clients send neither: guessed from their Calls, Calls.lua). After C,
+-- K and S: Call of the Ancestors / of the Spirits learned too (letters, so older
+-- clients' pattern still reads the message); a C without them: only the first.
 -- A shaman whose list hasn't arrived yet shows every totem.
 
 local _, mod = ...
@@ -99,6 +101,10 @@ end
 local lastSent
 local function Message()
     local calls = mod.KnowsCall and mod.KnowsCall(1) and "C" or "c"
+    if calls == "C" then
+        if mod.KnowsCall(2) then calls = calls .. "K" end
+        if mod.KnowsCall(3) then calls = calls .. "S" end
+    end
     return "MTTK:" .. table.concat(OwnKnown(), ",") .. ";" .. OwnItems() .. calls
 end
 
@@ -147,9 +153,17 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         M.store.items[key] = nil   -- older client: unknown
     end
     M.store.knowsCall = M.store.knowsCall or {}
-    if items:find("C", 1, true) then M.store.knowsCall[key] = true
-    elseif items:find("c", 1, true) then M.store.knowsCall[key] = false
-    else M.store.knowsCall[key] = nil end
+    M.store.callsKnown = M.store.callsKnown or {}
+    if items:find("C", 1, true) then
+        M.store.knowsCall[key] = true
+        M.store.callsKnown[key] = { true, items:find("K", 1, true) ~= nil, items:find("S", 1, true) ~= nil }
+    elseif items:find("c", 1, true) then
+        M.store.knowsCall[key] = false
+        M.store.callsKnown[key] = { false, false, false }
+    else
+        M.store.knowsCall[key] = nil
+        M.store.callsKnown[key] = nil
+    end
     -- they just logged in (or something changed): make sure they have ours
     if not answered[key] then answered[key] = true; Send(sender) end
     mod.Refresh()

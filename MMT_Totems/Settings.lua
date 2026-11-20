@@ -315,9 +315,8 @@ M.Page = function(_, page)
         end },
     })
     RefreshCalls = function()
-        local own = callKey and MMT.IsSelf(callKey)
         for call, c in ipairs(mod.CALLS) do
-            local known = not own or mod.KnowsCall(call)
+            local known = not callKey or mod.MemberKnowsCall(callKey, call)
             local row = callIcons[call].row
             row.label:SetText(c.name .. (known and "" or "  |cff888888(not learned yet)|r"))
             row.call.icon:SetTexture(mod.CallIcon(call))

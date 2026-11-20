@@ -506,7 +506,7 @@ function mod.UpdateIcons()
             -- the shown Call's icon; grey when this character hasn't learned it
             local call = mod.ViewCall(key)
             bar.call.icon:SetTexture(mod.CallIcon(call))
-            bar.call.icon:SetDesaturated(MMT.IsSelf(key) and not mod.KnowsCall(call))
+            bar.call.icon:SetDesaturated(not mod.MemberKnowsCall(key, call))
         end
         if bar:IsShown() then
             for element, s in pairs(bar.slots) do
@@ -556,10 +556,14 @@ end
 -- which Call a shaman's slots show
 function mod.OpenCallList(owner, key)
     local items, own = {}, MMT.IsSelf(key)
+    -- another shaman: only the Calls they have learned (the first always: it's what the bar
+    -- shows); your own: all, the ones not learned yet marked
     for call, c in ipairs(mod.CALLS) do
-        local text = c.name
-        if own and not mod.KnowsCall(call) then text = text .. " |cff888888(not learned)|r" end
-        items[#items + 1] = { value = call, text = IconText(mod.CallIcon(call), text) }
+        if own or call == 1 or mod.MemberKnowsCall(key, call) then
+            local text = c.name
+            if not mod.MemberKnowsCall(key, call) then text = text .. " |cff888888(not learned)|r" end
+            items[#items + 1] = { value = call, text = IconText(mod.CallIcon(call), text) }
+        end
     end
     UI.OpenList(owner, items, mod.ViewCall(key), function(call) mod.SetViewCall(key, call) end)
 end
