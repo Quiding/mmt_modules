@@ -167,6 +167,8 @@ SlashCmdList.MMTTOTEMS = function(msg)
     elseif msg == "show" or msg == "hide" or msg == "" then
         M.db.shown = (msg == "show") or (msg == "" and not M.db.shown)
         mod.Refresh()
+    elseif msg == "check" then
+        mod.Check()
     elseif msg == "refresh" then
         mod.Refresh()
     elseif msg == "lock" then

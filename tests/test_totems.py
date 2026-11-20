@@ -869,3 +869,15 @@ print("A:", A.eval(r"""function(m)
   assert(m.M.store.durations["Stoneskin Totem"] == nil, "learned a guess")
   return "durations learned ok"
 end""")(amod))
+
+print("A:", A.eval(r"""function(m)
+  local lines = {}
+  local p = MMT.Print
+  MMT.Print = function(f, ...) lines[#lines + 1] = string.format(f, ...) end
+  SlashCmdList.MMTTOTEMS("check")
+  MMT.Print = p
+  local all = table.concat(lines, "\n")
+  assert(all:find("own slot 4: true Windfury Totem") and all:find("sent %(newest first%): [%d%.]+ MTT:") and all:find("received: [%d%.]+ Bob%-Stone MTT:"), all)
+  assert(not all:find("UpdateIcons error"), all)
+  return "check ok"
+end""")(amod))

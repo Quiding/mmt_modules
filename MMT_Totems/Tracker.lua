@@ -70,6 +70,17 @@ end
 ---------------------------------------------------------------------------
 -- Own totems -> one message per change
 ---------------------------------------------------------------------------
+-- the last totem messages sent / received, for /mmtt check
+local sendLog, recvLog = {}, {}
+local function Log(list, text)
+    table.insert(list, 1, ("%.1f %s"):format(GetTime(), text))
+    list[9] = nil
+end
+local SendToTeam = function(msg, ...)
+    Log(sendLog, msg)
+    return MMT.SendToTeam(msg, ...)
+end
+
 local sent = {}   -- [slot] = start time we told the team about (false = empty, "cast" = from the cast)
 local hidden = false   -- a slot couldn't be read (secret): read them all again later
 
@@ -84,11 +95,11 @@ local function ReportSlot(slot)
         mod.LearnDuration(name, dur)
         if sent[slot] ~= start then
             sent[slot] = start
-            MMT.SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, start + dur - GetTime(), dur, name), true)
+            SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, start + dur - GetTime(), dur, name), true)
         end
     elseif sent[slot] then
         sent[slot] = false
-        MMT.SendToTeam(("MTT:%d:0"):format(slot), true)
+        SendToTeam(("MTT:%d:0"):format(slot), true)
     end
 end
 
@@ -124,7 +135,7 @@ local function OwnTotem(name)
     if key then SetActive(key, element, name, dur, dur) end
     sent[slot] = "cast"
     hidden = true   -- the real start time follows once it can be read
-    MMT.SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, dur, dur, name), true)
+    SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, dur, dur, name), true)
     M:Debug("own totem cast: %s (slot %d)", name, slot)
 end
 
@@ -136,7 +147,7 @@ local function OwnCast(spellID)
         local key = mod.OwnKey()
         if key then mod.active[key] = {} end
         for slot = 1, 4 do
-            if sent[slot] then sent[slot] = false; MMT.SendToTeam(("MTT:%d:0"):format(slot), true) end
+            if sent[slot] then sent[slot] = false; SendToTeam(("MTT:%d:0"):format(slot), true) end
         end
     elseif mod.TotemByName(name) then
         OwnTotem(name)
@@ -160,6 +171,7 @@ mod.OwnCast = OwnCast   -- (tests)
 M:Listen("TEAM_MESSAGE", function(key, sender, text)
     local slot, data = text:match("^MTT:(%d):(.+)$")
     if not slot or MMT.IsSelf(key) then return end
+    Log(recvLog, tostring(key) .. " " .. text)
     local element = mod.SLOT_ELEMENT[tonumber(slot)]
     if not element then return end
     if data == "0" then
@@ -272,6 +284,34 @@ M:On("UNIT_SPELLCAST_SUCCEEDED", function(unit, _, spellID)
     end
     mod.UpdateIcons()
 end)
+
+-- /mmtt check: what this client reads, sent, received and shows
+function mod.Check()
+    local P = function(...) MMT.Print(...) end
+    P("Totems check (now %.1f), version %s", GetTime(), tostring(C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("MMT_Totems", "Version")))
+    if select(2, UnitClass("player")) == "SHAMAN" then
+        for s = 1, 4 do
+            local have, name, start, dur = GetTotemInfo(s)
+            local secret = MMT.IsSecret(have) or MMT.IsSecret(name) or MMT.IsSecret(start) or MMT.IsSecret(dur)
+            if secret then P(" own slot %d: HIDDEN (secret)", s)
+            else P(" own slot %d: %s %s start=%s dur=%s told=%s", s, tostring(have), tostring(name), tostring(start), tostring(dur), tostring(sent[s])) end
+        end
+        P(" waiting to read again: %s, in combat: %s", tostring(hidden), tostring(InCombatLockdown()))
+    end
+    P(" sent (newest first): %s", #sendLog > 0 and table.concat(sendLog, " | ") or "nothing")
+    P(" received: %s", #recvLog > 0 and table.concat(recvLog, " | ") or "nothing")
+    for _, key in ipairs(mod.Shamans()) do
+        local parts = {}
+        for _, el in ipairs(mod.ELEMENTS) do
+            local name, _, start, dur = mod.ActiveTotem(key, el)
+            parts[#parts + 1] = el .. "=" .. (name and ("%s %.0fs"):format(name, start + dur - GetTime()) or "-")
+        end
+        local bar = mod.bars and mod.bars[key]
+        P(" %s (bar %s): %s", MMT.FirstName(key), bar and (bar:IsShown() and "shown" or "hidden") or "none", table.concat(parts, ", "))
+    end
+    local ok, err = pcall(mod.UpdateIcons)
+    if not ok then P(" |cffff5555UpdateIcons error: %s|r", tostring(err)) end
+end
 
 function mod.Test()
     mod.testUntil = GetTime() + 10
