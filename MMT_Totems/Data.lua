@@ -86,7 +86,22 @@ function mod.TotemByName(name)
     if t then return t.id, t.element end
 end
 
-function mod.TotemDuration(name) return DURATION[name] or 120 end
+-- the real duration, as the game says it (WoW: Forever's differ from the table above: many
+-- last 5 minutes): learned from this shaman's own totems (GetTotemInfo) and from other
+-- shamans' exact messages, kept account-wide (M.store.durations[name] = seconds)
+function mod.LearnDuration(name, dur)
+    dur = tonumber(dur)
+    if type(name) ~= "string" or name == "" or not dur or dur <= 0 then return end
+    local store = mod.M.store
+    if not store then return end
+    store.durations = store.durations or {}
+    store.durations[name] = math.floor(dur + 0.5)
+end
+
+function mod.TotemDuration(name)
+    local learned = mod.M.store and mod.M.store.durations and mod.M.store.durations[name]
+    return learned or DURATION[name] or 120
+end
 
 function mod.TotemName(id) return id and id ~= 0 and (mod.SpellInfo(id)) or nil end
 

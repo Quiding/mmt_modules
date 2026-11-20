@@ -846,3 +846,26 @@ print("A:", A.eval(r"""function(m)
   assert(k and k:find(";%a*CK$"), "own MTTK: " .. tostring(k))
   return "learned Calls ok"
 end""")(amod))
+
+# durations: learned from the game (Forever's differ from the table: Windfury lasts 5 min)
+print("A:", A.eval(r"""function(m)
+  SENT = {}
+  assert(m.TotemDuration("Windfury Totem") == 120, "table value first")
+  TOTEMS_UP[4] = { name = "Windfury Totem", start = NOW, dur = 300 }
+  FIRE("PLAYER_TOTEM_UPDATE", 4)
+  assert(m.TotemDuration("Windfury Totem") == 300, "not learned from GetTotemInfo")
+  -- in combat (hidden): the cast message carries the learned 5 minutes
+  SENT = {}
+  MMT.IsSecret = function(v) return type(v) == "boolean" end
+  TOTEMS_UP[4] = { name = "Windfury Totem", start = NOW + 1, dur = 300 }
+  FIRE("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 8512)
+  assert(SENT[1] == "MTT:4:300.0/300.0:Windfury Totem", "cast message: " .. tostring(SENT[1]))
+  MMT.IsSecret = function() return false end
+  -- another shaman's exact message mid-way teaches it too
+  DELIVER("Bob-Stone", "MTT:3:250.0/300.0:Healing Stream Totem")
+  assert(m.TotemDuration("Healing Stream Totem") == 300, "not learned from a message")
+  -- a just-cast message (whole duration left) doesn't
+  DELIVER("Bob-Stone", "MTT:2:120.0/120.0:Stoneskin Totem")
+  assert(m.M.store.durations["Stoneskin Totem"] == nil, "learned a guess")
+  return "durations learned ok"
+end""")(amod))

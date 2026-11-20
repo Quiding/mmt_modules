@@ -42,6 +42,7 @@ function mod.ActiveTotem(key, element)
             return nil
         end
         if have and name and name ~= "" and dur and dur > 0 and start + dur > now then
+            mod.LearnDuration(name, dur)
             mod.active[key] = mod.active[key] or {}
             mod.active[key][element] = { name = name, icon = icon, start = start, dur = dur }
             Remember(key, element, name, icon)
@@ -80,6 +81,7 @@ local function ReportSlot(slot)
     end
     local up = have and name and name ~= "" and dur and dur > 0 and start + dur > GetTime()
     if up then
+        mod.LearnDuration(name, dur)
         if sent[slot] ~= start then
             sent[slot] = start
             MMT.SendToTeam(("MTT:%d:%.1f/%.1f:%s"):format(slot, start + dur - GetTime(), dur, name), true)
@@ -166,6 +168,8 @@ M:Listen("TEAM_MESSAGE", function(key, sender, text)
         local rem, dur, name = data:match("^([%d%.]+)/([%d%.]+):(.+)$")
         rem, dur = tonumber(rem), tonumber(dur)
         if not (rem and dur and dur > 0) then return end
+        -- read from the game on their side (not just cast: then the time left is the whole duration)
+        if rem < dur - 1 then mod.LearnDuration(name, dur) end
         SetActive(key, element, name, rem, dur)
     end
     mod.UpdateIcons()
